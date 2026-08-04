@@ -510,7 +510,7 @@ BFCache suspension records resume intent only for a healthy, unblocked HD
 session; failures still require an explicit 1x reset, and pending continuations
 cannot start a connection before `pageshow`.
 
-- [ ] **Step 6: Publish without rewriting history**
+- [x] **Step 6: Publish without rewriting history**
 
 Verify PR #4 is still Draft and its remote head is the expected ancestor. Push only by fast-forward, keep the PR Draft, wait for GitHub Actions, and do not ask the i9 to update until CI succeeds.
 
