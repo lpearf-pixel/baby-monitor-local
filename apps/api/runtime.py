@@ -116,6 +116,7 @@ def runtime_from_env(environ: dict[str, str] | None = None) -> AlphaRuntime:
         ptz=StepPtzController(adapter=DisabledPtzAdapter()),
         hd_stream=HdStreamService(
             upstream_base_url=go2rtc_base_url,
-            stream_name="source",
+            native_stream_name="source",
+            compat_stream_name="source_compat",
         ),
     )

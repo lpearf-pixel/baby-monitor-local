@@ -16,6 +16,7 @@ from apps.api.hd_stream import (
     HdBrowserSocket,
     HdBusyError,
     HdClientDisconnected,
+    HdProfile,
     HdStreamService,
     HdTicket,
 )
@@ -39,7 +40,7 @@ class AlphaGateway(Protocol):
 
 
 class AlphaHdStream(Protocol):
-    def issue_ticket(self) -> HdTicket: ...
+    def issue_ticket(self, profile: HdProfile) -> HdTicket: ...
 
     async def serve(self, socket: HdBrowserSocket) -> None: ...
 
@@ -115,6 +116,12 @@ class PtzStepRequest(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
     direction: PtzDirection
+
+
+class HdSessionRequest(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    profile: HdProfile
 
 
 _VIEWER_SCRIPT = Path(__file__).with_name("dashboard_viewer.js")
@@ -301,9 +308,12 @@ def create_app(runtime: AlphaRuntime) -> FastAPI:
         )
 
     @app.post("/api/hd-session")
-    def hd_session(_parent: str = Depends(require_parent)) -> JSONResponse:
+    def hd_session(
+        request: HdSessionRequest,
+        _parent: str = Depends(require_parent),
+    ) -> JSONResponse:
         try:
-            ticket = runtime.hd_stream.issue_ticket()
+            ticket = runtime.hd_stream.issue_ticket(request.profile)
         except HdBusyError:
             return JSONResponse(
                 status_code=status.HTTP_429_TOO_MANY_REQUESTS,

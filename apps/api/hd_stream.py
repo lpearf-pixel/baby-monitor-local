@@ -23,16 +23,20 @@ H264_CODEC_REQUEST = ",".join(
         "avc1.640033",
     ]
 )
-MSE_REQUEST = json.dumps(
-    {"type": "mse", "value": H264_CODEC_REQUEST},
-    separators=(",", ":"),
-)
+H265_CODEC_REQUEST = "hvc1.1.6.L153.B0"
 MAX_MSE_DESCRIPTION_BYTES = 4096
+
+
+class HdProfile(str, Enum):
+    NATIVE = "native"
+    COMPAT = "compat"
 
 
 class HdCode(str, Enum):
     BUSY = "HD_BUSY"
-    FALLBACK = "HD_FALLBACK"
+    CODEC_UNSUPPORTED = "HD_CODEC_UNSUPPORTED"
+    TRANSCODE_UNAVAILABLE = "HD_TRANSCODE_UNAVAILABLE"
+    UPSTREAM_FAILED = "HD_UPSTREAM_FAILED"
 
 
 class HdBusyError(RuntimeError):
@@ -44,7 +48,9 @@ class HdClientDisconnected(RuntimeError):
 
 
 class _HdProtocolError(RuntimeError):
-    pass
+    def __init__(self, code: HdCode) -> None:
+        super().__init__(code.value)
+        self.code = code
 
 
 class HdBrowserSocket(Protocol):
@@ -80,6 +86,21 @@ class HdTicket:
     expires_in: int
 
 
+@dataclass(frozen=True)
+class _HdRelayProfile:
+    upstream_uri: str
+    codec_request: str
+    codec_prefix: str
+    unavailable_code: HdCode
+
+    @property
+    def mse_request(self) -> str:
+        return json.dumps(
+            {"type": "mse", "value": self.codec_request},
+            separators=(",", ":"),
+        )
+
+
 class HdTicketStore:
     def __init__(
         self,
@@ -91,28 +112,29 @@ class HdTicketStore:
         self._clock = clock
         self._ttl_seconds = ttl_seconds
         self._capacity = capacity
-        self._expires_at: dict[str, float] = {}
+        self._tickets: dict[str, tuple[float, HdProfile]] = {}
         self._lock = Lock()
 
     def _purge_expired(self, now: float) -> None:
-        for value, expires_at in list(self._expires_at.items()):
+        for value, (expires_at, _profile) in list(self._tickets.items()):
             if expires_at <= now:
-                del self._expires_at[value]
+                del self._tickets[value]
 
-    def issue(self) -> HdTicket:
+    def issue(self, profile: HdProfile) -> HdTicket:
         with self._lock:
             now = self._clock()
             self._purge_expired(now)
-            if len(self._expires_at) >= self._capacity:
+            if len(self._tickets) >= self._capacity:
                 raise HdBusyError
             value = secrets.token_urlsafe(32)
-            self._expires_at[value] = now + self._ttl_seconds
+            self._tickets[value] = (now + self._ttl_seconds, profile)
             return HdTicket(value=value, expires_in=self._ttl_seconds)
 
-    def consume(self, value: str) -> bool:
+    def consume(self, value: str) -> HdProfile | None:
         with self._lock:
             self._purge_expired(self._clock())
-            return self._expires_at.pop(value, None) is not None
+            ticket = self._tickets.pop(value, None)
+            return None if ticket is None else ticket[1]
 
 
 class HdConnectionGate:
@@ -176,21 +198,23 @@ def _fixed_upstream_uri(base_url: str, stream_name: str) -> str:
     )
 
 
-def _is_h264_mse_description(value: str) -> bool:
+def _mse_description_codecs(value: str) -> list[str] | None:
     try:
         message = json.loads(value)
     except json.JSONDecodeError:
-        return False
+        return None
     if not isinstance(message, dict) or set(message) != {"type", "value"}:
-        return False
+        return None
     if message["type"] != "mse" or not isinstance(message["value"], str):
-        return False
+        return None
     mime = message["value"]
     prefix = 'video/mp4; codecs="'
     if not mime.startswith(prefix) or not mime.endswith('"'):
-        return False
+        return None
     codecs = [codec.strip() for codec in mime[len(prefix) : -1].split(",")]
-    return bool(codecs) and all(codec.startswith("avc1.") for codec in codecs)
+    if not codecs or any(not codec for codec in codecs):
+        return None
+    return codecs
 
 
 class HdStreamService:
@@ -198,7 +222,8 @@ class HdStreamService:
         self,
         *,
         upstream_base_url: str = "http://127.0.0.1:1984",
-        stream_name: str = "source",
+        native_stream_name: str = "source",
+        compat_stream_name: str = "source_compat",
         connector: Callable[..., HdUpstream] = connect,
         ticket_store: HdTicketStore | None = None,
         connection_gate: HdConnectionGate | None = None,
@@ -206,7 +231,24 @@ class HdStreamService:
         ticket_timeout_seconds: float = 3.0,
         max_message_bytes: int = 4 * 1024 * 1024,
     ) -> None:
-        self._upstream_uri = _fixed_upstream_uri(upstream_base_url, stream_name)
+        self._profiles = {
+            HdProfile.NATIVE: _HdRelayProfile(
+                upstream_uri=_fixed_upstream_uri(
+                    upstream_base_url, native_stream_name
+                ),
+                codec_request=H265_CODEC_REQUEST,
+                codec_prefix="hvc1.",
+                unavailable_code=HdCode.CODEC_UNSUPPORTED,
+            ),
+            HdProfile.COMPAT: _HdRelayProfile(
+                upstream_uri=_fixed_upstream_uri(
+                    upstream_base_url, compat_stream_name
+                ),
+                codec_request=H264_CODEC_REQUEST,
+                codec_prefix="avc1.",
+                unavailable_code=HdCode.TRANSCODE_UNAVAILABLE,
+            ),
+        }
         self._connector = connector
         self._tickets = ticket_store or HdTicketStore()
         self._connections = connection_gate or HdConnectionGate()
@@ -214,8 +256,8 @@ class HdStreamService:
         self._ticket_timeout_seconds = ticket_timeout_seconds
         self._max_message_bytes = max_message_bytes
 
-    def issue_ticket(self) -> HdTicket:
-        return self._tickets.issue()
+    def issue_ticket(self, profile: HdProfile) -> HdTicket:
+        return self._tickets.issue(profile)
 
     @staticmethod
     async def _close(
@@ -240,33 +282,47 @@ class HdStreamService:
             return
         await self._close(socket, code=1013, reason=code.value)
 
-    async def _forward(self, upstream: HdUpstream, socket: HdBrowserSocket) -> None:
+    async def _forward(
+        self,
+        upstream: HdUpstream,
+        socket: HdBrowserSocket,
+        relay_profile: _HdRelayProfile,
+    ) -> None:
         description_received = False
         async for message in upstream:
             if not description_received:
-                if (
-                    not isinstance(message, str)
-                    or len(message.encode("utf-8")) > MAX_MSE_DESCRIPTION_BYTES
-                    or not _is_h264_mse_description(message)
+                if not isinstance(message, str) or (
+                    len(message.encode("utf-8")) > MAX_MSE_DESCRIPTION_BYTES
                 ):
-                    raise _HdProtocolError
+                    raise _HdProtocolError(HdCode.UPSTREAM_FAILED)
+                codecs = _mse_description_codecs(message)
+                if codecs is None:
+                    raise _HdProtocolError(HdCode.UPSTREAM_FAILED)
+                if not all(
+                    codec.startswith(relay_profile.codec_prefix)
+                    for codec in codecs
+                ):
+                    raise _HdProtocolError(relay_profile.unavailable_code)
                 await socket.send_text(message)
                 description_received = True
                 continue
             if not isinstance(message, bytes):
-                raise _HdProtocolError
+                raise _HdProtocolError(HdCode.UPSTREAM_FAILED)
             if len(message) > self._max_message_bytes:
-                raise _HdProtocolError
+                raise _HdProtocolError(HdCode.UPSTREAM_FAILED)
             await socket.send_bytes(message)
         if not description_received:
-            raise _HdProtocolError
+            raise _HdProtocolError(relay_profile.unavailable_code)
 
     async def _forward_until_browser_closes(
         self,
         upstream: HdUpstream,
         socket: HdBrowserSocket,
+        relay_profile: _HdRelayProfile,
     ) -> None:
-        forward_task = asyncio.create_task(self._forward(upstream, socket))
+        forward_task = asyncio.create_task(
+            self._forward(upstream, socket, relay_profile)
+        )
         disconnect_task = asyncio.create_task(socket.wait_for_disconnect())
         tasks = (forward_task, disconnect_task)
         try:
@@ -299,15 +355,22 @@ class HdStreamService:
                 timeout=self._ticket_timeout_seconds,
             )
         except (TimeoutError, HdClientDisconnected):
-            await self._close(socket, code=1008, reason=HdCode.FALLBACK.value)
+            await self._close(
+                socket, code=1008, reason=HdCode.UPSTREAM_FAILED.value
+            )
             return
-        if (
-            not isinstance(ticket, str)
-            or len(ticket.encode("utf-8")) > 1024
-            or not self._tickets.consume(ticket)
-        ):
-            await self._close(socket, code=1008, reason=HdCode.FALLBACK.value)
+        if not isinstance(ticket, str) or len(ticket.encode("utf-8")) > 1024:
+            await self._close(
+                socket, code=1008, reason=HdCode.UPSTREAM_FAILED.value
+            )
             return
+        profile = self._tickets.consume(ticket)
+        if profile is None:
+            await self._close(
+                socket, code=1008, reason=HdCode.UPSTREAM_FAILED.value
+            )
+            return
+        relay_profile = self._profiles[profile]
 
         if not await self._connections.try_acquire():
             await self._send_failure(socket, HdCode.BUSY)
@@ -316,18 +379,23 @@ class HdStreamService:
         try:
             try:
                 async with self._connector(
-                    self._upstream_uri,
+                    relay_profile.upstream_uri,
                     max_size=max(self._max_message_bytes, 4096),
                     open_timeout=3,
                     close_timeout=1,
                     proxy=None,
                 ) as upstream:
-                    await upstream.send(MSE_REQUEST)
-                    await self._forward_until_browser_closes(upstream, socket)
+                    await upstream.send(relay_profile.mse_request)
+                    await self._forward_until_browser_closes(
+                        upstream, socket, relay_profile
+                    )
             except HdClientDisconnected:
                 return
+            except _HdProtocolError as exc:
+                await self._send_failure(socket, exc.code)
+                return
             except Exception:
-                await self._send_failure(socket, HdCode.FALLBACK)
+                await self._send_failure(socket, HdCode.UPSTREAM_FAILED)
                 return
             await self._close(socket, code=1000)
         finally:

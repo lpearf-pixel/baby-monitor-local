@@ -282,7 +282,7 @@ git commit -m "feat: add on-demand VideoToolbox HD profile"
 - Changes: `HdStreamService.issue_ticket(profile: HdProfile) -> HdTicket`.
 - Adds: fixed internal `HdRelayProfile(stream_name, codec_request, codec_family, failure_code)`.
 
-- [ ] **Step 1: Write RED profile-ticket tests**
+- [x] **Step 1: Write RED profile-ticket tests**
 
 ```python
 ticket = store.issue(HdProfile.NATIVE)
@@ -293,14 +293,14 @@ assert store.consume(ticket.value) is None
 Add expiry, capacity, concurrent single-use, and a native/compat ticket pair.
 No response object may expose the stored profile.
 
-- [ ] **Step 2: Run RED ticket tests**
+- [x] **Step 2: Run RED ticket tests**
 
 ```bash
 /tmp/baby-monitor-hybrid-hd-venv/bin/python -m pytest -q \
   tests/api/test_hd_stream.py -k 'ticket or profile'
 ```
 
-- [ ] **Step 3: Implement profile-bound storage and fixed definitions**
+- [x] **Step 3: Implement profile-bound storage and fixed definitions**
 
 Use a ticket mapping to `(expires_at, HdProfile)`. Define only:
 
@@ -311,7 +311,7 @@ COMPAT = HdRelayProfile("source_compat", H264_CODEC_REQUEST, "avc1.", HdCode.TRA
 
 Construct and validate both loopback upstream URIs at service startup.
 
-- [ ] **Step 4: Write RED relay classification tests**
+- [x] **Step 4: Write RED relay classification tests**
 
 Test real service behavior with async fake sockets/upstreams:
 
@@ -323,14 +323,14 @@ Test real service behavior with async fake sockets/upstreams:
 - disconnect closes upstream and releases the global gate;
 - native close completes before a later compat connection acquires a slot.
 
-- [ ] **Step 5: Implement relay classification**
+- [x] **Step 5: Implement relay classification**
 
 Replace broad H.264-only parsing with `_parse_mse_description(value) -> tuple[str, ...] | None`
 and validate every returned codec against the selected profile family. Catch
 only expected protocol/connection groups for public classification; never put
 `str(exc)` into the result.
 
-- [ ] **Step 6: Write RED API request tests**
+- [x] **Step 6: Write RED API request tests**
 
 ```python
 response = app.post("/api/hd-session", headers=auth(), json={"profile": "native"})
@@ -341,13 +341,13 @@ assert fake.issued_profiles == [HdProfile.NATIVE]
 Add compat, missing profile, unknown profile, extra field, unauthenticated, and
 busy cases. Invalid bodies must issue no ticket.
 
-- [ ] **Step 7: Implement strict route and runtime wiring**
+- [x] **Step 7: Implement strict route and runtime wiring**
 
 Add a Pydantic request model with `extra="forbid"`; pass its enum to
 `issue_ticket`. Runtime constructs one service with fixed `source` and
 `source_compat` names. The response remains ticket metadata only.
 
-- [ ] **Step 8: Verify and commit Task 3**
+- [x] **Step 8: Verify and commit Task 3**
 
 ```bash
 /tmp/baby-monitor-hybrid-hd-venv/bin/python -m pytest -q \
