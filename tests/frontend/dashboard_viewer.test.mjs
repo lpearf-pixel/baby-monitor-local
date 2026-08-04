@@ -121,6 +121,8 @@ function browserFixture({fullscreen = true, rejectFullscreen = false} = {}) {
   const mediaPlane = new FakeElement('media-plane', {width: 800, height: 450});
   const liveImage = new FakeElement('live-image');
   liveImage.src = '/live.mjpeg';
+  const hdVideo = new FakeElement('hd-video');
+  const hdStatus = new FakeElement('hd-status');
   const fullscreenButton = new FakeElement('fullscreen');
   const ptzStatus = new FakeElement('ptz-status');
   const zoomButtons = [1, 2, 3].map(
@@ -134,6 +136,8 @@ function browserFixture({fullscreen = true, rejectFullscreen = false} = {}) {
       ['viewer', viewer],
       ['media-plane', mediaPlane],
       ['live-image', liveImage],
+      ['hd-video', hdVideo],
+      ['hd-status', hdStatus],
       ['fullscreen', fullscreenButton],
       ['ptz-status', ptzStatus],
     ]),
@@ -155,6 +159,8 @@ function browserFixture({fullscreen = true, rejectFullscreen = false} = {}) {
     document,
     fullscreenButton,
     fullscreenCalls,
+    hdStatus,
+    hdVideo,
     liveImage,
     mediaPlane,
     ptzButtons,
@@ -441,4 +447,58 @@ test('stable disabled response is shown and immediately releases controls', asyn
   assert.equal(fixture.ptzStatus.textContent, 'PTZ_DISABLED');
   assert.equal(fixture.ptzButtons.every((button) => !button.disabled), true);
   assert.equal(fixture.timerCalls.length, 0);
+});
+
+
+test('zoom changes and fullscreen exit notify one HD player without drag repeats', async () => {
+  const fixture = browserFixture();
+  const zooms = [];
+  const hdPlayer = {selectZoom: (zoom) => zooms.push(zoom)};
+  mountDashboardViewer({...fixture, fetch: async () => {}, hdPlayer});
+
+  fixture.zoomButtons[1].dispatch('click');
+  fixture.viewer.dispatch('pointerdown', {clientX: 100, clientY: 100});
+  fixture.viewer.dispatch('pointermove', {clientX: 200, clientY: 150});
+  fixture.viewer.dispatch('pointerup');
+  fixture.zoomButtons[2].dispatch('click');
+  fixture.fullscreenButton.dispatch('click');
+  await flushPromises();
+  await fixture.document.exitFullscreen();
+
+  assert.deepEqual(zooms, [1, 2, 3, 1]);
+});
+
+
+test('viewer constructs the HD player from fixed page elements', () => {
+  const fixture = browserFixture();
+  const captured = [];
+  fixture.window.BabyMonitorHdPlayer = {
+    createHdPlayer(environment) {
+      captured.push(environment);
+      return {selectZoom() {}};
+    },
+  };
+
+  mountDashboardViewer({...fixture, fetch: async () => {}});
+
+  assert.equal(captured.length, 1);
+  assert.equal(captured[0].image, fixture.liveImage);
+  assert.equal(captured[0].video, fixture.hdVideo);
+  assert.equal(captured[0].statusElement, fixture.hdStatus);
+  assert.equal(captured[0].window, fixture.window);
+});
+
+
+test('HD video double-click uses the same viewer fullscreen action', async () => {
+  const fixture = browserFixture();
+  mountDashboardViewer({
+    ...fixture,
+    fetch: async () => {},
+    hdPlayer: {selectZoom() {}},
+  });
+
+  fixture.hdVideo.dispatch('dblclick');
+  await flushPromises();
+
+  assert.deepEqual(fixture.fullscreenCalls, [fixture.viewer]);
 });

@@ -7,8 +7,10 @@
 `codex/basic-usable-alpha` 已提供基础可用闭环：
 
 - 256GB microSD 全天循环录像；
-- 密码保护的 1280×720、10 FPS MJPEG 网页预览和当前截图；
-- 网页查看器支持全屏、1×/2×/3× 数码变焦和鼠标/单指拖动；
+- 密码保护的 1× 1280×720、10 FPS MJPEG 网页预览和当前截图；
+- 2×/3× 按需透传已验证的 2560×1440 H.264 原生源，浏览器使用 MSE
+  硬件解码，不增加 1440p FFmpeg 编码；
+- 网页查看器支持全屏、1×/2×/3× 清晰变焦和鼠标/单指拖动；
 - M2 Mac 通过局域网访问 i9 Dashboard；
 - M2 通过 SSH 隧道访问仅限本机的 go2rtc 配置页；
 - 两台 Android ntfy 测试通知；
@@ -44,6 +46,14 @@ make alpha-quality-info
 make alpha-source-check
 make alpha-subtype-probe
 make alpha-subtype-apply
+```
+
+包含清晰变焦代码的更新需要安装新增的 WebSocket 客户端依赖，然后重启：
+
+```bash
+make alpha-update
+make alpha-install
+make alpha-restart
 ```
 
 恢复升级前配置：
@@ -101,11 +111,15 @@ Intel i9 实机探测已确认 `subtype=3` 通过 `cs2+udp` 提供 `2560×1440`
 
 ## 当前视频边界
 
-当前 1280×720、10 FPS 使用 MJPEG，目标是先获得稳定、清晰、浏览器通用的画面；它不是 15–25 FPS 的低延迟实时视频。后续将单独迁移到 WebRTC/MSE，并加入音频与双向语音能力。
+Dashboard 的 1× 保留 1280×720、10 FPS MJPEG；切换到 2×/3× 时，才通过
+一次性票据和同源 WebSocket 中继连接 go2rtc 的 `source`，把已验证的
+2560×1440 H.264 原流交给浏览器 MSE 硬件解码。正常启动和切换允许约 1–2 秒
+延迟，不进行 1440p FFmpeg 重编码，也不会把 go2rtc 端口开放到局域网。
 
-Dashboard 中的 1×/2×/3× 和拖动只改变当前浏览器的显示，不会改变摄像头
-朝向，也不会启动新的 FFmpeg 进程。全屏可通过按钮或双击画面进入，按 `Esc`
-退出后自动恢复 1× 居中。
+目标层首帧可用前，当前画面一直保留；HD 失败会继续使用 MJPEG，不显示黑屏。
+稳定 1× 只有 MJPEG 消费者，稳定 2×/3× 只有 MSE 消费者，2× 与 3× 之间复用
+同一连接。拖动只改变浏览器显示，不会改变摄像头朝向。全屏可通过按钮或双击
+当前画面进入，按 `Esc` 退出后自动恢复 1× 居中并安全释放 HD 连接。
 
 ## 安全边界
 

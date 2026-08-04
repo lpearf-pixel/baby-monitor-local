@@ -12,6 +12,7 @@
       window: root,
       fetch: root.fetch.bind(root),
       setTimeout: root.setTimeout.bind(root),
+      clearTimeout: root.clearTimeout.bind(root),
     });
     if (root.document.readyState === "loading") {
       root.document.addEventListener("DOMContentLoaded", mount, {once: true});
@@ -96,6 +97,8 @@
     const viewer = document.getElementById("viewer");
     const mediaPlane = document.getElementById("media-plane");
     const liveImage = document.getElementById("live-image");
+    const hdVideo = document.getElementById("hd-video");
+    const hdStatus = document.getElementById("hd-status");
     const fullscreenButton = document.getElementById("fullscreen");
     const ptzStatus = document.getElementById("ptz-status");
     const zoomButtons = Array.from(document.querySelectorAll(".zoom-button"));
@@ -103,6 +106,37 @@
 
     if (!viewer || !mediaPlane || !liveImage || !fullscreenButton) {
       return null;
+    }
+
+    let hdPlayer = environment.hdPlayer || null;
+    const hdFactory = window.BabyMonitorHdPlayer?.createHdPlayer;
+    if (!hdPlayer && hdVideo && hdStatus && typeof hdFactory === "function") {
+      hdPlayer = hdFactory({
+        MediaSource: window.MediaSource,
+        WebSocket: window.WebSocket,
+        URL: window.URL,
+        fetch: environment.fetch,
+        image: liveImage,
+        location: window.location,
+        setTimeout: environment.setTimeout,
+        clearTimeout: environment.clearTimeout || (() => {}),
+        statusElement: hdStatus,
+        video: hdVideo,
+        window,
+      });
+    }
+
+    let lastMediaZoom = null;
+
+    function selectMediaZoom(zoom) {
+      if (!hdPlayer || lastMediaZoom === zoom) return;
+      lastMediaZoom = zoom;
+      try {
+        const result = hdPlayer.selectZoom(zoom);
+        if (result && typeof result.catch === "function") result.catch(() => {});
+      } catch (_error) {
+        return;
+      }
     }
 
     function measure() {
@@ -130,6 +164,7 @@
           String(Number(button.dataset.zoom) === state.zoom),
         );
       }
+      selectMediaZoom(state.zoom);
     }
 
     const model = createViewerModel(measure, render);
@@ -216,6 +251,7 @@
     }
     fullscreenButton.addEventListener("click", toggleFullscreen);
     liveImage.addEventListener("dblclick", toggleFullscreen);
+    if (hdVideo) hdVideo.addEventListener("dblclick", toggleFullscreen);
     document.addEventListener("fullscreenchange", updateFullscreenState);
     updateFullscreenState();
 
@@ -277,7 +313,7 @@
       button.addEventListener("click", () => sendPtzStep(button.dataset.direction));
     }
 
-    return {model};
+    return {hdPlayer, model};
   }
 
   return {clampPan, createViewerModel, mountDashboardViewer};

@@ -3,12 +3,22 @@ from __future__ import annotations
 import secrets
 from dataclasses import dataclass, field
 from pathlib import Path
+from collections.abc import Mapping
 from typing import Iterator, Protocol
 
-from fastapi import Depends, FastAPI, HTTPException, status
+from fastapi import Depends, FastAPI, HTTPException, WebSocket, status
 from fastapi.responses import HTMLResponse, JSONResponse, Response, StreamingResponse
 from fastapi.security import HTTPBasic, HTTPBasicCredentials
 from pydantic import BaseModel, ConfigDict
+from starlette.websockets import WebSocketDisconnect
+
+from apps.api.hd_stream import (
+    HdBrowserSocket,
+    HdBusyError,
+    HdClientDisconnected,
+    HdStreamService,
+    HdTicket,
+)
 
 from apps.api.ptz import (
     DisabledPtzAdapter,
@@ -28,6 +38,59 @@ class AlphaGateway(Protocol):
     def send_test_notification(self) -> None: ...
 
 
+class AlphaHdStream(Protocol):
+    def issue_ticket(self) -> HdTicket: ...
+
+    async def serve(self, socket: HdBrowserSocket) -> None: ...
+
+
+class StarletteHdSocket:
+    def __init__(self, socket: WebSocket) -> None:
+        self._socket = socket
+
+    @property
+    def headers(self) -> Mapping[str, str]:
+        return self._socket.headers
+
+    @property
+    def peer_host(self) -> str | None:
+        return self._socket.client.host if self._socket.client else None
+
+    async def accept(self) -> None:
+        await self._socket.accept()
+
+    async def receive(self) -> str | bytes:
+        try:
+            message = await self._socket.receive()
+        except WebSocketDisconnect as exc:
+            raise HdClientDisconnected from exc
+        if message["type"] == "websocket.disconnect":
+            raise HdClientDisconnected
+        if message.get("text") is not None:
+            return message["text"]
+        if message.get("bytes") is not None:
+            return message["bytes"]
+        raise HdClientDisconnected
+
+    async def send_text(self, value: str) -> None:
+        try:
+            await self._socket.send_text(value)
+        except (RuntimeError, WebSocketDisconnect) as exc:
+            raise HdClientDisconnected from exc
+
+    async def send_bytes(self, value: bytes) -> None:
+        try:
+            await self._socket.send_bytes(value)
+        except (RuntimeError, WebSocketDisconnect) as exc:
+            raise HdClientDisconnected from exc
+
+    async def close(self, *, code: int, reason: str = "") -> None:
+        try:
+            await self._socket.close(code=code, reason=reason)
+        except (RuntimeError, WebSocketDisconnect) as exc:
+            raise HdClientDisconnected from exc
+
+
 @dataclass(frozen=True)
 class AlphaRuntime:
     username: str
@@ -37,6 +100,7 @@ class AlphaRuntime:
     ptz: StepPtzController = field(
         default_factory=lambda: StepPtzController(adapter=DisabledPtzAdapter())
     )
+    hd_stream: AlphaHdStream = field(default_factory=HdStreamService)
 
 
 class PtzStepRequest(BaseModel):
@@ -46,6 +110,7 @@ class PtzStepRequest(BaseModel):
 
 
 _VIEWER_SCRIPT = Path(__file__).with_name("dashboard_viewer.js")
+_HD_PLAYER_SCRIPT = Path(__file__).with_name("hd_player.js")
 
 
 _DASHBOARD = """<!doctype html>
@@ -64,6 +129,8 @@ _DASHBOARD = """<!doctype html>
     .viewer.is-dragging { cursor: grabbing; }
     .media-plane { position: absolute; left: 50%; top: 50%; width: 100%; aspect-ratio: 16 / 9; transform: translate3d(-50%, -50%, 0) scale(1); transform-origin: center; will-change: transform; }
     .video { display: block; width: 100%; height: 100%; object-fit: cover; background: #000; -webkit-user-drag: none; }
+    .media-layer { position: absolute; inset: 0; }
+    .media-layer[aria-hidden="true"] { visibility: hidden; }
     .viewer-controls { position: absolute; z-index: 2; top: 10px; left: 10px; display: flex; flex-wrap: wrap; gap: 8px; max-width: calc(100% - 20px); }
     .ptz-panel { position: absolute; z-index: 2; right: 10px; bottom: 10px; display: grid; grid-template-columns: repeat(3, 44px); grid-template-rows: repeat(3, 44px); gap: 4px; }
     .ptz-button[data-direction="up"] { grid-column: 2; grid-row: 1; }
@@ -74,7 +141,9 @@ _DASHBOARD = """<!doctype html>
     .viewer button[aria-pressed="true"] { background: #fff; color: #111; }
     .viewer button:disabled { opacity: .55; }
     .viewer button:focus-visible, button:focus-visible, a.button:focus-visible { outline: 3px solid #74b9ff; outline-offset: 2px; }
-    .ptz-status { position: absolute; z-index: 2; left: 12px; bottom: 10px; max-width: calc(100% - 174px); margin: 0; padding: 7px 10px; border-radius: 9px; color: #eef2f7; background: #111b; font-size: .82rem; }
+    .ptz-status, .hd-status { position: absolute; z-index: 2; left: 12px; max-width: calc(100% - 174px); margin: 0; padding: 7px 10px; border-radius: 9px; color: #eef2f7; background: #111b; font-size: .82rem; }
+    .ptz-status { bottom: 48px; }
+    .hd-status { bottom: 10px; }
     .sr-only { position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px; overflow: hidden; clip: rect(0, 0, 0, 0); white-space: nowrap; border: 0; }
     .viewer:fullscreen { width: 100vw; height: 100vh; aspect-ratio: auto; border-radius: 0; }
     @media (min-aspect-ratio: 16 / 9) { .viewer:fullscreen .media-plane { width: auto; height: 100%; } }
@@ -93,7 +162,8 @@ _DASHBOARD = """<!doctype html>
   <section class="card">
     <div id="viewer" class="viewer" aria-label="婴儿监控实时画面查看器">
       <div id="media-plane" class="media-plane">
-        <img id="live-image" class="video" src="/live.mjpeg" alt="婴儿床实时画面" draggable="false">
+        <img id="live-image" class="video media-layer" src="/live.mjpeg" alt="婴儿床实时画面" draggable="false" aria-hidden="false">
+        <video id="hd-video" class="video media-layer" muted playsinline preload="none" aria-hidden="true"></video>
       </div>
       <div class="viewer-controls" role="toolbar" aria-label="画面显示控制">
         <button class="zoom-button" type="button" data-zoom="1" aria-pressed="true" aria-label="显示一倍画面">1×</button>
@@ -108,6 +178,7 @@ _DASHBOARD = """<!doctype html>
         <button class="ptz-button" type="button" data-direction="down" aria-label="摄像头向下移动一步">↓</button>
       </div>
       <p id="ptz-status" class="ptz-status" aria-live="polite">PTZ_DISABLED：真实云台协议尚未启用</p>
+      <p id="hd-status" class="hd-status" aria-live="polite"></p>
       <span id="fullscreen-help" class="sr-only">全屏不可用时仍可使用数码变焦</span>
     </div>
   </section>
@@ -139,6 +210,7 @@ document.getElementById('notify').onclick = async () => {
 refreshStatus();
 setInterval(refreshStatus, 15000);
 </script>
+<script defer src="/assets/hd-player.js"></script>
 <script defer src="/assets/dashboard-viewer.js"></script>
 </body>
 </html>
@@ -188,6 +260,16 @@ def create_app(runtime: AlphaRuntime) -> FastAPI:
             headers={"Cache-Control": "no-store"},
         )
 
+    @app.get("/assets/hd-player.js")
+    def hd_player_script(
+        _parent: str = Depends(require_parent),
+    ) -> Response:
+        return Response(
+            content=_HD_PLAYER_SCRIPT.read_text(encoding="utf-8"),
+            media_type="text/javascript",
+            headers={"Cache-Control": "no-store"},
+        )
+
     @app.get("/api/status")
     def camera_status(_parent: str = Depends(require_parent)) -> dict[str, object]:
         return runtime.gateway.status()
@@ -209,6 +291,29 @@ def create_app(runtime: AlphaRuntime) -> FastAPI:
             status_code=status_by_code[result.code],
             content=result.as_dict(),
         )
+
+    @app.post("/api/hd-session")
+    def hd_session(_parent: str = Depends(require_parent)) -> JSONResponse:
+        try:
+            ticket = runtime.hd_stream.issue_ticket()
+        except HdBusyError:
+            return JSONResponse(
+                status_code=status.HTTP_429_TOO_MANY_REQUESTS,
+                content={"result": "HD_BUSY"},
+                headers={"Cache-Control": "no-store"},
+            )
+        return JSONResponse(
+            status_code=status.HTTP_201_CREATED,
+            content={"ticket": ticket.value, "expires_in": ticket.expires_in},
+            headers={"Cache-Control": "no-store"},
+        )
+
+    @app.websocket("/live-hd.ws")
+    async def live_hd(websocket: WebSocket) -> None:
+        if websocket.url.query:
+            await websocket.close(code=1008)
+            return
+        await runtime.hd_stream.serve(StarletteHdSocket(websocket))
 
     @app.get("/live.mjpeg")
     def live_mjpeg(_parent: str = Depends(require_parent)) -> StreamingResponse:

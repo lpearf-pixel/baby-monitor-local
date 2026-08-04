@@ -2,13 +2,15 @@ from __future__ import annotations
 
 import base64
 import re
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from typing import Iterator
 
 from fastapi.testclient import TestClient
 import pytest
+from starlette.websockets import WebSocketDisconnect
 
 from apps.api.alpha import AlphaRuntime, create_app
+from apps.api.hd_stream import HdBusyError, HdTicket
 from apps.api.ptz import PtzCode, PtzDirection, StepPtzController
 
 
@@ -50,10 +52,31 @@ class RecordingPtzAdapter:
         return self.result
 
 
+@dataclass
+class FakeHdStream:
+    busy: bool = False
+    issue_count: int = 0
+    served_count: int = 0
+    received: list[str | bytes] = field(default_factory=list)
+
+    def issue_ticket(self) -> HdTicket:
+        self.issue_count += 1
+        if self.busy:
+            raise HdBusyError
+        return HdTicket(value="opaque-ticket", expires_in=10)
+
+    async def serve(self, socket: object) -> None:
+        self.served_count += 1
+        await socket.accept()  # type: ignore[attr-defined]
+        self.received.append(await socket.receive())  # type: ignore[attr-defined]
+        await socket.close(code=1000)  # type: ignore[attr-defined]
+
+
 def client(
     gateway: FakeGateway | None = None,
     *,
     ptz: StepPtzController | None = None,
+    hd_stream: FakeHdStream | None = None,
 ) -> tuple[TestClient, FakeGateway]:
     fake = gateway or FakeGateway()
     runtime_kwargs: dict[str, object] = dict(
@@ -64,6 +87,8 @@ def client(
     )
     if ptz is not None:
         runtime_kwargs["ptz"] = ptz
+    if hd_stream is not None:
+        runtime_kwargs["hd_stream"] = hd_stream
     runtime = AlphaRuntime(**runtime_kwargs)
     return TestClient(create_app(runtime)), fake
 
@@ -115,6 +140,26 @@ def test_dashboard_keeps_one_live_mjpeg_consumer() -> None:
     assert response.text.count('src="/live.mjpeg"') == 1
 
 
+def test_dashboard_contains_inactive_hd_video_layer_and_status() -> None:
+    app, _ = client()
+
+    response = app.get("/", headers=auth())
+
+    assert '<video id="hd-video"' in response.text
+    video_tag = re.search(r'<video id="hd-video"[^>]*>', response.text)
+    assert video_tag is not None
+    assert " muted" in video_tag.group(0)
+    assert " playsinline" in video_tag.group(0)
+    assert 'preload="none"' in video_tag.group(0)
+    assert " src=" not in video_tag.group(0)
+    assert 'id="hd-status"' in response.text
+    assert "HD_READY" not in response.text
+    assert 'src="/assets/hd-player.js"' in response.text
+    assert response.text.index('src="/assets/hd-player.js"') < response.text.index(
+        'src="/assets/dashboard-viewer.js"'
+    )
+
+
 def test_viewer_asset_requires_authentication() -> None:
     app, _ = client()
 
@@ -126,6 +171,83 @@ def test_viewer_asset_requires_authentication() -> None:
     assert response.headers["content-type"].startswith("text/javascript")
     assert response.headers["cache-control"] == "no-store"
     assert "mountDashboardViewer" in response.text
+
+
+def test_hd_player_asset_requires_authentication_and_disables_cache() -> None:
+    app, _ = client()
+
+    unauthenticated = app.get("/assets/hd-player.js")
+    response = app.get("/assets/hd-player.js", headers=auth())
+
+    assert unauthenticated.status_code == 401
+    assert response.status_code == 200
+    assert response.headers["content-type"].startswith("text/javascript")
+    assert response.headers["cache-control"] == "no-store"
+
+
+def test_hd_session_requires_basic_authentication_before_ticket_issue() -> None:
+    hd_stream = FakeHdStream()
+    app, _ = client(hd_stream=hd_stream)
+
+    response = app.post("/api/hd-session")
+
+    assert response.status_code == 401
+    assert response.headers["www-authenticate"] == "Basic"
+    assert hd_stream.issue_count == 0
+
+
+def test_authenticated_hd_session_returns_only_opaque_ticket_metadata() -> None:
+    hd_stream = FakeHdStream()
+    app, _ = client(hd_stream=hd_stream)
+
+    response = app.post("/api/hd-session", headers=auth())
+
+    assert response.status_code == 201
+    assert response.headers["cache-control"] == "no-store"
+    assert response.json() == {"ticket": "opaque-ticket", "expires_in": 10}
+    assert set(response.json()) == {"ticket", "expires_in"}
+    assert hd_stream.issue_count == 1
+
+
+def test_full_hd_ticket_store_returns_stable_busy_result() -> None:
+    hd_stream = FakeHdStream(busy=True)
+    app, _ = client(hd_stream=hd_stream)
+
+    response = app.post("/api/hd-session", headers=auth())
+
+    assert response.status_code == 429
+    assert response.headers["cache-control"] == "no-store"
+    assert response.json() == {"result": "HD_BUSY"}
+    assert "opaque-ticket" not in response.text
+
+
+def test_hd_websocket_delegates_ticket_as_first_message_without_url_secret() -> None:
+    hd_stream = FakeHdStream()
+    app, _ = client(hd_stream=hd_stream)
+
+    with app.websocket_connect(
+        "/live-hd.ws",
+        headers={"origin": "http://testserver"},
+    ) as websocket:
+        websocket.send_text("opaque-ticket")
+
+    assert hd_stream.served_count == 1
+    assert hd_stream.received == ["opaque-ticket"]
+
+
+def test_hd_websocket_rejects_query_selectors_before_service_access() -> None:
+    hd_stream = FakeHdStream()
+    app, _ = client(hd_stream=hd_stream)
+
+    with pytest.raises(WebSocketDisconnect) as rejection:
+        with app.websocket_connect(
+            "/live-hd.ws?src=ignored&url=http://other.invalid",
+            headers={"origin": "http://testserver"},
+        ):
+            pass
+
+    assert rejection.value.code == 1008
+    assert hd_stream.served_count == 0
 
 
 def test_wrong_password_is_rejected() -> None:

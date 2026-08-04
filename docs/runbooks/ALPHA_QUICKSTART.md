@@ -58,6 +58,7 @@ make alpha-start
 ```bash
 cd ~/dev/baby-monitor-local
 make alpha-update
+make alpha-install
 make alpha-restart
 ```
 
@@ -67,6 +68,9 @@ make alpha-restart
 2. 拉取远端；
 3. 切换到 `codex/basic-usable-alpha`；
 4. 使用 fast-forward 更新。
+
+`make alpha-install` 会复用现有 `.venv-alpha` 和本机运行配置，只安装/更新仓库
+声明的 Python 依赖；清晰变焦新增的异步 WebSocket 客户端也由该命令安装。
 
 因此不要再单独修改脚本可执行位。
 
@@ -310,22 +314,71 @@ tailscale funnel 8080
 
 ## 11. 视频和功能边界
 
-当前高清模式是 1280×720、10 FPS MJPEG，用于先获得稳定、清晰、浏览器通用的监控画面。它不是 15–25 FPS 的低延迟实时视频；后续将单独迁移到 WebRTC/MSE。
+1× 模式继续使用 1280×720、10 FPS MJPEG；2×/3× 会按需申请一次性票据，
+通过 Dashboard 的同源 WebSocket 中继连接仅限本机的 go2rtc，并把
+2560×1440 H.264 原流交给浏览器 MSE 解码。正常切换允许约 1–2 秒延迟，
+不会启动 1440p FFmpeg 编码，也不会把 go2rtc 暴露到局域网。
+本阶段只启用视频 MSE，不包含 WebRTC/MSE 自动协商、实时音频或双向语音。
 
 全天录像仍由摄像头内的 256GB microSD 负责，写满后覆盖最早内容。
 
 当前 Alpha 已提供：
 
-- 局域网高清画面；
+- 1× 轻量 MJPEG 与 2×/3× 原生 1440p 清晰变焦；
 - 全屏、1×/2×/3× 数码变焦、鼠标拖动和 Android 单指拖动；
 - 当前截图；
 - 摄像头状态；
 - 双 Android 测试通知；
 - M2 SSH 维护方式。
 
-使用查看器顶部的 `1×`、`2×`、`3×` 切换数码变焦；放大后可拖动画面。
-点击“全屏”或双击画面进入全屏，按 `Esc` 退出并恢复 1× 居中。上述功能只在
-浏览器中改变显示，不会增加 i9 的 FFmpeg 转码任务。
+使用查看器顶部的 `1×`、`2×`、`3×` 切换画面；进入 2×/3× 后状态依次为
+`HD_LOADING`、`HD_ACTIVE`。放大后可拖动画面。点击“全屏”或双击当前
+MJPEG/HD 画面进入全屏，按 `Esc` 退出并恢复 1× 居中。目标画面首帧成功前
+旧画面不会消失；`HD_FALLBACK`、`HD_UNSUPPORTED` 或 `HD_BUSY` 均保留可用
+MJPEG，浏览器不会在后台无限重试。
+
+### 清晰变焦实机验收
+
+更新并重启后，在 M2 Chrome/Safari 与 Android Chrome 逐项确认：
+
+1. 1× 连续显示 1280×720 MJPEG；2×/3× 能看到比旧 720p 像素放大更多的
+   2560×1440 原生细节。
+2. 1×→2×/3× 正常切换约 1–2 秒，期间不黑屏；2×→3× 不再次显示
+   `HD_LOADING`，也不创建第二个高清连接。
+3. 回到 1× 或按 `Esc` 退出全屏后，MJPEG 先恢复，再释放 HD；反复切换、拖动
+   和全屏时画面持续可见。
+4. 关闭一次 HD WebSocket 或让浏览器拒绝 MSE 后，页面显示稳定回退码并保留
+   MJPEG；重新尝试必须先选 1×，再选 2×/3×。
+5. go2rtc 的 `1984/8554/8555` 仍只监听 `127.0.0.1`；稳定 1× 没有 MSE
+   消费者，稳定 2×/3× 已释放 `/live.mjpeg`，且没有 H.264 FFmpeg 编码器。
+6. 方向键仍显示 `PTZ_DISABLED`，不会向摄像头发送电机指令。
+
+只在 i9 本机或 SSH 隧道后的 go2rtc 页面观察消费者，不要粘贴原始
+`/api/streams` 输出；该输出可能包含 Xiaomi URI。检查 FFmpeg 数量时也不要
+粘贴完整进程参数，只记录数量和是否存在视频编码。
+
+以下命令只打印 `source/live` 的生产者、消费者数量和 MJPEG FFmpeg 数量，
+不会打印流 URL、设备字段或进程命令行。分别在稳定 1×、稳定 2×、稳定 3×
+执行并记录数字：
+
+```bash
+curl -fsS http://127.0.0.1:1984/api/streams | \
+  ./.venv-alpha/bin/python -c '
+import json, sys
+streams = json.load(sys.stdin)
+for name in ("source", "live"):
+    stream = streams.get(name, {}) if isinstance(streams, dict) else {}
+    print("{}_producer_count={}".format(name, len(stream.get("producers", []))))
+    print("{}_consumer_count={}".format(name, len(stream.get("consumers", []))))
+'
+printf 'mjpeg_ffmpeg_process_count='
+{ pgrep -f '[f]fmpeg.*(mjpeg|1280)' || true; } | wc -l | tr -d ' '
+printf '\n'
+```
+
+稳定 2× 与 3× 的数量必须相同；稳定高清下 `live_consumer_count=0` 且
+`mjpeg_ffmpeg_process_count=0`。若本机同时运行其他 FFmpeg 任务，只判断上述
+MJPEG 特征计数，不要停止无关进程。
 
 方向键代表物理摄像头点按步进，但当前真实 MJSXJ17CM 控制适配器仍默认
 禁用。点击时预期显示 `PTZ_DISABLED`，且不会向设备发送未经验证的电机

@@ -7,6 +7,7 @@ from urllib.parse import quote, urlencode
 from urllib.request import Request, urlopen
 
 from apps.api.alpha import AlphaRuntime
+from apps.api.hd_stream import HdStreamService
 from apps.api.ptz import DisabledPtzAdapter, StepPtzController
 
 
@@ -99,8 +100,9 @@ def runtime_from_env(environ: dict[str, str] | None = None) -> AlphaRuntime:
         )
 
     stream_name = env.get("BABY_MONITOR_STREAM", "live").strip() or "live"
+    go2rtc_base_url = env.get("GO2RTC_BASE_URL", "http://127.0.0.1:1984")
     gateway = Go2RTCAlphaGateway(
-        base_url=env.get("GO2RTC_BASE_URL", "http://127.0.0.1:1984"),
+        base_url=go2rtc_base_url,
         stream_name=stream_name,
         ntfy_base_url=env.get("NTFY_BASE_URL", "https://ntfy.sh"),
         ntfy_topic=env.get("NTFY_TOPIC", ""),
@@ -112,4 +114,8 @@ def runtime_from_env(environ: dict[str, str] | None = None) -> AlphaRuntime:
         stream_name=stream_name,
         gateway=gateway,
         ptz=StepPtzController(adapter=DisabledPtzAdapter()),
+        hd_stream=HdStreamService(
+            upstream_base_url=go2rtc_base_url,
+            stream_name="source",
+        ),
     )
