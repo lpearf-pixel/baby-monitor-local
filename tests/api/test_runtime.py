@@ -18,7 +18,7 @@ def _environment(**overrides: str) -> dict[str, str]:
     return values
 
 
-def test_runtime_wires_hd_service_to_fixed_source_on_configured_loopback(
+def test_runtime_wires_hd_service_to_fixed_profiles_on_configured_loopback(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     captured: list[dict[str, Any]] = []
@@ -42,7 +42,8 @@ def test_runtime_wires_hd_service_to_fixed_source_on_configured_loopback(
     assert captured == [
         {
             "upstream_base_url": "https://127.0.0.1:2999",
-            "stream_name": "source",
+            "native_stream_name": "source",
+            "compat_stream_name": "source_compat",
         }
     ]
     assert runtime.hd_stream is service

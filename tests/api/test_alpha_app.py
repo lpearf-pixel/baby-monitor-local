@@ -10,7 +10,7 @@ import pytest
 from starlette.websockets import WebSocketDisconnect
 
 from apps.api.alpha import AlphaRuntime, create_app
-from apps.api.hd_stream import HdBusyError, HdTicket
+from apps.api.hd_stream import HdBusyError, HdProfile, HdTicket
 from apps.api.ptz import PtzCode, PtzDirection, StepPtzController
 
 
@@ -56,11 +56,13 @@ class RecordingPtzAdapter:
 class FakeHdStream:
     busy: bool = False
     issue_count: int = 0
+    issued_profiles: list[HdProfile] = field(default_factory=list)
     served_count: int = 0
     received: list[str | bytes] = field(default_factory=list)
 
-    def issue_ticket(self) -> HdTicket:
+    def issue_ticket(self, profile: HdProfile) -> HdTicket:
         self.issue_count += 1
+        self.issued_profiles.append(profile)
         if self.busy:
             raise HdBusyError
         return HdTicket(value="opaque-ticket", expires_in=10)
@@ -196,24 +198,56 @@ def test_hd_session_requires_basic_authentication_before_ticket_issue() -> None:
     assert hd_stream.issue_count == 0
 
 
-def test_authenticated_hd_session_returns_only_opaque_ticket_metadata() -> None:
+@pytest.mark.parametrize("profile", [HdProfile.NATIVE, HdProfile.COMPAT])
+def test_authenticated_hd_session_returns_only_opaque_ticket_metadata(
+    profile: HdProfile,
+) -> None:
     hd_stream = FakeHdStream()
     app, _ = client(hd_stream=hd_stream)
 
-    response = app.post("/api/hd-session", headers=auth())
+    response = app.post(
+        "/api/hd-session",
+        headers=auth(),
+        json={"profile": profile.value},
+    )
 
     assert response.status_code == 201
     assert response.headers["cache-control"] == "no-store"
     assert response.json() == {"ticket": "opaque-ticket", "expires_in": 10}
     assert set(response.json()) == {"ticket", "expires_in"}
     assert hd_stream.issue_count == 1
+    assert hd_stream.issued_profiles == [profile]
+
+
+@pytest.mark.parametrize(
+    "payload",
+    [
+        {},
+        {"profile": "unknown"},
+        {"profile": "native", "stream": "attacker-controlled"},
+    ],
+)
+def test_hd_session_rejects_missing_unknown_or_extra_profile_fields(
+    payload: dict[str, str],
+) -> None:
+    hd_stream = FakeHdStream()
+    app, _ = client(hd_stream=hd_stream)
+
+    response = app.post("/api/hd-session", headers=auth(), json=payload)
+
+    assert response.status_code == 422
+    assert hd_stream.issue_count == 0
 
 
 def test_full_hd_ticket_store_returns_stable_busy_result() -> None:
     hd_stream = FakeHdStream(busy=True)
     app, _ = client(hd_stream=hd_stream)
 
-    response = app.post("/api/hd-session", headers=auth())
+    response = app.post(
+        "/api/hd-session",
+        headers=auth(),
+        json={"profile": "compat"},
+    )
 
     assert response.status_code == 429
     assert response.headers["cache-control"] == "no-store"

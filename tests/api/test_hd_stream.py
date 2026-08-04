@@ -11,11 +11,12 @@ import pytest
 
 from apps.api.hd_stream import (
     H264_CODEC_REQUEST,
-    MSE_REQUEST,
+    H265_CODEC_REQUEST,
     HdBusyError,
     HdClientDisconnected,
     HdCode,
     HdConnectionGate,
+    HdProfile,
     HdStreamService,
     HdTicketStore,
 )
@@ -29,7 +30,7 @@ def _decoded_bytes(value: str) -> bytes:
 def test_issued_ticket_contains_at_least_256_bits_and_ten_second_metadata() -> None:
     store = HdTicketStore()
 
-    ticket = store.issue()
+    ticket = store.issue(HdProfile.NATIVE)
 
     assert len(_decoded_bytes(ticket.value)) >= 32
     assert ticket.expires_in == 10
@@ -37,58 +38,58 @@ def test_issued_ticket_contains_at_least_256_bits_and_ten_second_metadata() -> N
 
 def test_ticket_is_consumed_only_once() -> None:
     store = HdTicketStore()
-    ticket = store.issue()
+    ticket = store.issue(HdProfile.COMPAT)
 
-    assert store.consume(ticket.value) is True
-    assert store.consume(ticket.value) is False
+    assert store.consume(ticket.value) is HdProfile.COMPAT
+    assert store.consume(ticket.value) is None
 
 
 def test_ticket_expires_at_the_ten_second_boundary() -> None:
     now = [100.0]
     store = HdTicketStore(clock=lambda: now[0])
-    ticket = store.issue()
+    ticket = store.issue(HdProfile.NATIVE)
 
     now[0] = 109.999
-    assert store.consume(ticket.value) is True
+    assert store.consume(ticket.value) is HdProfile.NATIVE
 
-    expired = store.issue()
+    expired = store.issue(HdProfile.COMPAT)
     now[0] = 119.999
-    assert store.consume(expired.value) is False
+    assert store.consume(expired.value) is None
 
 
 def test_concurrent_ticket_consumption_has_exactly_one_winner() -> None:
     store = HdTicketStore()
-    ticket = store.issue()
+    ticket = store.issue(HdProfile.NATIVE)
 
     with ThreadPoolExecutor(max_workers=8) as executor:
         outcomes = list(executor.map(store.consume, [ticket.value] * 8))
 
-    assert outcomes.count(True) == 1
-    assert outcomes.count(False) == 7
+    assert outcomes.count(HdProfile.NATIVE) == 1
+    assert outcomes.count(None) == 7
 
 
 def test_full_store_rejects_issue_without_evicting_valid_ticket() -> None:
     store = HdTicketStore(capacity=2)
-    first = store.issue()
-    second = store.issue()
+    first = store.issue(HdProfile.NATIVE)
+    second = store.issue(HdProfile.COMPAT)
 
     with pytest.raises(HdBusyError):
-        store.issue()
+        store.issue(HdProfile.NATIVE)
 
-    assert store.consume(first.value) is True
-    assert store.consume(second.value) is True
+    assert store.consume(first.value) is HdProfile.NATIVE
+    assert store.consume(second.value) is HdProfile.COMPAT
 
 
 def test_expired_cleanup_restores_ticket_capacity() -> None:
     now = [50.0]
     store = HdTicketStore(clock=lambda: now[0], capacity=1)
-    expired = store.issue()
+    expired = store.issue(HdProfile.NATIVE)
 
     now[0] = 60.0
-    replacement = store.issue()
+    replacement = store.issue(HdProfile.COMPAT)
 
-    assert store.consume(expired.value) is False
-    assert store.consume(replacement.value) is True
+    assert store.consume(expired.value) is None
+    assert store.consume(replacement.value) is HdProfile.COMPAT
 
 
 @dataclass
@@ -191,6 +192,15 @@ class SilentConnector(RecordingConnector):
         self.calls: list[tuple[str, dict[str, Any]]] = []
 
 
+class FailingConnector:
+    def __init__(self) -> None:
+        self.calls: list[tuple[str, dict[str, Any]]] = []
+
+    def __call__(self, uri: str, **options: Any) -> FakeUpstream:
+        self.calls.append((uri, options))
+        raise OSError("private upstream detail")
+
+
 def _mse_description(codec: str = "avc1.640033") -> str:
     return json.dumps(
         {"type": "mse", "value": f'video/mp4; codecs="{codec}"'},
@@ -218,7 +228,7 @@ def test_cross_origin_request_closes_before_accept_or_upstream_access() -> None:
 def test_forwarded_host_is_trusted_only_from_a_loopback_peer() -> None:
     connector = RecordingConnector()
     service = HdStreamService(connector=connector)
-    ticket = service.issue_ticket()
+    ticket = service.issue_ticket(HdProfile.NATIVE)
     socket = FakeBrowserSocket(
         ticket_message=ticket.value,
         origin="https://monitor.tail.test",
@@ -231,7 +241,7 @@ def test_forwarded_host_is_trusted_only_from_a_loopback_peer() -> None:
     assert socket.accepted is False
     assert connector.calls == []
 
-    loopback_ticket = service.issue_ticket()
+    loopback_ticket = service.issue_ticket(HdProfile.NATIVE)
     loopback = FakeBrowserSocket(
         ticket_message=loopback_ticket.value,
         origin="https://monitor.tail.test",
@@ -257,7 +267,7 @@ def test_invalid_ticket_never_opens_upstream(ticket_message: str | bytes) -> Non
     asyncio.run(service.serve(socket))
 
     assert socket.accepted is True
-    assert socket.close_reason == HdCode.FALLBACK.value
+    assert socket.close_reason == HdCode.UPSTREAM_FAILED.value
     assert connector.calls == []
 
 
@@ -268,39 +278,61 @@ def test_late_ticket_never_opens_upstream() -> None:
 
     asyncio.run(service.serve(socket))
 
-    assert socket.close_reason == HdCode.FALLBACK.value
+    assert socket.close_reason == HdCode.UPSTREAM_FAILED.value
     assert connector.calls == []
 
 
 def test_reused_ticket_never_opens_a_second_upstream() -> None:
     connector = RecordingConnector([_mse_description(), b"fragment"])
     service = HdStreamService(connector=connector)
-    ticket = service.issue_ticket()
+    ticket = service.issue_ticket(HdProfile.COMPAT)
 
     asyncio.run(service.serve(FakeBrowserSocket(ticket_message=ticket.value)))
     reused = FakeBrowserSocket(ticket_message=ticket.value)
     asyncio.run(service.serve(reused))
 
     assert len(connector.calls) == 1
-    assert reused.close_reason == HdCode.FALLBACK.value
+    assert reused.close_reason == HdCode.UPSTREAM_FAILED.value
 
 
-def test_relay_uses_fixed_source_request_then_forwards_description_and_binary() -> None:
-    description = _mse_description()
+@pytest.mark.parametrize(
+    ("profile", "stream_name", "codec_request", "description"),
+    [
+        (
+            HdProfile.NATIVE,
+            "source",
+            H265_CODEC_REQUEST,
+            _mse_description("hvc1.1.6.L153.B0"),
+        ),
+        (
+            HdProfile.COMPAT,
+            "source_compat",
+            H264_CODEC_REQUEST,
+            _mse_description(),
+        ),
+    ],
+)
+def test_relay_uses_ticket_bound_profile_and_fixed_upstream(
+    profile: HdProfile,
+    stream_name: str,
+    codec_request: str,
+    description: str,
+) -> None:
     connector = RecordingConnector([description, b"init-and-media"])
     service = HdStreamService(connector=connector)
-    ticket = service.issue_ticket()
+    ticket = service.issue_ticket(profile)
     socket = FakeBrowserSocket(ticket_message=ticket.value)
 
     asyncio.run(service.serve(socket))
 
-    assert connector.calls[0][0] == "ws://127.0.0.1:1984/api/ws?src=source"
+    assert connector.calls[0][0] == (
+        f"ws://127.0.0.1:1984/api/ws?src={stream_name}"
+    )
     assert connector.calls[0][1]["proxy"] is None
-    assert connector.upstream.sent == [MSE_REQUEST]
-    assert json.loads(MSE_REQUEST) == {
+    assert [json.loads(value) for value in connector.upstream.sent] == [{
         "type": "mse",
-        "value": H264_CODEC_REQUEST,
-    }
+        "value": codec_request,
+    }]
     assert socket.text_messages == [description]
     assert socket.binary_messages == [b"init-and-media"]
     assert connector.upstream.closed is True
@@ -308,42 +340,120 @@ def test_relay_uses_fixed_source_request_then_forwards_description_and_binary() 
 
 
 @pytest.mark.parametrize(
-    "incoming",
+    ("profile", "description", "code"),
     [
-        [b"binary-before-description"],
-        [json.dumps({"type": "mse", "value": 'video/mp4; codecs="hvc1.1.6"'})],
-        [json.dumps({"type": "unexpected", "value": "redacted"})],
-        [_mse_description(), "second-text-message"],
+        (HdProfile.NATIVE, _mse_description(), HdCode.CODEC_UNSUPPORTED),
+        (
+            HdProfile.COMPAT,
+            _mse_description("hvc1.1.6.L153.B0"),
+            HdCode.TRANSCODE_UNAVAILABLE,
+        ),
     ],
 )
-def test_protocol_disorder_or_unsupported_codec_fails_closed(
-    incoming: list[str | bytes],
+def test_wrong_codec_for_ticket_profile_returns_specific_failure(
+    profile: HdProfile,
+    description: str,
+    code: HdCode,
 ) -> None:
-    connector = RecordingConnector(incoming)
+    connector = RecordingConnector([description])
     service = HdStreamService(connector=connector)
-    ticket = service.issue_ticket()
+    ticket = service.issue_ticket(profile)
     socket = FakeBrowserSocket(ticket_message=ticket.value)
 
     asyncio.run(service.serve(socket))
 
     assert json.loads(socket.text_messages[-1]) == {
         "type": "error",
-        "value": HdCode.FALLBACK.value,
+        "value": code.value,
     }
-    assert socket.close_reason == HdCode.FALLBACK.value
+    assert socket.close_reason == code.value
     assert connector.upstream.closed is True
+
+
+@pytest.mark.parametrize(
+    "incoming",
+    [
+        [b"binary-before-description"],
+        [json.dumps({"type": "unexpected", "value": "redacted"})],
+        [_mse_description(), "second-text-message"],
+    ],
+)
+def test_protocol_disorder_fails_with_upstream_code(
+    incoming: list[str | bytes],
+) -> None:
+    connector = RecordingConnector(incoming)
+    service = HdStreamService(connector=connector)
+    ticket = service.issue_ticket(HdProfile.COMPAT)
+    socket = FakeBrowserSocket(ticket_message=ticket.value)
+
+    asyncio.run(service.serve(socket))
+
+    assert json.loads(socket.text_messages[-1]) == {
+        "type": "error",
+        "value": HdCode.UPSTREAM_FAILED.value,
+    }
+    assert socket.close_reason == HdCode.UPSTREAM_FAILED.value
+    assert connector.upstream.closed is True
+
+
+def test_upstream_connection_failure_returns_only_stable_code() -> None:
+    connector = FailingConnector()
+    service = HdStreamService(connector=connector)
+    ticket = service.issue_ticket(HdProfile.NATIVE)
+    socket = FakeBrowserSocket(ticket_message=ticket.value)
+
+    asyncio.run(service.serve(socket))
+
+    assert json.loads(socket.text_messages[-1]) == {
+        "type": "error",
+        "value": HdCode.UPSTREAM_FAILED.value,
+    }
+    assert "private upstream detail" not in "".join(socket.text_messages)
+    assert socket.close_reason == HdCode.UPSTREAM_FAILED.value
+
+
+def test_native_failure_releases_slot_before_later_compat_connection() -> None:
+    gate = HdConnectionGate(limit=1)
+    native_connector = RecordingConnector([_mse_description()])
+    compat_description = _mse_description()
+    compat_connector = RecordingConnector([compat_description, b"fragment"])
+
+    async def scenario() -> tuple[FakeBrowserSocket, FakeBrowserSocket]:
+        native_service = HdStreamService(
+            connector=native_connector,
+            connection_gate=gate,
+        )
+        compat_service = HdStreamService(
+            connector=compat_connector,
+            connection_gate=gate,
+        )
+        native_ticket = native_service.issue_ticket(HdProfile.NATIVE)
+        native_socket = FakeBrowserSocket(ticket_message=native_ticket.value)
+        await native_service.serve(native_socket)
+
+        compat_ticket = compat_service.issue_ticket(HdProfile.COMPAT)
+        compat_socket = FakeBrowserSocket(ticket_message=compat_ticket.value)
+        await compat_service.serve(compat_socket)
+        return native_socket, compat_socket
+
+    native_socket, compat_socket = asyncio.run(scenario())
+
+    assert native_socket.close_reason == HdCode.CODEC_UNSUPPORTED.value
+    assert compat_socket.text_messages == [compat_description]
+    assert compat_socket.binary_messages == [b"fragment"]
+    assert compat_socket.close_code == 1000
 
 
 def test_oversized_upstream_message_fails_closed() -> None:
     connector = RecordingConnector([_mse_description(), b"12345"])
     service = HdStreamService(connector=connector, max_message_bytes=4)
-    ticket = service.issue_ticket()
+    ticket = service.issue_ticket(HdProfile.COMPAT)
     socket = FakeBrowserSocket(ticket_message=ticket.value)
 
     asyncio.run(service.serve(socket))
 
     assert socket.binary_messages == []
-    assert socket.close_reason == HdCode.FALLBACK.value
+    assert socket.close_reason == HdCode.UPSTREAM_FAILED.value
     assert connector.upstream.closed is True
 
 
@@ -351,13 +461,13 @@ def test_oversized_mse_description_fails_closed() -> None:
     oversized = _mse_description("avc1." + ("A" * 5000))
     connector = RecordingConnector([oversized])
     service = HdStreamService(connector=connector)
-    ticket = service.issue_ticket()
+    ticket = service.issue_ticket(HdProfile.COMPAT)
     socket = FakeBrowserSocket(ticket_message=ticket.value)
 
     asyncio.run(service.serve(socket))
 
     assert oversized not in socket.text_messages
-    assert socket.close_reason == HdCode.FALLBACK.value
+    assert socket.close_reason == HdCode.UPSTREAM_FAILED.value
     assert connector.upstream.closed is True
 
 
@@ -368,7 +478,7 @@ def test_busy_gate_rejects_before_upstream_access() -> None:
         assert await gate.try_acquire() is True
         connector = RecordingConnector()
         service = HdStreamService(connector=connector, connection_gate=gate)
-        ticket = service.issue_ticket()
+        ticket = service.issue_ticket(HdProfile.NATIVE)
         socket = FakeBrowserSocket(ticket_message=ticket.value)
         await service.serve(socket)
         await gate.release()
@@ -388,7 +498,7 @@ def test_busy_gate_rejects_before_upstream_access() -> None:
 def test_client_disconnect_still_closes_upstream() -> None:
     connector = RecordingConnector([_mse_description(), b"fragment"])
     service = HdStreamService(connector=connector)
-    ticket = service.issue_ticket()
+    ticket = service.issue_ticket(HdProfile.COMPAT)
     socket = FakeBrowserSocket(
         ticket_message=ticket.value,
         disconnect_on_binary=True,
@@ -404,7 +514,7 @@ def test_silent_upstream_releases_connection_slot_when_browser_disconnects() -> 
         gate = HdConnectionGate(limit=1)
         connector = SilentConnector()
         service = HdStreamService(connector=connector, connection_gate=gate)
-        ticket = service.issue_ticket()
+        ticket = service.issue_ticket(HdProfile.NATIVE)
         socket = FakeBrowserSocket(ticket_message=ticket.value)
 
         serving = asyncio.create_task(service.serve(socket))
