@@ -39,6 +39,7 @@ class FakeResponse:
 class FakeOpener:
     def __init__(self) -> None:
         self.responses: dict[str, bytes] = {}
+        self.calls: list[str] = []
 
     def add_json(self, url: str, payload: Any) -> None:
         self.responses[url] = json.dumps(payload).encode("utf-8")
@@ -48,6 +49,7 @@ class FakeOpener:
 
     def __call__(self, url: str, timeout: float) -> FakeResponse:
         assert timeout > 0
+        self.calls.append(url)
         return FakeResponse(self.responses[url])
 
 
@@ -60,6 +62,10 @@ def test_health_rejects_configured_only_source() -> None:
     opener.add_json(
         "http://127.0.0.1:1984/api/streams",
         {"source": {"producers": [{"url": "xiaomi://must-not-leak"}]}},
+    )
+    opener.add_json(
+        "http://127.0.0.1:1984/api/streams?src=source&video",
+        {"producers": [{"url": "xiaomi://must-not-leak"}], "consumers": []},
     )
 
     result = check_hd_health(
@@ -77,16 +83,19 @@ def test_health_rejects_source_without_video_media() -> None:
     opener = FakeOpener()
     opener.add_json(
         "http://127.0.0.1:1984/api/streams",
+        {"source": {"producers": [{"url": "xiaomi://must-not-leak"}]}},
+    )
+    opener.add_json(
+        "http://127.0.0.1:1984/api/streams?src=source&video",
         {
-            "source": {
-                "producers": [
-                    {
-                        "protocol": "cs2+udp",
-                        "medias": ["audio, recvonly, OPUS/48000/2"],
-                        "bytes_recv": 2000,
-                    }
-                ]
-            }
+            "producers": [
+                {
+                    "protocol": "cs2+udp",
+                    "medias": ["audio, recvonly, OPUS/48000/2"],
+                    "bytes_recv": 2000,
+                }
+            ],
+            "consumers": [],
         },
     )
 
@@ -97,6 +106,22 @@ def test_health_rejects_source_without_video_media() -> None:
     )
 
     assert result.code == "SOURCE_NO_VIDEO"
+
+
+def test_health_activates_source_before_inspecting_producer() -> None:
+    opener = working_opener(live_jpeg=jpeg(1280, 720))
+
+    result = check_hd_health(
+        "http://127.0.0.1:1984",
+        "http://127.0.0.1:8080",
+        opener=opener,
+    )
+
+    assert result.code == "PASS"
+    assert opener.calls[:2] == [
+        "http://127.0.0.1:1984/api/streams",
+        "http://127.0.0.1:1984/api/streams?src=source&video",
+    ]
 
 
 def test_health_rejects_wrong_live_dimensions() -> None:
@@ -132,17 +157,20 @@ def working_opener(*, live_jpeg: bytes) -> FakeOpener:
     opener = FakeOpener()
     opener.add_json(
         "http://127.0.0.1:1984/api/streams",
+        {"source": {"producers": [{"url": "xiaomi://must-not-leak"}]}},
+    )
+    opener.add_json(
+        "http://127.0.0.1:1984/api/streams?src=source&video",
         {
-            "source": {
-                "producers": [
-                    {
-                        "protocol": "cs2+udp",
-                        "medias": ["video, recvonly, H265"],
-                        "bytes_recv": 50000,
-                        "url": "xiaomi://must-not-leak",
-                    }
-                ]
-            }
+            "producers": [
+                {
+                    "protocol": "cs2+udp",
+                    "medias": ["video, recvonly, H265"],
+                    "bytes_recv": 50000,
+                    "url": "xiaomi://must-not-leak",
+                }
+            ],
+            "consumers": [],
         },
     )
     opener.add_bytes(
