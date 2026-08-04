@@ -8,12 +8,28 @@
 
 - 256GB microSD 全天循环录像；
 - 密码保护的实时 MJPEG 网页和当前截图；
-- go2rtc 摄像头在线状态；
+- M2 Mac 通过局域网访问 i9 Dashboard；
+- M2 通过 SSH 隧道访问仅限本机的 go2rtc 配置页；
 - 两台 Android ntfy 测试通知；
-- Tailscale Serve 私有外网访问；
+- 后续使用 Tailscale Serve 实现私有外网访问；
 - 米家 App 继续承担声音、双向语音、云台和历史回放。
 
 安装说明：[基础可用 Alpha 快速开始](docs/runbooks/ALPHA_QUICKSTART.md)
+
+## 统一命令
+
+仓库脚本不依赖 Git 可执行位，不需要手工修改文件权限。统一使用：
+
+```bash
+make alpha-update
+make alpha-install
+make alpha-start
+make alpha-stop
+make alpha-status
+make alpha-logs
+```
+
+`make alpha-update` 会在当前仓库设置 `core.fileMode=false`，避免 macOS 上脚本权限位变化形成无意义的 Git 冲突。
 
 ## 项目目标
 
@@ -26,12 +42,12 @@
 ## 已确认硬件与场景
 
 - 摄像头：小米智能摄像机 2 云台版，型号 MJSXJ17CM。
-- 主机：Intel i9 Mac，全天运行。
+- 主机：Intel i9 Mac，全天运行，由 M2 Mac 通过 SSH 维护。
 - 录像：256GB microSD 全天循环录像。
 - 环境表：WS2021 指针式温湿度计，长期固定在主画面边缘。
 - 房间：宝宝与成人同房，宝宝睡独立婴儿床；夜间完全黑暗，可能有蚊帐。
-- 网络：Mac 与摄像头同一稳定 Wi-Fi；需要外出查看。
-- 客户端：两台 Android 手机。
+- 网络：i9、M2 与摄像头位于同一可信局域网；后续需要外出查看。
+- 客户端：M2 Mac 与两台 Android 手机。
 
 ## 文档
 
