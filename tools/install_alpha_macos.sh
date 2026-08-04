@@ -46,7 +46,7 @@ if [[ ! -f "$ROOT/runtime/go2rtc.yaml" ]]; then
 fi
 
 if [[ ! -f "$ROOT/runtime/alpha.env" ]]; then
-  password="$(openssl rand -base64 30 | tr -d '/+=' | head -c 28)"
+  password="$(openssl rand -hex 18)"
   topic="baby-monitor-$(openssl rand -hex 16)"
   cat >"$ROOT/runtime/alpha.env" <<EOF
 BABY_MONITOR_USERNAME=parent
