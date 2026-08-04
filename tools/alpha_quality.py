@@ -15,6 +15,7 @@ if str(ROOT) not in sys.path:
 from packages.monitoring.alpha_quality import (  # noqa: E402
     QualityConfigError,
     apply_hd,
+    check_hd_health,
     inspect_quality,
     rollback_latest,
 )
@@ -56,7 +57,17 @@ def _build_parser() -> argparse.ArgumentParser:
     rollback_parser.add_argument("--config", required=True, type=_path)
     rollback_parser.add_argument("--backups", required=True, type=_path)
 
+    check_parser = subparsers.add_parser(
+        "check", help="Verify source media, HD frames, MJPEG, and dashboard health."
+    )
+    check_parser.add_argument("--base-url", required=True)
+    check_parser.add_argument("--dashboard-url", required=True)
+
     return parser
+
+
+def _dimensions(value: tuple[int, int] | None) -> str:
+    return "unavailable" if value is None else f"{value[0]}x{value[1]}"
 
 
 def _run(args: argparse.Namespace) -> int:
@@ -82,6 +93,15 @@ def _run(args: argparse.Namespace) -> int:
         restored = rollback_latest(args.config, args.backups)
         print(f"restored={restored}")
         return 0
+
+    if args.command == "check":
+        result = check_hd_health(args.base_url, args.dashboard_url)
+        print(f"result={result.code}")
+        print(f"protocol={result.protocol or 'unavailable'}")
+        print(f"bytes_received={result.bytes_received}")
+        print(f"source_dimensions={_dimensions(result.source_dimensions)}")
+        print(f"live_dimensions={_dimensions(result.live_dimensions)}")
+        return 0 if result.code == "PASS" else 2
 
     raise QualityConfigError("UNKNOWN_COMMAND")
 
