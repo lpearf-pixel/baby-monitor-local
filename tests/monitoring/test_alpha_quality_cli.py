@@ -21,6 +21,15 @@ def run_cli(*args: str) -> subprocess.CompletedProcess[str]:
     )
 
 
+def test_help_lists_source_health_check() -> None:
+    result = run_cli("--help")
+
+    assert result.returncode == 0
+    assert "check" in result.stdout
+    assert "--base-url" in run_cli("check", "--help").stdout
+    assert "--dashboard-url" in run_cli("check", "--help").stdout
+
+
 def test_info_prints_only_derived_quality_fields(tmp_path: Path) -> None:
     config = tmp_path / "go2rtc.yaml"
     config.write_text(
