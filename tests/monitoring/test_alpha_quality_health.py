@@ -24,6 +24,10 @@ def jpeg(width: int, height: int) -> bytes:
     )
 
 
+def mjpeg(frame: bytes) -> bytes:
+    return b"--frame\r\nContent-Type: image/jpeg\r\n\r\n" + frame
+
+
 @dataclass
 class FakeResponse:
     payload: bytes
@@ -57,6 +61,23 @@ class FakeOpener:
         responses = self.responses[url]
         payload = responses.pop(0) if len(responses) > 1 else responses[0]
         return FakeResponse(payload)
+
+
+class LiveProducerRaceOpener(FakeOpener):
+    """Models go2rtc stopping an on-demand live producer after a snapshot."""
+
+    def __init__(self) -> None:
+        super().__init__()
+        self.live_snapshot_requested = False
+
+    def __call__(self, url: str, timeout: float) -> FakeResponse:
+        if url.endswith("/api/frame.jpeg?src=live"):
+            self.live_snapshot_requested = True
+        if url.endswith("/api/stream.mjpeg?src=live") and self.live_snapshot_requested:
+            assert timeout > 0
+            self.calls.append(url)
+            return FakeResponse(b"")
+        return super().__call__(url, timeout)
 
 
 def test_jpeg_dimensions_reads_sof0() -> None:
@@ -208,7 +229,7 @@ def test_health_reconnects_when_first_mjpeg_consumer_gets_eof() -> None:
     mjpeg_url = "http://127.0.0.1:1984/api/stream.mjpeg?src=live"
     opener.responses[mjpeg_url] = [
         b"",
-        b"--frame\r\nContent-Type: image/jpeg\r\n\r\nJPEG",
+        mjpeg(jpeg(1280, 720)),
     ]
 
     result = check_hd_health(
@@ -221,8 +242,32 @@ def test_health_reconnects_when_first_mjpeg_consumer_gets_eof() -> None:
     assert opener.calls.count(mjpeg_url) == 2
 
 
+def test_health_does_not_stop_live_producer_before_mjpeg_validation() -> None:
+    opener = LiveProducerRaceOpener()
+    configure_working_opener(opener, live_jpeg=jpeg(1280, 720))
+    mjpeg_url = "http://127.0.0.1:1984/api/stream.mjpeg?src=live"
+    opener.responses[mjpeg_url] = [
+        mjpeg(jpeg(1280, 720))
+    ]
+
+    result = check_hd_health(
+        "http://127.0.0.1:1984",
+        "http://127.0.0.1:8080",
+        opener=opener,
+    )
+
+    assert result.code == "PASS"
+    assert result.live_dimensions == (1280, 720)
+    assert "http://127.0.0.1:1984/api/frame.jpeg?src=live" not in opener.calls
+
+
 def working_opener(*, live_jpeg: bytes) -> FakeOpener:
     opener = FakeOpener()
+    configure_working_opener(opener, live_jpeg=live_jpeg)
+    return opener
+
+
+def configure_working_opener(opener: FakeOpener, *, live_jpeg: bytes) -> None:
     opener.add_json(
         "http://127.0.0.1:1984/api/streams",
         {"source": {"producers": [{"url": "xiaomi://must-not-leak"}]}},
@@ -251,7 +296,6 @@ def working_opener(*, live_jpeg: bytes) -> FakeOpener:
     )
     opener.add_bytes(
         "http://127.0.0.1:1984/api/stream.mjpeg?src=live",
-        b"--frame\r\nContent-Type: image/jpeg\r\n\r\nJPEG",
+        mjpeg(live_jpeg),
     )
     opener.add_json("http://127.0.0.1:8080/healthz", {"status": "ok"})
-    return opener

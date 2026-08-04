@@ -420,30 +420,24 @@ def check_hd_health(
     bytes_received = source_result.bytes_received
     source_dimensions = source_result.source_dimensions
 
-    try:
-        live_jpeg = _read_bytes(
-            f"{base_url}/api/frame.jpeg?src=live",
-            opener=opener,
-            timeout=40.0,
-        )
-    except Exception:
+    mjpeg_sample = _read_nonempty_with_reconnect(
+        f"{base_url}/api/stream.mjpeg?src=live",
+        opener=opener,
+        timeout=12.0,
+        limit=16 * 1024,
+    )
+    if not mjpeg_sample:
         return _health(
-            "LIVE_EMPTY_FRAME",
+            "LIVE_MJPEG_EMPTY",
             protocol=protocol,
             source_codec=source_codec,
             bytes_received=bytes_received,
             source_dimensions=source_dimensions,
         )
-    if not live_jpeg:
-        return _health(
-            "LIVE_EMPTY_FRAME",
-            protocol=protocol,
-            source_codec=source_codec,
-            bytes_received=bytes_received,
-            source_dimensions=source_dimensions,
-        )
+
+    jpeg_start = mjpeg_sample.find(b"\xff\xd8")
     try:
-        live_dimensions = jpeg_dimensions(live_jpeg)
+        live_dimensions = jpeg_dimensions(mjpeg_sample[jpeg_start:])
     except QualityConfigError:
         return _health(
             "LIVE_EMPTY_FRAME",
@@ -455,22 +449,6 @@ def check_hd_health(
     if live_dimensions != (1280, 720):
         return _health(
             "LIVE_WRONG_DIMENSIONS",
-            protocol=protocol,
-            source_codec=source_codec,
-            bytes_received=bytes_received,
-            source_dimensions=source_dimensions,
-            live_dimensions=live_dimensions,
-        )
-
-    mjpeg_sample = _read_nonempty_with_reconnect(
-        f"{base_url}/api/stream.mjpeg?src=live",
-        opener=opener,
-        timeout=12.0,
-        limit=16 * 1024,
-    )
-    if not mjpeg_sample:
-        return _health(
-            "LIVE_MJPEG_EMPTY",
             protocol=protocol,
             source_codec=source_codec,
             bytes_received=bytes_received,
