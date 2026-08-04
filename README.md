@@ -36,6 +36,7 @@ make alpha-update
 make alpha-quality-hd
 make alpha-quality-info
 make alpha-source-check
+make alpha-subtype-probe
 ```
 
 恢复升级前配置：
@@ -45,6 +46,8 @@ make alpha-quality-rollback
 ```
 
 `make alpha-quality-hd` 会先备份本机 `runtime/go2rtc.yaml`，再把 Xiaomi `source` 调整为 HD、保持传输自动协商，并把 `live` 设置为 1280×720、10 FPS。所有状态输出只包含派生信息，不打印完整 Xiaomi URI、账号、Token、DID 或局域网地址。
+
+`make alpha-subtype-probe` 会安全探测 MJSXJ17CM 的 `0–5` 画质编号并比较源尺寸；完成、失败或中断后都恢复原配置，不会自动采用推荐值。
 
 `make alpha-update` 会在当前仓库设置 `core.fileMode=false`，避免 macOS 上脚本权限位变化形成无意义的 Git 冲突。
 
