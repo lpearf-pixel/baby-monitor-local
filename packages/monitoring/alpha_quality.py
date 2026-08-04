@@ -68,6 +68,29 @@ def upgrade_to_hd(config: dict[str, Any]) -> dict[str, Any]:
     return result
 
 
+def with_source_subtype(config: dict[str, Any], subtype: int) -> dict[str, Any]:
+    if subtype not in range(6):
+        raise QualityConfigError("INVALID_SUBTYPE")
+
+    result = deepcopy(config)
+    streams = _streams(result)
+    source = streams.get("source")
+    if not isinstance(source, str) or not source.startswith("xiaomi://"):
+        raise QualityConfigError("SOURCE_NOT_CONFIGURED")
+
+    parsed = urlsplit(source)
+    query = [
+        (key, value)
+        for key, value in parse_qsl(parsed.query, keep_blank_values=True)
+        if key not in {"subtype", "transport"}
+    ]
+    query.append(("subtype", str(subtype)))
+    streams["source"] = urlunsplit(
+        (parsed.scheme, parsed.netloc, parsed.path, urlencode(query), parsed.fragment)
+    )
+    return result
+
+
 def inspect_quality(config: dict[str, Any]) -> QualityInfo:
     streams = _streams(config)
     source = streams.get("source")
@@ -88,7 +111,10 @@ def inspect_quality(config: dict[str, Any]) -> QualityInfo:
 def _read_yaml_mapping(path: Path, *, missing_code: str) -> dict[str, Any]:
     if not path.is_file():
         raise QualityConfigError(missing_code)
-    payload = yaml.safe_load(path.read_text(encoding="utf-8")) or {}
+    try:
+        payload = yaml.safe_load(path.read_text(encoding="utf-8")) or {}
+    except (OSError, yaml.YAMLError) as exc:
+        raise QualityConfigError(missing_code) from exc
     if not isinstance(payload, dict):
         raise QualityConfigError(missing_code)
     return payload
@@ -253,14 +279,12 @@ def _health(
     )
 
 
-def check_hd_health(
+def check_source_health(
     base_url: str,
-    dashboard_url: str,
     *,
     opener: Callable[..., Any] = urlopen,
 ) -> HealthResult:
     base_url = base_url.rstrip("/")
-    dashboard_url = dashboard_url.rstrip("/")
 
     # First confirm that the named source exists without exposing its URL.
     try:
@@ -336,6 +360,31 @@ def check_hd_health(
     # source JPEG is stronger evidence than a zero counter captured during probe.
     if bytes_received <= 0:
         bytes_received = len(source_jpeg)
+
+    return _health(
+        "PASS",
+        protocol=protocol,
+        bytes_received=bytes_received,
+        source_dimensions=source_dimensions,
+    )
+
+
+def check_hd_health(
+    base_url: str,
+    dashboard_url: str,
+    *,
+    opener: Callable[..., Any] = urlopen,
+) -> HealthResult:
+    base_url = base_url.rstrip("/")
+    dashboard_url = dashboard_url.rstrip("/")
+
+    source_result = check_source_health(base_url, opener=opener)
+    if source_result.code != "PASS":
+        return source_result
+
+    protocol = source_result.protocol
+    bytes_received = source_result.bytes_received
+    source_dimensions = source_result.source_dimensions
 
     try:
         live_jpeg = _read_bytes(
