@@ -66,8 +66,8 @@ cat <<EOF
 
 Alpha installation prepared.
 
-1. Start services:
-   $ROOT/tools/start_alpha.sh
+1. Start services without changing tracked file permissions:
+   make -C "$ROOT" alpha-start
 
 2. From the M2 Mac, use an SSH tunnel for the private Xiaomi setup interface:
    ssh -L 1984:127.0.0.1:1984 <i9-user>@<i9-lan-ip>
@@ -76,7 +76,12 @@ Alpha installation prepared.
 3. Choose Add > Xiaomi, sign in, add MJSXJ17CM, and name the camera stream: source
    The preconfigured live stream converts source to 960x540 MJPEG at 5 FPS.
 
-4. The start script prints the LAN dashboard URL for the M2 Mac.
+4. The start command prints the LAN dashboard URL for the M2 Mac.
+
+Useful commands:
+   make -C "$ROOT" alpha-status
+   make -C "$ROOT" alpha-logs
+   make -C "$ROOT" alpha-stop
 
 Local credentials are stored with mode 600 in:
    $ROOT/runtime/alpha.env
