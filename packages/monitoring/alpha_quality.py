@@ -7,6 +7,7 @@ from copy import deepcopy
 from dataclasses import dataclass
 from datetime import datetime
 from pathlib import Path
+from time import monotonic, sleep
 from typing import Any, Callable
 from urllib.parse import parse_qsl, urlencode, urlsplit, urlunsplit
 from urllib.request import urlopen
@@ -204,6 +205,37 @@ def _read_json(
     return json.loads(_read_bytes(url, opener=opener, timeout=timeout).decode("utf-8"))
 
 
+def _read_nonempty_with_reconnect(
+    url: str,
+    *,
+    opener: Callable[..., Any],
+    timeout: float,
+    limit: int,
+    retry_interval: float = 0.25,
+) -> bytes:
+    deadline = monotonic() + timeout
+    while True:
+        remaining = deadline - monotonic()
+        if remaining <= 0:
+            return b""
+        try:
+            payload = _read_bytes(
+                url,
+                opener=opener,
+                timeout=remaining,
+                limit=limit,
+            )
+        except Exception:
+            payload = b""
+        if payload:
+            return payload
+
+        remaining = deadline - monotonic()
+        if remaining <= 0:
+            return b""
+        sleep(min(retry_interval, remaining))
+
+
 def _health(
     code: str,
     *,
@@ -343,21 +375,12 @@ def check_hd_health(
             live_dimensions=live_dimensions,
         )
 
-    try:
-        mjpeg_sample = _read_bytes(
-            f"{base_url}/api/stream.mjpeg?src=live",
-            opener=opener,
-            timeout=12.0,
-            limit=16 * 1024,
-        )
-    except Exception:
-        return _health(
-            "LIVE_MJPEG_EMPTY",
-            protocol=protocol,
-            bytes_received=bytes_received,
-            source_dimensions=source_dimensions,
-            live_dimensions=live_dimensions,
-        )
+    mjpeg_sample = _read_nonempty_with_reconnect(
+        f"{base_url}/api/stream.mjpeg?src=live",
+        opener=opener,
+        timeout=12.0,
+        limit=16 * 1024,
+    )
     if not mjpeg_sample:
         return _health(
             "LIVE_MJPEG_EMPTY",
