@@ -8,7 +8,7 @@ rtsp:
 webrtc:
   listen: "127.0.0.1:8555"
 streams:
-  # Low-load browser preview generated only while somebody is watching.
-  live: ffmpeg:source#video=mjpeg#width=960#height=540#fps=5
+  # Stable HD browser preview generated only while somebody is watching.
+  live: ffmpeg:source#video=mjpeg#width=1280#height=720#raw=-r 10
 log:
   level: info
