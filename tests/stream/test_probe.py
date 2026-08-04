@@ -92,6 +92,21 @@ def test_probe_rejects_nonzero_ffprobe_exit() -> None:
         probe.probe("rtsp://camera/live")
 
 
+def test_probe_redacts_credentials_from_execution_error() -> None:
+    probe = StreamProbe(
+        runner=lambda *_args, **_kwargs: Completed(
+            returncode=1,
+            stderr="rtsp://user:secret@camera/live: unauthorized",
+        )
+    )
+
+    with pytest.raises(ProbeExecutionError) as exc_info:
+        probe.probe("rtsp://user:secret@camera/live")
+
+    assert "secret" not in str(exc_info.value)
+    assert "user:" not in str(exc_info.value)
+
+
 def test_probe_rejects_malformed_json() -> None:
     probe = StreamProbe(runner=lambda *_args, **_kwargs: Completed(stdout="{bad json"))
 
