@@ -4,6 +4,7 @@ import subprocess
 from pathlib import Path
 
 import pytest
+import yaml
 
 
 ROOT = Path(__file__).resolve().parents[2]
@@ -105,6 +106,17 @@ def test_default_live_profile_is_hd_ten_fps() -> None:
 
     assert "#width=1280#height=720#raw=-r 10" in content
     assert "#fps=5" not in content
+
+
+def test_default_config_has_fixed_on_demand_videotoolbox_profile() -> None:
+    config = yaml.safe_load(
+        (ROOT / "config/go2rtc.alpha.yaml").read_text(encoding="utf-8")
+    )
+
+    assert config["streams"]["source_compat"] == (
+        "ffmpeg:source#video=h264#hardware=videotoolbox"
+        "#width=2560#height=1440#bitrate=6M"
+    )
 
 
 def test_installer_preserves_existing_runtime_config() -> None:

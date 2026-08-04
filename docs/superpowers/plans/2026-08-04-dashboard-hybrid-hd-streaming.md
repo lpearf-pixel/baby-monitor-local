@@ -207,7 +207,7 @@ git commit -m "build: make go2rtc hybrid HD compatible"
 - Extends: `HealthResult.source_codec: str` with only normalized `H264`, `H265`, or empty.
 - Extends: `QualityInfo.compat_profile: str` with `videotoolbox-1440p-6M` or `missing`.
 
-- [ ] **Step 1: Write RED config tests**
+- [x] **Step 1: Write RED config tests**
 
 Add tests proving `upgrade_to_hd` inserts the exact `source_compat` value,
 replaces an obsolete compat definition, remains idempotent, preserves the
@@ -218,7 +218,7 @@ assert upgraded["streams"]["source_compat"] == COMPAT_HD
 assert inspect_quality(upgraded).compat_profile == "videotoolbox-1440p-6M"
 ```
 
-- [ ] **Step 2: Run RED**
+- [x] **Step 2: Run RED**
 
 ```bash
 /tmp/baby-monitor-hybrid-hd-venv/bin/python -m pytest -q \
@@ -227,13 +227,13 @@ assert inspect_quality(upgraded).compat_profile == "videotoolbox-1440p-6M"
 
 Expected: missing constant/field assertions fail.
 
-- [ ] **Step 3: Implement the derived config**
+- [x] **Step 3: Implement the derived config**
 
 Set both derived streams in `upgrade_to_hd`, add `source_compat` to the default
 template, and derive `QualityInfo.compat_profile` only by exact equality with
 `COMPAT_HD`.
 
-- [ ] **Step 4: Add RED source codec tests**
+- [x] **Step 4: Add RED source codec tests**
 
 Use complete synthetic `/api/streams?src=source&video` producer structures and
 assert:
@@ -245,13 +245,13 @@ assert "xiaomi://" not in repr(check_source_health(...))
 
 Add H.264, missing video codec, malformed media, and secret-redaction cases.
 
-- [ ] **Step 5: Implement normalized codec extraction**
+- [x] **Step 5: Implement normalized codec extraction**
 
 Accept only video media declarations containing the standalone codec tokens
 `H264` or `H265`; never copy an entire media string or producer object into the
 result. Propagate the normalized codec through every `check_hd_health` result.
 
-- [ ] **Step 6: Verify and commit Task 2**
+- [x] **Step 6: Verify and commit Task 2**
 
 ```bash
 /tmp/baby-monitor-hybrid-hd-venv/bin/python -m pytest -q \

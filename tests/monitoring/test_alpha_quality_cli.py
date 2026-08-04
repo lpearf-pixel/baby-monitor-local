@@ -131,6 +131,10 @@ def test_info_prints_only_derived_quality_fields(tmp_path: Path) -> None:
                         "ffmpeg:source#video=mjpeg#width=1280"
                         "#height=720#raw=-r 10"
                     ),
+                    "source_compat": (
+                        "ffmpeg:source#video=h264#hardware=videotoolbox"
+                        "#width=2560#height=1440#bitrate=6M"
+                    ),
                 },
             }
         ),
@@ -146,12 +150,55 @@ def test_info_prints_only_derived_quality_fields(tmp_path: Path) -> None:
         "live_width=1280",
         "live_height=720",
         "live_fps=10",
+        "compat_profile=videotoolbox-1440p-6M",
     ]
     combined = result.stdout + result.stderr
     assert "xiaomi://" not in combined
     assert "V1:" not in combined
     assert "192.0.2.10" not in combined
     assert "did=456" not in combined
+
+
+def test_check_prints_normalized_source_codec_without_media_details(
+    tmp_path: Path,
+) -> None:
+    config = tmp_path / "go2rtc.yaml"
+    config.write_text(
+        yaml.safe_dump(
+            {
+                "streams": {
+                    "source": "xiaomi://fixture?subtype=3",
+                    "live": "fixture",
+                }
+            }
+        ),
+        encoding="utf-8",
+    )
+    server, thread = start_probe_server(config)
+    try:
+        result = run_cli(
+            "check",
+            "--base-url",
+            f"http://127.0.0.1:{server.server_port}",
+            "--dashboard-url",
+            f"http://127.0.0.1:{server.server_port}",
+        )
+    finally:
+        server.shutdown()
+        server.server_close()
+        thread.join(timeout=2)
+
+    assert result.returncode == 0
+    assert result.stdout.splitlines() == [
+        "result=PASS",
+        "protocol=cs2+udp",
+        "source_codec=H265",
+        "bytes_received=50000",
+        "source_dimensions=2560x1440",
+        "live_dimensions=1280x720",
+    ]
+    assert "video, recvonly" not in result.stdout
+    assert "xiaomi://" not in result.stdout + result.stderr
 
 
 def test_apply_hd_reports_backup_without_printing_config(tmp_path: Path) -> None:
