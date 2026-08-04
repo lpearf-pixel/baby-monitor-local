@@ -70,7 +70,8 @@ Alpha installation prepared.
 2. Open the local go2rtc setup page:
    http://127.0.0.1:1984
 
-3. Choose Add > Xiaomi, sign in, add MJSXJ17CM, and name the stream: live
+3. Choose Add > Xiaomi, sign in, add MJSXJ17CM, and name the camera stream: source
+   The preconfigured live stream converts source to 960x540 MJPEG at 5 FPS.
 
 4. Open the dashboard:
    http://127.0.0.1:8080
