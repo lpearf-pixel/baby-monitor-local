@@ -1,6 +1,6 @@
 # 基础可用 Alpha：Intel i9 Mac 安装与远程操作
 
-本 Alpha 的实际使用结构是：
+实际结构：
 
 ```text
 MJSXJ17CM 摄像头
@@ -10,17 +10,21 @@ MJSXJ17CM 摄像头
                          └─ Android：后续通过 Tailscale 外部查看
 ```
 
-安全边界：
+网络边界：
 
-- 监控网页 `8080` 默认允许可信局域网访问，并有独立随机密码；
-- go2rtc 的管理、RTSP 和 WebRTC 端口仍只监听 i9 本机；
-- M2 配置小米摄像头时通过 SSH 隧道访问 go2rtc；
-- 路由器不得转发任何监控端口；
+- Dashboard `8080` 默认允许可信局域网访问，并使用独立随机密码；
+- go2rtc `1984/8554/8555` 始终只监听 i9 本机；
+- M2 配置摄像头时通过 SSH 隧道访问 go2rtc；
+- 路由器不得转发监控端口；
 - 外部访问使用 Tailscale Serve HTTPS，不使用 Funnel。
 
-## 1. 在 M2 上通过 SSH 操作 i9
+## 1. 从 M2 登录 i9
 
-先确认 i9 的局域网 IP。可以在已经建立的 SSH 会话里执行：
+```bash
+ssh <i9用户名>@<i9局域网IP>
+```
+
+在 i9 上查看局域网地址：
 
 ```bash
 route -n get default | awk '/interface:/{print $2}'
@@ -28,15 +32,9 @@ ipconfig getifaddr en0
 ipconfig getifaddr en1
 ```
 
-通常只有其中一个 `ipconfig` 命令会返回地址。建议在路由器中给 i9 建立 DHCP 地址保留，避免 IP 经常变化。
+建议在路由器中给 i9 设置 DHCP 地址保留。
 
-从 M2 登录 i9：
-
-```bash
-ssh <i9用户名>@<i9局域网IP>
-```
-
-## 2. 获取 Alpha 分支
+## 2. 第一次下载
 
 以下命令在 i9 的 SSH 会话中执行：
 
@@ -48,104 +46,108 @@ git clone -b codex/basic-usable-alpha \
   https://github.com/lpearf-pixel/baby-monitor-local.git
 
 cd baby-monitor-local
-chmod +x tools/*.sh
+git config core.fileMode false
+make alpha-install
+make alpha-start
 ```
 
-已有项目目录时：
+不需要修改任何仓库文件权限。
+
+## 3. 后续更新
 
 ```bash
 cd ~/dev/baby-monitor-local
-git fetch origin
-git switch codex/basic-usable-alpha
-git pull --ff-only
-chmod +x tools/*.sh
+make alpha-update
+make alpha-restart
 ```
 
-## 3. 在 i9 上安装
+`make alpha-update` 会自动：
+
+1. 设置 `core.fileMode=false`；
+2. 拉取远端；
+3. 切换到 `codex/basic-usable-alpha`；
+4. 使用 fast-forward 更新。
+
+因此不要再单独修改脚本可执行位。
+
+## 4. 常用命令
 
 ```bash
-./tools/install_alpha_macos.sh
+make alpha-install
+make alpha-start
+make alpha-stop
+make alpha-restart
+make alpha-status
+make alpha-logs
 ```
 
-安装器会准备：
-
-1. Python 3.11；
-2. FFmpeg；
-3. 固定版本的 Intel go2rtc；
-4. `.venv-alpha`；
-5. 独立随机网页密码；
-6. 随机 ntfy 主题；
-7. 被 Git 忽略的本地运行目录。
-
-本地账号和密码保存在：
+查看本地账号、密码和 ntfy 主题：
 
 ```bash
 cat runtime/alpha.env
 ```
 
-不要将这个文件、终端截图或其中内容上传到 GitHub。不要把这个随机密码替换成你其他账号正在使用的密码，因为局域网 Alpha 当前使用 HTTP Basic Auth。
+不要上传或粘贴该文件内容。局域网 Alpha 当前使用 HTTP Basic Auth，密码必须保持独立，不与其他账户复用。
 
-## 4. 启动服务
+## 5. 从 M2 访问 Dashboard
 
-在 i9 的 SSH 会话中执行：
-
-```bash
-./tools/start_alpha.sh
-```
-
-脚本会输出类似：
+启动后，i9 会输出类似：
 
 ```text
 Local Dashboard: http://127.0.0.1:8080
 LAN Dashboard: http://192.168.x.x:8080
 ```
 
-M2 可直接打开：
+M2 浏览器打开：
 
 ```text
 http://<i9局域网IP>:8080
 ```
 
-如果 M2 无法访问，先在 M2 测试：
+M2 测试：
 
 ```bash
 nc -vz <i9局域网IP> 8080
-curl -I http://<i9局域网IP>:8080/healthz
+curl -v http://<i9局域网IP>:8080/healthz
 ```
 
-若 i9 弹出 macOS 防火墙提示，允许该 Python/uvicorn 进程接收入站连接。不要关闭整个系统防火墙。
-
-停止服务：
+i9 检查监听：
 
 ```bash
-./tools/stop_alpha.sh
+make alpha-status
+lsof -nP -iTCP:8080 -sTCP:LISTEN
 ```
 
-## 5. 从 M2 配置小米摄像头
+正确状态应为 `*:8080` 或 `0.0.0.0:8080`，不是仅 `127.0.0.1:8080`。
 
-go2rtc 管理端口 `1984` 不对局域网直接开放。请在 M2 新开一个终端窗口：
+若 i9 弹出 macOS 防火墙提示，只允许当前 Python/uvicorn 接收入站连接，不要关闭整个防火墙。
+
+## 6. 从 M2 配置小米摄像头
+
+go2rtc 管理端口不直接开放到局域网。在 M2 新开终端：
 
 ```bash
-ssh -L 1984:127.0.0.1:1984 <i9用户名>@<i9局域网IP>
+ssh -N \
+  -L 1984:127.0.0.1:1984 \
+  <i9用户名>@<i9局域网IP>
 ```
 
-保持这个 SSH 会话打开，然后在 M2 浏览器访问：
+保持会话打开，然后 M2 浏览器访问：
 
 ```text
 http://127.0.0.1:1984
 ```
 
-依次操作：
+操作：
 
 1. 选择 **Add → Xiaomi**；
 2. 登录米家账号；
 3. 完成验证码；
 4. 选择 MJSXJ17CM；
-5. 将原始摄像头流命名为 **`source`**；
-6. 系统预置的 `live` 流会在有人观看时，将 H.265 按需转换为 `960×540 / 5 FPS` MJPEG；
-7. 回到 M2 的 `http://<i9局域网IP>:8080` 刷新。
+5. 将原始摄像头流命名为 `source`；
+6. 返回 Dashboard 刷新。
 
-本地 `runtime/go2rtc.yaml` 应保留：
+本机配置应继续保持：
 
 ```yaml
 api:
@@ -158,125 +160,47 @@ streams:
   live: ffmpeg:source#video=mjpeg#width=960#height=540#fps=5
 ```
 
-不要把 `1984`、`8554` 或 `8555` 改成 `0.0.0.0`。
+不要将 go2rtc 端口改成 `0.0.0.0`。
 
-## 6. 两台 Android 接收通知
+## 7. Android 通知
 
-两台 Android 都安装 ntfy，并订阅 `runtime/alpha.env` 中的 `NTFY_TOPIC`：
+两台 Android 安装 ntfy，并订阅：
 
 ```bash
 grep '^NTFY_TOPIC=' runtime/alpha.env
 ```
 
-在监控网页点击 **发送测试通知**，两台手机都应收到通知。
+在 Dashboard 点击“发送测试通知”。
 
-Alpha 当前使用随机长主题降低公开 ntfy 主题被猜中的风险。后续版本迁移到自建 ntfy 或受 Token 保护的服务。
+## 8. 后续外部访问
 
-## 7. 外部访问计划：Tailscale Serve HTTPS
-
-本阶段先完成 M2 局域网访问。需要外出查看时，在 i9、M2 和两台 Android 安装 Tailscale，并加入同一个 tailnet。
-
-在 i9 上执行：
+外部访问由 Issue #5 跟踪。目标命令为：
 
 ```bash
 tailscale serve --bg http://127.0.0.1:8080
 tailscale serve status
 ```
 
-Tailscale 会提供仅 tailnet 成员可访问的 HTTPS 地址，并把请求代理到 i9 本机的 `127.0.0.1:8080`。使用 `--bg` 后，Serve 配置可在 Tailscale 重启后恢复。
-
-禁止使用：
+禁止：
 
 ```bash
 tailscale funnel 8080
 ```
 
-禁止在路由器转发：
+也禁止路由器转发 `1984`、`8080`、`8554`、`8555`。
 
-```text
-1984
-8080
-8554
-8555
-```
+## 9. 录像和功能边界
 
-后续远程访问阶段还会增加：
+全天录像仍由摄像头内的 256GB microSD 负责，写满后覆盖最早内容。
 
-- tailnet ACL，只允许两位家长设备访问；
-- Android 外网验收；
-- Tailscale 断线与恢复告警；
-- 外部访问审计；
-- 自动启动和进程看门狗。
+当前 Alpha 已提供：
 
-## 8. 录像
-
-全天录像仍由摄像头内的 256GB microSD 负责，写满后覆盖最早内容。请在米家 App 中确认：
-
-- microSD 已识别；
-- 录像模式为全天录像；
-- 可正常回放；
-- 已启用循环覆盖。
-
-Alpha 不在 Mac 上重复保存全天视频，避免长期高 CPU 和磁盘占用。
-
-## 9. 当前能力边界
-
-当前可用：
-
-- M2 通过 SSH 管理 i9；
-- M2 通过局域网访问密码保护网页；
-- 实时 MJPEG 画面；
+- 局域网实时画面；
 - 当前截图；
-- 摄像头流在线状态；
-- ntfy 双手机测试通知；
-- microSD 独立循环录像；
-- 外部 Tailscale 接入方案。
+- 摄像头状态；
+- 双 Android 测试通知；
+- M2 SSH 维护方式。
 
-暂时继续使用米家 App：
+声音、双向语音、云台和 microSD 回放暂时继续使用米家 App。
 
-- 实时声音；
-- 双向语音；
-- 云台控制；
-- microSD 历史回放。
-
-后续迭代：
-
-- 温湿度表盘自动识别；
-- 哭声、大声响和床区移动候选；
-- 事件前后短片；
-- launchd 自动启动；
-- 树莓派 2 独立看门狗；
-- 企业微信/微信辅助通知；
-- 每日报告。
-
-本系统只提供辅助查看和候选提醒，不是呼吸、心率、血氧、窒息或医疗监护设备。
-
-## 10. 排障
-
-在 i9 SSH 会话中查看日志：
-
-```bash
-tail -n 100 runtime/logs/go2rtc.log
-tail -n 100 runtime/logs/api.log
-```
-
-查看监听端口：
-
-```bash
-lsof -nP -iTCP:8080 -sTCP:LISTEN
-lsof -nP -iTCP:1984 -sTCP:LISTEN
-```
-
-预期：
-
-```text
-8080 → *:8080 或 0.0.0.0:8080
-1984 → 127.0.0.1:1984
-```
-
-检查接口：
-
-```bash
-curl -fsS http://127.0.0.1:1984/api/streams
-curl -fsS http://127.0.0.1:8080/healthz
-```
+本系统不是呼吸、心率、血氧、窒息或医疗监护设备。
