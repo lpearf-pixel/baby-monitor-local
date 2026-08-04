@@ -519,7 +519,7 @@ git commit -m "docs: add hybrid HD deployment gate"
 - Modify: `docs/superpowers/plans/2026-08-04-dashboard-hybrid-hd-streaming.md`
 - Modify only if evidence changes: `docs/runbooks/ALPHA_QUICKSTART.md`
 
-- [ ] **Step 1: Run the complete fresh local gate**
+- [x] **Step 1: Run the complete fresh local gate**
 
 ```bash
 /tmp/baby-monitor-hybrid-hd-venv/bin/python -m pytest -q
@@ -540,7 +540,7 @@ verification and a Go build for the available host or `GOOS=darwin
 GOARCH=amd64 CGO_ENABLED=0` when supported. Inspect the generated source so
 H.265 writes `hvc1` and Xiaomi CS2 listens on `udp4`.
 
-- [ ] **Step 3: Review the complete diff against the approved spec**
+- [x] **Step 3: Review the complete diff against the approved spec**
 
 Confirm no generic proxy selector, software encoder fallback, permanent HD
 producer, second HD socket for 2x/3x, physical PTZ adapter, secret fixture,
@@ -569,3 +569,18 @@ Provide the exact i9 update/install/restart commands and the acceptance result
 template. Only after i9 source/codec, native or compat profile, process count,
 M2 Chrome, M2 Safari, and Android Chrome all pass may the final PR gate be
 completed.
+
+### Execution evidence
+
+- Local Python: `171 passed`, one existing Starlette/httpx deprecation warning.
+- Frontend behavior: `60 passed`.
+- JSON schema, Python compile (including `tools`), shell syntax, and diff check:
+  passed.
+- Pinned upstream patch verifier: passed on a clean
+  `b465651a94c1f637d566a8c660b4fad102b35153` clone; exactly two files changed,
+  each `1+/1-`, with `hvc1` and `udp4` postconditions present.
+- Local Go build: not run because this container has no Go executable.
+- GitHub Actions now contains a Go 1.24 `darwin/amd64` cross-build job; result
+  remains pending until the branch can be pushed.
+- Intel i9 and three-browser real-device gate: pending; no synthetic result is
+  represented as real-camera evidence.
