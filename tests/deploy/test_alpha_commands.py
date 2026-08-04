@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import subprocess
 from pathlib import Path
 
 
@@ -44,6 +45,30 @@ def test_makefile_exposes_hd_quality_commands() -> None:
     assert "tools/alpha_quality.py info" in content
     assert "tools/alpha_quality.py rollback" in content
     assert "tools/alpha_quality.py check" in content
+
+
+def test_makefile_exposes_safe_subtype_probe() -> None:
+    content = (ROOT / "Makefile").read_text(encoding="utf-8")
+
+    assert "alpha-subtype-probe:" in content
+    assert "tools/alpha_quality.py probe-subtypes" in content
+    assert "--candidates 0 1 2 3 4 5" in content
+    assert "--base-url" in content
+    assert "--restart-command" in content
+
+
+def test_subtype_probe_make_dry_run_does_not_start_services() -> None:
+    result = subprocess.run(
+        ["make", "-n", "alpha-subtype-probe"],
+        cwd=ROOT,
+        check=False,
+        capture_output=True,
+        text=True,
+    )
+
+    assert result.returncode == 0
+    assert "probe-subtypes" in result.stdout
+    assert "No such file or directory" not in result.stderr
 
 
 def test_default_live_profile_is_hd_ten_fps() -> None:
