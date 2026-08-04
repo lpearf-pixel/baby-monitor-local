@@ -230,14 +230,26 @@ def check_hd_health(
     base_url = base_url.rstrip("/")
     dashboard_url = dashboard_url.rstrip("/")
 
+    # First confirm that the named source exists without exposing its URL.
     try:
-        payload = _read_json(f"{base_url}/api/streams", opener=opener)
+        catalog = _read_json(f"{base_url}/api/streams", opener=opener)
     except Exception:
         return _health("SOURCE_OFFLINE")
-    if not isinstance(payload, dict) or "source" not in payload:
+    if not isinstance(catalog, dict) or "source" not in catalog:
         return _health("SOURCE_NOT_CONFIGURED")
 
-    source = payload.get("source")
+    # A plain /api/streams response can contain only the configured URL while the
+    # producer is idle. Asking for a video probe makes go2rtc connect the Xiaomi
+    # source and serialise the active producer before removing the probe consumer.
+    try:
+        source = _read_json(
+            f"{base_url}/api/streams?src=source&video",
+            opener=opener,
+            timeout=40.0,
+        )
+    except Exception:
+        return _health("SOURCE_OFFLINE")
+
     producers = source.get("producers") if isinstance(source, dict) else None
     if not isinstance(producers, list):
         return _health("SOURCE_OFFLINE")
@@ -245,7 +257,8 @@ def check_hd_health(
     active = [
         producer
         for producer in producers
-        if isinstance(producer, dict) and isinstance(producer.get("protocol"), str)
+        if isinstance(producer, dict)
+        and isinstance(producer.get("protocol"), str)
         and producer.get("protocol")
     ]
     if not active:
@@ -255,8 +268,8 @@ def check_hd_health(
     medias = [
         str(media)
         for producer in active
-        for media in producer.get("medias", [])
         if isinstance(producer.get("medias"), list)
+        for media in producer["medias"]
     ]
     bytes_received = sum(
         int(producer.get("bytes_recv", producer.get("bytes_received", 0)) or 0)
@@ -272,8 +285,6 @@ def check_hd_health(
             protocol=protocol,
             bytes_received=bytes_received,
         )
-    if bytes_received <= 0:
-        return _health("SOURCE_OFFLINE", protocol=protocol)
 
     try:
         source_jpeg = _read_bytes(
@@ -289,11 +300,16 @@ def check_hd_health(
             bytes_received=bytes_received,
         )
 
+    # Some producers only increment bytes_recv after their worker starts. A valid
+    # source JPEG is stronger evidence than a zero counter captured during probe.
+    if bytes_received <= 0:
+        bytes_received = len(source_jpeg)
+
     try:
         live_jpeg = _read_bytes(
             f"{base_url}/api/frame.jpeg?src=live",
             opener=opener,
-            timeout=30.0,
+            timeout=40.0,
         )
     except Exception:
         return _health(
@@ -331,8 +347,8 @@ def check_hd_health(
         mjpeg_sample = _read_bytes(
             f"{base_url}/api/stream.mjpeg?src=live",
             opener=opener,
-            timeout=8.0,
-            limit=64 * 1024,
+            timeout=12.0,
+            limit=16 * 1024,
         )
     except Exception:
         return _health(
