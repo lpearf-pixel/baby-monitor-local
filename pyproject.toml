@@ -18,7 +18,7 @@ dev = [
 ]
 
 [tool.setuptools.packages.find]
-include = ["packages*"]
+include = ["packages*", "services*"]
 
 [tool.pytest.ini_options]
 addopts = "-ra"
