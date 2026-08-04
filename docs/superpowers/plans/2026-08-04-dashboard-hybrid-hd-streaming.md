@@ -371,7 +371,7 @@ git commit -m "feat: add fixed native and compat HD relays"
 - Adds internal: attempt profiles `native` and `compat`.
 - Exposes: `statusElement.dataset.profile` only while active; value is `native` or `compat`.
 
-- [ ] **Step 1: Replace the obsolete H.265 rejection test with RED native tests**
+- [x] **Step 1: Replace the obsolete H.265 rejection test with RED native tests**
 
 Test these observable behaviors:
 
@@ -391,7 +391,7 @@ test('HEVC-capable browser requests native and accepts hvc1', async () => {
 Add a browser without HEVC support that requests compat first and never opens
 a native socket.
 
-- [ ] **Step 2: Run RED native-selection tests**
+- [x] **Step 2: Run RED native-selection tests**
 
 ```bash
 node --test tests/frontend/hd_player.test.mjs
@@ -399,13 +399,13 @@ node --test tests/frontend/hd_player.test.mjs
 
 Expected: existing POST has no JSON body and H.265 is rejected.
 
-- [ ] **Step 3: Implement profile-aware session creation and MIME validation**
+- [x] **Step 3: Implement profile-aware session creation and MIME validation**
 
 POST `{profile}` with `Content-Type: application/json`. Native accepts only
 `hvc1.`, compat accepts only `avc1.`. Keep the existing ticket-first-message,
 same-origin WebSocket, append ordering, and generation isolation.
 
-- [ ] **Step 4: Write RED one-transition tests**
+- [x] **Step 4: Write RED one-transition tests**
 
 Test native description rejection, append error, autoplay rejection, socket
 error, and native startup timeout before activation. Each must:
@@ -418,28 +418,28 @@ error, and native startup timeout before activation. Each must:
 
 Also test compat failure performs no third attempt.
 
-- [ ] **Step 5: Implement bounded native-to-compat transition**
+- [x] **Step 5: Implement bounded native-to-compat transition**
 
 Track `attemptProfile`, `compatAttempted`, and a per-attempt generation. A
 pre-activation native failure calls `startAttempt('compat')` after complete
 native cleanup. A compat failure or post-activation failure uses the normal
 no-black MJPEG restoration and blocks retries until 1x.
 
-- [ ] **Step 6: Write RED typed-status tests**
+- [x] **Step 6: Write RED typed-status tests**
 
 Assert exact final public values for `HD_CODEC_UNSUPPORTED`,
 `HD_TRANSCODE_UNAVAILABLE`, `HD_UPSTREAM_FAILED`, `HD_TIMEOUT`, `HD_BUSY`, and
 `HD_UNSUPPORTED`. Raw server values and thrown messages must map to
 `HD_UPSTREAM_FAILED`.
 
-- [ ] **Step 7: Implement typed public failures without regression**
+- [x] **Step 7: Implement typed public failures without regression**
 
 Extend the public allowlist, map server error messages strictly, classify the
 final eight-second timer as `HD_TIMEOUT`, and clear `dataset.profile` on
 cleanup/fallback. Do not change transform, drag, fullscreen, PTZ, snapshot, or
 notification code.
 
-- [ ] **Step 8: Verify and commit Task 4**
+- [x] **Step 8: Verify and commit Task 4**
 
 ```bash
 node --test tests/frontend/*.test.mjs
