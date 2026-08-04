@@ -16,11 +16,12 @@ def test_ci_verifies_and_cross_builds_the_pinned_go2rtc_patch() -> None:
         'StartAtom("hvc1")',
         'ListenUDP("udp4", nil)',
         "CGO_ENABLED=0 GOOS=darwin GOARCH=amd64 go build",
-        "Mach-O 64-bit executable x86_64",
+        "Mach-O 64-bit x86_64 executable",
     ):
         assert expected in content
 
     assert "upload-artifact" not in content
+    assert "Mach-O 64-bit executable x86_64" not in content
 
 
 def test_ci_compile_gate_includes_operational_tools() -> None:
