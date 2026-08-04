@@ -496,7 +496,7 @@ git add README.md docs/runbooks/ALPHA_QUICKSTART.md .github/workflows/ci.yml
 git commit -m "docs: add clear zoom acceptance gate"
 ```
 
-- [ ] **Step 5: Publish without rewriting history**
+- [x] **Step 5: Publish without rewriting history**
 
 Verify PR #4 is still Draft and its remote head is the expected ancestor. Push only by fast-forward, keep the PR Draft, wait for GitHub Actions, and do not ask the i9 to update until CI succeeds.
 
