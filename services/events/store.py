@@ -1,0 +1,266 @@
+from __future__ import annotations
+
+import json
+import sqlite3
+from datetime import datetime
+from pathlib import Path
+
+from packages.contracts.events import (
+    CandidateEvent,
+    EnvironmentReading,
+    EventAcknowledgement,
+    EventSeverity,
+    HealthState,
+    ReadingState,
+    SystemHealth,
+)
+
+
+_SCHEMA_VERSION = 1
+
+
+def _iso(value: datetime) -> str:
+    if value.tzinfo is None or value.utcoffset() is None:
+        raise ValueError("datetime must be timezone-aware")
+    return value.isoformat()
+
+
+def _datetime(value: str) -> datetime:
+    return datetime.fromisoformat(value)
+
+
+class EventStore:
+    def __init__(self, database_path: Path) -> None:
+        self._database_path = Path(database_path)
+
+    def _connect(self) -> sqlite3.Connection:
+        connection = sqlite3.connect(self._database_path)
+        connection.row_factory = sqlite3.Row
+        connection.execute("PRAGMA foreign_keys = ON")
+        return connection
+
+    def migrate(self) -> None:
+        self._database_path.parent.mkdir(parents=True, exist_ok=True)
+        with self._connect() as connection:
+            connection.executescript(
+                """
+                CREATE TABLE IF NOT EXISTS schema_migrations (
+                    version INTEGER PRIMARY KEY,
+                    applied_at TEXT NOT NULL
+                );
+
+                CREATE TABLE IF NOT EXISTS events (
+                    event_id TEXT PRIMARY KEY,
+                    kind TEXT NOT NULL,
+                    severity TEXT NOT NULL,
+                    occurred_at TEXT NOT NULL,
+                    summary TEXT NOT NULL,
+                    confidence REAL,
+                    rule_version TEXT NOT NULL,
+                    metadata_json TEXT NOT NULL
+                );
+
+                CREATE TABLE IF NOT EXISTS environment_readings (
+                    reading_id TEXT PRIMARY KEY,
+                    captured_at TEXT NOT NULL,
+                    state TEXT NOT NULL,
+                    temperature_c REAL,
+                    humidity_rh REAL,
+                    confidence REAL NOT NULL,
+                    reason TEXT
+                );
+
+                CREATE TABLE IF NOT EXISTS system_health (
+                    health_id INTEGER PRIMARY KEY AUTOINCREMENT,
+                    component TEXT NOT NULL,
+                    checked_at TEXT NOT NULL,
+                    state TEXT NOT NULL,
+                    detail TEXT
+                );
+
+                CREATE INDEX IF NOT EXISTS idx_system_health_component_time
+                    ON system_health(component, checked_at);
+
+                CREATE TABLE IF NOT EXISTS event_acknowledgements (
+                    event_id TEXT NOT NULL,
+                    parent_id TEXT NOT NULL,
+                    acknowledged_at TEXT NOT NULL,
+                    PRIMARY KEY (event_id, parent_id),
+                    FOREIGN KEY (event_id) REFERENCES events(event_id) ON DELETE CASCADE
+                );
+                """
+            )
+            connection.execute(
+                """
+                INSERT OR IGNORE INTO schema_migrations(version, applied_at)
+                VALUES (?, ?)
+                """,
+                (_SCHEMA_VERSION, datetime.now().astimezone().isoformat()),
+            )
+
+    def schema_version(self) -> int:
+        with self._connect() as connection:
+            row = connection.execute(
+                "SELECT COALESCE(MAX(version), 0) AS version FROM schema_migrations"
+            ).fetchone()
+        return int(row["version"])
+
+    def integrity_check(self) -> str:
+        with self._connect() as connection:
+            row = connection.execute("PRAGMA integrity_check").fetchone()
+        return str(row[0])
+
+    def add_event(self, event: CandidateEvent) -> None:
+        with self._connect() as connection:
+            connection.execute(
+                """
+                INSERT INTO events(
+                    event_id, kind, severity, occurred_at, summary,
+                    confidence, rule_version, metadata_json
+                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+                """,
+                (
+                    event.event_id,
+                    event.kind,
+                    event.severity.value,
+                    _iso(event.occurred_at),
+                    event.summary,
+                    event.confidence,
+                    event.rule_version,
+                    json.dumps(event.metadata, ensure_ascii=False, sort_keys=True),
+                ),
+            )
+
+    def get_event(self, event_id: str) -> CandidateEvent | None:
+        with self._connect() as connection:
+            row = connection.execute(
+                "SELECT * FROM events WHERE event_id = ?",
+                (event_id,),
+            ).fetchone()
+        if row is None:
+            return None
+        return CandidateEvent(
+            event_id=row["event_id"],
+            kind=row["kind"],
+            severity=EventSeverity(row["severity"]),
+            occurred_at=_datetime(row["occurred_at"]),
+            summary=row["summary"],
+            confidence=row["confidence"],
+            rule_version=row["rule_version"],
+            metadata=json.loads(row["metadata_json"]),
+        )
+
+    def add_environment_reading(self, reading: EnvironmentReading) -> None:
+        with self._connect() as connection:
+            connection.execute(
+                """
+                INSERT INTO environment_readings(
+                    reading_id, captured_at, state, temperature_c,
+                    humidity_rh, confidence, reason
+                ) VALUES (?, ?, ?, ?, ?, ?, ?)
+                """,
+                (
+                    reading.reading_id,
+                    _iso(reading.captured_at),
+                    reading.state.value,
+                    reading.temperature_c,
+                    reading.humidity_rh,
+                    reading.confidence,
+                    reading.reason,
+                ),
+            )
+
+    def latest_environment_reading(self) -> EnvironmentReading | None:
+        with self._connect() as connection:
+            row = connection.execute(
+                """
+                SELECT * FROM environment_readings
+                ORDER BY julianday(captured_at) DESC, rowid DESC
+                LIMIT 1
+                """
+            ).fetchone()
+        if row is None:
+            return None
+        return EnvironmentReading(
+            reading_id=row["reading_id"],
+            captured_at=_datetime(row["captured_at"]),
+            state=ReadingState(row["state"]),
+            temperature_c=row["temperature_c"],
+            humidity_rh=row["humidity_rh"],
+            confidence=row["confidence"],
+            reason=row["reason"],
+        )
+
+    def acknowledge(
+        self,
+        event_id: str,
+        parent_id: str,
+        acknowledged_at: datetime,
+    ) -> None:
+        timestamp = _iso(acknowledged_at)
+        with self._connect() as connection:
+            connection.execute(
+                """
+                INSERT INTO event_acknowledgements(event_id, parent_id, acknowledged_at)
+                VALUES (?, ?, ?)
+                ON CONFLICT(event_id, parent_id)
+                DO UPDATE SET acknowledged_at = excluded.acknowledged_at
+                """,
+                (event_id, parent_id, timestamp),
+            )
+
+    def list_acknowledgements(self, event_id: str) -> list[EventAcknowledgement]:
+        with self._connect() as connection:
+            rows = connection.execute(
+                """
+                SELECT event_id, parent_id, acknowledged_at
+                FROM event_acknowledgements
+                WHERE event_id = ?
+                ORDER BY parent_id
+                """,
+                (event_id,),
+            ).fetchall()
+        return [
+            EventAcknowledgement(
+                event_id=row["event_id"],
+                parent_id=row["parent_id"],
+                acknowledged_at=_datetime(row["acknowledged_at"]),
+            )
+            for row in rows
+        ]
+
+    def record_system_health(self, health: SystemHealth) -> None:
+        with self._connect() as connection:
+            connection.execute(
+                """
+                INSERT INTO system_health(component, checked_at, state, detail)
+                VALUES (?, ?, ?, ?)
+                """,
+                (
+                    health.component,
+                    _iso(health.checked_at),
+                    health.state.value,
+                    health.detail,
+                ),
+            )
+
+    def latest_system_health(self, component: str) -> SystemHealth | None:
+        with self._connect() as connection:
+            row = connection.execute(
+                """
+                SELECT component, checked_at, state, detail
+                FROM system_health
+                WHERE component = ?
+                ORDER BY julianday(checked_at) DESC, health_id DESC
+                LIMIT 1
+                """,
+                (component,),
+            ).fetchone()
+        if row is None:
+            return None
+        return SystemHealth(
+            component=row["component"],
+            checked_at=_datetime(row["checked_at"]),
+            state=HealthState(row["state"]),
+            detail=row["detail"],
+        )
