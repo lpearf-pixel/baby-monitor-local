@@ -14,6 +14,7 @@ from packages.monitoring.alpha_quality import (
     inspect_quality,
     rollback_latest,
     upgrade_to_hd,
+    with_source_subtype,
 )
 
 
@@ -93,6 +94,37 @@ def test_inspect_quality_returns_only_derived_values() -> None:
 def test_upgrade_rejects_missing_source() -> None:
     with pytest.raises(QualityConfigError, match="SOURCE_NOT_CONFIGURED"):
         upgrade_to_hd({"streams": {"live": "old"}})
+
+
+def test_source_subtype_candidate_preserves_unknown_parameters_and_input() -> None:
+    original = {
+        "streams": {
+            "source": (
+                "xiaomi://123:cn@192.0.2.10?did=456&subtype=hd"
+                "&transport=tcp&vendor_hint=keep"
+            )
+        }
+    }
+
+    updated = with_source_subtype(original, 3)
+
+    assert "subtype=3" in updated["streams"]["source"]
+    assert "transport=" not in updated["streams"]["source"]
+    assert "vendor_hint=keep" in updated["streams"]["source"]
+    assert "subtype=hd" in original["streams"]["source"]
+
+
+@pytest.mark.parametrize("subtype", [-1, 6])
+def test_source_subtype_candidate_rejects_out_of_range(subtype: int) -> None:
+    with pytest.raises(QualityConfigError, match="INVALID_SUBTYPE"):
+        with_source_subtype(
+            {
+                "streams": {
+                    "source": "xiaomi://123:cn@192.0.2.10?did=456"
+                }
+            },
+            subtype,
+        )
 
 
 def test_apply_hd_creates_backup_and_preserves_file_mode(tmp_path: Path) -> None:
