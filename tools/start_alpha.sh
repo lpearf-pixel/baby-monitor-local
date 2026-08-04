@@ -67,6 +67,7 @@ fi
 start_if_stopped "$API_PID" \
   nohup "$ROOT/.venv-alpha/bin/uvicorn" apps.api.main:app \
   --app-dir "$ROOT" --host "${BABY_MONITOR_BIND_HOST}" --port "${BABY_MONITOR_PORT}" \
+  --no-proxy-headers \
   >"$ROOT/runtime/logs/api.log" 2>&1
 
 for _ in {1..30}; do

@@ -36,7 +36,7 @@ class FakeEventTarget {
 
 
 class FakeElement extends FakeEventTarget {
-  constructor({playReject = false} = {}) {
+  constructor({playReject = false, playResults = []} = {}) {
     super();
     this.attributes = new Map();
     this.src = '';
@@ -45,6 +45,7 @@ class FakeElement extends FakeEventTarget {
     this.playCalls = 0;
     this.loadCalls = 0;
     this.playReject = playReject;
+    this.playResults = [...playResults];
   }
 
   setAttribute(name, value) {
@@ -55,9 +56,13 @@ class FakeElement extends FakeEventTarget {
     return this.attributes.get(name) ?? null;
   }
 
-  async play() {
+  play() {
     this.playCalls += 1;
-    if (this.playReject) throw new Error('autoplay rejected with private detail');
+    if (this.playResults.length > 0) return this.playResults.shift();
+    if (this.playReject) {
+      return Promise.reject(new Error('autoplay rejected with private detail'));
+    }
+    return Promise.resolve();
   }
 
   load() {
@@ -108,6 +113,7 @@ class FakeSourceBuffer extends FakeEventTarget {
     this.appended = [];
     this.removed = [];
     this.bufferedRanges = [];
+    this.throwOnAppend = false;
     this.buffered = {
       get length() {
         return this.owner.bufferedRanges.length;
@@ -123,6 +129,7 @@ class FakeSourceBuffer extends FakeEventTarget {
   }
 
   appendBuffer(value) {
+    if (this.throwOnAppend) throw new Error('private append detail');
     this.appended.push(value);
     this.updating = true;
   }
@@ -173,12 +180,13 @@ function playerFixture({
   supported = true,
   response = null,
   playReject = false,
+  playResults = [],
   mediaTypeSupported = (mime) => mime.includes('avc1.'),
 } = {}) {
   const image = new FakeElement();
   image.src = '/live.mjpeg';
   image.setAttribute('aria-hidden', 'false');
-  const video = new FakeElement({playReject});
+  const video = new FakeElement({playReject, playResults});
   video.setAttribute('aria-hidden', 'true');
   const statusElement = new FakeElement();
   const sockets = [];
@@ -264,6 +272,17 @@ async function flushPromises() {
   await Promise.resolve();
   await Promise.resolve();
   await Promise.resolve();
+}
+
+
+function deferred() {
+  let resolve;
+  let reject;
+  const promise = new Promise((resolvePromise, rejectPromise) => {
+    resolve = resolvePromise;
+    reject = rejectPromise;
+  });
+  return {promise, reject, resolve};
 }
 
 
@@ -413,6 +432,39 @@ test('SourceBuffer appends fragments in arrival order without overlap', async ()
 });
 
 
+test('active HD playback continues appending later media fragments', async () => {
+  const fixture = playerFixture();
+  const {socket} = await activateHd(fixture);
+  const sourceBuffer = fixture.mediaSources[0].sourceBuffers[0];
+  sourceBuffer.finishUpdate();
+  const later = new Uint8Array([9]).buffer;
+
+  socket.message(later);
+
+  assert.equal(fixture.statusElement.textContent, 'HD_ACTIVE');
+  assert.deepEqual(
+    new Uint8Array(sourceBuffer.appended.at(-1)),
+    new Uint8Array(later),
+  );
+});
+
+
+test('queued MSE fragments are bounded while SourceBuffer is busy', async () => {
+  const fixture = playerFixture();
+  const {socket} = await beginMse(fixture);
+  fixture.mediaSources[0].open();
+  socket.message(new Uint8Array([0]).buffer);
+
+  for (let index = 0; index < 5; index += 1) {
+    socket.message(new Uint8Array(4 * 1024 * 1024).buffer);
+  }
+
+  assert.equal(fixture.statusElement.textContent, 'HD_FALLBACK');
+  assert.equal(fixture.image.src, '/live.mjpeg');
+  assert.equal(socket.closeCalls, 1);
+});
+
+
 test('unsupported codec and binary-before-description fail closed on MJPEG', async () => {
   for (const firstMessage of [
     JSON.stringify({type: 'mse', value: 'video/mp4; codecs="hvc1.1.6"'}),
@@ -559,6 +611,148 @@ test('autoplay rejection is redacted and leaves the current MJPEG visible', asyn
 });
 
 
+test('old play rejection cannot tear down a newer active session', async () => {
+  const oldPlay = deferred();
+  const fixture = playerFixture({
+    playResults: [oldPlay.promise, Promise.resolve()],
+  });
+  const first = await beginMse(fixture);
+  fixture.mediaSources[0].open();
+  first.socket.message(new Uint8Array([1]).buffer);
+
+  await first.player.selectZoom(1);
+  first.player.selectZoom(2);
+  await flushPromises();
+  const secondSocket = fixture.sockets[1];
+  secondSocket.open();
+  secondSocket.message(JSON.stringify({
+    type: 'mse',
+    value: 'video/mp4; codecs="avc1.640033"',
+  }));
+  fixture.mediaSources[1].open();
+  secondSocket.message(new Uint8Array([2]).buffer);
+  fixture.video.dispatch('playing');
+  assert.equal(fixture.statusElement.textContent, 'HD_ACTIVE');
+
+  oldPlay.reject(new Error('late private rejection'));
+  await flushPromises();
+
+  assert.equal(fixture.statusElement.textContent, 'HD_ACTIVE');
+  assert.equal(secondSocket.closeCalls, 0);
+  assert.equal(fixture.video.getAttribute('aria-hidden'), 'false');
+});
+
+
+test('old playing handler cannot activate a newer loading generation', async () => {
+  const fixture = playerFixture();
+  const first = await beginMse(fixture);
+  fixture.mediaSources[0].open();
+  first.socket.message(new Uint8Array([1]).buffer);
+  const oldPlaying = fixture.video.listeners.get('playing')[0].listener;
+
+  await first.player.selectZoom(1);
+  first.player.selectZoom(2);
+  await flushPromises();
+  const secondSocket = fixture.sockets[1];
+  secondSocket.open();
+  secondSocket.message(JSON.stringify({
+    type: 'mse',
+    value: 'video/mp4; codecs="avc1.640033"',
+  }));
+  fixture.mediaSources[1].open();
+  secondSocket.message(new Uint8Array([2]).buffer);
+
+  oldPlaying({type: 'playing', target: fixture.video});
+
+  assert.equal(fixture.statusElement.textContent, 'HD_LOADING');
+  assert.equal(fixture.image.getAttribute('aria-hidden'), 'false');
+  assert.equal(fixture.video.getAttribute('aria-hidden'), 'true');
+});
+
+
+test('old updateend handler cannot append into a newer SourceBuffer', async () => {
+  const fixture = playerFixture();
+  const first = await beginMse(fixture);
+  fixture.mediaSources[0].open();
+  const oldBuffer = fixture.mediaSources[0].sourceBuffers[0];
+  first.socket.message(new Uint8Array([1]).buffer);
+  const oldUpdateEnd = oldBuffer.listeners.get('updateend')[0].listener;
+
+  await first.player.selectZoom(1);
+  first.player.selectZoom(2);
+  await flushPromises();
+  const secondSocket = fixture.sockets[1];
+  secondSocket.open();
+  secondSocket.message(JSON.stringify({
+    type: 'mse',
+    value: 'video/mp4; codecs="avc1.640033"',
+  }));
+  fixture.mediaSources[1].open();
+  const currentBuffer = fixture.mediaSources[1].sourceBuffers[0];
+  const firstCurrent = new Uint8Array([2]).buffer;
+  const queuedCurrent = new Uint8Array([3]).buffer;
+  secondSocket.message(firstCurrent);
+  secondSocket.message(queuedCurrent);
+  currentBuffer.updating = false;
+
+  oldUpdateEnd({type: 'updateend', target: oldBuffer});
+
+  assert.deepEqual(currentBuffer.appended, [firstCurrent]);
+});
+
+
+test('active append failure keeps HD visible until MJPEG has loaded', async () => {
+  const fixture = playerFixture();
+  const {socket} = await activateHd(fixture);
+  const sourceBuffer = fixture.mediaSources[0].sourceBuffers[0];
+  sourceBuffer.updating = false;
+  sourceBuffer.throwOnAppend = true;
+
+  socket.message(new Uint8Array([7]).buffer);
+
+  assert.equal(fixture.statusElement.textContent, 'HD_FALLBACK');
+  assert.equal(fixture.image.src, '/live.mjpeg');
+  assert.equal(fixture.image.getAttribute('aria-hidden'), 'true');
+  assert.equal(fixture.video.getAttribute('aria-hidden'), 'false');
+  assert.equal(socket.closeCalls, 0);
+
+  fixture.image.dispatch('load');
+  assert.equal(fixture.image.getAttribute('aria-hidden'), 'false');
+  assert.equal(fixture.video.getAttribute('aria-hidden'), 'true');
+  assert.equal(socket.closeCalls, 1);
+});
+
+
+test('MediaSource and SourceBuffer errors use the no-black fallback path', async () => {
+  const loadingFixture = playerFixture();
+  await beginMse(loadingFixture);
+  loadingFixture.mediaSources[0].dispatch('error');
+  assert.equal(loadingFixture.statusElement.textContent, 'HD_FALLBACK');
+  assert.equal(loadingFixture.image.getAttribute('aria-hidden'), 'false');
+
+  const activeFixture = playerFixture();
+  const {socket} = await activateHd(activeFixture);
+  activeFixture.mediaSources[0].sourceBuffers[0].dispatch('error');
+  assert.equal(activeFixture.image.getAttribute('aria-hidden'), 'true');
+  assert.equal(activeFixture.video.getAttribute('aria-hidden'), 'false');
+  assert.equal(socket.closeCalls, 0);
+});
+
+
+test('server error after activation keeps HD visible until MJPEG has loaded', async () => {
+  const fixture = playerFixture();
+  const {socket} = await activateHd(fixture);
+
+  socket.message(JSON.stringify({type: 'error', value: 'HD_FALLBACK'}));
+
+  assert.equal(fixture.statusElement.textContent, 'HD_FALLBACK');
+  assert.equal(fixture.image.src, '/live.mjpeg');
+  assert.equal(fixture.image.getAttribute('aria-hidden'), 'true');
+  assert.equal(fixture.video.getAttribute('aria-hidden'), 'false');
+  assert.equal(socket.closeCalls, 0);
+});
+
+
 test('completed append trims to twenty seconds and seeks near the live edge', async () => {
   const fixture = playerFixture();
   const {socket} = await beginMse(fixture);
@@ -595,6 +789,85 @@ test('pagehide automatically releases the active HD session', async () => {
   assert.equal(socket.closeCalls, 1);
   assert.deepEqual(fixture.revokedUrls, ['blob:hd-player-1']);
   assert.equal(fixture.video.src, '');
+});
+
+
+test('BFCache page lifecycle releases HD and resumes without a destroyed player', async () => {
+  const fixture = playerFixture();
+  await activateHd(fixture);
+
+  fixture.window.dispatch('pagehide', {persisted: true});
+
+  assert.equal(fixture.sockets[0].closeCalls, 1);
+  assert.equal(fixture.image.src, '/live.mjpeg');
+  assert.equal(fixture.image.getAttribute('aria-hidden'), 'false');
+  assert.equal(fixture.video.getAttribute('aria-hidden'), 'true');
+
+  fixture.window.dispatch('pageshow', {persisted: true});
+  await flushPromises();
+
+  assert.equal(fixture.requests.length, 2);
+  assert.equal(fixture.sockets.length, 2);
+  assert.equal(fixture.statusElement.textContent, 'HD_LOADING');
+});
+
+
+test('stale MJPEG restore callback cannot tear down BFCache-resumed HD', async () => {
+  const fixture = playerFixture();
+  const {player} = await activateHd(fixture);
+  player.selectZoom(1);
+  const pendingZoom = player.selectZoom(2);
+  const oldRestore = fixture.image.listeners.get('load')[0].listener;
+
+  fixture.window.dispatch('pagehide', {persisted: true});
+  fixture.window.dispatch('pageshow', {persisted: true});
+  await pendingZoom;
+  await flushPromises();
+  const resumedSocket = fixture.sockets[1];
+
+  oldRestore({type: 'load', target: fixture.image});
+
+  assert.equal(fixture.statusElement.textContent, 'HD_LOADING');
+  assert.equal(resumedSocket.closeCalls, 0);
+});
+
+
+test('BFCache does not retry an HD failure without a 1x reset', async () => {
+  const fixture = playerFixture();
+  const player = createHdPlayer(fixture.environment);
+  player.selectZoom(2);
+  await flushPromises();
+  fixture.sockets[0].fail();
+  assert.equal(fixture.statusElement.textContent, 'HD_FALLBACK');
+
+  fixture.window.dispatch('pagehide', {persisted: true});
+  fixture.window.dispatch('pageshow', {persisted: true});
+  await flushPromises();
+
+  assert.equal(fixture.requests.length, 1);
+  assert.equal(fixture.sockets.length, 1);
+  assert.equal(fixture.statusElement.textContent, 'HD_FALLBACK');
+});
+
+
+test('pending restore waiter cannot start HD while the page is suspended', async () => {
+  const fixture = playerFixture();
+  const {player} = await activateHd(fixture);
+  player.selectZoom(1);
+  const pendingZoom = player.selectZoom(2);
+
+  fixture.window.dispatch('pagehide', {persisted: true});
+  await flushPromises();
+
+  assert.equal(fixture.requests.length, 1);
+  assert.equal(fixture.sockets.length, 1);
+
+  fixture.window.dispatch('pageshow', {persisted: true});
+  await pendingZoom;
+  await flushPromises();
+
+  assert.equal(fixture.requests.length, 2);
+  assert.equal(fixture.sockets.length, 2);
 });
 
 

@@ -10,6 +10,7 @@
   const BLANK_IMAGE_SRC =
     'data:image/gif;base64,R0lGODlhAQABAAD/ACwAAAAAAQABAAACADs=';
   const LIVE_MJPEG_SRC = '/live.mjpeg';
+  const MAX_APPEND_QUEUE_BYTES = 16 * 1024 * 1024;
   const PUBLIC_CODES = new Set([
     'HD_LOADING',
     'HD_ACTIVE',
@@ -41,6 +42,8 @@
     let desiredZoom = 1;
     let mode = 'idle';
     let destroyed = false;
+    let suspended = false;
+    let resumeHdOnPageShow = false;
     let retryBlocked = false;
     let generation = 0;
     let mediaSource = null;
@@ -49,10 +52,15 @@
     let objectUrl = null;
     let transitionTimer = null;
     let restorePromise = null;
+    let restoreToken = null;
     let descriptionReceived = false;
     let pendingMime = null;
     let playRequested = false;
     let intentionallyClosing = false;
+    let appendQueueBytes = 0;
+    let mediaSourceListeners = null;
+    let sourceBufferListeners = null;
+    let videoPlayingListener = null;
     const appendQueue = [];
 
     function setStatus(code) {
@@ -92,10 +100,34 @@
     function cleanupHd() {
       clearTransitionTimer();
       generation += 1;
+      if (restoreToken) {
+        const pendingRestore = restoreToken;
+        restoreToken = null;
+        restorePromise = null;
+        pendingRestore.cancel();
+      }
       appendQueue.length = 0;
+      appendQueueBytes = 0;
       descriptionReceived = false;
       pendingMime = null;
       playRequested = false;
+      if (sourceBufferListeners) {
+        const {buffer, onAbort, onError, onUpdateEnd} = sourceBufferListeners;
+        buffer.removeEventListener('updateend', onUpdateEnd);
+        buffer.removeEventListener('error', onError);
+        buffer.removeEventListener('abort', onAbort);
+        sourceBufferListeners = null;
+      }
+      if (mediaSourceListeners) {
+        const {source, onError, onSourceOpen} = mediaSourceListeners;
+        source.removeEventListener('sourceopen', onSourceOpen);
+        source.removeEventListener('error', onError);
+        mediaSourceListeners = null;
+      }
+      if (videoPlayingListener) {
+        video.removeEventListener('playing', videoPlayingListener);
+        videoPlayingListener = null;
+      }
       sourceBuffer = null;
       mediaSource = null;
       intentionallyClosing = true;
@@ -135,64 +167,97 @@
       mode = 'fallback';
     }
 
-    function maintainLiveWindow() {
-      if (!sourceBuffer || sourceBuffer.updating || sourceBuffer.buffered.length === 0) {
+    function maintainLiveWindow(currentGeneration, currentBuffer) {
+      if (
+        currentGeneration !== generation ||
+        currentBuffer !== sourceBuffer ||
+        !currentBuffer ||
+        currentBuffer.updating ||
+        currentBuffer.buffered.length === 0
+      ) {
         return false;
       }
-      const last = sourceBuffer.buffered.length - 1;
-      const start = sourceBuffer.buffered.start(0);
-      const end = sourceBuffer.buffered.end(last);
+      const last = currentBuffer.buffered.length - 1;
+      const start = currentBuffer.buffered.start(0);
+      const end = currentBuffer.buffered.end(last);
       if (end - video.currentTime > 2) video.currentTime = Math.max(start, end - 0.5);
       if (end - start > 20) {
-        sourceBuffer.remove(start, end - 20);
+        currentBuffer.remove(start, end - 20);
         return true;
       }
       return false;
     }
 
-    function pumpAppendQueue() {
-      if (!sourceBuffer || sourceBuffer.updating) return;
+    function pumpAppendQueue(currentGeneration, currentBuffer) {
+      if (
+        currentGeneration !== generation ||
+        currentBuffer !== sourceBuffer ||
+        !currentBuffer ||
+        currentBuffer.updating
+      ) {
+        return;
+      }
       try {
-        if (maintainLiveWindow()) return;
+        if (maintainLiveWindow(currentGeneration, currentBuffer)) return;
         const fragment = appendQueue.shift();
         if (fragment) {
-          sourceBuffer.appendBuffer(fragment);
-          requestPlayback();
+          appendQueueBytes -= fragment.byteLength;
+          currentBuffer.appendBuffer(fragment);
+          requestPlayback(currentGeneration);
         }
       } catch (_error) {
-        preserveMjpeg('HD_FALLBACK');
+        handleSocketFailure(currentGeneration);
       }
     }
 
-    function requestPlayback() {
-      if (playRequested) return;
+    function requestPlayback(currentGeneration) {
+      if (currentGeneration !== generation || playRequested) return;
       playRequested = true;
+      const expectedObjectUrl = objectUrl;
+      const onPlaying = () => activateHd(currentGeneration, expectedObjectUrl);
+      videoPlayingListener = onPlaying;
+      video.addEventListener('playing', onPlaying);
       try {
         const result = video.play();
         if (result && typeof result.catch === 'function') {
-          result.catch(() => preserveMjpeg('HD_FALLBACK'));
+          result.catch(() => {
+            if (
+              currentGeneration === generation &&
+              objectUrl === expectedObjectUrl
+            ) {
+              handleSocketFailure(currentGeneration);
+            }
+          });
         }
       } catch (_error) {
-        preserveMjpeg('HD_FALLBACK');
+        handleSocketFailure(currentGeneration);
       }
     }
 
-    function createSourceBufferIfReady(currentGeneration) {
+    function createSourceBufferIfReady(currentGeneration, currentMediaSource = mediaSource) {
       if (
         currentGeneration !== generation ||
         !pendingMime ||
-        !mediaSource ||
-        mediaSource.readyState !== 'open' ||
+        !currentMediaSource ||
+        currentMediaSource !== mediaSource ||
+        currentMediaSource.readyState !== 'open' ||
         sourceBuffer
       ) {
         return;
       }
       try {
-        sourceBuffer = mediaSource.addSourceBuffer(pendingMime);
-        sourceBuffer.addEventListener('updateend', pumpAppendQueue);
-        pumpAppendQueue();
+        const currentBuffer = currentMediaSource.addSourceBuffer(pendingMime);
+        sourceBuffer = currentBuffer;
+        const onUpdateEnd = () => pumpAppendQueue(currentGeneration, currentBuffer);
+        const onError = () => handleSocketFailure(currentGeneration);
+        const onAbort = () => handleSocketFailure(currentGeneration);
+        sourceBufferListeners = {buffer: currentBuffer, onAbort, onError, onUpdateEnd};
+        currentBuffer.addEventListener('updateend', onUpdateEnd);
+        currentBuffer.addEventListener('error', onError);
+        currentBuffer.addEventListener('abort', onAbort);
+        pumpAppendQueue(currentGeneration, currentBuffer);
       } catch (_error) {
-        preserveMjpeg('HD_FALLBACK');
+        handleSocketFailure(currentGeneration);
       }
     }
 
@@ -260,14 +325,36 @@
       image.src = LIVE_MJPEG_SRC;
       show(video);
       hide(image);
+      const currentGeneration = generation;
+      const token = {cancel() {}};
+      restoreToken = token;
       restorePromise = new Promise((resolve) => {
         let settled = false;
+        const detach = () => {
+          image.removeEventListener('load', onLoad);
+          image.removeEventListener('error', onError);
+        };
+        token.cancel = () => {
+          if (settled) return;
+          settled = true;
+          detach();
+          resolve();
+        };
         const finish = (ready) => {
           if (settled) return;
           settled = true;
-          image.removeEventListener('load', onLoad);
-          image.removeEventListener('error', onError);
+          detach();
+          if (
+            restoreToken !== token ||
+            currentGeneration !== generation ||
+            destroyed
+          ) {
+            resolve();
+            return;
+          }
           clearTransitionTimer();
+          restoreToken = null;
+          restorePromise = null;
           if (ready) {
             show(image);
             hide(video);
@@ -280,7 +367,6 @@
             setStatus('HD_FALLBACK');
             mode = 'active';
           }
-          restorePromise = null;
           resolve();
           if (ready && desiredZoom > 1 && !failure) void startHd();
         };
@@ -305,20 +391,26 @@
     }
 
     function handleSocketMessage(event, currentGeneration) {
-      if (currentGeneration !== generation || destroyed || mode !== 'loading') return;
+      if (
+        currentGeneration !== generation ||
+        destroyed ||
+        !['loading', 'active', 'restoring'].includes(mode)
+      ) {
+        return;
+      }
       if (typeof event.data === 'string') {
         const serverError = parseServerError(event.data);
         if (serverError) {
-          preserveMjpeg(serverError);
+          handleSocketFailure(currentGeneration, serverError);
           return;
         }
         if (descriptionReceived) {
-          preserveMjpeg('HD_FALLBACK');
+          handleSocketFailure(currentGeneration);
           return;
         }
         const mime = parseDescription(event.data);
         if (!mime) {
-          preserveMjpeg('HD_FALLBACK');
+          handleSocketFailure(currentGeneration);
           return;
         }
         descriptionReceived = true;
@@ -327,16 +419,31 @@
         return;
       }
       if (!descriptionReceived || !(event.data instanceof ArrayBuffer)) {
-        preserveMjpeg('HD_FALLBACK');
+        handleSocketFailure(currentGeneration);
         return;
       }
-      appendQueue.push(event.data.slice(0));
+      if (appendQueueBytes + event.data.byteLength > MAX_APPEND_QUEUE_BYTES) {
+        handleSocketFailure(currentGeneration);
+        return;
+      }
+      const fragment = event.data.slice(0);
+      appendQueue.push(fragment);
+      appendQueueBytes += fragment.byteLength;
       createSourceBufferIfReady(currentGeneration);
-      pumpAppendQueue();
+      pumpAppendQueue(currentGeneration, sourceBuffer);
     }
 
-    function activateHd() {
-      if (mode !== 'loading' || desiredZoom === 1 || destroyed) return;
+    function activateHd(currentGeneration, expectedObjectUrl) {
+      if (
+        currentGeneration !== generation ||
+        objectUrl !== expectedObjectUrl ||
+        video.src !== expectedObjectUrl ||
+        mode !== 'loading' ||
+        desiredZoom === 1 ||
+        destroyed
+      ) {
+        return;
+      }
       clearTransitionTimer();
       show(video);
       hide(image);
@@ -345,10 +452,14 @@
       setStatus('HD_ACTIVE');
     }
 
-    video.addEventListener('playing', activateHd);
-
     async function startHd() {
-      if (destroyed || desiredZoom === 1 || mode === 'loading' || mode === 'active') {
+      if (
+        destroyed ||
+        suspended ||
+        desiredZoom === 1 ||
+        mode === 'loading' ||
+        mode === 'active'
+      ) {
         return;
       }
       if (!supported()) {
@@ -365,15 +476,25 @@
       descriptionReceived = false;
       pendingMime = null;
       appendQueue.length = 0;
+      appendQueueBytes = 0;
       playRequested = false;
 
       try {
-        mediaSource = new MediaSource();
-        objectUrl = URL.createObjectURL(mediaSource);
+        const currentMediaSource = new MediaSource();
+        mediaSource = currentMediaSource;
+        objectUrl = URL.createObjectURL(currentMediaSource);
         video.src = objectUrl;
-        mediaSource.addEventListener('sourceopen', () => {
-          createSourceBufferIfReady(currentGeneration);
-        });
+        const onSourceOpen = () => {
+          createSourceBufferIfReady(currentGeneration, currentMediaSource);
+        };
+        const onMediaSourceError = () => handleSocketFailure(currentGeneration);
+        mediaSourceListeners = {
+          source: currentMediaSource,
+          onError: onMediaSourceError,
+          onSourceOpen,
+        };
+        currentMediaSource.addEventListener('sourceopen', onSourceOpen);
+        currentMediaSource.addEventListener('error', onMediaSourceError);
         transitionTimer = setTimeout(
           () => handleSocketFailure(currentGeneration),
           8000,
@@ -413,7 +534,7 @@
           handleSocketFailure(currentGeneration);
         });
       } catch (_error) {
-        if (currentGeneration === generation) preserveMjpeg('HD_FALLBACK');
+        if (currentGeneration === generation) handleSocketFailure(currentGeneration);
       }
     }
 
@@ -440,8 +561,36 @@
       if (image.src !== BLANK_IMAGE_SRC) show(image);
     }
 
+    function handlePageHide(event) {
+      if (!event || !event.persisted) {
+        destroy();
+        return;
+      }
+      resumeHdOnPageShow = Boolean(
+        desiredZoom > 1 &&
+        !retryBlocked &&
+        ['loading', 'active', 'restoring'].includes(mode)
+      );
+      suspended = true;
+      cleanupHd();
+      image.src = LIVE_MJPEG_SRC;
+      show(image);
+      hide(video);
+      mode = retryBlocked ? 'fallback' : 'idle';
+      if (!retryBlocked) clearStatus();
+    }
+
+    function handlePageShow(event) {
+      if (!event || !event.persisted || destroyed) return;
+      suspended = false;
+      const shouldResume = resumeHdOnPageShow;
+      resumeHdOnPageShow = false;
+      if (shouldResume && desiredZoom > 1 && !retryBlocked) void startHd();
+    }
+
     if (window && typeof window.addEventListener === 'function') {
-      window.addEventListener('pagehide', destroy);
+      window.addEventListener('pagehide', handlePageHide);
+      window.addEventListener('pageshow', handlePageShow);
     }
 
     return {

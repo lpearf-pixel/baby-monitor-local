@@ -105,6 +105,7 @@ class FakeBrowserSocket:
     close_reason: str = ""
     text_messages: list[str] = field(default_factory=list)
     binary_messages: list[bytes] = field(default_factory=list)
+    disconnected: asyncio.Event = field(default_factory=asyncio.Event)
 
     @property
     def headers(self) -> dict[str, str]:
@@ -120,6 +121,10 @@ class FakeBrowserSocket:
         if self.receive_delay:
             await asyncio.sleep(self.receive_delay)
         return self.ticket_message
+
+    async def wait_for_disconnect(self) -> None:
+        await self.disconnected.wait()
+        raise HdClientDisconnected
 
     async def send_text(self, value: str) -> None:
         self.text_messages.append(value)
@@ -167,6 +172,23 @@ class RecordingConnector:
     def __call__(self, uri: str, **options: Any) -> FakeUpstream:
         self.calls.append((uri, options))
         return self.upstream
+
+
+class SilentUpstream(FakeUpstream):
+    def __init__(self) -> None:
+        super().__init__([])
+        self.read_started = asyncio.Event()
+
+    async def __anext__(self) -> str | bytes:
+        self.read_started.set()
+        await asyncio.Event().wait()
+        raise AssertionError("unreachable")
+
+
+class SilentConnector(RecordingConnector):
+    def __init__(self) -> None:
+        self.upstream = SilentUpstream()
+        self.calls: list[tuple[str, dict[str, Any]]] = []
 
 
 def _mse_description(codec: str = "avc1.640033") -> str:
@@ -273,6 +295,7 @@ def test_relay_uses_fixed_source_request_then_forwards_description_and_binary() 
     asyncio.run(service.serve(socket))
 
     assert connector.calls[0][0] == "ws://127.0.0.1:1984/api/ws?src=source"
+    assert connector.calls[0][1]["proxy"] is None
     assert connector.upstream.sent == [MSE_REQUEST]
     assert json.loads(MSE_REQUEST) == {
         "type": "mse",
@@ -374,3 +397,29 @@ def test_client_disconnect_still_closes_upstream() -> None:
     asyncio.run(service.serve(socket))
 
     assert connector.upstream.closed is True
+
+
+def test_silent_upstream_releases_connection_slot_when_browser_disconnects() -> None:
+    async def scenario() -> tuple[SilentConnector, HdConnectionGate]:
+        gate = HdConnectionGate(limit=1)
+        connector = SilentConnector()
+        service = HdStreamService(connector=connector, connection_gate=gate)
+        ticket = service.issue_ticket()
+        socket = FakeBrowserSocket(ticket_message=ticket.value)
+
+        serving = asyncio.create_task(service.serve(socket))
+        await asyncio.wait_for(connector.upstream.read_started.wait(), timeout=0.5)
+        socket.disconnected.set()
+        await asyncio.wait_for(serving, timeout=0.5)
+
+        return connector, gate
+
+    connector, gate = asyncio.run(scenario())
+
+    assert connector.upstream.closed is True
+
+    async def slot_is_available() -> None:
+        assert await gate.try_acquire() is True
+        await gate.release()
+
+    asyncio.run(slot_is_available())

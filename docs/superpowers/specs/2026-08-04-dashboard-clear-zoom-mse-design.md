@@ -91,8 +91,10 @@ The WebSocket handshake also requires a same-origin `Origin` authority. Direct
 LAN requests compare it with `Host`. A forwarded host is considered only when
 the immediate peer is loopback, so a future local Tailscale Serve proxy can
 preserve the same-origin rule without trusting arbitrary LAN forwarding
-headers. An invalid, expired, reused, oversized, or late ticket closes before
-any go2rtc connection is created.
+headers. Uvicorn proxy-header rewriting is explicitly disabled so
+`websocket.client` remains the raw transport peer rather than an address copied
+from `X-Forwarded-For`. An invalid, expired, reused, oversized, or late ticket
+closes before any go2rtc connection is created.
 
 ### Fixed upstream MSE relay
 
@@ -101,6 +103,8 @@ go2rtc base URL and the server-owned HD stream name, default `source`. HTTP maps
 to `ws` and HTTPS maps to `wss`; any non-loopback upstream host is rejected at
 runtime construction. The resulting upstream shape is fixed as
 `ws://127.0.0.1:1984/api/ws?src=source` under the default local configuration.
+System and environment WebSocket proxies are explicitly disabled for this
+loopback connection.
 
 The relay sends the fixed go2rtc MSE request itself. It does not forward later
 client text or binary messages upstream. It accepts only:
@@ -113,7 +117,9 @@ Unexpected text, an unsupported codec, an oversized message, connection
 failure, or protocol disorder closes the relay with a stable public result and
 without exposing an upstream address or raw exception. Client disconnect,
 application shutdown, and every error path close the upstream socket in
-`finally`, allowing go2rtc to release the consumer.
+`finally`, allowing go2rtc to release the consumer. The relay watches upstream
+media and downstream disconnect concurrently, so a silent or stalled go2rtc
+connection cannot retain a connection-gate slot after the browser leaves.
 
 The client state machine opens at most one HD socket per Dashboard page. The
 Alpha process accepts at most two concurrent HD sockets and does not queue a
@@ -138,9 +144,17 @@ The client flow is:
 
 The source buffer keeps a bounded live window. Old data beyond 20 seconds is
 removed only while the buffer is not updating. If playback falls more than two
-seconds behind the buffered end, the player seeks near the live edge. The video
-is muted and uses `playsinline` so autoplay does not request microphone or audio
-permission.
+seconds behind the buffered end, the player seeks near the live edge. Pending
+fragments are capped at 16 MiB while the buffer is busy; overflow fails to the
+same safe MJPEG path instead of growing browser memory without bound. Media
+continues to append after the first `playing` event. The video is muted and uses
+`playsinline` so autoplay does not request microphone or audio permission.
+
+Every asynchronous MediaSource, SourceBuffer, playback, and media event is
+bound to the generation and resource that created it. Cleanup removes those
+listeners before a new attempt, so a late callback from an old attempt cannot
+activate or tear down the current stream. SourceBuffer and MediaSource error
+events use the same no-black-frame fallback path.
 
 Switching between 2x and 3x reuses the same HD socket and only changes the
 existing CSS transform. Dragging, pan clamping, fullscreen, and PTZ controls
@@ -162,6 +176,13 @@ Only a ready layer replaces the currently visible layer:
 - A handoff overlap has an eight-second hard limit. If the target does not
   become ready, its attempt is cancelled and the currently working layer stays
   visible.
+- A normal page unload closes HD immediately. A back-forward-cache page hide
+  also releases HD but restores the MJPEG element and may start a fresh HD
+  attempt after a persisted page show only when the hidden session was healthy.
+  Failed or blocked sessions remain blocked until an explicit 1x reset, and no
+  waiting continuation may start HD while the page is suspended. Browser
+  history restoration therefore does not return to a destroyed player, blank
+  sentinel, or hidden retry.
 
 This creates at most a short transition overlap. Steady 1x has only the MJPEG
 consumer; steady 2x/3x has only the source MSE consumer.
@@ -211,12 +232,18 @@ Tests are written and observed failing before implementation. They cover:
 - WebSocket rejection before upstream access for missing, invalid, late,
   oversized, cross-origin, and reused tickets;
 - fixed `source` selection, loopback enforcement, two-connection limit, fixed
-  MSE request, message ordering, size limits, and upstream cleanup;
+  MSE request, disabled system proxying, message ordering, size limits,
+  downstream-disconnect detection, and upstream cleanup;
 - page structure and authentication for the new player asset and session route;
 - 1x not opening HD, 2x opening once, 2x/3x reuse, 1x/fullscreen-exit release,
-  ordered SourceBuffer appends, live-window trimming, and live-edge correction;
+  ordered and continuous SourceBuffer appends, bounded pending bytes,
+  generation-isolated callbacks, live-window trimming, and live-edge
+  correction;
 - first-frame handoff without an empty layer, bounded transition overlap, and
-  MJPEG preservation/restoration on every failure class;
+  MJPEG preservation/restoration on every failure class, including active
+  append and media error events;
+- Uvicorn startup preserving the immediate peer and browser page/BFCache
+  lifecycle cleanup;
 - unchanged zoom, drag, fullscreen, PTZ, snapshot, notification, and Basic Auth
   contracts;
 - unchanged loopback listener configuration and absence of sensitive values.

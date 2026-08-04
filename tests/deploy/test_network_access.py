@@ -23,6 +23,12 @@ def test_start_script_uses_configurable_dashboard_listener() -> None:
     assert "LAN Dashboard:" in start_script
 
 
+def test_start_script_preserves_immediate_proxy_peer_for_origin_policy() -> None:
+    start_script = read("tools/start_alpha.sh")
+
+    assert "--no-proxy-headers" in start_script
+
+
 def test_camera_control_ports_remain_loopback_only() -> None:
     go2rtc = read("config/go2rtc.alpha.yaml")
 

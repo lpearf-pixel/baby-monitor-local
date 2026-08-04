@@ -55,6 +55,8 @@ class HdBrowserSocket(Protocol):
 
     async def receive(self) -> str | bytes: ...
 
+    async def wait_for_disconnect(self) -> None: ...
+
     async def send_text(self, value: str) -> None: ...
 
     async def send_bytes(self, value: bytes) -> None: ...
@@ -259,6 +261,32 @@ class HdStreamService:
         if not description_received:
             raise _HdProtocolError
 
+    async def _forward_until_browser_closes(
+        self,
+        upstream: HdUpstream,
+        socket: HdBrowserSocket,
+    ) -> None:
+        forward_task = asyncio.create_task(self._forward(upstream, socket))
+        disconnect_task = asyncio.create_task(socket.wait_for_disconnect())
+        tasks = (forward_task, disconnect_task)
+        try:
+            done, _pending = await asyncio.wait(
+                tasks,
+                return_when=asyncio.FIRST_COMPLETED,
+            )
+            if disconnect_task in done:
+                try:
+                    await disconnect_task
+                except HdClientDisconnected:
+                    pass
+                raise HdClientDisconnected
+            await forward_task
+        finally:
+            for task in tasks:
+                if not task.done():
+                    task.cancel()
+            await asyncio.gather(*tasks, return_exceptions=True)
+
     async def serve(self, socket: HdBrowserSocket) -> None:
         if not self._origin_policy.allows(socket.headers, socket.peer_host):
             await self._close(socket, code=1008)
@@ -292,9 +320,10 @@ class HdStreamService:
                     max_size=max(self._max_message_bytes, 4096),
                     open_timeout=3,
                     close_timeout=1,
+                    proxy=None,
                 ) as upstream:
                     await upstream.send(MSE_REQUEST)
-                    await self._forward(upstream, socket)
+                    await self._forward_until_browser_closes(upstream, socket)
             except HdClientDisconnected:
                 return
             except Exception:

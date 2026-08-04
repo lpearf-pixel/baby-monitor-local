@@ -496,11 +496,25 @@ git add README.md docs/runbooks/ALPHA_QUICKSTART.md .github/workflows/ci.yml
 git commit -m "docs: add clear zoom acceptance gate"
 ```
 
-- [x] **Step 5: Publish without rewriting history**
+- [x] **Step 5: Close review-discovered lifecycle gaps**
+
+Add RED tests for a silent upstream plus browser disconnect, stale playback and
+SourceBuffer callbacks after a new generation, active-session append failures,
+bounded queued fragments, MediaSource/SourceBuffer error events, and BFCache
+restore. Race upstream forwarding against downstream disconnect, disable system
+proxy discovery for the fixed loopback WebSocket, bind browser callbacks to
+their generation/resource, cap the append queue at 16 MiB, and keep the last
+working layer visible until MJPEG loads. Launch Uvicorn with
+`--no-proxy-headers` so origin validation sees the immediate transport peer.
+BFCache suspension records resume intent only for a healthy, unblocked HD
+session; failures still require an explicit 1x reset, and pending continuations
+cannot start a connection before `pageshow`.
+
+- [ ] **Step 6: Publish without rewriting history**
 
 Verify PR #4 is still Draft and its remote head is the expected ancestor. Push only by fast-forward, keep the PR Draft, wait for GitHub Actions, and do not ask the i9 to update until CI succeeds.
 
-- [ ] **Step 6: Run the i9 real-device gate**
+- [ ] **Step 7: Run the i9 real-device gate**
 
 After CI success, update and reinstall on the i9, then verify native detail at 2x/3x, one-to-two-second normal delay, one HD socket across 2x/3x, MJPEG release in steady HD, MSE release in steady 1x, no H.264 FFmpeg encode, continuous visible video during repeated switching/fullscreen/drag, fallback after an interrupted HD socket, loopback-only go2rtc listeners, and `PTZ_DISABLED`.
 

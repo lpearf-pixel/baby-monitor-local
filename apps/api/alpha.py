@@ -72,6 +72,14 @@ class StarletteHdSocket:
             return message["bytes"]
         raise HdClientDisconnected
 
+    async def wait_for_disconnect(self) -> None:
+        try:
+            await self.receive()
+        except HdClientDisconnected:
+            raise
+        await self.close(code=1008)
+        raise HdClientDisconnected
+
     async def send_text(self, value: str) -> None:
         try:
             await self._socket.send_text(value)
