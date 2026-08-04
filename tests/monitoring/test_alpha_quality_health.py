@@ -142,6 +142,7 @@ def test_source_health_returns_only_derived_media_fields() -> None:
     assert result.protocol == "cs2+udp"
     assert result.bytes_received == 50000
     assert result.source_dimensions == (1280, 720)
+    assert result.source_codec == "H265"
     assert result.live_dimensions is None
     assert "xiaomi://" not in repr(result)
 
@@ -172,7 +173,34 @@ def test_health_accepts_real_hd_media() -> None:
     assert result.protocol == "cs2+udp"
     assert result.bytes_received == 50000
     assert result.source_dimensions == (1280, 720)
+    assert result.source_codec == "H265"
     assert result.live_dimensions == (1280, 720)
+
+
+def test_source_health_normalizes_h264_without_copying_media_text() -> None:
+    opener = working_opener(live_jpeg=jpeg(1280, 720))
+    source_url = "http://127.0.0.1:1984/api/streams?src=source&video"
+    opener.responses[source_url] = [
+        json.dumps(
+            {
+                "producers": [
+                    {
+                        "protocol": "cs2+udp",
+                        "medias": ["video, recvonly, H264, private-marker"],
+                        "bytes_recv": 50000,
+                        "url": "xiaomi://must-not-leak",
+                    }
+                ],
+                "consumers": [],
+            }
+        ).encode("utf-8")
+    ]
+
+    result = check_source_health("http://127.0.0.1:1984", opener=opener)
+
+    assert result.source_codec == "H264"
+    assert "private-marker" not in repr(result)
+    assert "xiaomi://" not in repr(result)
 
 
 def test_health_reconnects_when_first_mjpeg_consumer_gets_eof() -> None:

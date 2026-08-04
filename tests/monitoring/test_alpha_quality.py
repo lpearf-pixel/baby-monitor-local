@@ -8,6 +8,7 @@ import pytest
 import yaml
 
 from packages.monitoring.alpha_quality import (
+    COMPAT_HD,
     LIVE_HD,
     QualityConfigError,
     apply_hd,
@@ -38,6 +39,7 @@ def test_upgrade_to_hd_preserves_unknown_xiaomi_parameters() -> None:
     assert "channel=1" in source
     assert "vendor_hint=keep" in source
     assert upgraded["streams"]["live"] == LIVE_HD
+    assert upgraded["streams"]["source_compat"] == COMPAT_HD
     assert upgraded["xiaomi"] == original["xiaomi"]
 
 
@@ -68,6 +70,7 @@ def test_upgrade_is_idempotent() -> None:
 
     assert twice == once
     assert twice["streams"]["source"].count("subtype=hd") == 1
+    assert twice["streams"]["source_compat"] == COMPAT_HD
 
 
 def test_inspect_quality_returns_only_derived_values() -> None:
@@ -85,10 +88,29 @@ def test_inspect_quality_returns_only_derived_values() -> None:
     assert info.source_quality == "hd"
     assert info.transport == "auto"
     assert (info.live_width, info.live_height, info.live_fps) == (1280, 720, 10)
+    assert info.compat_profile == "videotoolbox-1440p-6M"
     rendered = repr(info)
     assert "xiaomi://" not in rendered
     assert "192.0.2.10" not in rendered
     assert "V1:" not in rendered
+
+
+def test_upgrade_replaces_obsolete_compat_profile_without_touching_unknown_keys() -> None:
+    original = {
+        "streams": {
+            "source": "xiaomi://123:cn@192.0.2.10?did=456&vendor_hint=keep",
+            "live": "old",
+            "source_compat": "ffmpeg:source#video=h264",
+            "recording": "keep",
+        }
+    }
+
+    upgraded = upgrade_to_hd(original)
+
+    assert upgraded["streams"]["source_compat"] == COMPAT_HD
+    assert upgraded["streams"]["recording"] == "keep"
+    assert "vendor_hint=keep" in upgraded["streams"]["source"]
+    assert original["streams"]["source_compat"] == "ffmpeg:source#video=h264"
 
 
 def test_upgrade_rejects_missing_source() -> None:
@@ -111,6 +133,8 @@ def test_source_subtype_candidate_preserves_unknown_parameters_and_input() -> No
     assert "subtype=3" in updated["streams"]["source"]
     assert "transport=" not in updated["streams"]["source"]
     assert "vendor_hint=keep" in updated["streams"]["source"]
+    assert updated["streams"]["live"] == LIVE_HD
+    assert updated["streams"]["source_compat"] == COMPAT_HD
     assert "subtype=hd" in original["streams"]["source"]
 
 

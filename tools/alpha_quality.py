@@ -133,6 +133,7 @@ def _run(args: argparse.Namespace) -> int:
         print(f"live_width={info.live_width}")
         print(f"live_height={info.live_height}")
         print(f"live_fps={info.live_fps}")
+        print(f"compat_profile={info.compat_profile}")
         return 0
 
     if args.command == "rollback":
@@ -144,6 +145,7 @@ def _run(args: argparse.Namespace) -> int:
         result = check_hd_health(args.base_url, args.dashboard_url)
         print(f"result={result.code}")
         print(f"protocol={result.protocol or 'unavailable'}")
+        print(f"source_codec={result.source_codec or 'unavailable'}")
         print(f"bytes_received={result.bytes_received}")
         print(f"source_dimensions={_dimensions(result.source_dimensions)}")
         print(f"live_dimensions={_dimensions(result.live_dimensions)}")

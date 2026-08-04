@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import json
 import os
+import re
 import stat
 from copy import deepcopy
 from dataclasses import dataclass
@@ -15,6 +16,10 @@ from urllib.request import urlopen
 import yaml
 
 LIVE_HD = "ffmpeg:source#video=mjpeg#width=1280#height=720#raw=-r 10"
+COMPAT_HD = (
+    "ffmpeg:source#video=h264#hardware=videotoolbox"
+    "#width=2560#height=1440#bitrate=6M"
+)
 
 
 class QualityConfigError(ValueError):
@@ -28,12 +33,14 @@ class QualityInfo:
     live_width: int
     live_height: int
     live_fps: int
+    compat_profile: str
 
 
 @dataclass(frozen=True)
 class HealthResult:
     code: str
     protocol: str = ""
+    source_codec: str = ""
     bytes_received: int = 0
     source_dimensions: tuple[int, int] | None = None
     live_dimensions: tuple[int, int] | None = None
@@ -65,6 +72,7 @@ def upgrade_to_hd(config: dict[str, Any]) -> dict[str, Any]:
         (parsed.scheme, parsed.netloc, parsed.path, urlencode(query), parsed.fragment)
     )
     streams["live"] = LIVE_HD
+    streams["source_compat"] = COMPAT_HD
     return result
 
 
@@ -88,6 +96,8 @@ def with_source_subtype(config: dict[str, Any], subtype: int) -> dict[str, Any]:
     streams["source"] = urlunsplit(
         (parsed.scheme, parsed.netloc, parsed.path, urlencode(query), parsed.fragment)
     )
+    streams["live"] = LIVE_HD
+    streams["source_compat"] = COMPAT_HD
     return result
 
 
@@ -105,6 +115,11 @@ def inspect_quality(config: dict[str, Any]) -> QualityInfo:
         live_width=1280 if "#width=1280" in live else 0,
         live_height=720 if "#height=720" in live else 0,
         live_fps=10 if "#raw=-r 10" in live else 0,
+        compat_profile=(
+            "videotoolbox-1440p-6M"
+            if streams.get("source_compat") == COMPAT_HD
+            else "missing"
+        ),
     )
 
 
@@ -266,6 +281,7 @@ def _health(
     code: str,
     *,
     protocol: str = "",
+    source_codec: str = "",
     bytes_received: int = 0,
     source_dimensions: tuple[int, int] | None = None,
     live_dimensions: tuple[int, int] | None = None,
@@ -273,6 +289,7 @@ def _health(
     return HealthResult(
         code=code,
         protocol=protocol,
+        source_codec=source_codec,
         bytes_received=bytes_received,
         source_dimensions=source_dimensions,
         live_dimensions=live_dimensions,
@@ -341,6 +358,20 @@ def check_source_health(
             protocol=protocol,
             bytes_received=bytes_received,
         )
+    source_codec = ""
+    for media in medias:
+        if "video" not in media.lower():
+            continue
+        match = re.search(r"(?<![A-Z0-9])(H264|H265)(?![A-Z0-9])", media.upper())
+        if match:
+            source_codec = match.group(1)
+            break
+    if not source_codec:
+        return _health(
+            "SOURCE_CODEC_UNSUPPORTED",
+            protocol=protocol,
+            bytes_received=bytes_received,
+        )
 
     try:
         source_jpeg = _read_bytes(
@@ -353,6 +384,7 @@ def check_source_health(
         return _health(
             "SOURCE_OFFLINE",
             protocol=protocol,
+            source_codec=source_codec,
             bytes_received=bytes_received,
         )
 
@@ -364,6 +396,7 @@ def check_source_health(
     return _health(
         "PASS",
         protocol=protocol,
+        source_codec=source_codec,
         bytes_received=bytes_received,
         source_dimensions=source_dimensions,
     )
@@ -383,6 +416,7 @@ def check_hd_health(
         return source_result
 
     protocol = source_result.protocol
+    source_codec = source_result.source_codec
     bytes_received = source_result.bytes_received
     source_dimensions = source_result.source_dimensions
 
@@ -396,6 +430,7 @@ def check_hd_health(
         return _health(
             "LIVE_EMPTY_FRAME",
             protocol=protocol,
+            source_codec=source_codec,
             bytes_received=bytes_received,
             source_dimensions=source_dimensions,
         )
@@ -403,6 +438,7 @@ def check_hd_health(
         return _health(
             "LIVE_EMPTY_FRAME",
             protocol=protocol,
+            source_codec=source_codec,
             bytes_received=bytes_received,
             source_dimensions=source_dimensions,
         )
@@ -412,6 +448,7 @@ def check_hd_health(
         return _health(
             "LIVE_EMPTY_FRAME",
             protocol=protocol,
+            source_codec=source_codec,
             bytes_received=bytes_received,
             source_dimensions=source_dimensions,
         )
@@ -419,6 +456,7 @@ def check_hd_health(
         return _health(
             "LIVE_WRONG_DIMENSIONS",
             protocol=protocol,
+            source_codec=source_codec,
             bytes_received=bytes_received,
             source_dimensions=source_dimensions,
             live_dimensions=live_dimensions,
@@ -434,6 +472,7 @@ def check_hd_health(
         return _health(
             "LIVE_MJPEG_EMPTY",
             protocol=protocol,
+            source_codec=source_codec,
             bytes_received=bytes_received,
             source_dimensions=source_dimensions,
             live_dimensions=live_dimensions,
@@ -445,6 +484,7 @@ def check_hd_health(
         return _health(
             "DASHBOARD_OFFLINE",
             protocol=protocol,
+            source_codec=source_codec,
             bytes_received=bytes_received,
             source_dimensions=source_dimensions,
             live_dimensions=live_dimensions,
@@ -453,6 +493,7 @@ def check_hd_health(
         return _health(
             "DASHBOARD_OFFLINE",
             protocol=protocol,
+            source_codec=source_codec,
             bytes_received=bytes_received,
             source_dimensions=source_dimensions,
             live_dimensions=live_dimensions,
@@ -461,6 +502,7 @@ def check_hd_health(
     return _health(
         "PASS",
         protocol=protocol,
+        source_codec=source_codec,
         bytes_received=bytes_received,
         source_dimensions=source_dimensions,
         live_dimensions=live_dimensions,
