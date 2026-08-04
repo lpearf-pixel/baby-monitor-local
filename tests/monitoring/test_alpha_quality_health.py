@@ -4,7 +4,11 @@ import json
 from dataclasses import dataclass
 from typing import Any
 
-from packages.monitoring.alpha_quality import check_hd_health, jpeg_dimensions
+from packages.monitoring.alpha_quality import (
+    check_hd_health,
+    check_source_health,
+    jpeg_dimensions,
+)
 
 
 def jpeg(width: int, height: int) -> bytes:
@@ -124,6 +128,22 @@ def test_health_activates_source_before_inspecting_producer() -> None:
         "http://127.0.0.1:1984/api/streams",
         "http://127.0.0.1:1984/api/streams?src=source&video",
     ]
+
+
+def test_source_health_returns_only_derived_media_fields() -> None:
+    opener = working_opener(live_jpeg=jpeg(1280, 720))
+
+    result = check_source_health(
+        "http://127.0.0.1:1984",
+        opener=opener,
+    )
+
+    assert result.code == "PASS"
+    assert result.protocol == "cs2+udp"
+    assert result.bytes_received == 50000
+    assert result.source_dimensions == (1280, 720)
+    assert result.live_dimensions is None
+    assert "xiaomi://" not in repr(result)
 
 
 def test_health_rejects_wrong_live_dimensions() -> None:
