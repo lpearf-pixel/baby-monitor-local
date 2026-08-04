@@ -17,6 +17,14 @@ set -a
 source "$ENV_FILE"
 set +a
 
+BABY_MONITOR_BIND_HOST="${BABY_MONITOR_BIND_HOST:-0.0.0.0}"
+BABY_MONITOR_PORT="${BABY_MONITOR_PORT:-8080}"
+
+if [[ ! "$BABY_MONITOR_PORT" =~ ^[0-9]+$ ]] || (( BABY_MONITOR_PORT < 1 || BABY_MONITOR_PORT > 65535 )); then
+  echo "BABY_MONITOR_PORT must be an integer between 1 and 65535." >&2
+  exit 1
+fi
+
 start_if_stopped() {
   local pidfile="$1"
   shift
@@ -30,6 +38,14 @@ start_if_stopped() {
   fi
   "$@" &
   echo $! >"$pidfile"
+}
+
+find_lan_ipv4() {
+  local interface
+  interface="$(route -n get default 2>/dev/null | awk '/interface:/{print $2; exit}')"
+  if [[ -n "$interface" ]]; then
+    ipconfig getifaddr "$interface" 2>/dev/null || true
+  fi
 }
 
 start_if_stopped "$GO2RTC_PID" \
@@ -50,29 +66,54 @@ fi
 
 start_if_stopped "$API_PID" \
   nohup "$ROOT/.venv-alpha/bin/uvicorn" apps.api.main:app \
-  --app-dir "$ROOT" --host 127.0.0.1 --port 8080 \
+  --app-dir "$ROOT" --host "${BABY_MONITOR_BIND_HOST}" --port "${BABY_MONITOR_PORT}" \
   >"$ROOT/runtime/logs/api.log" 2>&1
 
 for _ in {1..30}; do
-  if curl -fsS http://127.0.0.1:8080/healthz >/dev/null 2>&1; then
+  if curl -fsS "http://127.0.0.1:${BABY_MONITOR_PORT}/healthz" >/dev/null 2>&1; then
     break
   fi
   sleep 1
 done
 
-if ! curl -fsS http://127.0.0.1:8080/healthz >/dev/null 2>&1; then
+if ! curl -fsS "http://127.0.0.1:${BABY_MONITOR_PORT}/healthz" >/dev/null 2>&1; then
   echo "Dashboard did not become ready. Check runtime/logs/api.log" >&2
   exit 1
 fi
 
+LAN_IP="$(find_lan_ipv4)"
+
 cat <<EOF
 Baby Monitor Local Alpha is running.
 
-Dashboard: http://127.0.0.1:8080
-Xiaomi setup: http://127.0.0.1:1984
+Local Dashboard: http://127.0.0.1:${BABY_MONITOR_PORT}
+EOF
 
-For private remote access after installing Tailscale on the Mac and both Android phones:
-  tailscale serve --bg 8080
+if [[ -n "$LAN_IP" ]]; then
+  cat <<EOF
+LAN Dashboard: http://${LAN_IP}:${BABY_MONITOR_PORT}
+
+From the M2 Mac, open the LAN Dashboard URL directly.
+For Xiaomi setup from the M2 Mac, keep go2rtc private and create an SSH tunnel:
+  ssh -L 1984:127.0.0.1:1984 <i9-user>@${LAN_IP}
+Then open http://127.0.0.1:1984 on the M2 Mac.
+EOF
+else
+  cat <<EOF
+LAN Dashboard: unable to detect automatically. Run on the i9 Mac:
+  ipconfig getifaddr en0
+  ipconfig getifaddr en1
+Then open http://<detected-ip>:${BABY_MONITOR_PORT} from the M2 Mac.
+EOF
+fi
+
+cat <<EOF
+
+Xiaomi setup remains private on the i9 Mac: http://127.0.0.1:1984
+
+Future private external access with Tailscale:
+  tailscale serve --bg http://127.0.0.1:${BABY_MONITOR_PORT}
+  tailscale serve status
 
 Never use tailscale funnel and never add router port forwarding.
 EOF
