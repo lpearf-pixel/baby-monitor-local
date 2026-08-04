@@ -8,8 +8,9 @@
 
 - 256GB microSD 全天循环录像；
 - 密码保护的 1× 1280×720、10 FPS MJPEG 网页预览和当前截图；
-- 2×/3× 按需透传已验证的 2560×1440 H.264 原生源，浏览器使用 MSE
-  硬件解码，不增加 1440p FFmpeg 编码；
+- 2×/3× 优先透传已验证的 2560×1440 H.265 原码，浏览器以 `native`
+  MSE 硬件解码；不兼容时才按需使用 `source_compat` 与 VideoToolbox 转为
+  2560×1440 H.264，最后一个 `compat` 消费者离开后停止编码；
 - 网页查看器支持全屏、1×/2×/3× 清晰变焦和鼠标/单指拖动；
 - M2 Mac 通过局域网访问 i9 Dashboard；
 - M2 通过 SSH 隧道访问仅限本机的 go2rtc 配置页；
@@ -44,16 +45,18 @@ make alpha-update
 make alpha-quality-hd
 make alpha-quality-info
 make alpha-source-check
+make alpha-go2rtc-info
 make alpha-subtype-probe
 make alpha-subtype-apply
 ```
 
-包含清晰变焦代码的更新需要安装新增的 WebSocket 客户端依赖，然后重启：
+包含混合高清代码的更新需要安装 WebSocket 依赖与带 `hvc1/udp4` 补丁的固定
+go2rtc 构建，再事务式加入 `source_compat`：
 
 ```bash
 make alpha-update
 make alpha-install
-make alpha-restart
+make alpha-quality-hd
 ```
 
 恢复升级前配置：
@@ -66,7 +69,7 @@ make alpha-quality-rollback
 
 `make alpha-subtype-probe` 会安全探测 MJSXJ17CM 的 `0–5` 画质编号并比较源尺寸；完成、失败或中断后都恢复原配置，不会自动采用推荐值。
 
-Intel i9 实机探测已确认 `subtype=3` 通过 `cs2+udp` 提供 `2560×1440`
+Intel i9 实机探测已确认 `subtype=3` 通过 `cs2+udp` 提供 `2560×1440 H.265`
 原生源。`make alpha-subtype-apply` 会事务式应用该编号，并验证原生源至少
 达到 `1920×1080`、实时流为 `1280×720`、连续 MJPEG 与 Dashboard 都正常；
 任一门禁失败都会自动恢复旧配置。成功后仍可用
@@ -112,11 +115,14 @@ Intel i9 实机探测已确认 `subtype=3` 通过 `cs2+udp` 提供 `2560×1440`
 ## 当前视频边界
 
 Dashboard 的 1× 保留 1280×720、10 FPS MJPEG；切换到 2×/3× 时，才通过
-一次性票据和同源 WebSocket 中继连接 go2rtc 的 `source`，把已验证的
-2560×1440 H.264 原流交给浏览器 MSE 硬件解码。正常启动和切换允许约 1–2 秒
-延迟，不进行 1440p FFmpeg 重编码，也不会把 go2rtc 端口开放到局域网。
+绑定 profile 的一次性票据和同源 WebSocket 中继。浏览器支持 HEVC MSE 时请求
+`native`，直接消费 `source` 的 2560×1440 H.265；否则请求固定的 `compat`，
+由 go2rtc 的 `source_compat` 按需启动 VideoToolbox 1440p H.264 编码。多端共享
+一个 compat producer，最后一个消费者离开后自动停止；go2rtc 端口仍不开放到
+局域网。
 
-目标层首帧可用前，当前画面一直保留；HD 失败会继续使用 MJPEG，不显示黑屏。
+目标层首帧可用前，当前画面一直保留；native 失败最多自动转入一次 compat，
+最终失败继续使用 MJPEG，不显示黑屏。
 稳定 1× 只有 MJPEG 消费者，稳定 2×/3× 只有 MSE 消费者，2× 与 3× 之间复用
 同一连接。拖动只改变浏览器显示，不会改变摄像头朝向。全屏可通过按钮或双击
 当前画面进入，按 `Esc` 退出后自动恢复 1× 居中并安全释放 HD 连接。

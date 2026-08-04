@@ -69,8 +69,10 @@ make alpha-restart
 3. 切换到 `codex/basic-usable-alpha`；
 4. 使用 fast-forward 更新。
 
-`make alpha-install` 会复用现有 `.venv-alpha` 和本机运行配置，只安装/更新仓库
-声明的 Python 依赖；清晰变焦新增的异步 WebSocket 客户端也由该命令安装。
+`make alpha-install` 会复用现有 `.venv-alpha` 和本机运行配置，安装/更新仓库
+声明的 Python 依赖，并从固定 commit 构建带 `udp4` 与 `hvc1` 两个审计补丁的
+Intel macOS go2rtc。首次构建会安装或检查 Go，耗时可能比普通 Python 更新长；
+现有 Xiaomi URI 和 `runtime/alpha.env` 不会被覆盖。
 
 因此不要再单独修改脚本可执行位。
 
@@ -85,6 +87,7 @@ make alpha-status
 make alpha-logs
 make alpha-quality-info
 make alpha-source-check
+make alpha-go2rtc-info
 make alpha-subtype-probe
 make alpha-subtype-apply
 ```
@@ -171,6 +174,7 @@ webrtc:
 streams:
   source: "本机生成的 Xiaomi 敏感地址，subtype=hd，传输自动协商"
   live: ffmpeg:source#video=mjpeg#width=1280#height=720#raw=-r 10
+  source_compat: ffmpeg:source#video=h264#hardware=videotoolbox#width=2560#height=1440#bitrate=6M
 ```
 
 不要将 go2rtc 端口改成 `0.0.0.0`，也不要把完整 `xiaomi://` 地址贴到聊天、Issue 或公开仓库。
@@ -182,6 +186,7 @@ streams:
 ```bash
 cd ~/dev/baby-monitor-local
 make alpha-update
+make alpha-install
 make alpha-quality-hd
 ```
 
@@ -191,8 +196,10 @@ make alpha-quality-hd
 2. 把 `source` 的画质设置为 `subtype=hd`；
 3. 删除错误遗留的 `transport=tcp`，恢复 `transport=auto`；
 4. 将 `live` 设置为 1280×720、10 FPS MJPEG；
-5. 重启服务；
-6. 检查真实生产者协议、媒体轨道、接收字节、JPEG、MJPEG 和 Dashboard。
+5. 加入固定的 `source_compat` VideoToolbox 1440p H.264 配置；该流只在 compat
+   消费者存在时运行，不随服务永久启动；
+6. 重启服务；
+7. 检查真实生产者协议、媒体轨道、接收字节、JPEG、MJPEG 和 Dashboard。
 
 查看不含账号和设备信息的配置摘要：
 
@@ -208,6 +215,7 @@ transport=auto
 live_width=1280
 live_height=720
 live_fps=10
+compat_profile=videotoolbox-1440p-6M
 ```
 
 单独重跑健康检查：
@@ -221,6 +229,7 @@ make alpha-source-check
 ```text
 result=PASS
 protocol=cs2+udp
+source_codec=H265
 bytes_received=<大于0>
 source_dimensions=<摄像头实际尺寸>
 live_dimensions=1280x720
@@ -314,10 +323,12 @@ tailscale funnel 8080
 
 ## 11. 视频和功能边界
 
-1× 模式继续使用 1280×720、10 FPS MJPEG；2×/3× 会按需申请一次性票据，
-通过 Dashboard 的同源 WebSocket 中继连接仅限本机的 go2rtc，并把
-2560×1440 H.264 原流交给浏览器 MSE 解码。正常切换允许约 1–2 秒延迟，
-不会启动 1440p FFmpeg 编码，也不会把 go2rtc 暴露到局域网。
+1× 模式继续使用 1280×720、10 FPS MJPEG；2×/3× 会按需申请绑定 profile 的
+一次性票据，通过 Dashboard 的同源 WebSocket 中继连接仅限本机的 go2rtc。
+浏览器支持 HEVC MSE 时请求 `native`，直接解码 2560×1440 H.265 原码；不支持
+或首帧前失败时，最多自动切换一次 `compat`，由固定 `source_compat` 启动
+VideoToolbox 1440p H.264 硬编码。多个 compat 客户端共享一个 producer，最后
+一个消费者离开后停止，且不允许软件编码回退。go2rtc 仍不暴露到局域网。
 本阶段只启用视频 MSE，不包含 WebRTC/MSE 自动协商、实时音频或双向语音。
 
 全天录像仍由摄像头内的 256GB microSD 负责，写满后覆盖最早内容。
@@ -334,8 +345,9 @@ tailscale funnel 8080
 使用查看器顶部的 `1×`、`2×`、`3×` 切换画面；进入 2×/3× 后状态依次为
 `HD_LOADING`、`HD_ACTIVE`。放大后可拖动画面。点击“全屏”或双击当前
 MJPEG/HD 画面进入全屏，按 `Esc` 退出并恢复 1× 居中。目标画面首帧成功前
-旧画面不会消失；`HD_FALLBACK`、`HD_UNSUPPORTED` 或 `HD_BUSY` 均保留可用
-MJPEG，浏览器不会在后台无限重试。
+旧画面不会消失；`HD_CODEC_UNSUPPORTED`、`HD_TRANSCODE_UNAVAILABLE`、
+`HD_UPSTREAM_FAILED`、`HD_TIMEOUT`、`HD_UNSUPPORTED` 或 `HD_BUSY` 均保留
+可用 MJPEG，浏览器不会在后台无限重试。
 
 ### 清晰变焦实机验收
 
@@ -350,14 +362,16 @@ MJPEG，浏览器不会在后台无限重试。
 4. 关闭一次 HD WebSocket 或让浏览器拒绝 MSE 后，页面显示稳定回退码并保留
    MJPEG；重新尝试必须先选 1×，再选 2×/3×。
 5. go2rtc 的 `1984/8554/8555` 仍只监听 `127.0.0.1`；稳定 1× 没有 MSE
-   消费者，稳定 2×/3× 已释放 `/live.mjpeg`，且没有 H.264 FFmpeg 编码器。
+   消费者。native 模式没有 HD 编码器；compat 模式恰有一个共享的
+   `h264_videotoolbox` 编码器，最后一个 compat 页面回到 1× 后停止。
 6. 方向键仍显示 `PTZ_DISABLED`，不会向摄像头发送电机指令。
 
 只在 i9 本机或 SSH 隧道后的 go2rtc 页面观察消费者，不要粘贴原始
 `/api/streams` 输出；该输出可能包含 Xiaomi URI。检查 FFmpeg 数量时也不要
 粘贴完整进程参数，只记录数量和是否存在视频编码。
 
-以下命令只打印 `source/live` 的生产者、消费者数量和 MJPEG FFmpeg 数量，
+以下命令只打印 `source/live/source_compat` 的生产者、消费者数量和 FFmpeg
+编码器数量，
 不会打印流 URL、设备字段或进程命令行。分别在稳定 1×、稳定 2×、稳定 3×
 执行并记录数字：
 
@@ -366,19 +380,44 @@ curl -fsS http://127.0.0.1:1984/api/streams | \
   ./.venv-alpha/bin/python -c '
 import json, sys
 streams = json.load(sys.stdin)
-for name in ("source", "live"):
+for name in ("source", "live", "source_compat"):
     stream = streams.get(name, {}) if isinstance(streams, dict) else {}
     print("{}_producer_count={}".format(name, len(stream.get("producers", []))))
     print("{}_consumer_count={}".format(name, len(stream.get("consumers", []))))
 '
-printf 'mjpeg_ffmpeg_process_count='
-{ pgrep -f '[f]fmpeg.*(mjpeg|1280)' || true; } | wc -l | tr -d ' '
+printf 'compat_encoder_count='
+{ pgrep -f '[f]fmpeg.*h264_videotoolbox' || true; } | wc -l | tr -d ' '
 printf '\n'
 ```
 
-稳定 2× 与 3× 的数量必须相同；稳定高清下 `live_consumer_count=0` 且
-`mjpeg_ffmpeg_process_count=0`。若本机同时运行其他 FFmpeg 任务，只判断上述
-MJPEG 特征计数，不要停止无关进程。
+稳定 2× 与 3× 的数量必须相同。native 时 `compat_encoder_count=0`；compat
+时 `compat_encoder_count=1`，同 profile 的多个页面仍为 1；最后一个 compat
+页面回到 1× 后必须恢复为 0。若本机同时运行其他 FFmpeg 任务，只判断上述
+VideoToolbox 特征计数，不要停止无关进程。
+
+先确认补丁构建与源流，再记录浏览器结果：
+
+```bash
+make alpha-go2rtc-info
+make alpha-source-check
+```
+
+每个浏览器在页面显示 `HD_ACTIVE` 后，从状态元素的非敏感 profile 标记记录
+`active_profile=native` 或 `active_profile=compat`。把三端结果汇总为：
+
+```text
+m2_chrome_active_profile=native/compat/FAIL
+m2_safari_active_profile=native/compat/FAIL
+android_chrome_active_profile=native/compat/FAIL
+native_detail_2x_3x=PASS/FAIL
+handoff_seconds=实际秒数
+no_black_frame=PASS/FAIL
+zoom_2_to_3_reuse=PASS/FAIL
+fallback_mjpeg=PASS/FAIL
+compat_encoder_count=实际数量
+compat_encoder_stops=PASS/FAIL
+ptz_status=PTZ_DISABLED
+```
 
 方向键代表物理摄像头点按步进，但当前真实 MJSXJ17CM 控制适配器仍默认
 禁用。点击时预期显示 `PTZ_DISABLED`，且不会向设备发送未经验证的电机
