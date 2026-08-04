@@ -39,6 +39,7 @@ class FakeElement extends FakeEventTarget {
   constructor({playReject = false, playResults = []} = {}) {
     super();
     this.attributes = new Map();
+    this.dataset = {};
     this.src = '';
     this.textContent = '';
     this.currentTime = 0;
@@ -275,6 +276,44 @@ async function flushPromises() {
 }
 
 
+function requestProfile(request) {
+  return JSON.parse(request.options.body).profile;
+}
+
+
+function supportsHybrid(mime) {
+  return mime.includes('hvc1.') || mime.includes('avc1.');
+}
+
+
+async function beginNative(fixture) {
+  const player = createHdPlayer(fixture.environment);
+  player.selectZoom(2);
+  await flushPromises();
+  assert.equal(requestProfile(fixture.requests[0]), 'native');
+  const socket = fixture.sockets[0];
+  socket.open();
+  return {player, socket};
+}
+
+
+function sendDescription(socket, mime) {
+  socket.message(JSON.stringify({type: 'mse', value: mime}));
+}
+
+
+async function activateCompatAttempt(fixture, socketIndex = 1) {
+  const socket = fixture.sockets[socketIndex];
+  socket.open();
+  sendDescription(socket, 'video/mp4; codecs="avc1.640033"');
+  fixture.mediaSources[socketIndex].open();
+  socket.message(new Uint8Array([4, 5, 6]).buffer);
+  fixture.video.dispatch('playing');
+  await flushPromises();
+  return socket;
+}
+
+
 function deferred() {
   let resolve;
   let reject;
@@ -299,7 +338,7 @@ test('1x creates no HD ticket or WebSocket', async () => {
 });
 
 
-test('2x requests one ticket and sends it as the first WebSocket message', async () => {
+test('browser without HEVC requests one compat ticket and sends it first', async () => {
   const fixture = playerFixture();
   const player = createHdPlayer(fixture.environment);
 
@@ -308,7 +347,11 @@ test('2x requests one ticket and sends it as the first WebSocket message', async
 
   assert.deepEqual(fixture.requests, [{
     url: '/api/hd-session',
-    options: {method: 'POST'},
+    options: {
+      method: 'POST',
+      headers: {'Content-Type': 'application/json'},
+      body: '{"profile":"compat"}',
+    },
   }]);
   assert.equal(fixture.sockets.length, 1);
   assert.equal(fixture.sockets[0].url, 'ws://monitor.test:8080/live-hd.ws');
@@ -318,6 +361,134 @@ test('2x requests one ticket and sends it as the first WebSocket message', async
   fixture.sockets[0].open();
   assert.deepEqual(fixture.sockets[0].sent, ['opaque-ticket']);
   assert.equal(fixture.statusElement.textContent, 'HD_LOADING');
+});
+
+
+test('HEVC-capable browser requests native and activates hvc1', async () => {
+  const fixture = playerFixture({mediaTypeSupported: () => true});
+  const player = createHdPlayer(fixture.environment);
+
+  player.selectZoom(2);
+  await flushPromises();
+
+  assert.equal(requestProfile(fixture.requests[0]), 'native');
+  const socket = fixture.sockets[0];
+  socket.open();
+  socket.message(JSON.stringify({
+    type: 'mse',
+    value: 'video/mp4; codecs="hvc1.1.6.L153.B0"',
+  }));
+  fixture.mediaSources[0].open();
+  socket.message(new Uint8Array([0, 1, 2]).buffer);
+  fixture.video.dispatch('playing');
+
+  assert.equal(fixture.statusElement.textContent, 'HD_ACTIVE');
+  assert.equal(fixture.statusElement.dataset.profile, 'native');
+});
+
+
+test('native description rejection closes native before one compat attempt', async () => {
+  const fixture = playerFixture({mediaTypeSupported: supportsHybrid});
+  const {socket: nativeSocket} = await beginNative(fixture);
+
+  sendDescription(nativeSocket, 'video/mp4; codecs="avc1.640033"');
+  await flushPromises();
+
+  assert.deepEqual(fixture.requests.map(requestProfile), ['native', 'compat']);
+  assert.equal(fixture.sockets.length, 2);
+  assert.equal(nativeSocket.closeCalls, 1);
+  assert.deepEqual(fixture.revokedUrls, ['blob:hd-player-1']);
+  assert.equal(fixture.image.src, '/live.mjpeg');
+  assert.equal(fixture.image.getAttribute('aria-hidden'), 'false');
+  assert.equal(fixture.video.getAttribute('aria-hidden'), 'true');
+
+  await activateCompatAttempt(fixture);
+
+  assert.equal(fixture.statusElement.textContent, 'HD_ACTIVE');
+  assert.equal(fixture.statusElement.dataset.profile, 'compat');
+  assert.equal(fixture.sockets.length, 2);
+});
+
+
+test('native append failure transitions once to compat before activation', async () => {
+  const fixture = playerFixture({mediaTypeSupported: supportsHybrid});
+  const {socket} = await beginNative(fixture);
+  sendDescription(socket, 'video/mp4; codecs="hvc1.1.6.L153.B0"');
+  fixture.mediaSources[0].open();
+  fixture.mediaSources[0].sourceBuffers[0].throwOnAppend = true;
+
+  socket.message(new Uint8Array([1]).buffer);
+  await flushPromises();
+
+  assert.deepEqual(fixture.requests.map(requestProfile), ['native', 'compat']);
+  assert.equal(fixture.sockets.length, 2);
+  assert.equal(socket.closeCalls, 1);
+  assert.equal(fixture.image.getAttribute('aria-hidden'), 'false');
+});
+
+
+test('native autoplay rejection transitions once to compat', async () => {
+  const fixture = playerFixture({
+    mediaTypeSupported: supportsHybrid,
+    playResults: [
+      Promise.reject(new Error('private native decoder detail')),
+      Promise.resolve(),
+    ],
+  });
+  const {socket} = await beginNative(fixture);
+  sendDescription(socket, 'video/mp4; codecs="hvc1.1.6.L153.B0"');
+  fixture.mediaSources[0].open();
+
+  socket.message(new Uint8Array([1]).buffer);
+  await flushPromises();
+
+  assert.deepEqual(fixture.requests.map(requestProfile), ['native', 'compat']);
+  assert.equal(fixture.sockets.length, 2);
+  assert.equal(socket.closeCalls, 1);
+  assert.equal(fixture.statusElement.textContent.includes('private'), false);
+});
+
+
+test('native socket error transitions once to compat', async () => {
+  const fixture = playerFixture({mediaTypeSupported: supportsHybrid});
+  const {socket} = await beginNative(fixture);
+
+  socket.fail();
+  await flushPromises();
+
+  assert.deepEqual(fixture.requests.map(requestProfile), ['native', 'compat']);
+  assert.equal(fixture.sockets.length, 2);
+  assert.equal(socket.closeCalls, 1);
+});
+
+
+test('native startup timeout transitions once to compat', async () => {
+  const fixture = playerFixture({mediaTypeSupported: supportsHybrid});
+  const {socket} = await beginNative(fixture);
+  const timeout = fixture.timerCalls.find((call) => call.milliseconds === 8000);
+
+  timeout.callback();
+  await flushPromises();
+
+  assert.deepEqual(fixture.requests.map(requestProfile), ['native', 'compat']);
+  assert.equal(fixture.sockets.length, 2);
+  assert.equal(socket.closeCalls, 1);
+  assert.equal(fixture.image.getAttribute('aria-hidden'), 'false');
+});
+
+
+test('compat failure performs no third attempt', async () => {
+  const fixture = playerFixture();
+  const player = createHdPlayer(fixture.environment);
+  player.selectZoom(2);
+  await flushPromises();
+
+  fixture.sockets[0].fail();
+  await flushPromises();
+
+  assert.deepEqual(fixture.requests.map(requestProfile), ['compat']);
+  assert.equal(fixture.sockets.length, 1);
+  assert.equal(fixture.image.getAttribute('aria-hidden'), 'false');
 });
 
 
@@ -350,6 +521,20 @@ test('missing browser MSE support preserves MJPEG and reports unsupported', asyn
 });
 
 
+test('browser with MSE but no approved codec reports codec unsupported', async () => {
+  const fixture = playerFixture({mediaTypeSupported: () => false});
+  const player = createHdPlayer(fixture.environment);
+
+  player.selectZoom(2);
+  await flushPromises();
+
+  assert.equal(fixture.requests.length, 0);
+  assert.equal(fixture.sockets.length, 0);
+  assert.equal(fixture.statusElement.textContent, 'HD_CODEC_UNSUPPORTED');
+  assert.equal(fixture.image.getAttribute('aria-hidden'), 'false');
+});
+
+
 test('ticket capacity rejection reports only HD_BUSY and opens no socket', async () => {
   const fixture = playerFixture({
     response: {
@@ -369,6 +554,28 @@ test('ticket capacity rejection reports only HD_BUSY and opens no socket', async
   assert.equal(fixture.statusElement.textContent, 'HD_BUSY');
   assert.equal(fixture.statusElement.textContent.includes('detail'), false);
   assert.equal(fixture.image.src, '/live.mjpeg');
+});
+
+
+test('native ticket capacity rejection does not start compat', async () => {
+  const fixture = playerFixture({
+    mediaTypeSupported: supportsHybrid,
+    response: {
+      ok: false,
+      status: 429,
+      async json() {
+        return {result: 'HD_BUSY'};
+      },
+    },
+  });
+  const player = createHdPlayer(fixture.environment);
+
+  player.selectZoom(2);
+  await flushPromises();
+
+  assert.deepEqual(fixture.requests.map(requestProfile), ['native']);
+  assert.equal(fixture.sockets.length, 0);
+  assert.equal(fixture.statusElement.textContent, 'HD_BUSY');
 });
 
 
@@ -412,6 +619,7 @@ test('HD layer waits for playing before replacing and releasing MJPEG', async ()
   assert.equal(fixture.image.getAttribute('aria-hidden'), 'true');
   assert.equal(fixture.video.getAttribute('aria-hidden'), 'false');
   assert.equal(fixture.statusElement.textContent, 'HD_ACTIVE');
+  assert.equal(fixture.statusElement.dataset.profile, 'compat');
 });
 
 
@@ -449,6 +657,21 @@ test('active HD playback continues appending later media fragments', async () =>
 });
 
 
+test('2x to 3x reuses the same active HD connection and profile', async () => {
+  const fixture = playerFixture();
+  const {player, socket} = await activateHd(fixture);
+
+  player.selectZoom(3);
+  await flushPromises();
+
+  assert.equal(fixture.requests.length, 1);
+  assert.equal(fixture.sockets.length, 1);
+  assert.equal(socket.closeCalls, 0);
+  assert.equal(fixture.statusElement.textContent, 'HD_ACTIVE');
+  assert.equal(fixture.statusElement.dataset.profile, 'compat');
+});
+
+
 test('queued MSE fragments are bounded while SourceBuffer is busy', async () => {
   const fixture = playerFixture();
   const {socket} = await beginMse(fixture);
@@ -459,16 +682,19 @@ test('queued MSE fragments are bounded while SourceBuffer is busy', async () => 
     socket.message(new Uint8Array(4 * 1024 * 1024).buffer);
   }
 
-  assert.equal(fixture.statusElement.textContent, 'HD_FALLBACK');
+  assert.equal(fixture.statusElement.textContent, 'HD_UPSTREAM_FAILED');
   assert.equal(fixture.image.src, '/live.mjpeg');
   assert.equal(socket.closeCalls, 1);
 });
 
 
-test('unsupported codec and binary-before-description fail closed on MJPEG', async () => {
-  for (const firstMessage of [
-    JSON.stringify({type: 'mse', value: 'video/mp4; codecs="hvc1.1.6"'}),
-    new Uint8Array([7]).buffer,
+test('unsupported compat codec and protocol disorder fail with typed codes', async () => {
+  for (const [firstMessage, expectedCode] of [
+    [
+      JSON.stringify({type: 'mse', value: 'video/mp4; codecs="hvc1.1.6"'}),
+      'HD_TRANSCODE_UNAVAILABLE',
+    ],
+    [new Uint8Array([7]).buffer, 'HD_UPSTREAM_FAILED'],
   ]) {
     const fixture = playerFixture();
     const player = createHdPlayer(fixture.environment);
@@ -480,27 +706,9 @@ test('unsupported codec and binary-before-description fail closed on MJPEG', asy
     assert.equal(fixture.image.src, '/live.mjpeg');
     assert.equal(fixture.image.getAttribute('aria-hidden'), 'false');
     assert.equal(fixture.video.getAttribute('aria-hidden'), 'true');
-    assert.equal(fixture.statusElement.textContent, 'HD_FALLBACK');
+    assert.equal(fixture.statusElement.textContent, expectedCode);
     assert.equal(fixture.sockets[0].closeCalls, 1);
   }
-});
-
-
-test('H.265 is rejected even when the browser reports that MIME as supported', async () => {
-  const fixture = playerFixture({mediaTypeSupported: () => true});
-  const player = createHdPlayer(fixture.environment);
-  player.selectZoom(2);
-  await flushPromises();
-  fixture.sockets[0].open();
-
-  fixture.sockets[0].message(JSON.stringify({
-    type: 'mse',
-    value: 'video/mp4; codecs="hvc1.1.6"',
-  }));
-
-  assert.equal(fixture.statusElement.textContent, 'HD_FALLBACK');
-  assert.equal(fixture.image.src, '/live.mjpeg');
-  assert.equal(fixture.sockets[0].closeCalls, 1);
 });
 
 
@@ -536,6 +744,7 @@ test('returning to 1x restores MJPEG before closing and clearing HD', async () =
   assert.equal(socket.closeCalls, 1);
   assert.deepEqual(fixture.revokedUrls, ['blob:hd-player-1']);
   assert.equal(fixture.statusElement.textContent, '');
+  assert.equal(fixture.statusElement.dataset.profile, undefined);
 });
 
 
@@ -550,7 +759,7 @@ test('failed MJPEG return keeps the last HD frame and socket', async () => {
   assert.equal(fixture.video.getAttribute('aria-hidden'), 'false');
   assert.equal(socket.closeCalls, 0);
   assert.deepEqual(fixture.revokedUrls, []);
-  assert.equal(fixture.statusElement.textContent, 'HD_FALLBACK');
+  assert.equal(fixture.statusElement.textContent, 'HD_UPSTREAM_FAILED');
 });
 
 
@@ -565,7 +774,8 @@ test('HD socket loss restores MJPEG without changing the selected zoom', async (
   fixture.image.dispatch('load');
   assert.equal(fixture.image.getAttribute('aria-hidden'), 'false');
   assert.equal(fixture.video.getAttribute('aria-hidden'), 'true');
-  assert.equal(fixture.statusElement.textContent, 'HD_FALLBACK');
+  assert.equal(fixture.statusElement.textContent, 'HD_UPSTREAM_FAILED');
+  assert.equal(fixture.statusElement.dataset.profile, undefined);
 
   player.selectZoom(3);
   await flushPromises();
@@ -584,7 +794,7 @@ test('eight-second HD startup timeout preserves MJPEG and requires a 1x reset', 
   assert.ok(timeout);
   timeout.callback();
   assert.equal(fixture.image.src, '/live.mjpeg');
-  assert.equal(fixture.statusElement.textContent, 'HD_FALLBACK');
+  assert.equal(fixture.statusElement.textContent, 'HD_TIMEOUT');
   assert.equal(fixture.sockets[0].closeCalls, 1);
 
   player.selectZoom(3);
@@ -606,7 +816,7 @@ test('autoplay rejection is redacted and leaves the current MJPEG visible', asyn
 
   assert.equal(fixture.image.src, '/live.mjpeg');
   assert.equal(fixture.image.getAttribute('aria-hidden'), 'false');
-  assert.equal(fixture.statusElement.textContent, 'HD_FALLBACK');
+  assert.equal(fixture.statusElement.textContent, 'HD_UPSTREAM_FAILED');
   assert.equal(fixture.statusElement.textContent.includes('private'), false);
 });
 
@@ -710,7 +920,7 @@ test('active append failure keeps HD visible until MJPEG has loaded', async () =
 
   socket.message(new Uint8Array([7]).buffer);
 
-  assert.equal(fixture.statusElement.textContent, 'HD_FALLBACK');
+  assert.equal(fixture.statusElement.textContent, 'HD_UPSTREAM_FAILED');
   assert.equal(fixture.image.src, '/live.mjpeg');
   assert.equal(fixture.image.getAttribute('aria-hidden'), 'true');
   assert.equal(fixture.video.getAttribute('aria-hidden'), 'false');
@@ -727,7 +937,7 @@ test('MediaSource and SourceBuffer errors use the no-black fallback path', async
   const loadingFixture = playerFixture();
   await beginMse(loadingFixture);
   loadingFixture.mediaSources[0].dispatch('error');
-  assert.equal(loadingFixture.statusElement.textContent, 'HD_FALLBACK');
+  assert.equal(loadingFixture.statusElement.textContent, 'HD_UPSTREAM_FAILED');
   assert.equal(loadingFixture.image.getAttribute('aria-hidden'), 'false');
 
   const activeFixture = playerFixture();
@@ -745,7 +955,7 @@ test('server error after activation keeps HD visible until MJPEG has loaded', as
 
   socket.message(JSON.stringify({type: 'error', value: 'HD_FALLBACK'}));
 
-  assert.equal(fixture.statusElement.textContent, 'HD_FALLBACK');
+  assert.equal(fixture.statusElement.textContent, 'HD_UPSTREAM_FAILED');
   assert.equal(fixture.image.src, '/live.mjpeg');
   assert.equal(fixture.image.getAttribute('aria-hidden'), 'true');
   assert.equal(fixture.video.getAttribute('aria-hidden'), 'false');
@@ -838,7 +1048,7 @@ test('BFCache does not retry an HD failure without a 1x reset', async () => {
   player.selectZoom(2);
   await flushPromises();
   fixture.sockets[0].fail();
-  assert.equal(fixture.statusElement.textContent, 'HD_FALLBACK');
+  assert.equal(fixture.statusElement.textContent, 'HD_UPSTREAM_FAILED');
 
   fixture.window.dispatch('pagehide', {persisted: true});
   fixture.window.dispatch('pageshow', {persisted: true});
@@ -846,7 +1056,7 @@ test('BFCache does not retry an HD failure without a 1x reset', async () => {
 
   assert.equal(fixture.requests.length, 1);
   assert.equal(fixture.sockets.length, 1);
-  assert.equal(fixture.statusElement.textContent, 'HD_FALLBACK');
+  assert.equal(fixture.statusElement.textContent, 'HD_UPSTREAM_FAILED');
 });
 
 
@@ -888,6 +1098,61 @@ test('server-side connection limit reports HD_BUSY before an MSE description', a
 });
 
 
+for (const code of ['HD_TRANSCODE_UNAVAILABLE', 'HD_UPSTREAM_FAILED']) {
+  test(`compat server result preserves typed public status ${code}`, async () => {
+    const fixture = playerFixture();
+    const player = createHdPlayer(fixture.environment);
+    player.selectZoom(2);
+    await flushPromises();
+    const socket = fixture.sockets[0];
+    socket.open();
+
+    socket.message(JSON.stringify({type: 'error', value: code}));
+
+    assert.equal(player.status(), code);
+    assert.equal(fixture.statusElement.textContent, code);
+    assert.equal(fixture.image.getAttribute('aria-hidden'), 'false');
+  });
+}
+
+
+test('native codec failure stays typed when browser has no compat codec', async () => {
+  const fixture = playerFixture({
+    mediaTypeSupported: (mime) => mime.includes('hvc1.'),
+  });
+  const {player, socket} = await beginNative(fixture);
+
+  socket.message(JSON.stringify({
+    type: 'error',
+    value: 'HD_CODEC_UNSUPPORTED',
+  }));
+  await flushPromises();
+
+  assert.deepEqual(fixture.requests.map(requestProfile), ['native']);
+  assert.equal(player.status(), 'HD_CODEC_UNSUPPORTED');
+  assert.equal(fixture.image.getAttribute('aria-hidden'), 'false');
+});
+
+
+test('unknown and obsolete server errors map to HD_UPSTREAM_FAILED', async () => {
+  for (const rawCode of ['HD_FALLBACK', 'PRIVATE_INTERNAL_DETAIL']) {
+    const fixture = playerFixture();
+    const player = createHdPlayer(fixture.environment);
+    player.selectZoom(2);
+    await flushPromises();
+    fixture.sockets[0].open();
+
+    fixture.sockets[0].message(JSON.stringify({
+      type: 'error',
+      value: rawCode,
+    }));
+
+    assert.equal(player.status(), 'HD_UPSTREAM_FAILED');
+    assert.equal(fixture.statusElement.textContent.includes('PRIVATE'), false);
+  }
+});
+
+
 test('ticket send failure is redacted and falls back without an uncaught event error', async () => {
   const fixture = playerFixture();
   const player = createHdPlayer(fixture.environment);
@@ -899,7 +1164,7 @@ test('ticket send failure is redacted and falls back without an uncaught event e
   };
 
   assert.doesNotThrow(() => socket.open());
-  assert.equal(player.status(), 'HD_FALLBACK');
+  assert.equal(player.status(), 'HD_UPSTREAM_FAILED');
   assert.equal(fixture.statusElement.textContent.includes('private'), false);
   assert.equal(fixture.image.src, '/live.mjpeg');
 });

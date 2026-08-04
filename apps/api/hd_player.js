@@ -10,13 +10,23 @@
   const BLANK_IMAGE_SRC =
     'data:image/gif;base64,R0lGODlhAQABAAD/ACwAAAAAAQABAAACADs=';
   const LIVE_MJPEG_SRC = '/live.mjpeg';
+  const HEVC_MIME = 'video/mp4; codecs="hvc1.1.6.L153.B0"';
+  const COMPAT_MIMES = [
+    'video/mp4; codecs="avc1.42E01E"',
+    'video/mp4; codecs="avc1.4D0029"',
+    'video/mp4; codecs="avc1.640029"',
+    'video/mp4; codecs="avc1.640033"',
+  ];
   const MAX_APPEND_QUEUE_BYTES = 16 * 1024 * 1024;
   const PUBLIC_CODES = new Set([
     'HD_LOADING',
     'HD_ACTIVE',
-    'HD_FALLBACK',
     'HD_UNSUPPORTED',
     'HD_BUSY',
+    'HD_CODEC_UNSUPPORTED',
+    'HD_TRANSCODE_UNAVAILABLE',
+    'HD_UPSTREAM_FAILED',
+    'HD_TIMEOUT',
   ]);
 
   function websocketUrl(location) {
@@ -45,6 +55,8 @@
     let suspended = false;
     let resumeHdOnPageShow = false;
     let retryBlocked = false;
+    let attemptProfile = null;
+    let compatAttempted = false;
     let generation = 0;
     let mediaSource = null;
     let sourceBuffer = null;
@@ -64,7 +76,7 @@
     const appendQueue = [];
 
     function setStatus(code) {
-      publicStatus = PUBLIC_CODES.has(code) ? code : 'HD_FALLBACK';
+      publicStatus = PUBLIC_CODES.has(code) ? code : 'HD_UPSTREAM_FAILED';
       statusElement.textContent = publicStatus;
     }
 
@@ -97,6 +109,24 @@
       );
     }
 
+    function supportsMime(mime) {
+      try {
+        return Boolean(MediaSource.isTypeSupported(mime));
+      } catch (_error) {
+        return false;
+      }
+    }
+
+    function supportsCompat() {
+      return COMPAT_MIMES.some((mime) => supportsMime(mime));
+    }
+
+    function profileUnavailableCode() {
+      return attemptProfile === 'native'
+        ? 'HD_CODEC_UNSUPPORTED'
+        : 'HD_TRANSCODE_UNAVAILABLE';
+    }
+
     function cleanupHd() {
       clearTransitionTimer();
       generation += 1;
@@ -111,6 +141,7 @@
       descriptionReceived = false;
       pendingMime = null;
       playRequested = false;
+      delete statusElement.dataset.profile;
       if (sourceBufferListeners) {
         const {buffer, onAbort, onError, onUpdateEnd} = sourceBufferListeners;
         buffer.removeEventListener('updateend', onUpdateEnd);
@@ -262,7 +293,9 @@
     }
 
     function parseDescription(value) {
-      if (typeof value !== 'string' || value.length > 4096) return null;
+      if (typeof value !== 'string' || value.length > 4096) {
+        return {error: 'HD_UPSTREAM_FAILED'};
+      }
       try {
         const parsed = JSON.parse(value);
         if (
@@ -270,20 +303,23 @@
           typeof parsed !== 'object' ||
           Object.keys(parsed).sort().join(',') !== 'type,value' ||
           parsed.type !== 'mse' ||
-          typeof parsed.value !== 'string' ||
-          !MediaSource.isTypeSupported(parsed.value)
+          typeof parsed.value !== 'string'
         ) {
-          return null;
+          return {error: 'HD_UPSTREAM_FAILED'};
         }
         const match = /^video\/mp4; codecs="([^"]+)"$/.exec(parsed.value);
-        if (!match) return null;
+        if (!match) return {error: 'HD_UPSTREAM_FAILED'};
         const codecs = match[1].split(',').map((codec) => codec.trim());
-        if (!codecs.length || !codecs.every((codec) => codec.startsWith('avc1.'))) {
-          return null;
+        const codecPrefix = attemptProfile === 'native' ? 'hvc1.' : 'avc1.';
+        if (!codecs.length || !codecs.every((codec) => codec.startsWith(codecPrefix))) {
+          return {error: profileUnavailableCode()};
         }
-        return parsed.value;
+        if (!supportsMime(parsed.value)) {
+          return {error: profileUnavailableCode()};
+        }
+        return {mime: parsed.value};
       } catch (_error) {
-        return null;
+        return {error: 'HD_UPSTREAM_FAILED'};
       }
     }
 
@@ -300,7 +336,22 @@
         ) {
           return null;
         }
-        return parsed.value === 'HD_BUSY' ? 'HD_BUSY' : 'HD_FALLBACK';
+        if (parsed.value === 'HD_BUSY' || parsed.value === 'HD_UPSTREAM_FAILED') {
+          return parsed.value;
+        }
+        if (
+          attemptProfile === 'native' &&
+          parsed.value === 'HD_CODEC_UNSUPPORTED'
+        ) {
+          return parsed.value;
+        }
+        if (
+          attemptProfile === 'compat' &&
+          parsed.value === 'HD_TRANSCODE_UNAVAILABLE'
+        ) {
+          return parsed.value;
+        }
+        return 'HD_UPSTREAM_FAILED';
       } catch (_error) {
         return null;
       }
@@ -364,7 +415,7 @@
           } else {
             hide(image);
             show(video);
-            setStatus('HD_FALLBACK');
+            setStatus('HD_UPSTREAM_FAILED');
             mode = 'active';
           }
           resolve();
@@ -379,8 +430,27 @@
       return restorePromise;
     }
 
-    function handleSocketFailure(currentGeneration, code = 'HD_FALLBACK') {
+    function handleSocketFailure(currentGeneration, code = 'HD_UPSTREAM_FAILED') {
       if (currentGeneration !== generation || destroyed || intentionallyClosing) return;
+      if (
+        mode === 'loading' &&
+        attemptProfile === 'native' &&
+        !compatAttempted &&
+        code !== 'HD_BUSY'
+      ) {
+        compatAttempted = true;
+        if (image.src === BLANK_IMAGE_SRC) image.src = LIVE_MJPEG_SRC;
+        show(image);
+        hide(video);
+        cleanupHd();
+        mode = 'idle';
+        if (!supportsCompat()) {
+          preserveMjpeg('HD_CODEC_UNSUPPORTED');
+          return;
+        }
+        void startAttempt('compat');
+        return;
+      }
       retryBlocked = true;
       setStatus(code);
       if (mode === 'active' || mode === 'restoring') {
@@ -408,13 +478,13 @@
           handleSocketFailure(currentGeneration);
           return;
         }
-        const mime = parseDescription(event.data);
-        if (!mime) {
-          handleSocketFailure(currentGeneration);
+        const description = parseDescription(event.data);
+        if (!description.mime) {
+          handleSocketFailure(currentGeneration, description.error);
           return;
         }
         descriptionReceived = true;
-        pendingMime = mime;
+        pendingMime = description.mime;
         createSourceBufferIfReady(currentGeneration);
         return;
       }
@@ -450,26 +520,13 @@
       image.src = BLANK_IMAGE_SRC;
       mode = 'active';
       setStatus('HD_ACTIVE');
+      statusElement.dataset.profile = attemptProfile;
     }
 
-    async function startHd() {
-      if (
-        destroyed ||
-        suspended ||
-        desiredZoom === 1 ||
-        mode === 'loading' ||
-        mode === 'active'
-      ) {
-        return;
-      }
-      if (!supported()) {
-        mode = 'fallback';
-        retryBlocked = true;
-        setStatus('HD_UNSUPPORTED');
-        return;
-      }
-
+    async function startAttempt(profile) {
+      if (destroyed || suspended || desiredZoom === 1) return;
       mode = 'loading';
+      attemptProfile = profile;
       setStatus('HD_LOADING');
       const currentGeneration = generation + 1;
       generation = currentGeneration;
@@ -496,11 +553,15 @@
         currentMediaSource.addEventListener('sourceopen', onSourceOpen);
         currentMediaSource.addEventListener('error', onMediaSourceError);
         transitionTimer = setTimeout(
-          () => handleSocketFailure(currentGeneration),
+          () => handleSocketFailure(currentGeneration, 'HD_TIMEOUT'),
           8000,
         );
 
-        const response = await fetch('/api/hd-session', {method: 'POST'});
+        const response = await fetch('/api/hd-session', {
+          method: 'POST',
+          headers: {'Content-Type': 'application/json'},
+          body: JSON.stringify({profile: attemptProfile}),
+        });
         const payload = await response.json();
         if (currentGeneration !== generation || destroyed || desiredZoom === 1) return;
         if (response.status === 429 || payload.result === 'HD_BUSY') {
@@ -508,7 +569,7 @@
           return;
         }
         if (!response.ok || typeof payload.ticket !== 'string' || !payload.ticket) {
-          preserveMjpeg('HD_FALLBACK');
+          handleSocketFailure(currentGeneration);
           return;
         }
 
@@ -538,10 +599,40 @@
       }
     }
 
+    async function startHd() {
+      if (
+        destroyed ||
+        suspended ||
+        desiredZoom === 1 ||
+        mode === 'loading' ||
+        mode === 'active'
+      ) {
+        return;
+      }
+      if (!supported()) {
+        mode = 'fallback';
+        retryBlocked = true;
+        setStatus('HD_UNSUPPORTED');
+        return;
+      }
+
+      const nativeSupported = supportsMime(HEVC_MIME);
+      if (!nativeSupported && !supportsCompat()) {
+        mode = 'fallback';
+        retryBlocked = true;
+        setStatus('HD_CODEC_UNSUPPORTED');
+        return;
+      }
+      const initialProfile = nativeSupported ? 'native' : 'compat';
+      compatAttempted = initialProfile === 'compat';
+      return startAttempt(initialProfile);
+    }
+
     async function selectZoom(zoom) {
       desiredZoom = Number(zoom);
       if (desiredZoom === 1) {
         retryBlocked = false;
+        compatAttempted = false;
         return restoreMjpeg();
       }
       if (retryBlocked) return;
