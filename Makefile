@@ -1,17 +1,22 @@
 SHELL := /bin/bash
+PYTHON := ./.venv-alpha/bin/python
 .DEFAULT_GOAL := help
 
-.PHONY: help alpha-update alpha-install alpha-start alpha-stop alpha-restart alpha-status alpha-logs
+.PHONY: help alpha-update alpha-install alpha-start alpha-stop alpha-restart alpha-status alpha-logs alpha-quality-hd alpha-quality-info alpha-quality-rollback alpha-source-check
 
 help:
 	@echo "Baby Monitor Local Alpha commands:"
-	@echo "  make alpha-update   Update the Alpha branch without changing file modes"
-	@echo "  make alpha-install  Install Intel macOS Alpha dependencies"
-	@echo "  make alpha-start    Start go2rtc and the dashboard"
-	@echo "  make alpha-stop     Stop Alpha services"
-	@echo "  make alpha-restart  Restart Alpha services"
-	@echo "  make alpha-status   Show branch, listeners and health"
-	@echo "  make alpha-logs     Tail recent service logs"
+	@echo "  make alpha-update            Update the Alpha branch without changing file modes"
+	@echo "  make alpha-install           Install Intel macOS Alpha dependencies"
+	@echo "  make alpha-start             Start go2rtc and the dashboard"
+	@echo "  make alpha-stop              Stop Alpha services"
+	@echo "  make alpha-restart           Restart Alpha services"
+	@echo "  make alpha-status            Show branch, listeners and health"
+	@echo "  make alpha-logs              Tail recent service logs"
+	@echo "  make alpha-quality-hd        Back up config and enable 1280x720 / 10 FPS preview"
+	@echo "  make alpha-quality-info      Show non-sensitive preview quality settings"
+	@echo "  make alpha-quality-rollback  Restore the newest quality backup"
+	@echo "  make alpha-source-check      Verify real source media and HD preview health"
 
 alpha-update:
 	@git config core.fileMode false
@@ -46,3 +51,23 @@ alpha-logs:
 	@tail -n 80 runtime/logs/go2rtc.log 2>/dev/null || true
 	@echo "=== dashboard ==="
 	@tail -n 80 runtime/logs/api.log 2>/dev/null || true
+
+alpha-quality-hd:
+	@$(PYTHON) tools/alpha_quality.py apply-hd --config runtime/go2rtc.yaml --backups runtime/backups
+	@$(MAKE) alpha-restart
+	@$(MAKE) alpha-source-check
+
+alpha-quality-info:
+	@$(PYTHON) tools/alpha_quality.py info --config runtime/go2rtc.yaml
+
+alpha-quality-rollback:
+	@$(PYTHON) tools/alpha_quality.py rollback --config runtime/go2rtc.yaml --backups runtime/backups
+	@$(MAKE) alpha-restart
+
+alpha-source-check:
+	@set -a; \
+	if [[ -f runtime/alpha.env ]]; then source runtime/alpha.env; fi; \
+	set +a; \
+	$(PYTHON) tools/alpha_quality.py check \
+		--base-url "$${GO2RTC_BASE_URL:-http://127.0.0.1:1984}" \
+		--dashboard-url "http://127.0.0.1:$${BABY_MONITOR_PORT:-8080}"
