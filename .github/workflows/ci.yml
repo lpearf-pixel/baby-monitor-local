@@ -75,4 +75,4 @@ jobs:
               -trimpath -ldflags='-s -w' -o "$build_dir/go2rtc" .
           )
           file "$build_dir/go2rtc" | \
-            grep -F 'Mach-O 64-bit executable x86_64'
+            grep -F 'Mach-O 64-bit x86_64 executable'
