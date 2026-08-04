@@ -1,13 +1,15 @@
 from __future__ import annotations
 
+import json
 import os
 import stat
 from copy import deepcopy
 from dataclasses import dataclass
 from datetime import datetime
 from pathlib import Path
-from typing import Any
+from typing import Any, Callable
 from urllib.parse import parse_qsl, urlencode, urlsplit, urlunsplit
+from urllib.request import urlopen
 
 import yaml
 
@@ -25,6 +27,15 @@ class QualityInfo:
     live_width: int
     live_height: int
     live_fps: int
+
+
+@dataclass(frozen=True)
+class HealthResult:
+    code: str
+    protocol: str = ""
+    bytes_received: int = 0
+    source_dimensions: tuple[int, int] | None = None
+    live_dimensions: tuple[int, int] | None = None
 
 
 def _streams(config: dict[str, Any]) -> dict[str, Any]:
@@ -124,3 +135,245 @@ def rollback_latest(config_path: Path, backups_dir: Path) -> Path:
     )
     _atomic_write(config_path, restored_text, mode)
     return latest
+
+
+def jpeg_dimensions(payload: bytes) -> tuple[int, int]:
+    if len(payload) < 4 or payload[:2] != b"\xff\xd8":
+        raise QualityConfigError("INVALID_SNAPSHOT")
+
+    offset = 2
+    sof_markers = {
+        0xC0,
+        0xC1,
+        0xC2,
+        0xC3,
+        0xC5,
+        0xC6,
+        0xC7,
+        0xC9,
+        0xCA,
+        0xCB,
+        0xCD,
+        0xCE,
+        0xCF,
+    }
+    while offset + 3 < len(payload):
+        if payload[offset] != 0xFF:
+            offset += 1
+            continue
+        while offset < len(payload) and payload[offset] == 0xFF:
+            offset += 1
+        if offset >= len(payload):
+            break
+        marker = payload[offset]
+        offset += 1
+        if marker in {0xD8, 0xD9}:
+            continue
+        if offset + 2 > len(payload):
+            break
+        length = int.from_bytes(payload[offset : offset + 2], "big")
+        if length < 2 or offset + length > len(payload):
+            break
+        if marker in sof_markers and length >= 7:
+            height = int.from_bytes(payload[offset + 3 : offset + 5], "big")
+            width = int.from_bytes(payload[offset + 5 : offset + 7], "big")
+            if width > 0 and height > 0:
+                return width, height
+        offset += length
+
+    raise QualityConfigError("INVALID_SNAPSHOT")
+
+
+def _read_bytes(
+    url: str,
+    *,
+    opener: Callable[..., Any],
+    timeout: float = 10.0,
+    limit: int | None = None,
+) -> bytes:
+    with opener(url, timeout=timeout) as response:
+        return response.read() if limit is None else response.read(limit)
+
+
+def _read_json(
+    url: str,
+    *,
+    opener: Callable[..., Any],
+    timeout: float = 10.0,
+) -> Any:
+    return json.loads(_read_bytes(url, opener=opener, timeout=timeout).decode("utf-8"))
+
+
+def _health(
+    code: str,
+    *,
+    protocol: str = "",
+    bytes_received: int = 0,
+    source_dimensions: tuple[int, int] | None = None,
+    live_dimensions: tuple[int, int] | None = None,
+) -> HealthResult:
+    return HealthResult(
+        code=code,
+        protocol=protocol,
+        bytes_received=bytes_received,
+        source_dimensions=source_dimensions,
+        live_dimensions=live_dimensions,
+    )
+
+
+def check_hd_health(
+    base_url: str,
+    dashboard_url: str,
+    *,
+    opener: Callable[..., Any] = urlopen,
+) -> HealthResult:
+    base_url = base_url.rstrip("/")
+    dashboard_url = dashboard_url.rstrip("/")
+
+    try:
+        payload = _read_json(f"{base_url}/api/streams", opener=opener)
+    except Exception:
+        return _health("SOURCE_OFFLINE")
+    if not isinstance(payload, dict) or "source" not in payload:
+        return _health("SOURCE_NOT_CONFIGURED")
+
+    source = payload.get("source")
+    producers = source.get("producers") if isinstance(source, dict) else None
+    if not isinstance(producers, list):
+        return _health("SOURCE_OFFLINE")
+
+    active = [
+        producer
+        for producer in producers
+        if isinstance(producer, dict) and isinstance(producer.get("protocol"), str)
+        and producer.get("protocol")
+    ]
+    if not active:
+        return _health("SOURCE_OFFLINE")
+
+    protocol = str(active[0]["protocol"])
+    medias = [
+        str(media)
+        for producer in active
+        for media in producer.get("medias", [])
+        if isinstance(producer.get("medias"), list)
+    ]
+    bytes_received = sum(
+        int(producer.get("bytes_recv", producer.get("bytes_received", 0)) or 0)
+        for producer in active
+        if isinstance(
+            producer.get("bytes_recv", producer.get("bytes_received", 0)),
+            (int, float),
+        )
+    )
+    if not any("video" in media.lower() for media in medias):
+        return _health(
+            "SOURCE_NO_VIDEO",
+            protocol=protocol,
+            bytes_received=bytes_received,
+        )
+    if bytes_received <= 0:
+        return _health("SOURCE_OFFLINE", protocol=protocol)
+
+    try:
+        source_jpeg = _read_bytes(
+            f"{base_url}/api/frame.jpeg?src=source",
+            opener=opener,
+            timeout=30.0,
+        )
+        source_dimensions = jpeg_dimensions(source_jpeg)
+    except Exception:
+        return _health(
+            "SOURCE_OFFLINE",
+            protocol=protocol,
+            bytes_received=bytes_received,
+        )
+
+    try:
+        live_jpeg = _read_bytes(
+            f"{base_url}/api/frame.jpeg?src=live",
+            opener=opener,
+            timeout=30.0,
+        )
+    except Exception:
+        return _health(
+            "LIVE_EMPTY_FRAME",
+            protocol=protocol,
+            bytes_received=bytes_received,
+            source_dimensions=source_dimensions,
+        )
+    if not live_jpeg:
+        return _health(
+            "LIVE_EMPTY_FRAME",
+            protocol=protocol,
+            bytes_received=bytes_received,
+            source_dimensions=source_dimensions,
+        )
+    try:
+        live_dimensions = jpeg_dimensions(live_jpeg)
+    except QualityConfigError:
+        return _health(
+            "LIVE_EMPTY_FRAME",
+            protocol=protocol,
+            bytes_received=bytes_received,
+            source_dimensions=source_dimensions,
+        )
+    if live_dimensions != (1280, 720):
+        return _health(
+            "LIVE_WRONG_DIMENSIONS",
+            protocol=protocol,
+            bytes_received=bytes_received,
+            source_dimensions=source_dimensions,
+            live_dimensions=live_dimensions,
+        )
+
+    try:
+        mjpeg_sample = _read_bytes(
+            f"{base_url}/api/stream.mjpeg?src=live",
+            opener=opener,
+            timeout=8.0,
+            limit=64 * 1024,
+        )
+    except Exception:
+        return _health(
+            "LIVE_MJPEG_EMPTY",
+            protocol=protocol,
+            bytes_received=bytes_received,
+            source_dimensions=source_dimensions,
+            live_dimensions=live_dimensions,
+        )
+    if not mjpeg_sample:
+        return _health(
+            "LIVE_MJPEG_EMPTY",
+            protocol=protocol,
+            bytes_received=bytes_received,
+            source_dimensions=source_dimensions,
+            live_dimensions=live_dimensions,
+        )
+
+    try:
+        dashboard = _read_json(f"{dashboard_url}/healthz", opener=opener)
+    except Exception:
+        return _health(
+            "DASHBOARD_OFFLINE",
+            protocol=protocol,
+            bytes_received=bytes_received,
+            source_dimensions=source_dimensions,
+            live_dimensions=live_dimensions,
+        )
+    if dashboard != {"status": "ok"}:
+        return _health(
+            "DASHBOARD_OFFLINE",
+            protocol=protocol,
+            bytes_received=bytes_received,
+            source_dimensions=source_dimensions,
+            live_dimensions=live_dimensions,
+        )
+
+    return _health(
+        "PASS",
+        protocol=protocol,
+        bytes_received=bytes_received,
+        source_dimensions=source_dimensions,
+        live_dimensions=live_dimensions,
+    )
