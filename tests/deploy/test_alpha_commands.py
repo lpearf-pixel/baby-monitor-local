@@ -57,6 +57,18 @@ def test_makefile_exposes_safe_subtype_probe() -> None:
     assert "--restart-command" in content
 
 
+def test_makefile_exposes_verified_native_hd_subtype_apply() -> None:
+    content = (ROOT / "Makefile").read_text(encoding="utf-8")
+
+    assert "alpha-subtype-apply:" in content
+    assert "tools/alpha_quality.py apply-subtype" in content
+    assert "--subtype 3" in content
+    assert "--minimum-width 1920" in content
+    assert "--minimum-height 1080" in content
+    assert "--dashboard-url" in content
+    assert "--restart-command" in content
+
+
 def test_subtype_probe_make_dry_run_does_not_start_services() -> None:
     result = subprocess.run(
         ["make", "-n", "alpha-subtype-probe"],
@@ -68,6 +80,21 @@ def test_subtype_probe_make_dry_run_does_not_start_services() -> None:
 
     assert result.returncode == 0
     assert "probe-subtypes" in result.stdout
+    assert "No such file or directory" not in result.stderr
+
+
+def test_subtype_apply_make_dry_run_does_not_start_services() -> None:
+    result = subprocess.run(
+        ["make", "-n", "alpha-subtype-apply"],
+        cwd=ROOT,
+        check=False,
+        capture_output=True,
+        text=True,
+    )
+
+    assert result.returncode == 0
+    assert "apply-subtype" in result.stdout
+    assert "alpha-restart" in result.stdout
     assert "No such file or directory" not in result.stderr
 
 

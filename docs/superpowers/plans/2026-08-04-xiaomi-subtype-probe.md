@@ -257,15 +257,15 @@ Expected: every command exits `0`.
 
 Expected current head before publication: `3925315e3be9c5a6b1dcf289425f55dcca106af6`, unless the connector reports a newer commit that is first reconciled.
 
-- [ ] **Step 3: Commit only the planned files to `codex/basic-usable-alpha`**
+- [x] **Step 3: Commit only the planned files to `codex/basic-usable-alpha`**
 
 Commit message: `Add safe Xiaomi subtype probe`
 
-- [ ] **Step 4: Confirm PR #4 remains Draft and wait for fresh CI**
+- [x] **Step 4: Confirm PR #4 remains Draft and wait for fresh CI**
 
 Expected: PR state `open`, `draft=true`, and the workflow run for the new head finishes successfully.
 
-- [ ] **Step 5: Run the Intel i9 gate only after CI passes**
+- [x] **Step 5: Run the Intel i9 gate only after CI passes**
 
 ```bash
 cd ~/dev/baby-monitor-local

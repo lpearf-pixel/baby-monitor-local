@@ -35,6 +35,7 @@ class ProbeHandler(BaseHTTPRequestHandler):
 
     def do_GET(self) -> None:  # noqa: N802 - BaseHTTPRequestHandler contract
         parsed = urlsplit(self.path)
+        query = parse_qs(parsed.query)
         if parsed.path == "/api/streams" and not parsed.query:
             self._send_json(b'{"source": {"producers": []}}')
             return
@@ -46,18 +47,33 @@ class ProbeHandler(BaseHTTPRequestHandler):
             )
             return
         if parsed.path == "/api/frame.jpeg":
+            if query.get("src") == ["live"]:
+                self._send_jpeg((1280, 720))
+                return
             source = yaml.safe_load(self.config_path.read_text(encoding="utf-8"))[
                 "streams"
             ]["source"]
             subtype = dict(parse_qs(urlsplit(source).query))["subtype"][0]
             dimensions = {"2": (864, 480), "3": (2560, 1440)}[subtype]
+            self._send_jpeg(dimensions)
+            return
+        if parsed.path == "/api/stream.mjpeg" and query.get("src") == ["live"]:
             self.send_response(200)
-            self.send_header("Content-Type", "image/jpeg")
+            self.send_header("Content-Type", "multipart/x-mixed-replace")
             self.end_headers()
-            self.wfile.write(jpeg(*dimensions))
+            self.wfile.write(jpeg(1280, 720))
+            return
+        if parsed.path == "/healthz":
+            self._send_json(b'{"status": "ok"}')
             return
         self.send_response(404)
         self.end_headers()
+
+    def _send_jpeg(self, dimensions: tuple[int, int]) -> None:
+        self.send_response(200)
+        self.send_header("Content-Type", "image/jpeg")
+        self.end_headers()
+        self.wfile.write(jpeg(*dimensions))
 
     def _send_json(self, payload: bytes) -> None:
         self.send_response(200)
@@ -94,6 +110,10 @@ def test_help_lists_source_health_check() -> None:
     probe_help = run_cli("probe-subtypes", "--help").stdout
     assert "--candidates" in probe_help
     assert "--restart-command" in probe_help
+    apply_help = run_cli("apply-subtype", "--help").stdout
+    assert "--subtype" in apply_help
+    assert "--minimum-width" in apply_help
+    assert "--minimum-height" in apply_help
 
 
 def test_info_prints_only_derived_quality_fields(tmp_path: Path) -> None:
@@ -273,3 +293,136 @@ def test_probe_rejects_malformed_config_without_leaking_content(
     assert "xiaomi://" not in combined
     assert "did=" not in combined
     assert "192.0.2.10" not in combined
+
+
+def test_apply_subtype_keeps_verified_native_hd_with_derived_output(
+    tmp_path: Path,
+) -> None:
+    config = tmp_path / "go2rtc.yaml"
+    original_text = yaml.safe_dump(
+        {
+            "xiaomi": {"123": "V1:super-secret"},
+            "streams": {
+                "source": (
+                    "xiaomi://123:cn@192.0.2.10?did=456&subtype=hd"
+                    "&vendor_hint=keep"
+                ),
+                "live": (
+                    "ffmpeg:source#video=mjpeg#width=1280"
+                    "#height=720#raw=-r 10"
+                ),
+            },
+        },
+        sort_keys=False,
+    )
+    config.write_text(original_text, encoding="utf-8")
+    config.chmod(0o600)
+    restart_script = tmp_path / "restart.py"
+    restart_script.write_text(
+        "print('xiaomi://must-not-leak did=456 192.0.2.10')\n",
+        encoding="utf-8",
+    )
+    server, thread = start_probe_server(config)
+    try:
+        result = run_cli(
+            "apply-subtype",
+            "--config",
+            str(config),
+            "--backups",
+            str(tmp_path / "backups"),
+            "--base-url",
+            f"http://127.0.0.1:{server.server_port}",
+            "--dashboard-url",
+            f"http://127.0.0.1:{server.server_port}",
+            "--subtype",
+            "3",
+            "--minimum-width",
+            "1920",
+            "--minimum-height",
+            "1080",
+            "--restart-command",
+            f"{sys.executable} {restart_script}",
+        )
+    finally:
+        server.shutdown()
+        server.server_close()
+        thread.join(timeout=2)
+
+    assert result.returncode == 0
+    assert result.stdout.splitlines() == [
+        "result=PASS",
+        "applied_subtype=3",
+        "protocol=cs2+udp",
+        "bytes_received=50000",
+        "source_dimensions=2560x1440",
+        "live_dimensions=1280x720",
+        "original_config_restored=false",
+    ]
+    source = yaml.safe_load(config.read_text(encoding="utf-8"))["streams"]["source"]
+    assert "subtype=3" in source
+    assert "vendor_hint=keep" in source
+    assert config.stat().st_mode & 0o777 == 0o600
+    combined = result.stdout + result.stderr
+    assert "xiaomi://" not in combined
+    assert "V1:" not in combined
+    assert "did=" not in combined
+    assert "192.0.2.10" not in combined
+
+
+def test_apply_subtype_restores_config_when_source_is_not_native_hd(
+    tmp_path: Path,
+) -> None:
+    config = tmp_path / "go2rtc.yaml"
+    original_text = yaml.safe_dump(
+        {
+            "xiaomi": {"123": "V1:super-secret"},
+            "streams": {
+                "source": "xiaomi://123:cn@192.0.2.10?did=456&subtype=hd",
+                "live": (
+                    "ffmpeg:source#video=mjpeg#width=1280"
+                    "#height=720#raw=-r 10"
+                ),
+            },
+        },
+        sort_keys=False,
+    )
+    config.write_text(original_text, encoding="utf-8")
+    restart_script = tmp_path / "restart.py"
+    restart_script.write_text("pass\n", encoding="utf-8")
+    server, thread = start_probe_server(config)
+    try:
+        result = run_cli(
+            "apply-subtype",
+            "--config",
+            str(config),
+            "--backups",
+            str(tmp_path / "backups"),
+            "--base-url",
+            f"http://127.0.0.1:{server.server_port}",
+            "--dashboard-url",
+            f"http://127.0.0.1:{server.server_port}",
+            "--subtype",
+            "2",
+            "--minimum-width",
+            "1920",
+            "--minimum-height",
+            "1080",
+            "--restart-command",
+            f"{sys.executable} {restart_script}",
+        )
+    finally:
+        server.shutdown()
+        server.server_close()
+        thread.join(timeout=2)
+
+    assert result.returncode == 2
+    assert result.stdout.splitlines() == [
+        "result=SOURCE_DIMENSIONS_TOO_LOW",
+        "applied_subtype=2",
+        "protocol=cs2+udp",
+        "bytes_received=50000",
+        "source_dimensions=864x480",
+        "live_dimensions=1280x720",
+        "original_config_restored=true",
+    ]
+    assert config.read_text(encoding="utf-8") == original_text

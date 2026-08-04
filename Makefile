@@ -2,7 +2,7 @@ SHELL := /bin/bash
 PYTHON := ./.venv-alpha/bin/python
 .DEFAULT_GOAL := help
 
-.PHONY: help alpha-update alpha-install alpha-start alpha-stop alpha-restart alpha-status alpha-logs alpha-quality-hd alpha-quality-info alpha-quality-rollback alpha-source-check alpha-subtype-probe
+.PHONY: help alpha-update alpha-install alpha-start alpha-stop alpha-restart alpha-status alpha-logs alpha-quality-hd alpha-quality-info alpha-quality-rollback alpha-source-check alpha-subtype-probe alpha-subtype-apply
 
 help:
 	@echo "Baby Monitor Local Alpha commands:"
@@ -18,6 +18,7 @@ help:
 	@echo "  make alpha-quality-rollback  Restore the newest quality backup"
 	@echo "  make alpha-source-check      Verify real source media and HD preview health"
 	@echo "  make alpha-subtype-probe     Safely probe Xiaomi source quality numbers 0-5"
+	@echo "  make alpha-subtype-apply     Apply verified MJSXJ17CM native HD subtype 3"
 
 alpha-update:
 	@git config core.fileMode false
@@ -82,4 +83,18 @@ alpha-subtype-probe:
 		--backups runtime/backups \
 		--base-url "$${GO2RTC_BASE_URL:-http://127.0.0.1:1984}" \
 		--candidates 0 1 2 3 4 5 \
+		--restart-command "make --no-print-directory alpha-restart"
+
+alpha-subtype-apply:
+	@set -a; \
+	if [[ -f runtime/alpha.env ]]; then source runtime/alpha.env; fi; \
+	set +a; \
+	$(PYTHON) tools/alpha_quality.py apply-subtype \
+		--config runtime/go2rtc.yaml \
+		--backups runtime/backups \
+		--base-url "$${GO2RTC_BASE_URL:-http://127.0.0.1:1984}" \
+		--dashboard-url "http://127.0.0.1:$${BABY_MONITOR_PORT:-8080}" \
+		--subtype 3 \
+		--minimum-width 1920 \
+		--minimum-height 1080 \
 		--restart-command "make --no-print-directory alpha-restart"

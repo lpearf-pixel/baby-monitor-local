@@ -82,6 +82,7 @@ make alpha-logs
 make alpha-quality-info
 make alpha-source-check
 make alpha-subtype-probe
+make alpha-subtype-apply
 ```
 
 查看本地账号、密码和 ntfy 主题：
@@ -240,6 +241,35 @@ subtype=<编号> result=<状态> protocol=<协议> bytes_received=<字节数> so
 结束时输出 `recommended_subtype` 和 `original_config_restored=true`。无论探测成功、失败或按 `Ctrl+C` 中断，命令都会恢复探测前的完整配置、文件权限和服务；推荐编号不会被自动应用。
 
 重启脚本的输出会被抑制，避免终端探测摘要包含局域网地址。不要发送 `runtime/go2rtc.yaml`、完整 Xiaomi URI、账号、Token、UID、DID、MAC 或任何画面，只共享上述派生结果。
+
+MJSXJ17CM 的 Intel i9 实机结果为：编号 `0–2` 提供 `864×480`，编号
+`3–5` 报告 `2560×1440`，探测器推荐 `3`。多个候选同为最高分辨率时，探测器
+选择扫描顺序中编号最低的 `3`；短连接启动阶段的瞬时接收字节不能用于比较
+清晰度或长期稳定性，因此不据此选择 `4/5`。
+
+应用原生高清：
+
+```bash
+make alpha-subtype-apply
+make alpha-quality-info
+```
+
+应用命令会先创建兼容现有回滚流程的质量备份，再设置 `subtype=3`、重启并
+验证完整实时链路。只有源尺寸至少达到 `1920×1080` 且实时流、连续 MJPEG、
+Dashboard 全部通过时才保留配置。成功时输出接近：
+
+```text
+result=PASS
+applied_subtype=3
+protocol=cs2+udp
+bytes_received=<大于0>
+source_dimensions=2560x1440
+live_dimensions=1280x720
+original_config_restored=false
+```
+
+任何门禁失败、异常或中断都会恢复应用前的完整配置和权限。不要手工复制或
+编辑完整 Xiaomi URI。
 
 ## 8. 回滚高清升级
 

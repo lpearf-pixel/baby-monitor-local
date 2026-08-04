@@ -22,7 +22,7 @@ from packages.monitoring.alpha_quality import (  # noqa: E402
     inspect_quality,
     rollback_latest,
 )
-from packages.monitoring.subtype_probe import probe_subtypes  # noqa: E402
+from packages.monitoring.subtype_probe import apply_subtype, probe_subtypes  # noqa: E402
 
 
 def _path(value: str) -> Path:
@@ -76,6 +76,19 @@ def _build_parser() -> argparse.ArgumentParser:
     probe_parser.add_argument("--base-url", required=True)
     probe_parser.add_argument("--candidates", required=True, nargs="+", type=int)
     probe_parser.add_argument("--restart-command", required=True)
+
+    subtype_apply_parser = subparsers.add_parser(
+        "apply-subtype",
+        help="Apply a verified Xiaomi subtype transactionally with health rollback.",
+    )
+    subtype_apply_parser.add_argument("--config", required=True, type=_path)
+    subtype_apply_parser.add_argument("--backups", required=True, type=_path)
+    subtype_apply_parser.add_argument("--base-url", required=True)
+    subtype_apply_parser.add_argument("--dashboard-url", required=True)
+    subtype_apply_parser.add_argument("--subtype", required=True, type=int)
+    subtype_apply_parser.add_argument("--minimum-width", required=True, type=int)
+    subtype_apply_parser.add_argument("--minimum-height", required=True, type=int)
+    subtype_apply_parser.add_argument("--restart-command", required=True)
 
     return parser
 
@@ -160,6 +173,27 @@ def _run(args: argparse.Namespace) -> int:
         print(f"recommended_subtype={recommended}")
         print("original_config_restored=true")
         return 0 if summary.recommended_subtype is not None else 2
+
+    if args.command == "apply-subtype":
+        summary = apply_subtype(
+            args.config,
+            args.backups,
+            args.subtype,
+            (args.minimum_width, args.minimum_height),
+            lambda: _restart_alpha(args.restart_command),
+            lambda: check_hd_health(args.base_url, args.dashboard_url),
+            datetime.now(timezone.utc),
+        )
+        health = summary.health
+        print(f"result={health.code}")
+        print(f"applied_subtype={summary.applied_subtype}")
+        print(f"protocol={health.protocol or 'unavailable'}")
+        print(f"bytes_received={health.bytes_received}")
+        print(f"source_dimensions={_dimensions(health.source_dimensions)}")
+        print(f"live_dimensions={_dimensions(health.live_dimensions)}")
+        restored = "true" if summary.original_config_restored else "false"
+        print(f"original_config_restored={restored}")
+        return 0 if health.code == "PASS" else 2
 
     raise QualityConfigError("UNKNOWN_COMMAND")
 
