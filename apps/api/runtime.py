@@ -7,6 +7,7 @@ from urllib.parse import quote, urlencode
 from urllib.request import Request, urlopen
 
 from apps.api.alpha import AlphaRuntime
+from apps.api.ptz import DisabledPtzAdapter, StepPtzController
 
 
 class Go2RTCAlphaGateway:
@@ -37,7 +38,7 @@ class Go2RTCAlphaGateway:
                 f"{self._base_url}/api/streams", timeout=self._timeout_seconds
             ) as response:
                 payload = json.loads(response.read().decode("utf-8"))
-        except Exception as exc:  # alpha status must degrade rather than crash dashboard
+        except Exception as exc:
             return {
                 "camera": "offline",
                 "stream": self._stream_name,
@@ -52,9 +53,7 @@ class Go2RTCAlphaGateway:
         }
 
     def iter_mjpeg(self) -> Iterator[bytes]:
-        with urlopen(
-            self._go2rtc_url("/api/stream.mjpeg"), timeout=60
-        ) as response:
+        with urlopen(self._go2rtc_url("/api/stream.mjpeg"), timeout=60) as response:
             while True:
                 chunk = response.read(64 * 1024)
                 if not chunk:
@@ -72,9 +71,7 @@ class Go2RTCAlphaGateway:
             raise RuntimeError("NTFY_TOPIC is not configured")
         request = Request(
             f"{self._ntfy_base_url}/{quote(self._ntfy_topic, safe='')}",
-            data="婴儿监控 Alpha 测试通知：Mac、网页和 ntfy 通道已连通。".encode(
-                "utf-8"
-            ),
+            data="婴儿监控 Alpha 测试通知：Mac、网页和 ntfy 通道已连通。".encode("utf-8"),
             method="POST",
             headers={
                 "Title": "Baby Monitor Local",
@@ -114,4 +111,5 @@ def runtime_from_env(environ: dict[str, str] | None = None) -> AlphaRuntime:
         password=password,
         stream_name=stream_name,
         gateway=gateway,
+        ptz=StepPtzController(adapter=DisabledPtzAdapter()),
     )
