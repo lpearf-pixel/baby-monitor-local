@@ -2,6 +2,8 @@
 from __future__ import annotations
 
 import argparse
+import shlex
+import subprocess
 import sys
 from datetime import datetime, timezone
 from pathlib import Path
@@ -16,9 +18,11 @@ from packages.monitoring.alpha_quality import (  # noqa: E402
     QualityConfigError,
     apply_hd,
     check_hd_health,
+    check_source_health,
     inspect_quality,
     rollback_latest,
 )
+from packages.monitoring.subtype_probe import probe_subtypes  # noqa: E402
 
 
 def _path(value: str) -> Path:
@@ -63,11 +67,40 @@ def _build_parser() -> argparse.ArgumentParser:
     check_parser.add_argument("--base-url", required=True)
     check_parser.add_argument("--dashboard-url", required=True)
 
+    probe_parser = subparsers.add_parser(
+        "probe-subtypes",
+        help="Safely measure Xiaomi source subtype candidates, then restore config.",
+    )
+    probe_parser.add_argument("--config", required=True, type=_path)
+    probe_parser.add_argument("--backups", required=True, type=_path)
+    probe_parser.add_argument("--base-url", required=True)
+    probe_parser.add_argument("--candidates", required=True, nargs="+", type=int)
+    probe_parser.add_argument("--restart-command", required=True)
+
     return parser
 
 
 def _dimensions(value: tuple[int, int] | None) -> str:
     return "unavailable" if value is None else f"{value[0]}x{value[1]}"
+
+
+def _restart_alpha(command: str) -> None:
+    try:
+        argv = shlex.split(command)
+    except ValueError as exc:
+        raise QualityConfigError("ALPHA_RESTART_FAILED") from exc
+    if not argv:
+        raise QualityConfigError("ALPHA_RESTART_FAILED")
+
+    completed = subprocess.run(
+        argv,
+        cwd=ROOT,
+        check=False,
+        capture_output=True,
+        text=True,
+    )
+    if completed.returncode != 0:
+        raise QualityConfigError("ALPHA_RESTART_FAILED")
 
 
 def _run(args: argparse.Namespace) -> int:
@@ -102,6 +135,31 @@ def _run(args: argparse.Namespace) -> int:
         print(f"source_dimensions={_dimensions(result.source_dimensions)}")
         print(f"live_dimensions={_dimensions(result.live_dimensions)}")
         return 0 if result.code == "PASS" else 2
+
+    if args.command == "probe-subtypes":
+        summary = probe_subtypes(
+            args.config,
+            args.backups,
+            tuple(args.candidates),
+            lambda: _restart_alpha(args.restart_command),
+            lambda: check_source_health(args.base_url),
+            datetime.now(timezone.utc),
+        )
+        for attempt in summary.attempts:
+            print(
+                f"subtype={attempt.subtype} result={attempt.code} "
+                f"protocol={attempt.protocol or 'unavailable'} "
+                f"bytes_received={attempt.bytes_received} "
+                f"source_dimensions={_dimensions(attempt.source_dimensions)}"
+            )
+        recommended = (
+            "unavailable"
+            if summary.recommended_subtype is None
+            else str(summary.recommended_subtype)
+        )
+        print(f"recommended_subtype={recommended}")
+        print("original_config_restored=true")
+        return 0 if summary.recommended_subtype is not None else 2
 
     raise QualityConfigError("UNKNOWN_COMMAND")
 
