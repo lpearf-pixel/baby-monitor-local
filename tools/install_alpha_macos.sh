@@ -2,7 +2,6 @@
 set -euo pipefail
 
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
-GO2RTC_VERSION="1.9.14"
 
 if [[ "$(uname -s)" != "Darwin" || "$(uname -m)" != "x86_64" ]]; then
   echo "This installer is for Intel macOS (x86_64)." >&2
@@ -16,30 +15,17 @@ fi
 
 brew list python@3.11 >/dev/null 2>&1 || brew install python@3.11
 brew list ffmpeg >/dev/null 2>&1 || brew install ffmpeg
+brew list go >/dev/null 2>&1 || brew install go
 
 PYTHON="$(brew --prefix python@3.11)/bin/python3.11"
 mkdir -p "$ROOT/.local/bin" "$ROOT/runtime/logs" "$ROOT/runtime/pids"
-
-if [[ ! -x "$ROOT/.local/bin/go2rtc" ]]; then
-  tmp="$(mktemp -d)"
-  trap 'rm -rf "$tmp"' EXIT
-  curl -fL \
-    "https://github.com/AlexxIT/go2rtc/releases/download/v${GO2RTC_VERSION}/go2rtc_mac_amd64.zip" \
-    -o "$tmp/go2rtc.zip"
-  unzip -q "$tmp/go2rtc.zip" -d "$tmp/unpacked"
-  candidate="$(find "$tmp/unpacked" -type f | sed -n '1p')"
-  if [[ -z "$candidate" ]]; then
-    echo "go2rtc archive did not contain a binary." >&2
-    exit 1
-  fi
-  install -m 755 "$candidate" "$ROOT/.local/bin/go2rtc"
-fi
 
 if [[ ! -x "$ROOT/.venv-alpha/bin/python" ]]; then
   "$PYTHON" -m venv "$ROOT/.venv-alpha"
 fi
 "$ROOT/.venv-alpha/bin/python" -m pip install --upgrade pip
 "$ROOT/.venv-alpha/bin/python" -m pip install -e "$ROOT"
+"$ROOT/.venv-alpha/bin/python" "$ROOT/tools/go2rtc_build.py" ensure
 
 if [[ ! -f "$ROOT/runtime/go2rtc.yaml" ]]; then
   cp "$ROOT/config/go2rtc.alpha.yaml" "$ROOT/runtime/go2rtc.yaml"

@@ -63,7 +63,7 @@
 - Produces: `install_candidate(candidate: Path, destination: Path, backups_root: Path, metadata_path: Path, metadata: BuildMetadata, now: datetime) -> Path | None`.
 - Produces CLI commands `ensure`, `rebuild`, `info`, and `rollback`.
 
-- [ ] **Step 1: Write RED patch-application tests**
+- [x] **Step 1: Write RED patch-application tests**
 
 Create a temporary Git repository containing the pinned pre-patch forms:
 
@@ -89,7 +89,7 @@ Add separate literal-outcome tests for commit mismatch, patch context mismatch,
 already-patched input, and a patch that changes any third file. These cases
 must raise `Go2RTCBuildError` without modifying the fixture.
 
-- [ ] **Step 2: Run RED**
+- [x] **Step 2: Run RED**
 
 Run:
 
@@ -99,7 +99,7 @@ Run:
 
 Expected: import failure because `go2rtc_build` does not exist.
 
-- [ ] **Step 3: Implement exact patch validation and application**
+- [x] **Step 3: Implement exact patch validation and application**
 
 Define:
 
@@ -116,11 +116,11 @@ exact checkout SHA, obtain changed paths from `git apply --numstat`, require
 the exact allowed set, run `git apply --check`, apply once, then assert the
 `udp4` and `hvc1` postconditions and absence of the two old forms.
 
-- [ ] **Step 4: Run GREEN for patch behavior**
+- [x] **Step 4: Run GREEN for patch behavior**
 
 Run the focused command from Step 2. Expected: patch behavior tests pass.
 
-- [ ] **Step 5: Write RED metadata and atomic-install tests**
+- [x] **Step 5: Write RED metadata and atomic-install tests**
 
 ```python
 def test_install_candidate_backs_up_old_binary_and_writes_verified_metadata(tmp_path):
@@ -142,7 +142,7 @@ Add tests proving an invalid candidate SHA or metadata write failure preserves
 the old binary, `metadata_matches` requires commit+patch+platform, and rollback
 backs up the current binary before restoring the newest valid backup.
 
-- [ ] **Step 6: Implement metadata, backup, install, and rollback**
+- [x] **Step 6: Implement metadata, backup, install, and rollback**
 
 Write temporary binary and metadata siblings, verify candidate SHA and
 executable mode, then use `Path.replace` for atomic installation. Backups use:
@@ -154,7 +154,7 @@ runtime/backups/go2rtc/YYYYmmdd-HHMMSS-<binary_sha256_prefix>/
 The metadata serializer must use a fixed allowlist and never include source
 paths, environment values, URLs, or command output.
 
-- [ ] **Step 7: Implement the macOS CLI and Make/install integration**
+- [x] **Step 7: Implement the macOS CLI and Make/install integration**
 
 `tools/go2rtc_build.py ensure` must:
 
@@ -171,7 +171,7 @@ paths, environment values, URLs, or command output.
 `alpha-go2rtc-rollback` delegate to this CLI. `alpha-install` calls `ensure`
 instead of downloading the v1.9.14 release.
 
-- [ ] **Step 8: Verify Task 1**
+- [x] **Step 8: Verify Task 1**
 
 Run:
 
@@ -182,7 +182,7 @@ bash -n tools/*.sh
 git diff --check
 ```
 
-- [ ] **Step 9: Commit Task 1**
+- [x] **Step 9: Commit Task 1**
 
 ```bash
 git add patches packages/monitoring/go2rtc_build.py tools/go2rtc_build.py \
