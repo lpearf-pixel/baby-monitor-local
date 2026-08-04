@@ -1,6 +1,10 @@
 app:
   timezone: Asia/Shanghai
   data_dir: ./runtime
+camera:
+  identifier: nursery-main
+  model: MJSXJ17CM
+  account_secret_env: MI_ACCOUNT_SECRET_REF
 stream:
   go2rtc_api_host: 127.0.0.1
   go2rtc_api_port: 1984
@@ -19,6 +23,9 @@ thresholds:
   sustained_seconds: 300
 notifications:
   ntfy_topic: replace-with-private-topic
+  ntfy_token_env: NTFY_TOKEN_SECRET_REF
   enable_wecom: true
+  wecom_webhook_env: WECOM_WEBHOOK_SECRET_REF
 security:
+  session_secret_env: SESSION_SECRET_REF
   public_port_mapping_allowed: false

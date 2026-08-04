@@ -1,0 +1,97 @@
+{
+  "$defs": {
+    "ApplicationSettings": {
+      "additionalProperties": false,
+      "properties": {
+        "timezone": {"default": "Asia/Shanghai", "title": "Timezone", "type": "string"},
+        "data_dir": {"default": "runtime", "format": "path", "title": "Data Dir", "type": "string"}
+      },
+      "title": "ApplicationSettings",
+      "type": "object"
+    },
+    "CameraSettings": {
+      "additionalProperties": false,
+      "properties": {
+        "identifier": {"minLength": 1, "title": "Identifier", "type": "string"},
+        "model": {"minLength": 1, "title": "Model", "type": "string"},
+        "account_secret_env": {"title": "Account Secret Env", "type": "string"}
+      },
+      "required": ["identifier", "model", "account_secret_env"],
+      "title": "CameraSettings",
+      "type": "object"
+    },
+    "NotificationSettings": {
+      "additionalProperties": false,
+      "properties": {
+        "ntfy_topic": {"minLength": 1, "title": "Ntfy Topic", "type": "string"},
+        "ntfy_token_env": {"title": "Ntfy Token Env", "type": "string"},
+        "enable_wecom": {"default": true, "title": "Enable Wecom", "type": "boolean"},
+        "wecom_webhook_env": {
+          "anyOf": [{"type": "string"}, {"type": "null"}],
+          "default": null,
+          "title": "Wecom Webhook Env"
+        }
+      },
+      "required": ["ntfy_topic", "ntfy_token_env"],
+      "title": "NotificationSettings",
+      "type": "object"
+    },
+    "RetentionSettings": {
+      "additionalProperties": false,
+      "properties": {
+        "event_retention_days": {"default": 30, "exclusiveMinimum": 0, "title": "Event Retention Days", "type": "integer"},
+        "event_quota_gb": {"default": 30, "minimum": 1, "title": "Event Quota Gb", "type": "integer"},
+        "reading_retention_days": {"default": 365, "exclusiveMinimum": 0, "title": "Reading Retention Days", "type": "integer"}
+      },
+      "title": "RetentionSettings",
+      "type": "object"
+    },
+    "SecuritySettings": {
+      "additionalProperties": false,
+      "properties": {
+        "session_secret_env": {"title": "Session Secret Env", "type": "string"},
+        "public_port_mapping_allowed": {"default": false, "title": "Public Port Mapping Allowed", "type": "boolean"}
+      },
+      "required": ["session_secret_env"],
+      "title": "SecuritySettings",
+      "type": "object"
+    },
+    "StreamSettings": {
+      "additionalProperties": false,
+      "properties": {
+        "go2rtc_api_host": {"default": "127.0.0.1", "title": "Go2Rtc Api Host", "type": "string"},
+        "go2rtc_api_port": {"default": 1984, "maximum": 65535, "minimum": 1, "title": "Go2Rtc Api Port", "type": "integer"},
+        "analysis_width": {"default": 960, "exclusiveMinimum": 0, "title": "Analysis Width", "type": "integer"},
+        "analysis_height": {"default": 540, "exclusiveMinimum": 0, "title": "Analysis Height", "type": "integer"},
+        "analysis_fps": {"default": 5, "maximum": 5, "minimum": 1, "title": "Analysis Fps", "type": "integer"}
+      },
+      "title": "StreamSettings",
+      "type": "object"
+    },
+    "ThresholdSettings": {
+      "additionalProperties": false,
+      "properties": {
+        "temperature_low_c": {"default": 18, "title": "Temperature Low C", "type": "number"},
+        "temperature_high_c": {"default": 26, "title": "Temperature High C", "type": "number"},
+        "humidity_low_rh": {"default": 35, "maximum": 100, "minimum": 0, "title": "Humidity Low Rh", "type": "number"},
+        "humidity_high_rh": {"default": 60, "maximum": 100, "minimum": 0, "title": "Humidity High Rh", "type": "number"},
+        "sustained_seconds": {"default": 300, "exclusiveMinimum": 0, "title": "Sustained Seconds", "type": "integer"}
+      },
+      "title": "ThresholdSettings",
+      "type": "object"
+    }
+  },
+  "additionalProperties": false,
+  "properties": {
+    "app": {"$ref": "#/$defs/ApplicationSettings", "default": {"timezone": "Asia/Shanghai", "data_dir": "runtime"}},
+    "camera": {"$ref": "#/$defs/CameraSettings"},
+    "stream": {"$ref": "#/$defs/StreamSettings", "default": {"go2rtc_api_host": "127.0.0.1", "go2rtc_api_port": 1984, "analysis_width": 960, "analysis_height": 540, "analysis_fps": 5}},
+    "retention": {"$ref": "#/$defs/RetentionSettings", "default": {"event_retention_days": 30, "event_quota_gb": 30, "reading_retention_days": 365}},
+    "thresholds": {"$ref": "#/$defs/ThresholdSettings", "default": {"temperature_low_c": 18.0, "temperature_high_c": 26.0, "humidity_low_rh": 35.0, "humidity_high_rh": 60.0, "sustained_seconds": 300}},
+    "notifications": {"$ref": "#/$defs/NotificationSettings"},
+    "security": {"$ref": "#/$defs/SecuritySettings"}
+  },
+  "required": ["camera", "notifications", "security"],
+  "title": "AppSettings",
+  "type": "object"
+}
