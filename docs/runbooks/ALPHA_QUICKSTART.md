@@ -75,10 +75,18 @@ cat runtime/alpha.env
 2. 登录米家账号；
 3. 按提示完成短信、邮件验证码或验证码验证；
 4. 选择 MJSXJ17CM 摄像头；
-5. 将加入后的流名称设为 **`live`**；
-6. 回到 `http://127.0.0.1:8080` 刷新状态。
+5. 将加入后的原始摄像头流名称设为 **`source`**；
+6. 配置文件中预置的 **`live`** 会在有人观看时，把 `source` 按需转换为 `960×540 / 5 FPS` 的 MJPEG 预览；
+7. 回到 `http://127.0.0.1:8080` 刷新状态。
 
 小米账号信息由 go2rtc 保存在本机 `runtime/go2rtc.yaml`，该文件不会提交到 GitHub。
+
+如果安装器运行后你手工改过 `runtime/go2rtc.yaml`，请确认其中仍有：
+
+```yaml
+streams:
+  live: ffmpeg:source#video=mjpeg#width=960#height=540#fps=5
+```
 
 ## 5. 两台 Android 接收通知
 
