@@ -7,7 +7,7 @@
 `codex/basic-usable-alpha` 已提供基础可用闭环：
 
 - 256GB microSD 全天循环录像；
-- 密码保护的实时 MJPEG 网页和当前截图；
+- 密码保护的 1280×720、10 FPS MJPEG 网页预览和当前截图；
 - M2 Mac 通过局域网访问 i9 Dashboard；
 - M2 通过 SSH 隧道访问仅限本机的 go2rtc 配置页；
 - 两台 Android ntfy 测试通知；
@@ -28,6 +28,23 @@ make alpha-stop
 make alpha-status
 make alpha-logs
 ```
+
+现有安装升级为高清预览：
+
+```bash
+make alpha-update
+make alpha-quality-hd
+make alpha-quality-info
+make alpha-source-check
+```
+
+恢复升级前配置：
+
+```bash
+make alpha-quality-rollback
+```
+
+`make alpha-quality-hd` 会先备份本机 `runtime/go2rtc.yaml`，再把 Xiaomi `source` 调整为 HD、保持传输自动协商，并把 `live` 设置为 1280×720、10 FPS。所有状态输出只包含派生信息，不打印完整 Xiaomi URI、账号、Token、DID 或局域网地址。
 
 `make alpha-update` 会在当前仓库设置 `core.fileMode=false`，避免 macOS 上脚本权限位变化形成无意义的 Git 冲突。
 
@@ -52,6 +69,8 @@ make alpha-logs
 ## 文档
 
 - [基础可用 Alpha 快速开始](docs/runbooks/ALPHA_QUICKSTART.md)
+- [Intel macOS 小米 CS2 实机排查](docs/runbooks/XIAOMI_CS2_MACOS_TROUBLESHOOTING.md)
+- [高清 MJPEG 预览设计](docs/superpowers/specs/2026-08-04-hd-mjpeg-preview-design.md)
 - [正式设计规格](docs/superpowers/specs/2026-08-04-baby-monitor-local-design.md)
 - [第一版实施计划](docs/superpowers/plans/2026-08-04-baby-monitor-local-v1.md)
 - [迭代路线图](ROADMAP.md)
@@ -63,6 +82,10 @@ make alpha-logs
 - M0 基线分支：`codex/bootstrap-baby-monitor-v1`
 - 基础可用 Alpha：`codex/basic-usable-alpha`
 - 后续功能分支：`codex/<stage>-<feature>`
+
+## 当前视频边界
+
+当前 1280×720、10 FPS 使用 MJPEG，目标是先获得稳定、清晰、浏览器通用的画面；它不是 15–25 FPS 的低延迟实时视频。后续将单独迁移到 WebRTC/MSE，并加入音频与双向语音能力。
 
 ## 安全边界
 
