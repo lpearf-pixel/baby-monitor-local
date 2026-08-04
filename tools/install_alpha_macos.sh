@@ -74,11 +74,15 @@ Alpha installation prepared.
    Then open http://127.0.0.1:1984 on the M2 Mac.
 
 3. Choose Add > Xiaomi, sign in, add MJSXJ17CM, and name the camera stream: source
-   The preconfigured live stream converts source to 960x540 MJPEG at 5 FPS.
+   The preconfigured live stream converts source to 1280x720 MJPEG at 10 FPS.
+   Existing runtime/go2rtc.yaml files are preserved; use make alpha-quality-hd to upgrade one safely.
 
 4. The start command prints the LAN dashboard URL for the M2 Mac.
 
 Useful commands:
+   make -C "$ROOT" alpha-quality-hd
+   make -C "$ROOT" alpha-quality-info
+   make -C "$ROOT" alpha-source-check
    make -C "$ROOT" alpha-status
    make -C "$ROOT" alpha-logs
    make -C "$ROOT" alpha-stop
