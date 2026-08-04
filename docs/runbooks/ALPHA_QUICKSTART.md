@@ -208,3 +208,19 @@ tailscale funnel 8080
 声音、双向语音、云台和 microSD 回放暂时继续使用米家 App。
 
 本系统不是呼吸、心率、血氧、窒息或医疗监护设备。
+
+## 10. 已验证故障案例
+
+Intel macOS 上遇到以下现象时：
+
+```text
+source 已配置但无画面
+/api/frame.jpeg 返回 Content-Length: 0
+日志出现 read udp [::] 或 read udp4 0.0.0.0 timeout
+```
+
+不要直接修改 Dashboard 或 FFmpeg。先阅读：
+
+- [`XIAOMI_CS2_MACOS_TROUBLESHOOTING.md`](./XIAOMI_CS2_MACOS_TROUBLESHOOTING.md)
+
+该记录包含米家共享账号限制、CS2 抓包、Python/Go UDP 对照、macOS 防火墙、`udp4` 补丁和 `transport=auto` 的完整实机证据。
