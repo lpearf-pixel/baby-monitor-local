@@ -26,4 +26,4 @@ jobs:
       - name: Validate schema
         run: python -m json.tool config/settings.schema.json >/dev/null
       - name: Compile
-        run: python -m compileall -q packages
+        run: python -m compileall -q packages services
