@@ -38,19 +38,21 @@ class FakeResponse:
 
 class FakeOpener:
     def __init__(self) -> None:
-        self.responses: dict[str, bytes] = {}
+        self.responses: dict[str, list[bytes]] = {}
         self.calls: list[str] = []
 
     def add_json(self, url: str, payload: Any) -> None:
-        self.responses[url] = json.dumps(payload).encode("utf-8")
+        self.add_bytes(url, json.dumps(payload).encode("utf-8"))
 
     def add_bytes(self, url: str, payload: bytes) -> None:
-        self.responses[url] = payload
+        self.responses.setdefault(url, []).append(payload)
 
     def __call__(self, url: str, timeout: float) -> FakeResponse:
         assert timeout > 0
         self.calls.append(url)
-        return FakeResponse(self.responses[url])
+        responses = self.responses[url]
+        payload = responses.pop(0) if len(responses) > 1 else responses[0]
+        return FakeResponse(payload)
 
 
 def test_jpeg_dimensions_reads_sof0() -> None:
@@ -151,6 +153,24 @@ def test_health_accepts_real_hd_media() -> None:
     assert result.bytes_received == 50000
     assert result.source_dimensions == (1280, 720)
     assert result.live_dimensions == (1280, 720)
+
+
+def test_health_reconnects_when_first_mjpeg_consumer_gets_eof() -> None:
+    opener = working_opener(live_jpeg=jpeg(1280, 720))
+    mjpeg_url = "http://127.0.0.1:1984/api/stream.mjpeg?src=live"
+    opener.responses[mjpeg_url] = [
+        b"",
+        b"--frame\r\nContent-Type: image/jpeg\r\n\r\nJPEG",
+    ]
+
+    result = check_hd_health(
+        "http://127.0.0.1:1984",
+        "http://127.0.0.1:8080",
+        opener=opener,
+    )
+
+    assert result.code == "PASS"
+    assert opener.calls.count(mjpeg_url) == 2
 
 
 def working_opener(*, live_jpeg: bytes) -> FakeOpener:
