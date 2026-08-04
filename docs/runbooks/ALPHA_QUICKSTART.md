@@ -81,6 +81,7 @@ make alpha-status
 make alpha-logs
 make alpha-quality-info
 make alpha-source-check
+make alpha-subtype-probe
 ```
 
 查看本地账号、密码和 ntfy 主题：
@@ -221,6 +222,24 @@ live_dimensions=1280x720
 ```
 
 不要重新加入 `transport=tcp`。该型号实机返回 UDP ready；强制 TCP 会使 CS2 握手停在传输选择阶段。
+
+### 安全探测 MJSXJ17CM 的原生清晰度编号
+
+如果 `source_dimensions` 仍为 `864x480`，说明 `subtype=hd` 在当前 go2rtc 中只映射到了质量编号 `2`。执行：
+
+```bash
+make alpha-subtype-probe
+```
+
+命令会依次探测编号 `0` 至 `5`，期间会重启 Alpha 多次，网页画面预计中断约 2–5 分钟。每个候选只输出：
+
+```text
+subtype=<编号> result=<状态> protocol=<协议> bytes_received=<字节数> source_dimensions=<实际尺寸>
+```
+
+结束时输出 `recommended_subtype` 和 `original_config_restored=true`。无论探测成功、失败或按 `Ctrl+C` 中断，命令都会恢复探测前的完整配置、文件权限和服务；推荐编号不会被自动应用。
+
+重启脚本的输出会被抑制，避免终端探测摘要包含局域网地址。不要发送 `runtime/go2rtc.yaml`、完整 Xiaomi URI、账号、Token、UID、DID、MAC 或任何画面，只共享上述派生结果。
 
 ## 8. 回滚高清升级
 
