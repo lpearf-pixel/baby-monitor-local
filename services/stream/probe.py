@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import json
+import re
 import subprocess
 from collections.abc import Callable
 from fractions import Fraction
@@ -61,10 +62,14 @@ def _parse_rate(value: Any) -> float:
         return 0.0
 
 
+_URL_USERINFO = re.compile(r"(?P<scheme>[A-Za-z][A-Za-z0-9+.-]*://)[^/@\s]+@")
+
+
 def _safe_stderr(stderr: str) -> str:
     text = " ".join(stderr.strip().split())
     if not text:
         return "unknown ffprobe error"
+    text = _URL_USERINFO.sub(r"\g<scheme>[REDACTED]@", text)
     return text[-240:]
 
 
