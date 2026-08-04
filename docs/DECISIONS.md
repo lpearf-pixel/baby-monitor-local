@@ -19,3 +19,12 @@ Calibration and testing in the repository use synthetic fixtures. Real household
 ## ADR-005: detections are candidate alerts
 
 Cry, movement, posture, exit, face-covering, and sleep results are candidate alerts only and are not medical or life-safety determinations.
+
+## ADR-006: H.265 native first with on-demand (按需) compatibility encoding
+
+The verified 2560×1440 camera source is H.265. At 2×/3× the Dashboard first
+requests the fixed `native` profile. Browsers that cannot activate HEVC use the
+fixed `source_compat` profile, which starts one shared 1440p H.264 VideoToolbox
+producer only while compat consumers exist. The service never falls back to
+software encoding, never accepts browser-supplied FFmpeg parameters, and keeps
+the 720p MJPEG layer visible until the selected HD profile is playing.

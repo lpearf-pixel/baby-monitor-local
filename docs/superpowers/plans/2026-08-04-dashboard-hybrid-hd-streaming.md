@@ -468,21 +468,21 @@ git commit -m "feat: prefer native HEVC with hardware fallback"
 - `make alpha-go2rtc-info` prints only pinned commit, patch SHA, binary SHA, Go version, build time, and platform.
 - The runbook provides profile/consumer/process checks that do not output URLs or credentials.
 
-- [ ] **Step 1: Write RED CLI and documentation contract tests**
+- [x] **Step 1: Write RED CLI and documentation contract tests**
 
 Assert the health CLI includes normalized `source_codec`, quality info includes
 the compat profile, and docs contain `H.265`, `source_compat`,
 `VideoToolbox`, native/compat acceptance, and no obsolete “2560x1440 H.264
 verified” statement.
 
-- [ ] **Step 2: Run RED**
+- [x] **Step 2: Run RED**
 
 ```bash
 /tmp/baby-monitor-hybrid-hd-venv/bin/python -m pytest -q \
   tests/monitoring/test_alpha_quality_cli.py tests/deploy/test_hd_docs.py
 ```
 
-- [ ] **Step 3: Implement safe output and update the runbook**
+- [x] **Step 3: Implement safe output and update the runbook**
 
 Document:
 
@@ -499,7 +499,7 @@ handoff seconds, no-black result, 2x-to-3x reuse, MJPEG fallback, encoder count,
 and `PTZ_DISABLED`. Consumer checks may print only stream name plus derived
 producer/consumer counts.
 
-- [ ] **Step 4: Verify and commit Task 5**
+- [x] **Step 4: Verify and commit Task 5**
 
 ```bash
 /tmp/baby-monitor-hybrid-hd-venv/bin/python -m pytest -q \

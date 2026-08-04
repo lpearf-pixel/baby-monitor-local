@@ -23,7 +23,8 @@ make alpha-start
 ```text
 上游 go2rtc commit：b465651a94c1f637d566a8c660b4fad102b35153
 上游来源：PR #2222
-本地补丁：net.ListenUDP("udp", nil) → net.ListenUDP("udp4", nil)
+本地补丁 1：net.ListenUDP("udp", nil) → net.ListenUDP("udp4", nil)
+本地补丁 2：H.265 MP4 sample entry `hev1` → MIME 一致的 `hvc1`
 Xiaomi transport：auto，不强制 transport=tcp
 实际协议：cs2+udp
 平台：darwin/amd64
@@ -78,7 +79,8 @@ PR #2222 单独不足以解决本机问题；当前以“固定 commit + udp4 �
 
 ## 5. 补丁管理
 
-仓库新增可审计 patch 文件，内容只包含当前实机验证所需的 `udp4` 修改。
+仓库新增一个可审计 patch 文件，内容严格限于当前方案所需的两个修改：CS2
+套接字固定为 `udp4`，以及 H.265 MP4 sample entry 从 `hev1` 修正为 `hvc1`。
 
 安装器保存并校验：
 
@@ -172,6 +174,7 @@ codesign --force --sign - .local/bin/go2rtc
 5. `bytes_recv > 0`；
 6. `/api/frame.jpeg?src=source` 返回非零内容；
 7. 输出文件可识别为 JPEG。
+8. 视频编码只输出规范化结果，例如 `source_codec=H265`，不打印媒体描述。
 
 结果分类：
 
