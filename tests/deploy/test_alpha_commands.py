@@ -3,6 +3,8 @@ from __future__ import annotations
 import subprocess
 from pathlib import Path
 
+import pytest
+
 
 ROOT = Path(__file__).resolve().parents[2]
 
@@ -111,3 +113,32 @@ def test_installer_preserves_existing_runtime_config() -> None:
     assert 'if [[ ! -f "$ROOT/runtime/go2rtc.yaml" ]]; then' in content
     assert 'cp "$ROOT/config/go2rtc.alpha.yaml" "$ROOT/runtime/go2rtc.yaml"' in content
     assert "1280x720 MJPEG at 10 FPS" in content
+
+
+@pytest.mark.parametrize(
+    ("target", "command"),
+    [
+        ("alpha-go2rtc-info", "info"),
+        ("alpha-go2rtc-rebuild", "rebuild"),
+        ("alpha-go2rtc-rollback", "rollback"),
+    ],
+)
+def test_makefile_exposes_go2rtc_build_lifecycle(target: str, command: str) -> None:
+    result = subprocess.run(
+        ["make", "-n", target],
+        cwd=ROOT,
+        check=False,
+        capture_output=True,
+        text=True,
+    )
+
+    assert result.returncode == 0
+    assert f"tools/go2rtc_build.py {command}" in result.stdout
+
+
+def test_installer_ensures_patched_build_instead_of_downloading_release() -> None:
+    content = (ROOT / "tools/install_alpha_macos.sh").read_text(encoding="utf-8")
+
+    assert 'brew list go >/dev/null 2>&1 || brew install go' in content
+    assert 'tools/go2rtc_build.py" ensure' in content
+    assert "go2rtc/releases/download" not in content

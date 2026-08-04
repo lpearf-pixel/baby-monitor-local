@@ -2,7 +2,7 @@ SHELL := /bin/bash
 PYTHON := ./.venv-alpha/bin/python
 .DEFAULT_GOAL := help
 
-.PHONY: help alpha-update alpha-install alpha-start alpha-stop alpha-restart alpha-status alpha-logs alpha-quality-hd alpha-quality-info alpha-quality-rollback alpha-source-check alpha-subtype-probe alpha-subtype-apply
+.PHONY: help alpha-update alpha-install alpha-start alpha-stop alpha-restart alpha-status alpha-logs alpha-quality-hd alpha-quality-info alpha-quality-rollback alpha-source-check alpha-subtype-probe alpha-subtype-apply alpha-go2rtc-info alpha-go2rtc-rebuild alpha-go2rtc-rollback
 
 help:
 	@echo "Baby Monitor Local Alpha commands:"
@@ -19,6 +19,9 @@ help:
 	@echo "  make alpha-source-check      Verify real source media and HD preview health"
 	@echo "  make alpha-subtype-probe     Safely probe Xiaomi source quality numbers 0-5"
 	@echo "  make alpha-subtype-apply     Apply verified MJSXJ17CM native HD subtype 3"
+	@echo "  make alpha-go2rtc-info       Show non-sensitive pinned build metadata"
+	@echo "  make alpha-go2rtc-rebuild    Rebuild the pinned patched go2rtc binary"
+	@echo "  make alpha-go2rtc-rollback   Restore the newest valid go2rtc backup"
 
 alpha-update:
 	@git config core.fileMode false
@@ -29,6 +32,15 @@ alpha-update:
 
 alpha-install:
 	@bash tools/install_alpha_macos.sh
+
+alpha-go2rtc-info:
+	@$(PYTHON) tools/go2rtc_build.py info
+
+alpha-go2rtc-rebuild:
+	@$(PYTHON) tools/go2rtc_build.py rebuild
+
+alpha-go2rtc-rollback:
+	@$(PYTHON) tools/go2rtc_build.py rollback
 
 alpha-start:
 	@bash tools/start_alpha.sh

@@ -1,0 +1,26 @@
+diff --git a/pkg/iso/codecs.go b/pkg/iso/codecs.go
+index f4a83c7b..471f6c30 100644
+--- a/pkg/iso/codecs.go
++++ b/pkg/iso/codecs.go
+@@ -11,7 +11,7 @@ func (m *Movie) WriteVideo(codec string, width, height uint16, conf []byte) {
+ 	case core.CodecH264:
+ 		m.StartAtom("avc1")
+ 	case core.CodecH265:
+-		m.StartAtom("hev1")
++		m.StartAtom("hvc1")
+ 	default:
+ 		panic("unsupported iso video: " + codec)
+ 	}
+diff --git a/pkg/xiaomi/miss/cs2/conn.go b/pkg/xiaomi/miss/cs2/conn.go
+index b2a63932..ce6a3070 100644
+--- a/pkg/xiaomi/miss/cs2/conn.go
++++ b/pkg/xiaomi/miss/cs2/conn.go
+@@ -299,7 +299,7 @@ func marshalCmd(channel byte, seq uint16, cmd uint32, payload []byte) []byte {
+ 
+ func newUDPConn(host string, port int) (net.Conn, error) {
+ 	// We using raw net.UDPConn, because RemoteAddr should be changed during handshake.
+-	conn, err := net.ListenUDP("udp", nil)
++	conn, err := net.ListenUDP("udp4", nil)
+ 	if err != nil {
+ 		return nil, err
+ 	}
