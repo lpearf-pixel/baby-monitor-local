@@ -27,7 +27,7 @@ if [[ ! -x "$ROOT/.local/bin/go2rtc" ]]; then
     "https://github.com/AlexxIT/go2rtc/releases/download/v${GO2RTC_VERSION}/go2rtc_mac_amd64.zip" \
     -o "$tmp/go2rtc.zip"
   unzip -q "$tmp/go2rtc.zip" -d "$tmp/unpacked"
-  candidate="$(find "$tmp/unpacked" -type f | head -n 1)"
+  candidate="$(find "$tmp/unpacked" -type f | sed -n '1p')"
   if [[ -z "$candidate" ]]; then
     echo "go2rtc archive did not contain a binary." >&2
     exit 1
@@ -46,11 +46,13 @@ if [[ ! -f "$ROOT/runtime/go2rtc.yaml" ]]; then
 fi
 
 if [[ ! -f "$ROOT/runtime/alpha.env" ]]; then
-  password="$(openssl rand -hex 18)"
+  password="$(openssl rand -hex 20 | cut -c 1-28)"
   topic="baby-monitor-$(openssl rand -hex 16)"
   cat >"$ROOT/runtime/alpha.env" <<EOF
 BABY_MONITOR_USERNAME=parent
 BABY_MONITOR_PASSWORD=${password}
+BABY_MONITOR_BIND_HOST=0.0.0.0
+BABY_MONITOR_PORT=8080
 BABY_MONITOR_STREAM=live
 GO2RTC_BASE_URL=http://127.0.0.1:1984
 NTFY_BASE_URL=https://ntfy.sh
@@ -67,17 +69,17 @@ Alpha installation prepared.
 1. Start services:
    $ROOT/tools/start_alpha.sh
 
-2. Open the local go2rtc setup page:
-   http://127.0.0.1:1984
+2. From the M2 Mac, use an SSH tunnel for the private Xiaomi setup interface:
+   ssh -L 1984:127.0.0.1:1984 <i9-user>@<i9-lan-ip>
+   Then open http://127.0.0.1:1984 on the M2 Mac.
 
 3. Choose Add > Xiaomi, sign in, add MJSXJ17CM, and name the camera stream: source
    The preconfigured live stream converts source to 960x540 MJPEG at 5 FPS.
 
-4. Open the dashboard:
-   http://127.0.0.1:8080
+4. The start script prints the LAN dashboard URL for the M2 Mac.
 
 Local credentials are stored with mode 600 in:
    $ROOT/runtime/alpha.env
 
-Do not commit or share that file.
+Do not commit or share that file. The generated password is dedicated to this dashboard; do not reuse another account password.
 EOF
