@@ -11,12 +11,11 @@ from packages.contracts.events import (
     EventAcknowledgement,
     EventSeverity,
     HealthState,
-    ReadingState,
     SystemHealth,
 )
 
 
-_SCHEMA_VERSION = 1
+_SCHEMA_VERSION = 2
 
 
 def _iso(value: datetime) -> str:
@@ -67,7 +66,8 @@ class EventStore:
                     temperature_c REAL,
                     humidity_rh REAL,
                     confidence REAL NOT NULL,
-                    reason TEXT
+                    reason TEXT,
+                    payload_json TEXT
                 );
 
                 CREATE TABLE IF NOT EXISTS system_health (
@@ -90,6 +90,16 @@ class EventStore:
                 );
                 """
             )
+            environment_columns = {
+                str(row["name"])
+                for row in connection.execute(
+                    "PRAGMA table_info(environment_readings)"
+                ).fetchall()
+            }
+            if "payload_json" not in environment_columns:
+                connection.execute(
+                    "ALTER TABLE environment_readings ADD COLUMN payload_json TEXT"
+                )
             connection.execute(
                 """
                 INSERT OR IGNORE INTO schema_migrations(version, applied_at)
@@ -156,8 +166,8 @@ class EventStore:
                 """
                 INSERT INTO environment_readings(
                     reading_id, captured_at, state, temperature_c,
-                    humidity_rh, confidence, reason
-                ) VALUES (?, ?, ?, ?, ?, ?, ?)
+                    humidity_rh, confidence, reason, payload_json
+                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?)
                 """,
                 (
                     reading.reading_id,
@@ -166,7 +176,12 @@ class EventStore:
                     reading.temperature_c,
                     reading.humidity_rh,
                     reading.confidence,
-                    reading.reason,
+                    (
+                        reading.failure_reason.value
+                        if reading.failure_reason is not None
+                        else None
+                    ),
+                    reading.model_dump_json(),
                 ),
             )
 
@@ -175,21 +190,14 @@ class EventStore:
             row = connection.execute(
                 """
                 SELECT * FROM environment_readings
+                WHERE payload_json IS NOT NULL
                 ORDER BY julianday(captured_at) DESC, rowid DESC
                 LIMIT 1
                 """
             ).fetchone()
         if row is None:
             return None
-        return EnvironmentReading(
-            reading_id=row["reading_id"],
-            captured_at=_datetime(row["captured_at"]),
-            state=ReadingState(row["state"]),
-            temperature_c=row["temperature_c"],
-            humidity_rh=row["humidity_rh"],
-            confidence=row["confidence"],
-            reason=row["reason"],
-        )
+        return EnvironmentReading.model_validate_json(row["payload_json"])
 
     def acknowledge(
         self,

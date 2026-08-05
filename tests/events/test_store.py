@@ -2,6 +2,7 @@ from __future__ import annotations
 
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
+import sqlite3
 
 import pytest
 from pydantic import ValidationError
@@ -9,8 +10,10 @@ from pydantic import ValidationError
 from packages.contracts.events import (
     CandidateEvent,
     EnvironmentReading,
+    EnvironmentSourceKind,
     EventSeverity,
     HealthState,
+    ReadingFailureReason,
     ReadingState,
     SystemHealth,
 )
@@ -38,7 +41,41 @@ def test_migration_creates_integrity_checked_database(tmp_path: Path) -> None:
     store.migrate()
 
     assert store.integrity_check() == "ok"
-    assert store.schema_version() == 1
+    assert store.schema_version() == 2
+
+
+def test_migration_upgrades_legacy_environment_table_before_strict_write(
+    tmp_path: Path,
+) -> None:
+    database = tmp_path / "events.sqlite3"
+    with sqlite3.connect(database) as connection:
+        connection.execute(
+            """
+            CREATE TABLE environment_readings (
+                reading_id TEXT PRIMARY KEY,
+                captured_at TEXT NOT NULL,
+                state TEXT NOT NULL,
+                temperature_c REAL,
+                humidity_rh REAL,
+                confidence REAL NOT NULL,
+                reason TEXT
+            )
+            """
+        )
+    store = EventStore(database)
+
+    store.migrate()
+    reading = EnvironmentReading.unavailable(
+        reading_id="strict-after-upgrade",
+        source_kind=EnvironmentSourceKind.WS2021_GAUGE,
+        captured_at=NOW,
+        failure_reason=ReadingFailureReason.GLARE,
+        calibration_version="calibration-1",
+        sample_count=5,
+    )
+    store.add_environment_reading(reading)
+
+    assert store.latest_environment_reading() == reading
 
 
 def test_round_trips_timezone_aware_candidate_event(tmp_path: Path) -> None:
@@ -57,14 +94,14 @@ def test_round_trips_timezone_aware_candidate_event(tmp_path: Path) -> None:
 def test_unavailable_environment_reading_is_explicitly_stored(tmp_path: Path) -> None:
     store = EventStore(tmp_path / "events.sqlite3")
     store.migrate()
-    reading = EnvironmentReading(
+    reading = EnvironmentReading.unavailable(
         reading_id="reading-001",
+        source_kind=EnvironmentSourceKind.WS2021_GAUGE,
         captured_at=NOW,
-        state=ReadingState.UNAVAILABLE,
-        temperature_c=None,
-        humidity_rh=None,
+        failure_reason=ReadingFailureReason.GLARE,
+        calibration_version="calibration-1",
+        sample_count=5,
         confidence=0.15,
-        reason="infrared glare",
     )
 
     store.add_environment_reading(reading)
@@ -130,9 +167,17 @@ def test_available_reading_requires_a_value() -> None:
     with pytest.raises(ValidationError, match="available reading"):
         EnvironmentReading(
             reading_id="reading-empty",
+            source_kind=EnvironmentSourceKind.WS2021_GAUGE,
             captured_at=NOW,
+            fresh_until=NOW + timedelta(seconds=90),
             state=ReadingState.AVAILABLE,
             temperature_c=None,
             humidity_rh=None,
             confidence=0.8,
+            confidence_state="acceptable",
+            failure_reason=None,
+            calibration_version="calibration-1",
+            sample_count=5,
+            valid_temperature_samples=0,
+            valid_humidity_samples=0,
         )
