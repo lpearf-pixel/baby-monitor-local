@@ -1,1 +1,1 @@
-"""Event persistence and coordination services."""
+"""Deterministic local event state machines."""
