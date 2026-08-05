@@ -10,6 +10,7 @@ from packages.contracts.vision import (
     ImageQuality,
     ModelRisk,
     Posture,
+    RiskSnapshot,
     RiskTransition,
     RiskTransitionKind,
     VisualReview,
@@ -48,6 +49,25 @@ class VisualRiskStateMachine:
     def state_for(self, risk_kind: VisualRiskKind) -> VisualRiskState:
         return self._tracks[risk_kind].state
 
+    def snapshot(self, snapshot_at: datetime) -> RiskSnapshot:
+        self._require_monotonic_aware_time(snapshot_at)
+        return RiskSnapshot(
+            snapshot_at=snapshot_at,
+            open_risks=frozenset(
+                risk_kind
+                for risk_kind, track in self._tracks.items()
+                if track.state is VisualRiskState.ALERT
+            ),
+        )
+
+    @classmethod
+    def from_snapshot(cls, snapshot: RiskSnapshot) -> "VisualRiskStateMachine":
+        machine = cls()
+        for risk_kind in snapshot.open_risks:
+            machine._tracks[risk_kind].state = VisualRiskState.ALERT
+        machine._last_observed_at = snapshot.snapshot_at
+        return machine
+
     def evaluate(
         self, review: VisualReview, observed_at: datetime
     ) -> tuple[RiskTransition, ...]:
@@ -77,7 +97,6 @@ class VisualRiskStateMachine:
             candidate, safe = self._evidence_for(
                 risk_kind,
                 review,
-                adult_present=adult_present,
             )
             transition = self._advance_track(
                 risk_kind=risk_kind,
@@ -112,8 +131,6 @@ class VisualRiskStateMachine:
     def _evidence_for(
         risk_kind: VisualRiskKind,
         review: VisualReview,
-        *,
-        adult_present: bool,
     ) -> tuple[bool, bool]:
         if risk_kind is VisualRiskKind.FACE_NOT_VISIBLE:
             candidate = (
@@ -137,7 +154,7 @@ class VisualRiskStateMachine:
 
         safe = (
             explicit_safe
-            and not adult_present
+            and review.adult_presence is AdultPresence.ABSENT
             and review.image_quality is ImageQuality.USABLE
             and review.confidence >= MINIMUM_CONFIDENCE
         )

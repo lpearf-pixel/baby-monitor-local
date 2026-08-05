@@ -230,6 +230,23 @@ def test_uncertain_or_poor_image_is_not_safe_recovery_evidence() -> None:
     assert machine.state_for(VisualRiskKind.FACE_NOT_VISIBLE) is VisualRiskState.ALERT
 
 
+def test_uncertain_adult_presence_is_not_safe_recovery_evidence() -> None:
+    machine = VisualRiskStateMachine()
+    machine.evaluate(face_hidden(), NOW)
+    machine.evaluate(face_hidden(), NOW + timedelta(seconds=10))
+
+    uncertain_adult = machine.evaluate(
+        review(adult_presence="uncertain"), NOW + timedelta(seconds=20)
+    )
+    first_explicitly_safe = machine.evaluate(
+        review(adult_presence="absent"), NOW + timedelta(seconds=30)
+    )
+
+    assert uncertain_adult == ()
+    assert first_explicitly_safe == ()
+    assert machine.state_for(VisualRiskKind.FACE_NOT_VISIBLE) is VisualRiskState.ALERT
+
+
 def test_watch_clears_only_after_two_safe_reviews_spanning_ten_seconds() -> None:
     machine = VisualRiskStateMachine()
     machine.evaluate(face_hidden(), NOW)
@@ -261,3 +278,52 @@ def test_safe_enums_used_by_recovery_are_explicit() -> None:
     assert safe.adult_presence is AdultPresence.ABSENT
     assert safe.image_quality is ImageQuality.USABLE
     assert safe.risk is ModelRisk.NONE
+
+
+def test_restart_preserves_open_alert_but_discards_partial_recovery() -> None:
+    machine = VisualRiskStateMachine()
+    machine.evaluate(face_hidden(), NOW)
+    machine.evaluate(face_hidden(), NOW + timedelta(seconds=10))
+    machine.evaluate(review(), NOW + timedelta(seconds=20))
+
+    snapshot = machine.snapshot(NOW + timedelta(seconds=21))
+    restored = VisualRiskStateMachine.from_snapshot(snapshot)
+    first_safe_after_restart = restored.evaluate(
+        review(), NOW + timedelta(seconds=30)
+    )
+    recovered = restored.evaluate(review(), NOW + timedelta(seconds=40))
+
+    assert snapshot.open_risks == frozenset({VisualRiskKind.FACE_NOT_VISIBLE})
+    assert (
+        restored.state_for(VisualRiskKind.FACE_NOT_VISIBLE)
+        is VisualRiskState.NORMAL
+    )
+    assert first_safe_after_restart == ()
+    assert kinds(recovered) == [RiskTransitionKind.RECOVERED]
+
+
+def test_restart_discards_watch_and_pending_candidate_evidence() -> None:
+    machine = VisualRiskStateMachine()
+    machine.evaluate(face_hidden(), NOW)
+
+    snapshot = machine.snapshot(NOW + timedelta(seconds=1))
+    restored = VisualRiskStateMachine.from_snapshot(snapshot)
+    first_after_restart = restored.evaluate(
+        face_hidden(), NOW + timedelta(seconds=10)
+    )
+
+    assert snapshot.open_risks == frozenset()
+    assert kinds(first_after_restart) == [RiskTransitionKind.WATCH_STARTED]
+    assert (
+        restored.state_for(VisualRiskKind.FACE_NOT_VISIBLE)
+        is VisualRiskState.WATCH
+    )
+
+
+def test_restored_snapshot_time_is_the_new_monotonic_floor() -> None:
+    machine = VisualRiskStateMachine()
+    snapshot = machine.snapshot(NOW + timedelta(seconds=20))
+    restored = VisualRiskStateMachine.from_snapshot(snapshot)
+
+    with pytest.raises(ValueError, match="monotonic"):
+        restored.evaluate(review(), NOW + timedelta(seconds=19))

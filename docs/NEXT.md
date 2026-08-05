@@ -23,12 +23,15 @@ The repository baseline and environment implementation are complete. Do not rest
 
 ## P2 — Add the local visual alert loop
 
-1. Revise and approve the visual-review spec for the selected M2 backend
-   (JoyAI/MLX interaction layer or the existing Qwen/Ollama baseline).
-2. Implement bed-zone/privacy-mask setup, deterministic camera freeze checks,
-   bounded frame memory, model review, and risk state machine.
-3. Add event screenshot/video evidence and real-time text alerts without making the
-   model a prerequisite for live viewing.
+1. R1 complete locally: strict Qwen observation contracts and the pure deterministic
+   risk state machine are implemented and tested.
+2. Implement R2 bed-zone/privacy-mask processing, deterministic camera freeze checks,
+   bounded frame memory and single-flight scheduling; privacy masking must happen before
+   model transfer or event-media persistence.
+3. Implement R3 against the fixed loopback Qwen/Ollama endpoint and restricted M2 SSH
+   bridge, including timeout, degraded and recovery behavior.
+4. Add R4 event screenshot/video evidence, real-time text alerts and authenticated
+   parent feedback without making the model a prerequisite for live viewing.
 
 ## P3 — Release gate
 
