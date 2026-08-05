@@ -37,7 +37,6 @@ class EnvironmentWatchdog:
         self._interval_seconds = interval_seconds
         self._now = now or (lambda: datetime.now(UTC))
         self._pipeline = self._restore_pipeline()
-        self._latest_reading_id: str | None = None
 
     def _restore_pipeline(self) -> EnvironmentPipelineSink:
         return EnvironmentPipelineSink.restore(
@@ -47,11 +46,18 @@ class EnvironmentWatchdog:
         )
 
     def tick(self, now: datetime) -> None:
+        while True:
+            snapshot = self._pipeline.state_machine.snapshot()
+            pending = self._store.readings_after(
+                captured_at=snapshot.last_record_at,
+                reading_id=snapshot.last_reading_id,
+                limit=1_000,
+            )
+            for reading in pending:
+                self._pipeline.process_stored(reading)
+            if len(pending) < 1_000:
+                break
         latest = self._store.latest()
-        latest_id = latest.reading_id if latest is not None else None
-        if latest_id != self._latest_reading_id:
-            self._pipeline = self._restore_pipeline()
-            self._latest_reading_id = latest_id
         if latest is not None and latest.fresh_until >= now:
             return
         self._pipeline.check_missing(now)

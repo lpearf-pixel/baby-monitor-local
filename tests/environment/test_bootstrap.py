@@ -12,7 +12,7 @@ from packages.contracts.settings import (
     NotificationSettings,
     SecuritySettings,
 )
-from services.environment.bootstrap import resolve_notification_topic
+from services.environment.notification_config import resolve_notification_topic
 
 
 def settings(*, source_kind: EnvironmentSourceKind = EnvironmentSourceKind.WS2021_GAUGE) -> AppSettings:

@@ -6,13 +6,11 @@ from pathlib import Path
 from packages.contracts.events import EnvironmentSourceKind
 from packages.contracts.settings import AppSettings
 from services.environment.dashboard import LocalEnvironmentDashboardService
-from services.events.environment_pipeline import EnvironmentPipelineSink
 from services.events.environment_state import EnvironmentStatePolicy
 from services.gauge.calibration import GaugeCalibrationStore
 from services.gauge.reader import Ws2021Reader
 from services.gauge.source import Ws2021GaugeSource
 from services.gauge.worker import GaugeWorker
-from services.notifications.ntfy import NtfyEnvironmentNotifier, TrustedDashboardLink
 from services.storage.environment import EnvironmentStore
 from services.stream.frame_source import Go2RtcControlledFrameSource
 
@@ -66,18 +64,6 @@ def build_dashboard_service(
     )
 
 
-def resolve_notification_topic(
-    settings: AppSettings,
-    environ: Mapping[str, str],
-) -> str:
-    topic = environ.get("NTFY_TOPIC", "").strip()
-    if not topic:
-        topic = settings.notifications.ntfy_topic.strip()
-    if topic == "replace-with-private-topic":
-        raise ValueError("a private ntfy topic must be configured")
-    return topic
-
-
 def build_gauge_worker(
     settings: AppSettings,
     project_root: Path,
@@ -86,21 +72,6 @@ def build_gauge_worker(
     if settings.environment.source_kind is not EnvironmentSourceKind.WS2021_GAUGE:
         raise ValueError("environment source_kind is not implemented")
     store = environment_store(settings, project_root)
-    notifier = None
-    dashboard_url = environ.get("BABY_MONITOR_DASHBOARD_URL", "").strip()
-    if dashboard_url:
-        notifier = NtfyEnvironmentNotifier(
-            ntfy_base_url=environ.get("NTFY_BASE_URL", "https://ntfy.sh"),
-            topic=resolve_notification_topic(settings, environ),
-            token=environ.get(settings.notifications.ntfy_token_env) or None,
-            dashboard_link=TrustedDashboardLink(url=dashboard_url),
-        )
-    sink = EnvironmentPipelineSink.restore(
-        store=store,
-        policy=state_policy(settings),
-        notifier=notifier,
-        retention_days=settings.retention.reading_retention_days,
-    )
     base_url = (
         f"http://{settings.stream.go2rtc_api_host}:"
         f"{settings.stream.go2rtc_api_port}"
@@ -118,6 +89,6 @@ def build_gauge_worker(
     )
     return GaugeWorker(
         source=source,
-        sink=sink,
+        sink=store,
         interval_seconds=settings.environment.interval_seconds,
     )

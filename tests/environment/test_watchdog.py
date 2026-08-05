@@ -70,3 +70,25 @@ def test_watchdog_does_nothing_while_gauge_reading_is_fresh(tmp_path: Path) -> N
 
     assert store.incidents() == ()
     assert notifier.calls == []
+    assert store.load_state_snapshot()["last_reading_id"] == available(NOW).reading_id
+
+
+def test_watchdog_is_single_state_owner_for_gauge_appended_readings(
+    tmp_path: Path,
+) -> None:
+    store = EnvironmentStore(tmp_path / "environment.sqlite3")
+    first = available(NOW)
+    second = available(NOW + timedelta(seconds=60))
+    store.append(first)
+    store.append(second)
+    watchdog = EnvironmentWatchdog(
+        store=store,
+        policy=EnvironmentStatePolicy(),
+        notifier=None,
+    )
+
+    watchdog.tick(NOW + timedelta(seconds=61))
+
+    snapshot = store.load_state_snapshot()
+    assert snapshot["last_reading_id"] == second.reading_id
+    assert datetime.fromisoformat(snapshot["last_record_at"]) == second.captured_at

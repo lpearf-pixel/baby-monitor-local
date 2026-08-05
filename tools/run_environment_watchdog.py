@@ -5,7 +5,6 @@ import os
 import signal
 import sys
 import threading
-from collections.abc import Mapping
 from pathlib import Path
 
 
@@ -15,9 +14,9 @@ if str(ROOT) not in sys.path:
 
 from packages.contracts.settings import AppSettings
 from services.environment.local_env import load_local_env_file
+from services.environment.notification_config import build_environment_notifier
 from services.environment.watchdog import EnvironmentWatchdog
 from services.events.environment_state import EnvironmentStatePolicy
-from services.notifications.ntfy import NtfyEnvironmentNotifier, TrustedDashboardLink
 from services.storage.environment import EnvironmentStore
 
 
@@ -52,27 +51,6 @@ def policy_from_settings(settings: AppSettings | None) -> EnvironmentStatePolicy
     )
 
 
-def notifier_from_env(
-    settings: AppSettings | None,
-    environ: Mapping[str, str],
-) -> NtfyEnvironmentNotifier | None:
-    dashboard_url = environ.get("BABY_MONITOR_DASHBOARD_URL", "").strip()
-    topic = environ.get("NTFY_TOPIC", "").strip()
-    if not topic and settings is not None:
-        topic = settings.notifications.ntfy_topic.strip()
-    if not dashboard_url or not topic or topic == "replace-with-private-topic":
-        return None
-    token_name = (
-        settings.notifications.ntfy_token_env if settings is not None else "NTFY_TOKEN"
-    )
-    return NtfyEnvironmentNotifier(
-        ntfy_base_url=environ.get("NTFY_BASE_URL", "https://ntfy.sh"),
-        topic=topic,
-        token=environ.get(token_name) or None,
-        dashboard_link=TrustedDashboardLink(url=dashboard_url),
-    )
-
-
 def main(argv: list[str] | None = None) -> int:
     args = parse_args(argv)
     load_local_env_file(args.env_file)
@@ -90,7 +68,7 @@ def main(argv: list[str] | None = None) -> int:
     watchdog = EnvironmentWatchdog(
         store=EnvironmentStore(data_dir / "environment.sqlite3"),
         policy=policy_from_settings(settings),
-        notifier=notifier_from_env(settings, os.environ),
+        notifier=build_environment_notifier(settings, os.environ),
     )
     stop_event = threading.Event()
 

@@ -85,6 +85,7 @@ class EnvironmentStateSnapshot(StateModel):
     range_incident: EnvironmentIncident | None = None
     unreadable_incident: EnvironmentIncident | None = None
     last_record_at: datetime | None = None
+    last_reading_id: str | None = None
 
     _aware_last_record_at = field_validator("last_record_at")(_aware)
 
@@ -95,6 +96,7 @@ class EnvironmentStateMachine:
         self._range_incident: EnvironmentIncident | None = None
         self._unreadable_incident: EnvironmentIncident | None = None
         self._last_record_at: datetime | None = None
+        self._last_reading_id: str | None = None
         self._range_pending_since: datetime | None = None
         self._range_recovery_since: datetime | None = None
         self._critical_since: datetime | None = None
@@ -115,6 +117,7 @@ class EnvironmentStateMachine:
         machine._range_incident = validated.range_incident
         machine._unreadable_incident = validated.unreadable_incident
         machine._last_record_at = validated.last_record_at
+        machine._last_reading_id = validated.last_reading_id
         return machine
 
     def snapshot(self) -> EnvironmentStateSnapshot:
@@ -122,6 +125,7 @@ class EnvironmentStateMachine:
             range_incident=self._range_incident,
             unreadable_incident=self._unreadable_incident,
             last_record_at=self._last_record_at,
+            last_reading_id=self._last_reading_id,
         )
 
     @property
@@ -140,6 +144,7 @@ class EnvironmentStateMachine:
         reading: EnvironmentReading,
     ) -> tuple[EnvironmentTransition, ...]:
         self._last_record_at = reading.captured_at
+        self._last_reading_id = reading.reading_id
         if reading.state is ReadingState.UNAVAILABLE:
             return self._consume_unavailable(reading)
 

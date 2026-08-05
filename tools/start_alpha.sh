@@ -82,9 +82,11 @@ if [[ "$(uname -s)" == "Darwin" ]] && command -v launchctl >/dev/null 2>&1; then
   if ! launchctl print "${GAUGE_DOMAIN}/${WATCHDOG_LABEL}" >/dev/null 2>&1; then
     launchctl bootstrap "$GAUGE_DOMAIN" "$WATCHDOG_PLIST"
   fi
+  launchctl kickstart -k "${GAUGE_DOMAIN}/${WATCHDOG_LABEL}"
   if ! launchctl print "${GAUGE_DOMAIN}/${GAUGE_LABEL}" >/dev/null 2>&1; then
     launchctl bootstrap "$GAUGE_DOMAIN" "$GAUGE_PLIST"
   fi
+  launchctl kickstart -k "${GAUGE_DOMAIN}/${GAUGE_LABEL}"
 else
   start_if_stopped "$WATCHDOG_PID" \
     nohup "$ROOT/.venv-alpha/bin/python" "$ROOT/tools/run_environment_watchdog.py" \

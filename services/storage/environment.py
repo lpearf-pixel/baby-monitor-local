@@ -209,6 +209,43 @@ class EnvironmentStore:
     def latest_available(self) -> EnvironmentReading | None:
         return self._latest_where("WHERE state = 'available'")
 
+    def readings_after(
+        self,
+        *,
+        captured_at: datetime | None,
+        reading_id: str | None,
+        limit: int = 1_000,
+    ) -> tuple[EnvironmentReading, ...]:
+        if not 1 <= limit <= 10_000:
+            raise ValueError("limit must be between 1 and 10000")
+        if captured_at is None:
+            clause = ""
+            parameters: tuple[object, ...] = (limit,)
+        else:
+            if captured_at.tzinfo is None or captured_at.utcoffset() is None:
+                raise ValueError("captured_at must be timezone-aware")
+            clause = (
+                "WHERE captured_epoch > ? "
+                "OR (captured_epoch = ? AND reading_id > ?)"
+            )
+            parameters = (
+                captured_at.timestamp(),
+                captured_at.timestamp(),
+                reading_id or "",
+                limit,
+            )
+        with self._connect() as connection:
+            rows = connection.execute(
+                f"""
+                SELECT payload_json FROM environment_readings
+                {clause}
+                ORDER BY captured_epoch, reading_id
+                LIMIT ?
+                """,
+                parameters,
+            ).fetchall()
+        return tuple(self._reading_from_row(row) for row in rows)  # type: ignore[misc]
+
     def _latest_where(self, clause: str) -> EnvironmentReading | None:
         with self._connect() as connection:
             row = connection.execute(
@@ -278,6 +315,25 @@ class EnvironmentStore:
                 """
                 SELECT * FROM environment_incidents
                 ORDER BY updated_at DESC, incident_id DESC
+                LIMIT ?
+                """,
+                (limit,),
+            ).fetchall()
+        return tuple(self._incident_from_row(row) for row in rows)
+
+    def open_incidents(
+        self,
+        *,
+        limit: int = 10,
+    ) -> tuple[StoredEnvironmentIncident, ...]:
+        if not 1 <= limit <= 100:
+            raise ValueError("limit must be between 1 and 100")
+        with self._connect() as connection:
+            rows = connection.execute(
+                """
+                SELECT * FROM environment_incidents
+                WHERE state = 'open'
+                ORDER BY updated_at, incident_id
                 LIMIT ?
                 """,
                 (limit,),

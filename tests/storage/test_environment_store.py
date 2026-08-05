@@ -182,3 +182,37 @@ def test_pipeline_transaction_rolls_back_reading_when_incident_write_fails(
 
     assert store.get(current.reading_id) is None
     assert store.load_state_snapshot() is None
+
+
+def test_open_incident_query_is_not_starved_by_newer_recovered_history(
+    tmp_path: Path,
+) -> None:
+    module = storage_module()
+    store = module.EnvironmentStore(tmp_path / "events.sqlite3")
+    store.save_incident(
+        module.StoredEnvironmentIncident(
+            incident_id="old-open",
+            kind="range",
+            state="open",
+            severity="normal",
+            opened_at=NOW - timedelta(days=10),
+            updated_at=NOW - timedelta(days=10),
+            reasons=("temperature_high",),
+        )
+    )
+    for index in range(101):
+        recovered_at = NOW + timedelta(seconds=index)
+        store.save_incident(
+            module.StoredEnvironmentIncident(
+                incident_id=f"new-recovered-{index}",
+                kind="unreadable",
+                state="recovered",
+                severity="normal",
+                opened_at=recovered_at - timedelta(minutes=10),
+                updated_at=recovered_at,
+                recovered_at=recovered_at,
+                reasons=(),
+            )
+        )
+
+    assert [item.incident_id for item in store.open_incidents()] == ["old-open"]

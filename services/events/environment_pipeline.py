@@ -94,6 +94,33 @@ class EnvironmentPipelineSink:
                 before,
             )
             raise
+        self._after_state_commit(reading, transitions)
+
+    def process_stored(self, reading: EnvironmentReading) -> None:
+        before = self._state_machine.snapshot()
+        transitions = (
+            *self._state_machine.observe_missing_record(reading.captured_at),
+            *self._state_machine.consume(reading),
+        )
+        try:
+            self._store.commit_state(
+                incidents=self._incidents_for_commit(transitions),
+                state_snapshot=self._state_machine.snapshot().model_dump(mode="json"),
+                updated_at=reading.captured_at,
+            )
+        except Exception:
+            self._state_machine = EnvironmentStateMachine.restore(
+                self._state_machine.policy,
+                before,
+            )
+            raise
+        self._after_state_commit(reading, transitions)
+
+    def _after_state_commit(
+        self,
+        reading: EnvironmentReading,
+        transitions: tuple[EnvironmentTransition, ...],
+    ) -> None:
         self._deliver_pending(
             reading,
             current_recovered_ids={
@@ -187,18 +214,18 @@ class EnvironmentPipelineSink:
     ) -> None:
         if self._notifier is None:
             return
-        candidates = [
+        recovered = [
             incident
-            for incident in self._store.incidents(limit=100)
-            if (
-                incident.state == "open"
-                or incident.incident_id in current_recovered_ids
-            )
-            and (
-                only_incident_ids is None
-                or incident.incident_id in only_incident_ids
-            )
-        ][:2]
+            for incident_id in current_recovered_ids
+            if (incident := self._store.incident(incident_id)) is not None
+        ]
+        open_incidents = list(self._store.open_incidents(limit=10))
+        candidates = [*recovered, *open_incidents]
+        unique_candidates: dict[str, StoredEnvironmentIncident] = {}
+        for incident in candidates:
+            if only_incident_ids is None or incident.incident_id in only_incident_ids:
+                unique_candidates.setdefault(incident.incident_id, incident)
+        candidates = list(unique_candidates.values())[:2]
         for stored in candidates:
             marker = "recovered" if stored.state == "recovered" else stored.severity
             if marker in stored.notified_levels:
