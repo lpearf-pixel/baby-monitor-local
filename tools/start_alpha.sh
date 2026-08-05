@@ -5,6 +5,7 @@ ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 ENV_FILE="$ROOT/runtime/alpha.env"
 GO2RTC_PID="$ROOT/runtime/pids/go2rtc.pid"
 API_PID="$ROOT/runtime/pids/api.pid"
+GAUGE_PID="$ROOT/runtime/pids/gauge.pid"
 
 if [[ ! -f "$ENV_FILE" || ! -x "$ROOT/.local/bin/go2rtc" || ! -x "$ROOT/.venv-alpha/bin/uvicorn" ]]; then
   echo "Alpha is not installed. Run tools/install_alpha_macos.sh first." >&2
@@ -19,6 +20,13 @@ set +a
 
 BABY_MONITOR_BIND_HOST="${BABY_MONITOR_BIND_HOST:-0.0.0.0}"
 BABY_MONITOR_PORT="${BABY_MONITOR_PORT:-8080}"
+BABY_MONITOR_SETTINGS_PATH="${BABY_MONITOR_SETTINGS_PATH:-$ROOT/runtime/settings.yaml}"
+export BABY_MONITOR_SETTINGS_PATH
+
+if [[ ! -f "$BABY_MONITOR_SETTINGS_PATH" ]]; then
+  echo "Environment settings are missing. Run tools/install_alpha_macos.sh first." >&2
+  exit 1
+fi
 
 if [[ ! "$BABY_MONITOR_PORT" =~ ^[0-9]+$ ]] || (( BABY_MONITOR_PORT < 1 || BABY_MONITOR_PORT > 65535 )); then
   echo "BABY_MONITOR_PORT must be an integer between 1 and 65535." >&2
@@ -63,6 +71,11 @@ if ! curl -fsS http://127.0.0.1:1984/api >/dev/null 2>&1; then
   echo "go2rtc did not become ready. Check runtime/logs/go2rtc.log" >&2
   exit 1
 fi
+
+start_if_stopped "$GAUGE_PID" \
+  nohup "$ROOT/.venv-alpha/bin/python" "$ROOT/tools/run_gauge_worker.py" \
+  --settings "$BABY_MONITOR_SETTINGS_PATH" --env-file "$ENV_FILE" \
+  >"$ROOT/runtime/logs/gauge.log" 2>&1
 
 start_if_stopped "$API_PID" \
   nohup "$ROOT/.venv-alpha/bin/uvicorn" apps.api.main:app \

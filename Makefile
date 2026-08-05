@@ -57,6 +57,8 @@ alpha-status:
 	@lsof -nP -iTCP:$${BABY_MONITOR_PORT:-8080} -sTCP:LISTEN 2>/dev/null || true
 	@echo "go2rtc listener:"
 	@lsof -nP -iTCP:1984 -sTCP:LISTEN 2>/dev/null || true
+	@echo "Gauge worker:"
+	@if [[ -f runtime/pids/gauge.pid ]] && kill -0 "$$(cat runtime/pids/gauge.pid)" 2>/dev/null; then echo "running"; else echo "offline"; fi
 	@echo "Dashboard health:"
 	@curl -fsS http://127.0.0.1:$${BABY_MONITOR_PORT:-8080}/healthz 2>/dev/null || echo "offline"
 
@@ -65,6 +67,8 @@ alpha-logs:
 	@tail -n 80 runtime/logs/go2rtc.log 2>/dev/null || true
 	@echo "=== dashboard ==="
 	@tail -n 80 runtime/logs/api.log 2>/dev/null || true
+	@echo "=== gauge ==="
+	@tail -n 80 runtime/logs/gauge.log 2>/dev/null || true
 
 alpha-quality-hd:
 	@$(PYTHON) tools/alpha_quality.py apply-hd --config runtime/go2rtc.yaml --backups runtime/backups

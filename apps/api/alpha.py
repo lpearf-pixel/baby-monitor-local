@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import secrets
+import re
 from dataclasses import dataclass, field
 from datetime import UTC, datetime
 from pathlib import Path
@@ -9,7 +10,13 @@ from typing import Annotated, Iterator, Literal, Protocol
 
 from fastapi import Depends, FastAPI, HTTPException, Query, WebSocket, status
 from fastapi.encoders import jsonable_encoder
-from fastapi.responses import HTMLResponse, JSONResponse, Response, StreamingResponse
+from fastapi.responses import (
+    HTMLResponse,
+    JSONResponse,
+    RedirectResponse,
+    Response,
+    StreamingResponse,
+)
 from fastapi.security import HTTPBasic, HTTPBasicCredentials
 from pydantic import BaseModel, ConfigDict, Field
 from starlette.websockets import WebSocketDisconnect
@@ -178,6 +185,7 @@ _VIEWER_SCRIPT = Path(__file__).with_name("dashboard_viewer.js")
 _HD_PLAYER_SCRIPT = Path(__file__).with_name("hd_player.js")
 _ENVIRONMENT_SCRIPT = Path(__file__).with_name("environment_dashboard.js")
 _GAUGE_CALIBRATION_SCRIPT = Path(__file__).with_name("gauge_calibration.js")
+_INCIDENT_ID = re.compile(r"^[A-Za-z0-9][A-Za-z0-9._-]{0,127}$")
 
 
 _DASHBOARD = """<!doctype html>
@@ -376,6 +384,19 @@ def create_app(runtime: AlphaRuntime) -> FastAPI:
                 detail="ENVIRONMENT_DISABLED",
             )
         return runtime.environment
+
+    @app.get("/incidents/{incident_id}")
+    def open_environment_incident(
+        incident_id: str,
+        _parent: str = Depends(require_parent),
+    ) -> RedirectResponse:
+        if not _INCIDENT_ID.fullmatch(incident_id):
+            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND)
+        return RedirectResponse(
+            url=f"/#environment-incident={incident_id}",
+            status_code=status.HTTP_303_SEE_OTHER,
+            headers={"Cache-Control": "no-store"},
+        )
 
     @app.get("/api/environment/current")
     def environment_current(

@@ -3,6 +3,7 @@ from __future__ import annotations
 import json
 import os
 import warnings
+from pathlib import Path
 from io import BytesIO
 from collections.abc import Iterator
 from urllib.parse import quote, urlencode
@@ -13,6 +14,8 @@ from PIL import Image, UnidentifiedImageError
 from apps.api.alpha import AlphaRuntime, SnapshotViewport
 from apps.api.hd_stream import HdStreamService
 from apps.api.ptz import DisabledPtzAdapter, StepPtzController
+from packages.contracts.settings import AppSettings
+from services.environment.bootstrap import build_dashboard_service
 
 
 MAX_SNAPSHOT_BYTES = 16 * 1024 * 1024
@@ -167,6 +170,13 @@ def runtime_from_env(environ: dict[str, str] | None = None) -> AlphaRuntime:
         ntfy_topic=env.get("NTFY_TOPIC", ""),
         ntfy_token=env.get("NTFY_TOKEN") or None,
     )
+    environment = None
+    settings_path_value = env.get("BABY_MONITOR_SETTINGS_PATH", "").strip()
+    if settings_path_value:
+        settings_path = Path(settings_path_value)
+        settings = AppSettings.load(settings_path)
+        if settings.environment.enabled:
+            environment = build_dashboard_service(settings, Path.cwd())
     return AlphaRuntime(
         username=username,
         password=password,
@@ -178,4 +188,5 @@ def runtime_from_env(environ: dict[str, str] | None = None) -> AlphaRuntime:
             native_stream_name="source",
             compat_stream_name="source_compat",
         ),
+        environment=environment,
     )

@@ -253,6 +253,47 @@ class EnvironmentStore:
                 ),
             )
 
+    def incidents(self, *, limit: int = 100) -> tuple[StoredEnvironmentIncident, ...]:
+        if not 1 <= limit <= 1_000:
+            raise ValueError("limit must be between 1 and 1000")
+        with self._connect() as connection:
+            rows = connection.execute(
+                """
+                SELECT * FROM environment_incidents
+                ORDER BY updated_at DESC, incident_id DESC
+                LIMIT ?
+                """,
+                (limit,),
+            ).fetchall()
+        return tuple(self._incident_from_row(row) for row in rows)
+
+    def incident(self, incident_id: str) -> StoredEnvironmentIncident | None:
+        with self._connect() as connection:
+            row = connection.execute(
+                "SELECT * FROM environment_incidents WHERE incident_id = ?",
+                (incident_id,),
+            ).fetchone()
+        return self._incident_from_row(row) if row is not None else None
+
+    @staticmethod
+    def _incident_from_row(row: sqlite3.Row) -> StoredEnvironmentIncident:
+        return StoredEnvironmentIncident(
+            incident_id=row["incident_id"],
+            kind=row["kind"],
+            state=row["state"],
+            severity=row["severity"],
+            opened_at=datetime.fromisoformat(row["opened_at"]),
+            updated_at=datetime.fromisoformat(row["updated_at"]),
+            recovered_at=(
+                datetime.fromisoformat(row["recovered_at"])
+                if row["recovered_at"] is not None
+                else None
+            ),
+            reasons=tuple(json.loads(row["reasons_json"])),
+            opening_reading_id=row["opening_reading_id"],
+            notified_levels=tuple(json.loads(row["notified_levels_json"])),
+        )
+
     def save_state_snapshot(
         self,
         payload: dict[str, Any],

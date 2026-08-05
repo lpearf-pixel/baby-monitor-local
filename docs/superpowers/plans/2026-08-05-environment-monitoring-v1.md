@@ -1,6 +1,6 @@
 # Baby Monitor Local Environment Monitoring V1 Implementation Plan
 
-> **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
+> **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [x]`) syntax for tracking.
 
 **Goal:** 在 Intel i9 Mac 上把 WS2021 光学温湿度读取接入严格契约、SQLite 历史、确定性告警、鉴权 Dashboard 和纯文字 ntfy 通知，同时保持视觉复核与环境 worker 独立降级。
 
@@ -39,7 +39,7 @@
 - Produces: `EnvironmentReading`, `EnvironmentSourceKind`, `ReadingFailureReason`, `ConfidenceState`, `EnvironmentSettings`, `EnvironmentPolicySettings`.
 - `EnvironmentReading.available(...)` and `.unavailable(...)` are the only constructors used by later source code.
 
-- [ ] **Step 1: Write failing strict-reading tests**
+- [x] **Step 1: Write failing strict-reading tests**
 
 ```python
 def test_available_reading_requires_both_values() -> None:
@@ -74,13 +74,13 @@ def test_unavailable_reading_rejects_values_and_requires_closed_reason() -> None
         )
 ```
 
-- [ ] **Step 2: Run the tests and verify RED**
+- [x] **Step 2: Run the tests and verify RED**
 
 Run: `.venv-alpha/bin/python -m pytest tests/contracts/test_environment_reading.py -q`
 
 Expected: FAIL because the new enums, fields, and constructors do not exist.
 
-- [ ] **Step 3: Implement the strict contract and settings**
+- [x] **Step 3: Implement the strict contract and settings**
 
 ```python
 class EnvironmentReading(EventContract):
@@ -111,11 +111,11 @@ if not (
     raise ValueError("temperature thresholds must be strictly nested")
 ```
 
-- [ ] **Step 4: Update example YAML and generated-equivalent strict JSON Schema**
+- [x] **Step 4: Update example YAML and generated-equivalent strict JSON Schema**
 
 The schema must reject extra fields, contain all environment defaults, and keep credential references as environment-variable names.
 
-- [ ] **Step 5: Run targeted tests and commit**
+- [x] **Step 5: Run targeted tests and commit**
 
 Run: `.venv-alpha/bin/python -m pytest tests/contracts/test_environment_reading.py tests/contracts/test_settings.py -q`
 
@@ -133,7 +133,7 @@ Commit: `feat: define strict environment contracts`
 - Produces: `Point`, `GaugeFace`, `GaugeQuadrilateral`, `Ws2021Calibration`, `GaugeCalibrationStore.current()`, `.save(calibration, reference_jpeg)`.
 - `GaugeFace.value_for_angle(angle_degrees: float) -> float | None` performs circular unwrapping and never extrapolates.
 
-- [ ] **Step 1: Write failing geometry tests**
+- [x] **Step 1: Write failing geometry tests**
 
 ```python
 def test_cross_zero_scale_interpolates_without_extrapolation() -> None:
@@ -145,17 +145,17 @@ def test_viewport_points_are_reversed_to_source_coordinates() -> None:
     assert viewport_to_source(Point(x=0.5, y=0.5), zoom=2, center_x=0.25, center_y=0.5) == Point(x=0.25, y=0.5)
 ```
 
-- [ ] **Step 2: Run and verify RED**
+- [x] **Step 2: Run and verify RED**
 
 Run: `.venv-alpha/bin/python -m pytest tests/gauge/test_calibration.py -q`
 
 Expected: FAIL on missing `services.gauge.calibration`.
 
-- [ ] **Step 3: Implement immutable schema v2 models and geometry validation**
+- [x] **Step 3: Implement immutable schema v2 models and geometry validation**
 
 Require four ordered, non-degenerate quadrilateral points; two faces; centers, tips, radii, and at least three unique scale marks inside the outer ROI; source dimensions; orientation; zoom 2 or 3; and a non-empty unpredictable `calibration_id`.
 
-- [ ] **Step 4: Write RED store tests, then implement atomic save and three backups**
+- [x] **Step 4: Write RED store tests, then implement atomic save and three backups**
 
 ```python
 def test_invalid_save_never_replaces_current_calibration(tmp_path: Path) -> None:
@@ -168,7 +168,7 @@ def test_invalid_save_never_replaces_current_calibration(tmp_path: Path) -> None
 
 Write JSON and JPEG to sibling temporary files, flush and `os.fsync`, back up the current pair, then use `os.replace`; API responses never return absolute paths.
 
-- [ ] **Step 5: Run targeted tests and commit**
+- [x] **Step 5: Run targeted tests and commit**
 
 Run: `.venv-alpha/bin/python -m pytest tests/gauge/test_calibration.py tests/gauge/test_calibration_store.py -q`
 
@@ -184,7 +184,7 @@ Commit: `feat: add ws2021 calibration v2 store`
 - Produces: `CapturedFrame(jpeg: bytes, captured_at: datetime)`, `FrameBurst(frames: tuple[CapturedFrame, ...])`, `ControlledFrameSource.capture_burst(frame_count, interval_ms, timeout_seconds)`.
 - Only the fixed `source` profile is permitted; proxy environment variables are disabled for loopback access.
 
-- [ ] **Step 1: Write a failing boundary test**
+- [x] **Step 1: Write a failing boundary test**
 
 ```python
 def test_one_burst_uses_one_continuous_mjpeg_response() -> None:
@@ -196,21 +196,21 @@ def test_one_burst_uses_one_continuous_mjpeg_response() -> None:
     assert response.exit_count == 1
 ```
 
-- [ ] **Step 2: Run and verify RED**
+- [x] **Step 2: Run and verify RED**
 
 Run: `.venv-alpha/bin/python -m pytest tests/stream/test_frame_source.py -q`
 
 Expected: FAIL on missing controlled frame source.
 
-- [ ] **Step 3: Implement bounded MJPEG parsing**
+- [x] **Step 3: Implement bounded MJPEG parsing**
 
 Enforce fixed loopback base URL, fixed stream name `source`, 16MiB maximum frame bytes, 4096×2160 and maximum-pixel checks, timezone-aware timestamps, five-frame maximum, and total burst deadline. Convert transport/parse failures into `FrameSourceUnavailable` without exposing URLs.
 
-- [ ] **Step 4: Add stale, oversized, malformed, and no-proxy tests**
+- [x] **Step 4: Add stale, oversized, malformed, and no-proxy tests**
 
 Tests assert consumer-visible rejection codes and one connection per burst, not opener mock call internals.
 
-- [ ] **Step 5: Run targeted tests and commit**
+- [x] **Step 5: Run targeted tests and commit**
 
 Run: `.venv-alpha/bin/python -m pytest tests/stream/test_frame_source.py -q`
 
@@ -230,7 +230,7 @@ Commit: `feat: capture controlled gauge frame bursts`
 - Produces: `Ws2021Reader.read(burst, calibration, requested_at) -> EnvironmentReading`.
 - Internal per-frame output: `GaugeFrameResult(temperature_c, humidity_rh, temperature_confidence, humidity_confidence, captured_at)` or one closed `ReadingFailureReason`.
 
-- [ ] **Step 1: Add OpenCV dependency and write failing day-path test**
+- [x] **Step 1: Add OpenCV dependency and write failing day-path test**
 
 ```python
 def test_red_needles_produce_both_values() -> None:
@@ -241,13 +241,13 @@ def test_red_needles_produce_both_values() -> None:
     assert reading.humidity_rh == pytest.approx(48.0, abs=5.0)
 ```
 
-- [ ] **Step 2: Run and verify RED, then implement perspective and day detection**
+- [x] **Step 2: Run and verify RED, then implement perspective and day detection**
 
 Run: `.venv-alpha/bin/python -m pytest tests/gauge/test_reader_day.py -q`
 
 Use `cv2.getPerspectiveTransform`, `cv2.warpPerspective`, HSV red masks, center/radius constraints, center-cap exclusion, connected radial candidate scoring, and calibrated circular angle mapping.
 
-- [ ] **Step 3: Write RED night-path tests, then implement grayscale radial detection**
+- [x] **Step 3: Write RED night-path tests, then implement grayscale radial detection**
 
 ```python
 def test_night_gray_needles_are_read_without_color() -> None:
@@ -258,11 +258,11 @@ def test_night_gray_needles_are_read_without_color() -> None:
 
 Use CLAHE, center-neighborhood radial line candidates, length and edge symmetry scoring, and exclude the outer tick band.
 
-- [ ] **Step 4: Write RED aggregation/quality tests, then implement rejection gates**
+- [x] **Step 4: Write RED aggregation/quality tests, then implement rejection gates**
 
 Cover fewer than three valid samples, stale frames, darkness, glare, occlusion, multiple indistinguishable needles, no needle, temperature MAD >0.5℃, humidity MAD >2.5%RH, and confidence <0.75. Any one-face failure yields a whole-reading `unavailable` with no values.
 
-- [ ] **Step 5: Run targeted tests and commit**
+- [x] **Step 5: Run targeted tests and commit**
 
 Run: `.venv-alpha/bin/python -m pytest tests/gauge/test_reader_day.py tests/gauge/test_reader_night.py tests/gauge/test_reader_aggregation.py -q`
 
@@ -280,7 +280,7 @@ Commit: `feat: read ws2021 day and night dials`
 - Produces: `EnvironmentReadingSource` protocol, `Ws2021GaugeSource.read(requested_at)`, `GaugeWorker.run_once(requested_at)`, `GaugeWorker.run(stop_event)`.
 - Consumes: Tasks 1–4 contracts, calibration store, controlled frame source, reader, and a `ReadingSink.append(reading)` protocol.
 
-- [ ] **Step 1: Write failing source fail-closed tests**
+- [x] **Step 1: Write failing source fail-closed tests**
 
 ```python
 def test_missing_calibration_publishes_unavailable_without_opening_frames() -> None:
@@ -291,19 +291,19 @@ def test_missing_calibration_publishes_unavailable_without_opening_frames() -> N
     assert reading.humidity_rh is None
 ```
 
-- [ ] **Step 2: Run RED, then implement source exception mapping**
+- [x] **Step 2: Run RED, then implement source exception mapping**
 
 Only closed public reasons cross the adapter. Unexpected exceptions become `internal_error`; no exception text, path, or frame bytes are copied into the contract.
 
-- [ ] **Step 3: Write failing worker scheduling tests**
+- [x] **Step 3: Write failing worker scheduling tests**
 
 Use a fake monotonic clock to prove a slow 70-second read schedules from completion and does not enqueue the missed 60-second run. Prove sink failure does not block the next cycle and visual-worker objects are never imported or controlled.
 
-- [ ] **Step 4: Implement worker and health state**
+- [x] **Step 4: Implement worker and health state**
 
 `run_once` performs read then append. `run` sleeps `max(0, interval - elapsed)` and tracks only stable health codes and the most recent successful write time.
 
-- [ ] **Step 5: Run targeted tests and commit**
+- [x] **Step 5: Run targeted tests and commit**
 
 Run: `.venv-alpha/bin/python -m pytest tests/gauge/test_source.py tests/gauge/test_worker.py -q`
 
@@ -321,7 +321,7 @@ Commit: `feat: run independent gauge worker`
 - Produces: `EnvironmentStore.append`, `.latest`, `.latest_available`, `.trend(window)`, `.save_incident`, `.load_state_snapshot`, `.cleanup`.
 - `TrendWindow` is a closed enum: `HOURS_24` and `DAYS_7`; callers cannot submit SQL or arbitrary ranges.
 
-- [ ] **Step 1: Write failing migration and round-trip tests**
+- [x] **Step 1: Write failing migration and round-trip tests**
 
 ```python
 def test_each_attempt_round_trips_including_unavailable(tmp_path: Path) -> None:
@@ -333,19 +333,19 @@ def test_each_attempt_round_trips_including_unavailable(tmp_path: Path) -> None:
     assert store.integrity_check() == "ok"
 ```
 
-- [ ] **Step 2: Run RED, then implement WAL schema and transactional writes**
+- [x] **Step 2: Run RED, then implement WAL schema and transactional writes**
 
 Create indexed `environment_readings`, `environment_incidents`, and single-row `environment_state_snapshot`; use reading ID uniqueness and strict JSON serialization from Pydantic.
 
-- [ ] **Step 3: Write failing literal trend tests, then implement buckets**
+- [x] **Step 3: Write failing literal trend tests, then implement buckets**
 
 24-hour queries use 5-minute buckets; 7-day queries use 1-hour buckets. Return literal min/median/max and availability ratio. Buckets with no available readings contain `null` statistics and are never forward-filled.
 
-- [ ] **Step 4: Write failing retention test, then protect open incidents**
+- [x] **Step 4: Write failing retention test, then protect open incidents**
 
 Delete records older than 365 days only when no open incident references them. Use a bounded transaction and return the deleted row count.
 
-- [ ] **Step 5: Run targeted tests and commit**
+- [x] **Step 5: Run targeted tests and commit**
 
 Run: `.venv-alpha/bin/python -m pytest tests/storage/test_environment_store.py tests/storage/test_environment_trends.py -q`
 
@@ -363,7 +363,7 @@ Commit: `feat: persist environment history and trends`
 - Produces: `EnvironmentStateMachine.consume(reading) -> tuple[EnvironmentTransition, ...]`, `.observe_missing_record(now)`, `EnvironmentSnapshotProvider.current(now)`.
 - Transition kinds: `opened`, `escalated`, `recovered`, `reasons_changed`; incident kinds: `range` and `unreadable`.
 
-- [ ] **Step 1: Write failing normal-range and critical tests**
+- [x] **Step 1: Write failing normal-range and critical tests**
 
 ```python
 def test_range_incident_opens_only_after_five_continuous_minutes() -> None:
@@ -378,19 +378,19 @@ def test_one_critical_sample_cannot_escalate() -> None:
     assert machine.consume(reading_at(60, temperature=31))[0].kind == "escalated"
 ```
 
-- [ ] **Step 2: Run RED, then implement range and critical transitions**
+- [x] **Step 2: Run RED, then implement range and critical transitions**
 
 Merge temperature and humidity reason codes into one incident; unavailable samples interrupt pending timers but do not close an open range incident.
 
-- [ ] **Step 3: Write RED unreadable/restart/dedup tests, then implement**
+- [x] **Step 3: Write RED unreadable/restart/dedup tests, then implement**
 
 Cover 600 seconds unavailable or absent records, two valid samples to recover unreadable, 300 seconds normal to recover range, snapshot restore preserving open/notified state while clearing incomplete timers, and exactly one transition per level.
 
-- [ ] **Step 4: Implement read-only snapshot provider under RED tests**
+- [x] **Step 4: Implement read-only snapshot provider under RED tests**
 
 For a single WS2021 optical source return `control_eligibility="ineligible"` with both `optical_source_only` and `actuator_api_disabled`; stale or unavailable current readings are never represented as current values.
 
-- [ ] **Step 5: Run targeted tests and commit**
+- [x] **Step 5: Run targeted tests and commit**
 
 Run: `.venv-alpha/bin/python -m pytest tests/environment -q`
 
@@ -407,7 +407,7 @@ Commit: `feat: evaluate deterministic environment incidents`
 - Produces: `NtfyEnvironmentNotifier.notify(transition, reading) -> NotificationResult` and `TrustedDashboardLink` validation.
 - Consumes stable incident reason codes only; exception text never enters payloads.
 
-- [ ] **Step 1: Write failing trusted-link and payload tests**
+- [x] **Step 1: Write failing trusted-link and payload tests**
 
 ```python
 @pytest.mark.parametrize("url", [
@@ -423,19 +423,19 @@ def test_untrusted_dashboard_links_are_rejected(url: str) -> None:
         TrustedDashboardLink(url=url)
 ```
 
-- [ ] **Step 2: Run RED, then implement pure-text payload building**
+- [x] **Step 2: Run RED, then implement pure-text payload building**
 
 Allow only HTTPS DNS hostnames with no credentials. Permit a fixed event path and opaque non-secret incident ID. Reject media fields, numeric private/loopback hosts, absolute paths, source URLs, calibration paths, and free-form stack text.
 
-- [ ] **Step 3: Write RED non-blocking retry tests, then implement bounded delivery**
+- [x] **Step 3: Write RED non-blocking retry tests, then implement bounded delivery**
 
 Use fixed maximum attempts and bounded delays. Return stable local error codes; never raise delivery failures into the worker or replay recovered historical events.
 
-- [ ] **Step 4: Mutation-check notification privacy**
+- [x] **Step 4: Mutation-check notification privacy**
 
 Verify tests fail if image bytes, local path, query credential, raw exception, or RFC1918 numeric host is reintroduced.
 
-- [ ] **Step 5: Run targeted tests and commit**
+- [x] **Step 5: Run targeted tests and commit**
 
 Run: `.venv-alpha/bin/python -m pytest tests/notifications/test_ntfy.py -q`
 
@@ -456,7 +456,7 @@ Commit: `feat: send redacted environment notifications`
 - Authenticated endpoints: `GET /api/environment/current`, `GET /api/environment/trends/{window}`, `GET /api/environment/incidents`, `GET /api/gauge-calibration`, `PUT /api/gauge-calibration`.
 - No environment mutation or actuator endpoint exists.
 
-- [ ] **Step 1: Write failing authenticated API tests**
+- [x] **Step 1: Write failing authenticated API tests**
 
 ```python
 def test_current_environment_never_falls_back_to_last_valid() -> None:
@@ -468,19 +468,19 @@ def test_current_environment_never_falls_back_to_last_valid() -> None:
 
 Also assert every response uses `Cache-Control: no-store`, trends accept only `24h` or `7d`, and anonymous access is rejected before service access.
 
-- [ ] **Step 2: Run RED, then implement bounded API adapters**
+- [x] **Step 2: Run RED, then implement bounded API adapters**
 
 FastAPI handlers call services only; they never capture five frames or invoke OpenCV. Responses return contract JSON and stable metadata without filesystem paths.
 
-- [ ] **Step 3: Write RED dashboard and wizard browser tests**
+- [x] **Step 3: Write RED dashboard and wizard browser tests**
 
 Assert an unavailable current reading stays visibly unavailable while last-valid is separate; chart gaps remain gaps; calibration collects four corners, two centers/tips, and at least three marks per face; undo and cancel do not save; submitted points are source-normalized.
 
-- [ ] **Step 4: Implement local dashboard card and schema v2 wizard**
+- [x] **Step 4: Implement local dashboard card and schema v2 wizard**
 
 Use repository-local JavaScript only, an inline SVG or canvas chart, `2×/3×` frozen current view, authenticated fetches, and no third-party CDN. Add no device-control button or route.
 
-- [ ] **Step 5: Run targeted tests and commit**
+- [x] **Step 5: Run targeted tests and commit**
 
 Run: `.venv-alpha/bin/python -m pytest tests/api/test_alpha_app.py -q && node --test tests/frontend/environment_dashboard.test.mjs tests/frontend/gauge_calibration.test.mjs`
 
@@ -504,23 +504,23 @@ Commit: `feat: expose authenticated environment dashboard`
 - Runtime construction composes frame source → calibration store → reader → source → store/state/notifier without importing Qwen or visual-review code.
 - launchd has an independent label, log paths, restart policy, and arguments; it does not restart go2rtc or the API.
 
-- [ ] **Step 1: Write failing composition and launchd isolation tests**
+- [x] **Step 1: Write failing composition and launchd isolation tests**
 
 Prove Qwen/Ollama absence does not prevent gauge composition, an unreadable gauge result does not change visual state, worker configuration includes one 60-second interval, and no actuator/control route is registered.
 
-- [ ] **Step 2: Run RED, then wire runtime and worker entry point**
+- [x] **Step 2: Run RED, then wire runtime and worker entry point**
 
 Load strict settings, create the SQLite database below configured `data_dir`, use fixed loopback go2rtc source, and map secrets only from named environment variables. Worker shutdown handles `SIGTERM` without killing sibling services.
 
-- [ ] **Step 3: Add launchd unit and installer integration**
+- [x] **Step 3: Add launchd unit and installer integration**
 
 Use `KeepAlive` for the gauge worker only. Do not place credentials, private addresses, calibration contents, or family paths in the plist example.
 
-- [ ] **Step 4: Correct stale project documents**
+- [x] **Step 4: Correct stale project documents**
 
 Mark the approved environment spec and this plan, replace old Task 8 CLI calibration with the Dashboard schema v2 wizard, record real branch/HEAD progression, keep PR #4 remote divergence explicit, and document i9 hardware acceptance as still pending.
 
-- [ ] **Step 5: Run environment stage gate and commit**
+- [x] **Step 5: Run environment stage gate and commit**
 
 Run:
 

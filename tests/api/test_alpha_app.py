@@ -307,6 +307,21 @@ def test_environment_current_requires_auth_before_service_access() -> None:
     assert environment.current_calls == 0
 
 
+def test_authenticated_incident_link_opens_dashboard_anchor() -> None:
+    app, _ = client(environment=FakeEnvironmentService())
+
+    denied = app.get("/incidents/incident-1", follow_redirects=False)
+    response = app.get(
+        "/incidents/incident-1",
+        headers=auth(),
+        follow_redirects=False,
+    )
+
+    assert denied.status_code == 401
+    assert response.status_code == 303
+    assert response.headers["location"] == "/#environment-incident=incident-1"
+
+
 def test_environment_current_keeps_unavailable_and_last_valid_separate() -> None:
     environment = FakeEnvironmentService()
     app, _ = client(environment=environment)

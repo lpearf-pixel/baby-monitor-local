@@ -22,6 +22,7 @@ stop_pidfile() {
 }
 
 stop_pidfile "$ROOT/runtime/pids/api.pid"
+stop_pidfile "$ROOT/runtime/pids/gauge.pid"
 stop_pidfile "$ROOT/runtime/pids/go2rtc.pid"
 
 echo "Baby Monitor Local Alpha stopped."

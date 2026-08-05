@@ -294,7 +294,51 @@ make alpha-quality-rollback
 
 该命令恢复最近一次 `go2rtc-quality-*.yaml` 备份并重启，不修改 `runtime/alpha.env`。回滚后旧配置可能不是 1280×720，因此不要把高清尺寸检查结果作为回滚成功条件；使用米家和 Dashboard 确认基础画面即可。
 
-## 9. Android 通知
+## 9. 配置 WS2021 环境监测
+
+安装程序会保留已有运行配置，并在首次安装时创建：
+
+```text
+runtime/settings.yaml
+runtime/launchd/com.babymonitor.gauge.plist
+```
+
+两者都只留在 i9 本机。`make alpha-start` 会把 gauge worker 作为独立 PID
+启动；`make alpha-stop` 只向各自 PID 发送停止信号，不会让 gauge worker
+停止 API、go2rtc 或后续 visual-review worker。查看非敏感运行状态：
+
+```bash
+make alpha-status
+make alpha-logs
+```
+
+先打开鉴权 Dashboard，切换到能看清完整表盘的 `2×` 或 `3×` 视野，然后点击
+“标定温湿度计”。按向导依次标记仪表面四角、湿度盘和温度盘的圆心、针尖及
+刻度值。保存会生成私有参考 JPEG 和 schema v2 JSON；不要把这些文件复制到
+仓库、Issue、聊天或 PR。标定缺失或失效时系统显示 `unavailable`，不会用旧
+读数冒充当前值。
+
+默认每 60 秒在同一连续解码会话中采集 5 帧。Dashboard 显示当前值、采集
+时间、新鲜度、置信状态、失败原因、标定版本、24 小时/7 天趋势和环境事件。
+普通范围与严重门限是项目可配置默认值，不是医疗建议。
+
+要让环境事件通知链接可点击，先启用 Tailscale Serve，然后只把其鉴权 HTTPS
+DNS URL 写到本机 `runtime/alpha.env`：
+
+```text
+BABY_MONITOR_DASHBOARD_URL=https://<本机tailnet名称>
+```
+
+不要写入账号、密码、Token、数字私网地址或 URL 查询参数。留空时本地读取、
+历史、状态机和 Dashboard 继续运行，但环境事件 ntfy 发送保持禁用。若希望由
+launchd 单独托管 gauge worker，先停止 `make alpha-start` 启动的 gauge PID，
+再把本机生成的 plist 复制到个人 LaunchAgents 并用 macOS 标准命令加载；两种
+启动方式不可同时使用。
+
+环境监测当前固定为只读。Qwen/M2 离线不影响每分钟读表；表盘不可读也不影响
+视觉复核。系统没有空调、加湿器、除湿器、风扇或智能插座执行器 API。
+
+## 10. Android 通知
 
 两台 Android 安装 ntfy，并订阅：
 
@@ -304,7 +348,10 @@ grep '^NTFY_TOPIC=' runtime/alpha.env
 
 在 Dashboard 点击“发送测试通知”。
 
-## 10. 后续外部访问
+环境异常通知只发送文字、读数、采集时间、稳定原因码和鉴权链接，不上传宝宝
+画面、表盘截图、私网地址或本地路径。
+
+## 11. 后续外部访问
 
 外部访问由 Issue #5 跟踪。目标命令为：
 
@@ -321,7 +368,7 @@ tailscale funnel 8080
 
 也禁止路由器转发 `1984`、`8080`、`8554`、`8555`。
 
-## 11. 视频和功能边界
+## 12. 视频和功能边界
 
 1× 模式继续使用 1280×720、10 FPS MJPEG；2×/3× 会按需申请绑定 profile 的
 一次性票据，通过 Dashboard 的同源 WebSocket 中继连接仅限本机的 go2rtc。
@@ -435,7 +482,7 @@ microSD 回放继续使用米家 App。
 
 本系统不是呼吸、心率、血氧、窒息或医疗监护设备。
 
-## 12. 已验证故障案例
+## 13. 已验证故障案例
 
 Intel macOS 上遇到以下现象时：
 

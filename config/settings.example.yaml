@@ -44,7 +44,7 @@ environment:
     required_independent_sources_for_control: 2
 notifications:
   ntfy_topic: replace-with-private-topic
-  ntfy_token_env: NTFY_TOKEN_SECRET_REF
+  ntfy_token_env: NTFY_TOKEN
   enable_wecom: true
   wecom_webhook_env: WECOM_WEBHOOK_SECRET_REF
 security:

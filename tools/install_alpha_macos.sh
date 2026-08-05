@@ -18,7 +18,7 @@ brew list ffmpeg >/dev/null 2>&1 || brew install ffmpeg
 brew list go >/dev/null 2>&1 || brew install go
 
 PYTHON="$(brew --prefix python@3.11)/bin/python3.11"
-mkdir -p "$ROOT/.local/bin" "$ROOT/runtime/logs" "$ROOT/runtime/pids"
+mkdir -p "$ROOT/.local/bin" "$ROOT/runtime/logs" "$ROOT/runtime/pids" "$ROOT/runtime/launchd"
 
 if [[ ! -x "$ROOT/.venv-alpha/bin/python" ]]; then
   "$PYTHON" -m venv "$ROOT/.venv-alpha"
@@ -31,6 +31,14 @@ if [[ ! -f "$ROOT/runtime/go2rtc.yaml" ]]; then
   cp "$ROOT/config/go2rtc.alpha.yaml" "$ROOT/runtime/go2rtc.yaml"
 fi
 
+if [[ ! -f "$ROOT/runtime/settings.yaml" ]]; then
+  cp "$ROOT/config/settings.example.yaml" "$ROOT/runtime/settings.yaml"
+fi
+
+sed "s|__PROJECT_ROOT__|$ROOT|g" \
+  "$ROOT/deploy/launchd/com.babymonitor.gauge.plist.example" \
+  >"$ROOT/runtime/launchd/com.babymonitor.gauge.plist"
+
 if [[ ! -f "$ROOT/runtime/alpha.env" ]]; then
   password="$(openssl rand -hex 20 | cut -c 1-28)"
   topic="baby-monitor-$(openssl rand -hex 16)"
@@ -41,6 +49,8 @@ BABY_MONITOR_BIND_HOST=0.0.0.0
 BABY_MONITOR_PORT=8080
 BABY_MONITOR_STREAM=live
 GO2RTC_BASE_URL=http://127.0.0.1:1984
+BABY_MONITOR_SETTINGS_PATH=${ROOT}/runtime/settings.yaml
+BABY_MONITOR_DASHBOARD_URL=
 NTFY_BASE_URL=https://ntfy.sh
 NTFY_TOPIC=${topic}
 NTFY_TOKEN=
@@ -64,6 +74,9 @@ Alpha installation prepared.
    Existing runtime/go2rtc.yaml files are preserved; use make alpha-quality-hd to upgrade one safely.
 
 4. The start command prints the LAN dashboard URL for the M2 Mac.
+
+5. Use the authenticated Tailscale Serve HTTPS URL as BABY_MONITOR_DASHBOARD_URL
+   in runtime/alpha.env before enabling environment ntfy incident links.
 
 Useful commands:
    make -C "$ROOT" alpha-quality-hd

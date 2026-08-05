@@ -1,0 +1,29 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+  <key>Label</key>
+  <string>com.babymonitor.gauge</string>
+  <key>ProgramArguments</key>
+  <array>
+    <string>__PROJECT_ROOT__/.venv-alpha/bin/python</string>
+    <string>__PROJECT_ROOT__/tools/run_gauge_worker.py</string>
+    <string>--settings</string>
+    <string>__PROJECT_ROOT__/runtime/settings.yaml</string>
+    <string>--env-file</string>
+    <string>__PROJECT_ROOT__/runtime/alpha.env</string>
+  </array>
+  <key>WorkingDirectory</key>
+  <string>__PROJECT_ROOT__</string>
+  <key>RunAtLoad</key>
+  <true/>
+  <key>KeepAlive</key>
+  <true/>
+  <key>ProcessType</key>
+  <string>Background</string>
+  <key>StandardOutPath</key>
+  <string>__PROJECT_ROOT__/runtime/logs/gauge.log</string>
+  <key>StandardErrorPath</key>
+  <string>__PROJECT_ROOT__/runtime/logs/gauge.log</string>
+</dict>
+</plist>
