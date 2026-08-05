@@ -18,9 +18,30 @@ retention:
 thresholds:
   temperature_low_c: 18
   temperature_high_c: 26
+  temperature_critical_low_c: 15
+  temperature_critical_high_c: 30
   humidity_low_rh: 35
   humidity_high_rh: 60
+  humidity_critical_low_rh: 25
+  humidity_critical_high_rh: 75
   sustained_seconds: 300
+environment:
+  enabled: true
+  source_kind: ws2021_gauge
+  interval_seconds: 60
+  freshness_seconds: 90
+  burst_frames: 5
+  burst_interval_ms: 500
+  minimum_confidence: 0.75
+  unreadable_seconds: 600
+  normal_sustained_seconds: 300
+  recovery_sustained_seconds: 300
+  critical_confirmations: 2
+  critical_min_span_seconds: 60
+  calibration_path: runtime/calibration/ws2021-v1.json
+  policy:
+    mode: monitor_only
+    required_independent_sources_for_control: 2
 notifications:
   ntfy_topic: replace-with-private-topic
   ntfy_token_env: NTFY_TOKEN_SECRET_REF

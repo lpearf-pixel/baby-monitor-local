@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import ipaddress
 from pathlib import Path
-from typing import Annotated, Any
+from typing import Annotated, Any, Literal
 
 import yaml
 from pydantic import (
@@ -14,6 +14,8 @@ from pydantic import (
     field_validator,
     model_validator,
 )
+
+from packages.contracts.events import EnvironmentSourceKind
 
 
 class UnsafeCredentialError(ValueError):
@@ -76,16 +78,71 @@ class RetentionSettings(StrictSettingsModel):
 class ThresholdSettings(StrictSettingsModel):
     temperature_low_c: float = 18
     temperature_high_c: float = 26
+    temperature_critical_low_c: float = 15
+    temperature_critical_high_c: float = 30
     humidity_low_rh: float = Field(default=35, ge=0, le=100)
     humidity_high_rh: float = Field(default=60, ge=0, le=100)
+    humidity_critical_low_rh: float = Field(default=25, ge=0, le=100)
+    humidity_critical_high_rh: float = Field(default=75, ge=0, le=100)
     sustained_seconds: PositiveInt = 300
 
     @model_validator(mode="after")
     def require_ordered_ranges(self) -> "ThresholdSettings":
-        if self.temperature_low_c >= self.temperature_high_c:
-            raise ValueError("temperature_low_c must be lower than temperature_high_c")
-        if self.humidity_low_rh >= self.humidity_high_rh:
-            raise ValueError("humidity_low_rh must be lower than humidity_high_rh")
+        if not (
+            self.temperature_critical_low_c
+            < self.temperature_low_c
+            < self.temperature_high_c
+            < self.temperature_critical_high_c
+        ):
+            raise ValueError("temperature thresholds must be strictly nested")
+        if not (
+            self.humidity_critical_low_rh
+            < self.humidity_low_rh
+            < self.humidity_high_rh
+            < self.humidity_critical_high_rh
+        ):
+            raise ValueError("humidity thresholds must be strictly nested")
+        return self
+
+
+class EnvironmentPolicySettings(StrictSettingsModel):
+    mode: Literal["monitor_only"] = "monitor_only"
+    required_independent_sources_for_control: int = Field(default=2, ge=2)
+
+
+class EnvironmentSettings(StrictSettingsModel):
+    enabled: bool = True
+    source_kind: EnvironmentSourceKind = EnvironmentSourceKind.WS2021_GAUGE
+    interval_seconds: PositiveInt = 60
+    freshness_seconds: PositiveInt = 90
+    burst_frames: int = Field(default=5, ge=3, le=5)
+    burst_interval_ms: int = Field(default=500, ge=0, le=2_000)
+    minimum_confidence: float = Field(default=0.75, ge=0.5, le=1)
+    unreadable_seconds: PositiveInt = 600
+    normal_sustained_seconds: PositiveInt = 300
+    recovery_sustained_seconds: PositiveInt = 300
+    critical_confirmations: int = Field(default=2, ge=2, le=10)
+    critical_min_span_seconds: PositiveInt = 60
+    calibration_path: Path = Path("runtime/calibration/ws2021-v1.json")
+    policy: EnvironmentPolicySettings = EnvironmentPolicySettings()
+
+    @field_validator("calibration_path")
+    @classmethod
+    def require_relative_local_calibration_path(cls, value: Path) -> Path:
+        if value.is_absolute() or ".." in value.parts:
+            raise ValueError("calibration_path must be a relative local path")
+        return value
+
+    @model_validator(mode="after")
+    def require_coherent_sampling_windows(self) -> "EnvironmentSettings":
+        if self.freshness_seconds < self.interval_seconds:
+            raise ValueError("freshness_seconds must cover one sampling interval")
+        if self.unreadable_seconds < self.interval_seconds:
+            raise ValueError("unreadable_seconds must cover one sampling interval")
+        if self.critical_min_span_seconds < self.interval_seconds:
+            raise ValueError(
+                "critical_min_span_seconds must cover one sampling interval"
+            )
         return self
 
 
@@ -150,6 +207,7 @@ class AppSettings(StrictSettingsModel):
     stream: StreamSettings = StreamSettings()
     retention: RetentionSettings = RetentionSettings()
     thresholds: ThresholdSettings = ThresholdSettings()
+    environment: EnvironmentSettings = EnvironmentSettings()
     notifications: NotificationSettings
     security: SecuritySettings
 

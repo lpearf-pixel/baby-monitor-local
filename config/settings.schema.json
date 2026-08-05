@@ -20,6 +20,54 @@
       "title": "CameraSettings",
       "type": "object"
     },
+    "EnvironmentPolicySettings": {
+      "additionalProperties": false,
+      "properties": {
+        "mode": {
+          "const": "monitor_only",
+          "default": "monitor_only",
+          "title": "Mode",
+          "type": "string"
+        },
+        "required_independent_sources_for_control": {
+          "default": 2,
+          "minimum": 2,
+          "title": "Required Independent Sources For Control",
+          "type": "integer"
+        }
+      },
+      "title": "EnvironmentPolicySettings",
+      "type": "object"
+    },
+    "EnvironmentSettings": {
+      "additionalProperties": false,
+      "properties": {
+        "enabled": {"default": true, "title": "Enabled", "type": "boolean"},
+        "source_kind": {
+          "default": "ws2021_gauge",
+          "enum": ["ws2021_gauge", "bluetooth", "mqtt", "lan_sensor"],
+          "title": "Source Kind",
+          "type": "string"
+        },
+        "interval_seconds": {"default": 60, "exclusiveMinimum": 0, "title": "Interval Seconds", "type": "integer"},
+        "freshness_seconds": {"default": 90, "exclusiveMinimum": 0, "title": "Freshness Seconds", "type": "integer"},
+        "burst_frames": {"default": 5, "maximum": 5, "minimum": 3, "title": "Burst Frames", "type": "integer"},
+        "burst_interval_ms": {"default": 500, "maximum": 2000, "minimum": 0, "title": "Burst Interval Ms", "type": "integer"},
+        "minimum_confidence": {"default": 0.75, "maximum": 1, "minimum": 0.5, "title": "Minimum Confidence", "type": "number"},
+        "unreadable_seconds": {"default": 600, "exclusiveMinimum": 0, "title": "Unreadable Seconds", "type": "integer"},
+        "normal_sustained_seconds": {"default": 300, "exclusiveMinimum": 0, "title": "Normal Sustained Seconds", "type": "integer"},
+        "recovery_sustained_seconds": {"default": 300, "exclusiveMinimum": 0, "title": "Recovery Sustained Seconds", "type": "integer"},
+        "critical_confirmations": {"default": 2, "maximum": 10, "minimum": 2, "title": "Critical Confirmations", "type": "integer"},
+        "critical_min_span_seconds": {"default": 60, "exclusiveMinimum": 0, "title": "Critical Min Span Seconds", "type": "integer"},
+        "calibration_path": {"default": "runtime/calibration/ws2021-v1.json", "format": "path", "title": "Calibration Path", "type": "string"},
+        "policy": {
+          "$ref": "#/$defs/EnvironmentPolicySettings",
+          "default": {"mode": "monitor_only", "required_independent_sources_for_control": 2}
+        }
+      },
+      "title": "EnvironmentSettings",
+      "type": "object"
+    },
     "NotificationSettings": {
       "additionalProperties": false,
       "properties": {
@@ -73,8 +121,12 @@
       "properties": {
         "temperature_low_c": {"default": 18, "title": "Temperature Low C", "type": "number"},
         "temperature_high_c": {"default": 26, "title": "Temperature High C", "type": "number"},
+        "temperature_critical_low_c": {"default": 15, "title": "Temperature Critical Low C", "type": "number"},
+        "temperature_critical_high_c": {"default": 30, "title": "Temperature Critical High C", "type": "number"},
         "humidity_low_rh": {"default": 35, "maximum": 100, "minimum": 0, "title": "Humidity Low Rh", "type": "number"},
         "humidity_high_rh": {"default": 60, "maximum": 100, "minimum": 0, "title": "Humidity High Rh", "type": "number"},
+        "humidity_critical_low_rh": {"default": 25, "maximum": 100, "minimum": 0, "title": "Humidity Critical Low Rh", "type": "number"},
+        "humidity_critical_high_rh": {"default": 75, "maximum": 100, "minimum": 0, "title": "Humidity Critical High Rh", "type": "number"},
         "sustained_seconds": {"default": 300, "exclusiveMinimum": 0, "title": "Sustained Seconds", "type": "integer"}
       },
       "title": "ThresholdSettings",
@@ -87,7 +139,8 @@
     "camera": {"$ref": "#/$defs/CameraSettings"},
     "stream": {"$ref": "#/$defs/StreamSettings", "default": {"go2rtc_api_host": "127.0.0.1", "go2rtc_api_port": 1984, "analysis_width": 960, "analysis_height": 540, "analysis_fps": 5}},
     "retention": {"$ref": "#/$defs/RetentionSettings", "default": {"event_retention_days": 30, "event_quota_gb": 30, "reading_retention_days": 365}},
-    "thresholds": {"$ref": "#/$defs/ThresholdSettings", "default": {"temperature_low_c": 18.0, "temperature_high_c": 26.0, "humidity_low_rh": 35.0, "humidity_high_rh": 60.0, "sustained_seconds": 300}},
+    "thresholds": {"$ref": "#/$defs/ThresholdSettings", "default": {"temperature_low_c": 18.0, "temperature_high_c": 26.0, "temperature_critical_low_c": 15.0, "temperature_critical_high_c": 30.0, "humidity_low_rh": 35.0, "humidity_high_rh": 60.0, "humidity_critical_low_rh": 25.0, "humidity_critical_high_rh": 75.0, "sustained_seconds": 300}},
+    "environment": {"$ref": "#/$defs/EnvironmentSettings", "default": {"enabled": true, "source_kind": "ws2021_gauge", "interval_seconds": 60, "freshness_seconds": 90, "burst_frames": 5, "burst_interval_ms": 500, "minimum_confidence": 0.75, "unreadable_seconds": 600, "normal_sustained_seconds": 300, "recovery_sustained_seconds": 300, "critical_confirmations": 2, "critical_min_span_seconds": 60, "calibration_path": "runtime/calibration/ws2021-v1.json", "policy": {"mode": "monitor_only", "required_independent_sources_for_control": 2}}},
     "notifications": {"$ref": "#/$defs/NotificationSettings"},
     "security": {"$ref": "#/$defs/SecuritySettings"}
   },
