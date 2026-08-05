@@ -2,6 +2,7 @@
 set -euo pipefail
 
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
+GAUGE_LABEL="com.babymonitor.gauge"
 
 stop_pidfile() {
   local pidfile="$1"
@@ -22,6 +23,12 @@ stop_pidfile() {
 }
 
 stop_pidfile "$ROOT/runtime/pids/api.pid"
+if [[ "$(uname -s)" == "Darwin" ]] && command -v launchctl >/dev/null 2>&1; then
+  GAUGE_DOMAIN="gui/$(id -u)"
+  if launchctl print "${GAUGE_DOMAIN}/${GAUGE_LABEL}" >/dev/null 2>&1; then
+    launchctl bootout "${GAUGE_DOMAIN}/${GAUGE_LABEL}"
+  fi
+fi
 stop_pidfile "$ROOT/runtime/pids/gauge.pid"
 stop_pidfile "$ROOT/runtime/pids/go2rtc.pid"
 

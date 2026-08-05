@@ -125,3 +125,59 @@ def test_cleanup_preserves_reading_referenced_by_open_incident(
     assert store.get("protected") is not None
     assert store.get("expired") is None
     assert store.get("recent") is not None
+
+
+def test_cleanup_preserves_opening_reading_for_recovered_incident(
+    tmp_path: Path,
+) -> None:
+    module = storage_module()
+    store = module.EnvironmentStore(tmp_path / "events.sqlite3")
+    old = available("recovered-evidence", NOW - timedelta(days=400))
+    store.append(old)
+    store.save_incident(
+        module.StoredEnvironmentIncident(
+            incident_id="recovered-incident",
+            kind="range",
+            state="recovered",
+            severity="normal",
+            opened_at=NOW - timedelta(days=400),
+            updated_at=NOW - timedelta(days=399),
+            recovered_at=NOW - timedelta(days=399),
+            reasons=(),
+            opening_reading_id=old.reading_id,
+            notified_levels=("normal", "recovered"),
+        )
+    )
+
+    store.cleanup(now=NOW, retention_days=365)
+
+    assert store.get(old.reading_id) == old
+
+
+def test_pipeline_transaction_rolls_back_reading_when_incident_write_fails(
+    tmp_path: Path,
+) -> None:
+    module = storage_module()
+    store = module.EnvironmentStore(tmp_path / "events.sqlite3")
+    current = available("atomic-reading", NOW)
+    invalid_incident = module.StoredEnvironmentIncident(
+        incident_id="invalid-reference",
+        kind="range",
+        state="open",
+        severity="normal",
+        opened_at=NOW,
+        updated_at=NOW,
+        reasons=("temperature_high",),
+        opening_reading_id="missing-reading",
+    )
+
+    with pytest.raises(Exception, match="FOREIGN KEY"):
+        store.commit_pipeline(
+            reading=current,
+            incidents=(invalid_incident,),
+            state_snapshot={"schema_version": 1},
+            updated_at=NOW,
+        )
+
+    assert store.get(current.reading_id) is None
+    assert store.load_state_snapshot() is None

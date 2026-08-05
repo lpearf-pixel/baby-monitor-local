@@ -334,8 +334,11 @@ def create_app(runtime: AlphaRuntime) -> FastAPI:
         return {"status": "ok"}
 
     @app.get("/", response_class=HTMLResponse)
-    def dashboard(_parent: str = Depends(require_parent)) -> str:
-        return _DASHBOARD
+    def dashboard(_parent: str = Depends(require_parent)) -> HTMLResponse:
+        return HTMLResponse(
+            content=_DASHBOARD,
+            headers={"Cache-Control": "no-store"},
+        )
 
     @app.get("/assets/dashboard-viewer.js")
     def dashboard_viewer_script(

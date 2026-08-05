@@ -41,7 +41,7 @@ def test_migration_creates_integrity_checked_database(tmp_path: Path) -> None:
     store.migrate()
 
     assert store.integrity_check() == "ok"
-    assert store.schema_version() == 2
+    assert store.schema_version() == 3
 
 
 def test_migration_upgrades_legacy_environment_table_before_strict_write(
@@ -62,9 +62,28 @@ def test_migration_upgrades_legacy_environment_table_before_strict_write(
             )
             """
         )
+        connection.execute(
+            """
+            INSERT INTO environment_readings (
+                reading_id, captured_at, state, temperature_c,
+                humidity_rh, confidence, reason
+            ) VALUES (?, ?, ?, ?, ?, ?, ?)
+            """,
+            (
+                "legacy-reading",
+                NOW.isoformat(),
+                "unavailable",
+                None,
+                None,
+                0.1,
+                "legacy free text",
+            ),
+        )
     store = EventStore(database)
 
     store.migrate()
+    assert store.legacy_environment_reading_count() == 1
+    assert store.latest_environment_reading() is None
     reading = EnvironmentReading.unavailable(
         reading_id="strict-after-upgrade",
         source_kind=EnvironmentSourceKind.WS2021_GAUGE,

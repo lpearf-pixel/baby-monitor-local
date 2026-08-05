@@ -61,6 +61,15 @@ class RecordingSink:
         self.readings.append(reading)
 
 
+class MonitoringSink(RecordingSink):
+    def __init__(self) -> None:
+        super().__init__()
+        self.missing_checks: list[datetime] = []
+
+    def check_missing(self, now: datetime) -> None:
+        self.missing_checks.append(now)
+
+
 class StopAfterWaits:
     def __init__(self, count: int) -> None:
         self.remaining = count
@@ -151,3 +160,40 @@ def test_run_once_records_redacted_sink_failure() -> None:
     assert reading.reading_id == "reading-1"
     assert worker.health().code == "reading_sink_unavailable"
     assert worker.health().state == "degraded"
+
+
+def test_each_cycle_checks_missing_records_before_reading() -> None:
+    clock = FakeClock()
+    sink = MonitoringSink()
+    worker = worker_module().GaugeWorker(
+        source=AdvancingSource(clock, elapsed=0),
+        sink=sink,
+        now=lambda: NOW,
+    )
+
+    worker.run_once(NOW)
+
+    assert sink.missing_checks == [NOW]
+    assert len(sink.readings) == 1
+
+
+def test_unexpected_source_crash_still_writes_fail_closed_reading() -> None:
+    class BrokenSource:
+        source_kind = EnvironmentSourceKind.WS2021_GAUGE
+
+        def read(self, requested_at: datetime) -> EnvironmentReading:
+            raise RuntimeError("private camera details")
+
+    sink = RecordingSink()
+    worker = worker_module().GaugeWorker(
+        source=BrokenSource(),
+        sink=sink,
+        now=lambda: NOW,
+    )
+
+    reading = worker.run_once(NOW)
+
+    assert reading.failure_reason is ReadingFailureReason.INTERNAL_ERROR
+    assert reading.calibration_version == "worker-error"
+    assert sink.readings == [reading]
+    assert worker.health().code == "reading_source_unavailable"

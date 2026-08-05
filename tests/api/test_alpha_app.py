@@ -197,6 +197,7 @@ def test_dashboard_loads_after_authentication() -> None:
     app, _ = client()
     response = app.get("/", headers=auth())
     assert response.status_code == 200
+    assert response.headers["cache-control"] == "no-store"
     assert "Baby Monitor Local Alpha" in response.text
     assert "/live.mjpeg" in response.text
     assert "/snapshot.jpeg" in response.text

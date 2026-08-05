@@ -3,15 +3,22 @@ from __future__ import annotations
 import time
 from datetime import UTC, datetime
 from typing import Callable, Literal, Protocol
+from uuid import uuid4
 
 from pydantic import BaseModel, ConfigDict, field_validator
 
-from packages.contracts.events import EnvironmentReading
+from packages.contracts.events import (
+    EnvironmentReading,
+    EnvironmentSourceKind,
+    ReadingFailureReason,
+)
 from services.gauge.source import EnvironmentReadingSource
 
 
 class ReadingSink(Protocol):
     def append(self, reading: EnvironmentReading) -> None: ...
+
+    def check_missing(self, now: datetime) -> None: ...
 
 
 class StopEvent(Protocol):
@@ -69,7 +76,27 @@ class GaugeWorker:
         return self._health
 
     def run_once(self, requested_at: datetime) -> EnvironmentReading:
-        reading = self._source.read(requested_at)
+        check_missing = getattr(self._sink, "check_missing", None)
+        if check_missing is not None:
+            check_missing(requested_at)
+        source_failed = False
+        try:
+            reading = self._source.read(requested_at)
+        except Exception:
+            source_failed = True
+            source_kind = self._source.source_kind
+            reading = EnvironmentReading.unavailable(
+                reading_id=str(uuid4()),
+                source_kind=source_kind,
+                captured_at=requested_at,
+                failure_reason=ReadingFailureReason.INTERNAL_ERROR,
+                calibration_version=(
+                    "worker-error"
+                    if source_kind is EnvironmentSourceKind.WS2021_GAUGE
+                    else None
+                ),
+                sample_count=0,
+            )
         checked_at = self._now()
         try:
             self._sink.append(reading)
@@ -82,8 +109,8 @@ class GaugeWorker:
             )
         else:
             self._health = GaugeWorkerHealth(
-                state="healthy",
-                code="ok",
+                state="degraded" if source_failed else "healthy",
+                code="reading_source_unavailable" if source_failed else "ok",
                 checked_at=checked_at,
                 last_write_at=checked_at,
             )

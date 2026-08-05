@@ -7,12 +7,15 @@ import pytest
 from packages.contracts.events import ReadingFailureReason, ReadingState
 from tests.gauge.synthetic_dial import (
     NOW,
+    blurred_frame,
     burst,
     calibration,
     frame_jpeg,
     glare_frame,
     occluded_frame,
+    perspective_case,
     solid_frame,
+    shifted_frame,
 )
 
 
@@ -93,3 +96,39 @@ def test_face_occlusion_is_distinguished_from_missing_needle() -> None:
 
     assert reading.state is ReadingState.UNAVAILABLE
     assert reading.failure_reason is ReadingFailureReason.OCCLUDED
+
+
+def test_blurred_dial_fails_sharpness_gate() -> None:
+    reading = reader_module().Ws2021Reader().read(
+        burst([blurred_frame() for _ in range(5)]),
+        calibration(),
+        requested_at=NOW,
+    )
+
+    assert reading.state is ReadingState.UNAVAILABLE
+    assert reading.failure_reason is ReadingFailureReason.LOW_CONFIDENCE
+
+
+def test_shifted_dial_invalidates_calibration() -> None:
+    reading = reader_module().Ws2021Reader().read(
+        burst([shifted_frame() for _ in range(5)]),
+        calibration(),
+        requested_at=NOW,
+    )
+
+    assert reading.state is ReadingState.UNAVAILABLE
+    assert reading.failure_reason is ReadingFailureReason.CALIBRATION_INVALID
+
+
+def test_perspective_calibration_uses_rectified_scale_angles() -> None:
+    skewed_calibration, payload = perspective_case()
+
+    reading = reader_module().Ws2021Reader().read(
+        burst([payload for _ in range(5)]),
+        skewed_calibration,
+        requested_at=NOW,
+    )
+
+    assert reading.state is ReadingState.AVAILABLE
+    assert reading.temperature_c == pytest.approx(22.0, abs=1.0)
+    assert reading.humidity_rh == pytest.approx(48.0, abs=5.0)

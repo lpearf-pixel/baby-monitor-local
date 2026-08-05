@@ -4,7 +4,9 @@ import math
 from datetime import UTC, datetime, timedelta
 from io import BytesIO
 
-from PIL import Image, ImageDraw
+from PIL import Image, ImageDraw, ImageFilter
+import cv2
+import numpy as np
 
 from services.gauge.calibration import Ws2021Calibration
 from services.stream.frame_source import CapturedFrame, FrameBurst
@@ -184,6 +186,116 @@ def occluded_frame() -> bytes:
     output = BytesIO()
     image.save(output, format="JPEG", quality=95)
     return output.getvalue()
+
+
+def blurred_frame() -> bytes:
+    image = Image.open(BytesIO(frame_jpeg())).convert("RGB")
+    output = BytesIO()
+    image.filter(ImageFilter.GaussianBlur(radius=10)).save(
+        output, format="JPEG", quality=95
+    )
+    return output.getvalue()
+
+
+def shifted_frame(offset_x: int = 24) -> bytes:
+    image = Image.open(BytesIO(frame_jpeg())).convert("RGB")
+    shifted = image.transform(
+        image.size,
+        Image.Transform.AFFINE,
+        (1, 0, -offset_x, 0, 1, 0),
+        fillcolor=(210, 210, 210),
+    )
+    output = BytesIO()
+    shifted.save(output, format="JPEG", quality=95)
+    return output.getvalue()
+
+
+def perspective_case() -> tuple[Ws2021Calibration, bytes]:
+    base = cv2.imdecode(np.frombuffer(frame_jpeg(), dtype=np.uint8), cv2.IMREAD_COLOR)
+    source_corners = np.asarray(
+        [[0, 0], [WIDTH - 1, 0], [WIDTH - 1, HEIGHT - 1], [0, HEIGHT - 1]],
+        dtype=np.float32,
+    )
+    skewed_corners = np.asarray(
+        [[70, 35], [595, 65], [620, 445], [25, 415]],
+        dtype=np.float32,
+    )
+    forward = cv2.getPerspectiveTransform(source_corners, skewed_corners)
+    skewed = cv2.warpPerspective(
+        base,
+        forward,
+        (WIDTH, HEIGHT),
+        borderValue=(210, 210, 210),
+    )
+    original = calibration()
+
+    def transform_point(point: object) -> dict[str, float]:
+        source = np.asarray(
+            [[[point.x * (WIDTH - 1), point.y * (HEIGHT - 1)]]],
+            dtype=np.float32,
+        )
+        x, y = cv2.perspectiveTransform(source, forward)[0, 0]
+        return _point(float(x), float(y))
+
+    def transform_face(face: object) -> dict[str, object]:
+        center = transform_point(face.center)
+        marks = []
+        previous = None
+        for mark in face.scale_marks:
+            point = transform_point(mark.point)
+            angle = math.degrees(
+                math.atan2(point["y"] - center["y"], point["x"] - center["x"])
+            ) % 360
+            unwrapped = angle
+            while previous is not None and unwrapped <= previous:
+                unwrapped += 360
+            previous = unwrapped
+            marks.append(
+                {
+                    "point": point,
+                    "angle_degrees": angle,
+                    "unwrapped_angle_degrees": unwrapped,
+                    "value": mark.value,
+                }
+            )
+        needle_tip = transform_point(face.needle_tip)
+        return {
+            "center": center,
+            "needle_tip": needle_tip,
+            "radius": math.hypot(
+                needle_tip["x"] - center["x"],
+                needle_tip["y"] - center["y"],
+            ) / 0.8,
+            "scale_marks": marks,
+        }
+
+    corners = [_point(float(x), float(y)) for x, y in skewed_corners]
+    xs = [point["x"] for point in corners]
+    ys = [point["y"] for point in corners]
+    payload = original.model_dump(mode="json")
+    payload.update(
+        {
+            "gauge_quadrilateral": {
+                "top_left": corners[0],
+                "top_right": corners[1],
+                "bottom_right": corners[2],
+                "bottom_left": corners[3],
+            },
+            "gauge_rect": {
+                "x": min(xs),
+                "y": min(ys),
+                "width": max(xs) - min(xs),
+                "height": max(ys) - min(ys),
+            },
+            "humidity": transform_face(original.humidity),
+            "temperature": transform_face(original.temperature),
+        }
+    )
+    output = BytesIO()
+    Image.fromarray(cv2.cvtColor(skewed, cv2.COLOR_BGR2RGB)).save(
+        output, format="JPEG", quality=95
+    )
+    return Ws2021Calibration.model_validate(payload), output.getvalue()
 
 
 def burst(

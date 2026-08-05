@@ -330,10 +330,11 @@ BABY_MONITOR_DASHBOARD_URL=https://<本机tailnet名称>
 ```
 
 不要写入账号、密码、Token、数字私网地址或 URL 查询参数。留空时本地读取、
-历史、状态机和 Dashboard 继续运行，但环境事件 ntfy 发送保持禁用。若希望由
-launchd 单独托管 gauge worker，先停止 `make alpha-start` 启动的 gauge PID，
-再把本机生成的 plist 复制到个人 LaunchAgents 并用 macOS 标准命令加载；两种
-启动方式不可同时使用。
+历史、状态机和 Dashboard 继续运行，但环境事件 ntfy 发送保持禁用。安装程序
+会把不含凭据的 plist 同步到个人 LaunchAgents；`make alpha-start` 注册独立的
+KeepAlive job，登录和异常退出后由 launchd 恢复。`make alpha-stop` 只卸载
+gauge job，不停止同级 API 或 go2rtc。非 macOS 测试环境才使用独立 PID 回退，
+两种启动方式不会同时运行。
 
 环境监测当前固定为只读。Qwen/M2 离线不影响每分钟读表；表盘不可读也不影响
 视觉复核。系统没有空调、加湿器、除湿器、风扇或智能插座执行器 API。

@@ -38,6 +38,9 @@ fi
 sed "s|__PROJECT_ROOT__|$ROOT|g" \
   "$ROOT/deploy/launchd/com.babymonitor.gauge.plist.example" \
   >"$ROOT/runtime/launchd/com.babymonitor.gauge.plist"
+mkdir -p "$HOME/Library/LaunchAgents"
+cp "$ROOT/runtime/launchd/com.babymonitor.gauge.plist" \
+  "$HOME/Library/LaunchAgents/com.babymonitor.gauge.plist"
 
 if [[ ! -f "$ROOT/runtime/alpha.env" ]]; then
   password="$(openssl rand -hex 20 | cut -c 1-28)"

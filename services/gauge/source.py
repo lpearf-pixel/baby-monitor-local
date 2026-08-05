@@ -1,7 +1,7 @@
 from __future__ import annotations
 
-from datetime import datetime
-from typing import Protocol
+from datetime import UTC, datetime
+from typing import Callable, Protocol
 from uuid import uuid4
 
 from packages.contracts.events import (
@@ -61,6 +61,7 @@ class Ws2021GaugeSource:
         burst_interval_ms: int = 500,
         burst_timeout_seconds: float = 8,
         freshness_seconds: int = 90,
+        now: Callable[[], datetime] | None = None,
     ) -> None:
         self._frame_source = frame_source
         self._calibration_store = calibration_store
@@ -69,6 +70,7 @@ class Ws2021GaugeSource:
         self._burst_interval_ms = burst_interval_ms
         self._burst_timeout_seconds = burst_timeout_seconds
         self._freshness_seconds = freshness_seconds
+        self._now = now or (lambda: datetime.now(UTC))
 
     @property
     def source_kind(self) -> EnvironmentSourceKind:
@@ -116,7 +118,7 @@ class Ws2021GaugeSource:
             )
 
         try:
-            return self._reader.read(burst, calibration, requested_at)
+            return self._reader.read(burst, calibration, self._now())
         except Exception:
             return self._unavailable(
                 requested_at,

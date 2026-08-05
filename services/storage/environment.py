@@ -149,41 +149,51 @@ class EnvironmentStore:
             )
 
     def append(self, reading: EnvironmentReading) -> None:
-        payload = reading.model_dump_json()
         try:
             with self._connect() as connection:
-                connection.execute(
-                    """
-                    INSERT INTO environment_readings (
-                        reading_id, captured_at, captured_epoch, fresh_until,
-                        source_kind, state, temperature_c, humidity_rh,
-                        confidence, failure_reason, calibration_version,
-                        payload_json
-                    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-                    """,
-                    (
-                        reading.reading_id,
-                        reading.captured_at.isoformat(),
-                        reading.captured_at.timestamp(),
-                        reading.fresh_until.isoformat(),
-                        reading.source_kind.value,
-                        reading.state.value,
-                        reading.temperature_c,
-                        reading.humidity_rh,
-                        reading.confidence,
-                        (
-                            reading.failure_reason.value
-                            if reading.failure_reason is not None
-                            else None
-                        ),
-                        reading.calibration_version,
-                        payload,
-                    ),
-                )
+                self._insert_reading(connection, reading)
         except sqlite3.IntegrityError as exc:
-            if "environment_readings.reading_id" in str(exc):
-                raise DuplicateReadingError("reading_id already exists") from exc
-            raise
+            self._raise_reading_integrity(exc)
+
+    @staticmethod
+    def _insert_reading(
+        connection: sqlite3.Connection,
+        reading: EnvironmentReading,
+    ) -> None:
+        connection.execute(
+            """
+            INSERT INTO environment_readings (
+                reading_id, captured_at, captured_epoch, fresh_until,
+                source_kind, state, temperature_c, humidity_rh,
+                confidence, failure_reason, calibration_version,
+                payload_json
+            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+            """,
+            (
+                reading.reading_id,
+                reading.captured_at.isoformat(),
+                reading.captured_at.timestamp(),
+                reading.fresh_until.isoformat(),
+                reading.source_kind.value,
+                reading.state.value,
+                reading.temperature_c,
+                reading.humidity_rh,
+                reading.confidence,
+                (
+                    reading.failure_reason.value
+                    if reading.failure_reason is not None
+                    else None
+                ),
+                reading.calibration_version,
+                reading.model_dump_json(),
+            ),
+        )
+
+    @staticmethod
+    def _raise_reading_integrity(exc: sqlite3.IntegrityError) -> None:
+        if "environment_readings.reading_id" in str(exc):
+            raise DuplicateReadingError("reading_id already exists") from exc
+        raise exc
 
     def get(self, reading_id: str) -> EnvironmentReading | None:
         with self._connect() as connection:
@@ -219,39 +229,46 @@ class EnvironmentStore:
 
     def save_incident(self, incident: StoredEnvironmentIncident) -> None:
         with self._connect() as connection:
-            connection.execute(
-                """
-                INSERT INTO environment_incidents (
-                    incident_id, kind, state, severity, opened_at, updated_at,
-                    recovered_at, reasons_json, opening_reading_id,
-                    notified_levels_json
-                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-                ON CONFLICT(incident_id) DO UPDATE SET
-                    kind = excluded.kind,
-                    state = excluded.state,
-                    severity = excluded.severity,
-                    updated_at = excluded.updated_at,
-                    recovered_at = excluded.recovered_at,
-                    reasons_json = excluded.reasons_json,
-                    notified_levels_json = excluded.notified_levels_json
-                """,
+            self._upsert_incident(connection, incident)
+
+    @staticmethod
+    def _upsert_incident(
+        connection: sqlite3.Connection,
+        incident: StoredEnvironmentIncident,
+    ) -> None:
+        connection.execute(
+            """
+            INSERT INTO environment_incidents (
+                incident_id, kind, state, severity, opened_at, updated_at,
+                recovered_at, reasons_json, opening_reading_id,
+                notified_levels_json
+            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+            ON CONFLICT(incident_id) DO UPDATE SET
+                kind = excluded.kind,
+                state = excluded.state,
+                severity = excluded.severity,
+                updated_at = excluded.updated_at,
+                recovered_at = excluded.recovered_at,
+                reasons_json = excluded.reasons_json,
+                notified_levels_json = excluded.notified_levels_json
+            """,
+            (
+                incident.incident_id,
+                incident.kind,
+                incident.state,
+                incident.severity,
+                incident.opened_at.isoformat(),
+                incident.updated_at.isoformat(),
                 (
-                    incident.incident_id,
-                    incident.kind,
-                    incident.state,
-                    incident.severity,
-                    incident.opened_at.isoformat(),
-                    incident.updated_at.isoformat(),
-                    (
-                        incident.recovered_at.isoformat()
-                        if incident.recovered_at is not None
-                        else None
-                    ),
-                    json.dumps(incident.reasons, separators=(",", ":")),
-                    incident.opening_reading_id,
-                    json.dumps(incident.notified_levels, separators=(",", ":")),
+                    incident.recovered_at.isoformat()
+                    if incident.recovered_at is not None
+                    else None
                 ),
-            )
+                json.dumps(incident.reasons, separators=(",", ":")),
+                incident.opening_reading_id,
+                json.dumps(incident.notified_levels, separators=(",", ":")),
+            ),
+        )
 
     def incidents(self, *, limit: int = 100) -> tuple[StoredEnvironmentIncident, ...]:
         if not 1 <= limit <= 1_000:
@@ -302,18 +319,68 @@ class EnvironmentStore:
     ) -> None:
         if updated_at.tzinfo is None or updated_at.utcoffset() is None:
             raise ValueError("updated_at must be timezone-aware")
-        serialized = json.dumps(payload, sort_keys=True, separators=(",", ":"))
         with self._connect() as connection:
-            connection.execute(
-                """
-                INSERT INTO environment_state_snapshot (
-                    singleton_id, updated_at, payload_json
-                ) VALUES (1, ?, ?)
-                ON CONFLICT(singleton_id) DO UPDATE SET
-                    updated_at = excluded.updated_at,
-                    payload_json = excluded.payload_json
-                """,
-                (updated_at.isoformat(), serialized),
+            self._write_state_snapshot(connection, payload, updated_at=updated_at)
+
+    @staticmethod
+    def _write_state_snapshot(
+        connection: sqlite3.Connection,
+        payload: dict[str, Any],
+        *,
+        updated_at: datetime,
+    ) -> None:
+        serialized = json.dumps(payload, sort_keys=True, separators=(",", ":"))
+        connection.execute(
+            """
+            INSERT INTO environment_state_snapshot (
+                singleton_id, updated_at, payload_json
+            ) VALUES (1, ?, ?)
+            ON CONFLICT(singleton_id) DO UPDATE SET
+                updated_at = excluded.updated_at,
+                payload_json = excluded.payload_json
+            """,
+            (updated_at.isoformat(), serialized),
+        )
+
+    def commit_pipeline(
+        self,
+        *,
+        reading: EnvironmentReading,
+        incidents: tuple[StoredEnvironmentIncident, ...],
+        state_snapshot: dict[str, Any],
+        updated_at: datetime,
+    ) -> None:
+        if updated_at.tzinfo is None or updated_at.utcoffset() is None:
+            raise ValueError("updated_at must be timezone-aware")
+        try:
+            with self._connect() as connection:
+                self._insert_reading(connection, reading)
+                for incident in incidents:
+                    self._upsert_incident(connection, incident)
+                self._write_state_snapshot(
+                    connection,
+                    state_snapshot,
+                    updated_at=updated_at,
+                )
+        except sqlite3.IntegrityError as exc:
+            self._raise_reading_integrity(exc)
+
+    def commit_state(
+        self,
+        *,
+        incidents: tuple[StoredEnvironmentIncident, ...],
+        state_snapshot: dict[str, Any],
+        updated_at: datetime,
+    ) -> None:
+        if updated_at.tzinfo is None or updated_at.utcoffset() is None:
+            raise ValueError("updated_at must be timezone-aware")
+        with self._connect() as connection:
+            for incident in incidents:
+                self._upsert_incident(connection, incident)
+            self._write_state_snapshot(
+                connection,
+                state_snapshot,
+                updated_at=updated_at,
             )
 
     def load_state_snapshot(self) -> dict[str, Any] | None:
@@ -430,7 +497,7 @@ class EnvironmentStore:
                   AND reading_id NOT IN (
                       SELECT opening_reading_id
                       FROM environment_incidents
-                      WHERE state = 'open' AND opening_reading_id IS NOT NULL
+                      WHERE opening_reading_id IS NOT NULL
                   )
                 """,
                 (cutoff,),

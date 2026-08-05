@@ -219,6 +219,8 @@ class Ws2021Reader:
             gray, temperature_geometry
         ):
             raise _FrameRejected(ReadingFailureReason.OCCLUDED)
+        self._validate_face_geometry(gray, humidity_geometry)
+        self._validate_face_geometry(gray, temperature_geometry)
         hsv = cv2.cvtColor(warped, cv2.COLOR_BGR2HSV)
         red_mask = cv2.bitwise_or(
             cv2.inRange(hsv, (0, 80, 70), (12, 255, 255)),
@@ -237,11 +239,19 @@ class Ws2021Reader:
             humidity_candidate = self._gray_candidate(gray, humidity_geometry)
             temperature_candidate = self._gray_candidate(gray, temperature_geometry)
 
-        humidity = calibration.humidity.value_for_angle(
-            humidity_candidate.angle_degrees
+        humidity = self._rectified_value(
+            calibration.humidity,
+            humidity_candidate.angle_degrees,
+            transform,
+            width,
+            height,
         )
-        temperature = calibration.temperature.value_for_angle(
-            temperature_candidate.angle_degrees
+        temperature = self._rectified_value(
+            calibration.temperature,
+            temperature_candidate.angle_degrees,
+            transform,
+            width,
+            height,
         )
         if humidity is None or temperature is None:
             raise _FrameRejected(ReadingFailureReason.CALIBRATION_INVALID)
@@ -302,14 +312,13 @@ class Ws2021Reader:
         center_x, center_y = self._transform_point(
             face.center, transform, width, height
         )
-        radius_point = Point(
-            x=min(1, face.center.x + face.radius),
-            y=face.center.y,
+        needle_x, needle_y = self._transform_point(
+            face.needle_tip,
+            transform,
+            width,
+            height,
         )
-        radius_x, radius_y = self._transform_point(
-            radius_point, transform, width, height
-        )
-        radius = math.hypot(radius_x - center_x, radius_y - center_y)
+        radius = math.hypot(needle_x - center_x, needle_y - center_y) / 0.8
         if radius < 12:
             raise _FrameRejected(ReadingFailureReason.CALIBRATION_INVALID)
         if not (
@@ -336,6 +345,103 @@ class Ws2021Reader:
         y, x = np.ogrid[-radius : radius + 1, -radius : radius + 1]
         inside = x * x + y * y <= radius * radius
         return float(np.mean(crop[inside] <= 8)) > 0.45
+
+    @staticmethod
+    def _validate_face_geometry(gray: np.ndarray, geometry: _FaceGeometry) -> None:
+        search_radius = round(geometry.radius * 1.3)
+        center_x = round(geometry.center_x)
+        center_y = round(geometry.center_y)
+        left = center_x - search_radius
+        top = center_y - search_radius
+        right = center_x + search_radius + 1
+        bottom = center_y + search_radius + 1
+        if left < 0 or top < 0 or right > gray.shape[1] or bottom > gray.shape[0]:
+            raise _FrameRejected(ReadingFailureReason.ROI_OUT_OF_BOUNDS)
+        crop = gray[top:bottom, left:right]
+        sharpness = float(cv2.Laplacian(crop, cv2.CV_64F).var())
+        if sharpness < 12:
+            raise _FrameRejected(ReadingFailureReason.LOW_CONFIDENCE)
+        blurred = cv2.GaussianBlur(crop, (5, 5), 1)
+        circles = cv2.HoughCircles(
+            blurred,
+            cv2.HOUGH_GRADIENT,
+            dp=1.2,
+            minDist=max(12, geometry.radius),
+            param1=80,
+            param2=20,
+            minRadius=max(8, round(geometry.radius * 0.72)),
+            maxRadius=round(geometry.radius * 1.28),
+        )
+        if circles is None:
+            raise _FrameRejected(ReadingFailureReason.CALIBRATION_INVALID)
+        expected_x = geometry.center_x - left
+        expected_y = geometry.center_y - top
+        candidates = circles[0]
+        detected = min(
+            candidates,
+            key=lambda circle: math.hypot(
+                float(circle[0]) - expected_x,
+                float(circle[1]) - expected_y,
+            ),
+        )
+        center_offset = math.hypot(
+            float(detected[0]) - expected_x,
+            float(detected[1]) - expected_y,
+        )
+        radius_error = abs(float(detected[2]) - geometry.radius) / geometry.radius
+        if center_offset > geometry.radius * 0.1 or radius_error > 0.08:
+            raise _FrameRejected(ReadingFailureReason.CALIBRATION_INVALID)
+
+    def _rectified_value(
+        self,
+        face: GaugeFace,
+        candidate_angle: float,
+        transform: np.ndarray,
+        width: int,
+        height: int,
+    ) -> float | None:
+        center_x, center_y = self._transform_point(
+            face.center,
+            transform,
+            width,
+            height,
+        )
+        rectified_marks: list[tuple[float, float]] = []
+        previous: float | None = None
+        for mark in face.scale_marks:
+            mark_x, mark_y = self._transform_point(
+                mark.point,
+                transform,
+                width,
+                height,
+            )
+            angle = math.degrees(math.atan2(mark_y - center_y, mark_x - center_x)) % 360
+            unwrapped = angle
+            while previous is not None and unwrapped <= previous:
+                unwrapped += 360
+            rectified_marks.append((unwrapped, mark.value))
+            previous = unwrapped
+        first = rectified_marks[0][0]
+        last = rectified_marks[-1][0]
+        candidate = next(
+            (
+                candidate_angle % 360 + 360 * offset
+                for offset in range(-3, 4)
+                if first <= candidate_angle % 360 + 360 * offset <= last
+            ),
+            None,
+        )
+        if candidate is None:
+            return None
+        for (left_angle, left_value), (right_angle, right_value) in zip(
+            rectified_marks,
+            rectified_marks[1:],
+            strict=True,
+        ):
+            if left_angle <= candidate <= right_angle:
+                fraction = (candidate - left_angle) / (right_angle - left_angle)
+                return left_value + fraction * (right_value - left_value)
+        return None
 
     def _color_candidate(
         self,

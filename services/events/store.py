@@ -15,7 +15,7 @@ from packages.contracts.events import (
 )
 
 
-_SCHEMA_VERSION = 2
+_SCHEMA_VERSION = 3
 
 
 def _iso(value: datetime) -> str:
@@ -70,6 +70,17 @@ class EventStore:
                     payload_json TEXT
                 );
 
+                CREATE TABLE IF NOT EXISTS legacy_environment_readings (
+                    reading_id TEXT PRIMARY KEY,
+                    captured_at TEXT NOT NULL,
+                    state TEXT NOT NULL,
+                    temperature_c REAL,
+                    humidity_rh REAL,
+                    confidence REAL NOT NULL,
+                    reason TEXT,
+                    archived_at TEXT NOT NULL
+                );
+
                 CREATE TABLE IF NOT EXISTS system_health (
                     health_id INTEGER PRIMARY KEY AUTOINCREMENT,
                     component TEXT NOT NULL,
@@ -100,6 +111,23 @@ class EventStore:
                 connection.execute(
                     "ALTER TABLE environment_readings ADD COLUMN payload_json TEXT"
                 )
+            archived_at = datetime.now().astimezone().isoformat()
+            connection.execute(
+                """
+                INSERT OR IGNORE INTO legacy_environment_readings (
+                    reading_id, captured_at, state, temperature_c,
+                    humidity_rh, confidence, reason, archived_at
+                )
+                SELECT reading_id, captured_at, state, temperature_c,
+                       humidity_rh, confidence, reason, ?
+                FROM environment_readings
+                WHERE payload_json IS NULL
+                """,
+                (archived_at,),
+            )
+            connection.execute(
+                "DELETE FROM environment_readings WHERE payload_json IS NULL"
+            )
             connection.execute(
                 """
                 INSERT OR IGNORE INTO schema_migrations(version, applied_at)
@@ -114,6 +142,13 @@ class EventStore:
                 "SELECT COALESCE(MAX(version), 0) AS version FROM schema_migrations"
             ).fetchone()
         return int(row["version"])
+
+    def legacy_environment_reading_count(self) -> int:
+        with self._connect() as connection:
+            row = connection.execute(
+                "SELECT COUNT(*) AS count FROM legacy_environment_readings"
+            ).fetchone()
+        return int(row["count"])
 
     def integrity_check(self) -> str:
         with self._connect() as connection:
@@ -190,7 +225,6 @@ class EventStore:
             row = connection.execute(
                 """
                 SELECT * FROM environment_readings
-                WHERE payload_json IS NOT NULL
                 ORDER BY julianday(captured_at) DESC, rowid DESC
                 LIMIT 1
                 """

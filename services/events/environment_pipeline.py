@@ -1,9 +1,11 @@
 from __future__ import annotations
 
+from datetime import datetime, timedelta
 from typing import Protocol
 
 from packages.contracts.events import EnvironmentReading
 from services.events.environment_state import (
+    EnvironmentIncident,
     EnvironmentStateMachine,
     EnvironmentStatePolicy,
     EnvironmentTransition,
@@ -23,7 +25,7 @@ class EnvironmentNotifier(Protocol):
 
 
 class EnvironmentPipelineSink:
-    """Commits readings before deterministic state, incident and notification work."""
+    """Atomically commits each reading with its deterministic incident state."""
 
     def __init__(
         self,
@@ -31,10 +33,15 @@ class EnvironmentPipelineSink:
         store: EnvironmentStore,
         state_machine: EnvironmentStateMachine,
         notifier: EnvironmentNotifier | None = None,
+        retention_days: int = 365,
     ) -> None:
+        if retention_days <= 0:
+            raise ValueError("retention_days must be positive")
         self._store = store
         self._state_machine = state_machine
         self._notifier = notifier
+        self._retention_days = retention_days
+        self._last_cleanup_at: datetime | None = None
 
     @property
     def state_machine(self) -> EnvironmentStateMachine:
@@ -47,6 +54,7 @@ class EnvironmentPipelineSink:
         store: EnvironmentStore,
         policy: EnvironmentStatePolicy,
         notifier: EnvironmentNotifier | None = None,
+        retention_days: int = 365,
     ) -> "EnvironmentPipelineSink":
         snapshot = store.load_state_snapshot()
         state_machine = (
@@ -54,43 +62,134 @@ class EnvironmentPipelineSink:
             if snapshot is not None
             else EnvironmentStateMachine(policy)
         )
-        return cls(store=store, state_machine=state_machine, notifier=notifier)
+        return cls(
+            store=store,
+            state_machine=state_machine,
+            notifier=notifier,
+            retention_days=retention_days,
+        )
 
     def append(self, reading: EnvironmentReading) -> None:
-        self._store.append(reading)
-        transitions = [
+        before = self._state_machine.snapshot()
+        transitions = (
             *self._state_machine.observe_missing_record(reading.captured_at),
             *self._state_machine.consume(reading),
-        ]
-        for transition in transitions:
-            self._persist_transition(transition)
-        self._store.save_state_snapshot(
-            self._state_machine.snapshot().model_dump(mode="json"),
-            updated_at=reading.captured_at,
         )
-        if self._notifier is not None:
-            for transition in transitions:
-                if transition.kind != "reasons_changed":
-                    self._notifier.notify(transition, reading)
-
-    def _persist_transition(self, transition: EnvironmentTransition) -> None:
-        incident = transition.incident
-        previous = self._store.incident(incident.incident_id)
-        notified_levels = list(previous.notified_levels if previous is not None else ())
-        marker = "recovered" if transition.kind == "recovered" else incident.severity
-        if transition.kind != "reasons_changed" and marker not in notified_levels:
-            notified_levels.append(marker)
-        self._store.save_incident(
-            StoredEnvironmentIncident(
-                incident_id=incident.incident_id,
-                kind=incident.kind,
-                state=incident.state,
-                severity=incident.severity,
-                opened_at=incident.opened_at,
-                updated_at=incident.updated_at,
-                recovered_at=incident.recovered_at,
-                reasons=incident.reasons,
-                opening_reading_id=incident.opening_reading_id,
-                notified_levels=tuple(notified_levels),
+        incidents = self._incidents_for_commit(transitions)
+        try:
+            self._store.commit_pipeline(
+                reading=reading,
+                incidents=incidents,
+                state_snapshot=self._state_machine.snapshot().model_dump(mode="json"),
+                updated_at=reading.captured_at,
             )
+        except Exception:
+            self._state_machine = EnvironmentStateMachine.restore(
+                self._state_machine.policy,
+                before,
+            )
+            raise
+        self._deliver_pending(reading)
+        if (
+            self._last_cleanup_at is None
+            or reading.captured_at - self._last_cleanup_at >= timedelta(days=1)
+        ):
+            self._store.cleanup(
+                now=reading.captured_at,
+                retention_days=self._retention_days,
+            )
+            self._last_cleanup_at = reading.captured_at
+
+    def check_missing(self, now: datetime) -> None:
+        before = self._state_machine.snapshot()
+        transitions = self._state_machine.observe_missing_record(now)
+        if transitions:
+            try:
+                self._store.commit_state(
+                    incidents=self._incidents_for_commit(transitions),
+                    state_snapshot=self._state_machine.snapshot().model_dump(mode="json"),
+                    updated_at=now,
+                )
+            except Exception:
+                self._state_machine = EnvironmentStateMachine.restore(
+                    self._state_machine.policy,
+                    before,
+                )
+                raise
+        latest = self._store.latest()
+        if latest is not None:
+            self._deliver_pending(latest)
+
+    def _incidents_for_commit(
+        self,
+        transitions: tuple[EnvironmentTransition, ...],
+    ) -> tuple[StoredEnvironmentIncident, ...]:
+        incidents: dict[str, EnvironmentIncident] = {
+            item.incident_id: item for item in self._state_machine.open_incidents()
+        }
+        for transition in transitions:
+            incidents[transition.incident.incident_id] = transition.incident
+        return tuple(self._as_stored(item) for item in incidents.values())
+
+    def _as_stored(self, incident: EnvironmentIncident) -> StoredEnvironmentIncident:
+        previous = self._store.incident(incident.incident_id)
+        return StoredEnvironmentIncident(
+            incident_id=incident.incident_id,
+            kind=incident.kind,
+            state=incident.state,
+            severity=incident.severity,
+            opened_at=incident.opened_at,
+            updated_at=incident.updated_at,
+            recovered_at=incident.recovered_at,
+            reasons=incident.reasons,
+            opening_reading_id=incident.opening_reading_id,
+            notified_levels=previous.notified_levels if previous is not None else (),
         )
+
+    def _deliver_pending(self, reading: EnvironmentReading) -> None:
+        if self._notifier is None:
+            return
+        for stored in self._store.incidents(limit=1_000):
+            marker = "recovered" if stored.state == "recovered" else stored.severity
+            if marker in stored.notified_levels:
+                continue
+            transition_kind = self._pending_transition_kind(stored)
+            incident = EnvironmentIncident(
+                incident_id=stored.incident_id,
+                kind=stored.kind,
+                state=stored.state,
+                severity=stored.severity,
+                opened_at=stored.opened_at,
+                updated_at=stored.updated_at,
+                recovered_at=stored.recovered_at,
+                reasons=stored.reasons,
+                opening_reading_id=stored.opening_reading_id,
+                data_available=(
+                    stored.kind == "range" or stored.state == "recovered"
+                ),
+            )
+            result = self._notifier.notify(
+                EnvironmentTransition(
+                    kind=transition_kind,
+                    occurred_at=stored.updated_at,
+                    incident=incident,
+                    reading_id=reading.reading_id,
+                ),
+                reading,
+            )
+            if bool(getattr(result, "delivered", False)):
+                self._store.save_incident(
+                    stored.model_copy(
+                        update={"notified_levels": (*stored.notified_levels, marker)}
+                    )
+                )
+
+    @staticmethod
+    def _pending_transition_kind(
+        incident: StoredEnvironmentIncident,
+    ) -> str:
+        if incident.state == "recovered":
+            return "recovered"
+        if incident.severity == "critical" and "normal" in incident.notified_levels:
+            return "escalated"
+        return "opened"

@@ -58,7 +58,11 @@ alpha-status:
 	@echo "go2rtc listener:"
 	@lsof -nP -iTCP:1984 -sTCP:LISTEN 2>/dev/null || true
 	@echo "Gauge worker:"
-	@if [[ -f runtime/pids/gauge.pid ]] && kill -0 "$$(cat runtime/pids/gauge.pid)" 2>/dev/null; then echo "running"; else echo "offline"; fi
+	@if [[ "$$(uname -s)" == "Darwin" ]] && launchctl print "gui/$$(id -u)/com.babymonitor.gauge" >/dev/null 2>&1; then \
+		echo "running (launchd)"; \
+	elif [[ -f runtime/pids/gauge.pid ]] && kill -0 "$$(cat runtime/pids/gauge.pid)" 2>/dev/null; then \
+		echo "running (pid)"; \
+	else echo "offline"; fi
 	@echo "Dashboard health:"
 	@curl -fsS http://127.0.0.1:$${BABY_MONITOR_PORT:-8080}/healthz 2>/dev/null || echo "offline"
 

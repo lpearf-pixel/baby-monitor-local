@@ -51,6 +51,11 @@ def test_alpha_start_runs_gauge_as_a_separate_pid() -> None:
     assert 'GAUGE_PID="$ROOT/runtime/pids/gauge.pid"' in content
     assert 'tools/run_gauge_worker.py' in content
     assert 'BABY_MONITOR_SETTINGS_PATH' in content
+    assert "launchctl bootstrap" in content
+    assert "com.babymonitor.gauge" in content
+
+    stop = (ROOT / "tools/stop_alpha.sh").read_text(encoding="utf-8")
+    assert "launchctl bootout" in stop
 
 
 def test_installer_renders_local_launch_agent_without_loading_it() -> None:
@@ -58,5 +63,6 @@ def test_installer_renders_local_launch_agent_without_loading_it() -> None:
 
     assert "com.babymonitor.gauge.plist.example" in content
     assert 'runtime/launchd/com.babymonitor.gauge.plist' in content
+    assert 'Library/LaunchAgents/com.babymonitor.gauge.plist' in content
     assert "launchctl load" not in content
     assert "launchctl bootstrap" not in content

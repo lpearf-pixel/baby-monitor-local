@@ -6,6 +6,8 @@ ENV_FILE="$ROOT/runtime/alpha.env"
 GO2RTC_PID="$ROOT/runtime/pids/go2rtc.pid"
 API_PID="$ROOT/runtime/pids/api.pid"
 GAUGE_PID="$ROOT/runtime/pids/gauge.pid"
+GAUGE_LABEL="com.babymonitor.gauge"
+GAUGE_PLIST="$HOME/Library/LaunchAgents/${GAUGE_LABEL}.plist"
 
 if [[ ! -f "$ENV_FILE" || ! -x "$ROOT/.local/bin/go2rtc" || ! -x "$ROOT/.venv-alpha/bin/uvicorn" ]]; then
   echo "Alpha is not installed. Run tools/install_alpha_macos.sh first." >&2
@@ -72,10 +74,17 @@ if ! curl -fsS http://127.0.0.1:1984/api >/dev/null 2>&1; then
   exit 1
 fi
 
-start_if_stopped "$GAUGE_PID" \
-  nohup "$ROOT/.venv-alpha/bin/python" "$ROOT/tools/run_gauge_worker.py" \
-  --settings "$BABY_MONITOR_SETTINGS_PATH" --env-file "$ENV_FILE" \
-  >"$ROOT/runtime/logs/gauge.log" 2>&1
+if [[ "$(uname -s)" == "Darwin" ]] && command -v launchctl >/dev/null 2>&1; then
+  GAUGE_DOMAIN="gui/$(id -u)"
+  if ! launchctl print "${GAUGE_DOMAIN}/${GAUGE_LABEL}" >/dev/null 2>&1; then
+    launchctl bootstrap "$GAUGE_DOMAIN" "$GAUGE_PLIST"
+  fi
+else
+  start_if_stopped "$GAUGE_PID" \
+    nohup "$ROOT/.venv-alpha/bin/python" "$ROOT/tools/run_gauge_worker.py" \
+    --settings "$BABY_MONITOR_SETTINGS_PATH" --env-file "$ENV_FILE" \
+    >"$ROOT/runtime/logs/gauge.log" 2>&1
+fi
 
 start_if_stopped "$API_PID" \
   nohup "$ROOT/.venv-alpha/bin/uvicorn" apps.api.main:app \

@@ -124,6 +124,10 @@ class EnvironmentStateMachine:
             last_record_at=self._last_record_at,
         )
 
+    @property
+    def policy(self) -> EnvironmentStatePolicy:
+        return self._policy
+
     def open_incidents(self) -> tuple[EnvironmentIncident, ...]:
         return tuple(
             incident

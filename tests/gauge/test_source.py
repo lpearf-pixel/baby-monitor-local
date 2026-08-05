@@ -134,6 +134,7 @@ def test_source_uses_fixed_burst_settings_and_delegates_to_reader() -> None:
         burst_frames=5,
         burst_interval_ms=500,
         burst_timeout_seconds=8,
+        now=lambda: NOW,
     )
 
     reading = source.read(NOW)
@@ -147,6 +148,22 @@ def test_source_uses_fixed_burst_settings_and_delegates_to_reader() -> None:
     assert len(reader.calls) == 1
     assert reader.calls[0][2] == NOW
     assert reading.reading_id == "reader-result"
+
+
+def test_source_passes_algorithm_entry_time_after_capture() -> None:
+    frames = RecordingFrameSource()
+    reader = RecordingReader()
+    processing_time = datetime(2026, 8, 5, 12, 0, 6, tzinfo=UTC)
+    source = source_module().Ws2021GaugeSource(
+        frame_source=frames,
+        calibration_store=CalibrationStore(),
+        reader=reader,
+        now=lambda: processing_time,
+    )
+
+    source.read(NOW)
+
+    assert reader.calls[0][2] == processing_time
 
 
 def test_unexpected_reader_error_becomes_internal_error_without_details() -> None:
