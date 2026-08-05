@@ -19,11 +19,60 @@ jobs:
         with:
           python-version: "3.11"
           cache: pip
+      - uses: actions/setup-node@v6
+        with:
+          node-version: "20"
       - name: Install
         run: python -m pip install --upgrade pip && python -m pip install -e ".[dev]"
-      - name: Test
+      - name: Test Python
         run: python -m pytest -q
+      - name: Test dashboard viewer
+        run: node --test tests/frontend/*.test.mjs
       - name: Validate schema
         run: python -m json.tool config/settings.schema.json >/dev/null
       - name: Compile
-        run: python -m compileall -q packages services
+        run: python -m compileall -q apps packages services tools
+      - name: Validate shell scripts
+        run: bash -n tools/*.sh
+
+  go2rtc-patch:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+      - uses: actions/setup-python@v6
+        with:
+          python-version: "3.11"
+      - uses: actions/setup-go@v6
+        with:
+          go-version: "1.24.x"
+      - name: Verify patch and cross-build Intel macOS go2rtc
+        shell: bash
+        run: |
+          set -euo pipefail
+          build_dir="$(mktemp -d)"
+          trap 'rm -rf "$build_dir"' EXIT
+          git clone --filter=blob:none --no-checkout \
+            https://github.com/AlexxIT/go2rtc.git "$build_dir/source"
+          git -C "$build_dir/source" checkout --detach \
+            b465651a94c1f637d566a8c660b4fad102b35153
+          python - "$build_dir/source" <<'PY'
+          import sys
+          from pathlib import Path
+
+          from packages.monitoring.go2rtc_build import verify_and_apply_patch
+
+          verify_and_apply_patch(
+              Path(sys.argv[1]),
+              Path("patches/go2rtc-macos-hybrid-hd.patch"),
+          )
+          PY
+          grep -F 'StartAtom("hvc1")' "$build_dir/source/pkg/iso/codecs.go"
+          grep -F 'ListenUDP("udp4", nil)' \
+            "$build_dir/source/pkg/xiaomi/miss/cs2/conn.go"
+          (
+            cd "$build_dir/source"
+            CGO_ENABLED=0 GOOS=darwin GOARCH=amd64 go build \
+              -trimpath -ldflags='-s -w' -o "$build_dir/go2rtc" .
+          )
+          file "$build_dir/go2rtc" | \
+            grep -F 'Mach-O 64-bit x86_64 executable'

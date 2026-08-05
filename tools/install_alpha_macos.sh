@@ -1,0 +1,80 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
+
+if [[ "$(uname -s)" != "Darwin" || "$(uname -m)" != "x86_64" ]]; then
+  echo "This installer is for Intel macOS (x86_64)." >&2
+  exit 1
+fi
+
+if ! command -v brew >/dev/null 2>&1; then
+  echo "Homebrew is required. Install it first, then rerun this script." >&2
+  exit 1
+fi
+
+brew list python@3.11 >/dev/null 2>&1 || brew install python@3.11
+brew list ffmpeg >/dev/null 2>&1 || brew install ffmpeg
+brew list go >/dev/null 2>&1 || brew install go
+
+PYTHON="$(brew --prefix python@3.11)/bin/python3.11"
+mkdir -p "$ROOT/.local/bin" "$ROOT/runtime/logs" "$ROOT/runtime/pids"
+
+if [[ ! -x "$ROOT/.venv-alpha/bin/python" ]]; then
+  "$PYTHON" -m venv "$ROOT/.venv-alpha"
+fi
+"$ROOT/.venv-alpha/bin/python" -m pip install --upgrade pip
+"$ROOT/.venv-alpha/bin/python" -m pip install -e "$ROOT"
+"$ROOT/.venv-alpha/bin/python" "$ROOT/tools/go2rtc_build.py" ensure
+
+if [[ ! -f "$ROOT/runtime/go2rtc.yaml" ]]; then
+  cp "$ROOT/config/go2rtc.alpha.yaml" "$ROOT/runtime/go2rtc.yaml"
+fi
+
+if [[ ! -f "$ROOT/runtime/alpha.env" ]]; then
+  password="$(openssl rand -hex 20 | cut -c 1-28)"
+  topic="baby-monitor-$(openssl rand -hex 16)"
+  cat >"$ROOT/runtime/alpha.env" <<EOF
+BABY_MONITOR_USERNAME=parent
+BABY_MONITOR_PASSWORD=${password}
+BABY_MONITOR_BIND_HOST=0.0.0.0
+BABY_MONITOR_PORT=8080
+BABY_MONITOR_STREAM=live
+GO2RTC_BASE_URL=http://127.0.0.1:1984
+NTFY_BASE_URL=https://ntfy.sh
+NTFY_TOPIC=${topic}
+NTFY_TOKEN=
+EOF
+  chmod 600 "$ROOT/runtime/alpha.env"
+fi
+
+cat <<EOF
+
+Alpha installation prepared.
+
+1. Start services without changing tracked file permissions:
+   make -C "$ROOT" alpha-start
+
+2. From the M2 Mac, use an SSH tunnel for the private Xiaomi setup interface:
+   ssh -L 1984:127.0.0.1:1984 <i9-user>@<i9-lan-ip>
+   Then open http://127.0.0.1:1984 on the M2 Mac.
+
+3. Choose Add > Xiaomi, sign in, add MJSXJ17CM, and name the camera stream: source
+   The preconfigured live stream converts source to 1280x720 MJPEG at 10 FPS.
+   Existing runtime/go2rtc.yaml files are preserved; use make alpha-quality-hd to upgrade one safely.
+
+4. The start command prints the LAN dashboard URL for the M2 Mac.
+
+Useful commands:
+   make -C "$ROOT" alpha-quality-hd
+   make -C "$ROOT" alpha-quality-info
+   make -C "$ROOT" alpha-source-check
+   make -C "$ROOT" alpha-status
+   make -C "$ROOT" alpha-logs
+   make -C "$ROOT" alpha-stop
+
+Local credentials are stored with mode 600 in:
+   $ROOT/runtime/alpha.env
+
+Do not commit or share that file. The generated password is dedicated to this dashboard; do not reuse another account password.
+EOF

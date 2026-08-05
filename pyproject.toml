@@ -8,17 +8,22 @@ version = "0.1.0.dev0"
 description = "Local-first baby monitor services for Intel macOS"
 requires-python = ">=3.11"
 dependencies = [
+  "fastapi>=0.116,<1",
+  "Pillow>=11.1,<13",
   "pydantic>=2.10,<3",
   "PyYAML>=6.0,<7",
+  "uvicorn[standard]>=0.35,<1",
+  "websockets>=15,<18",
 ]
 
 [project.optional-dependencies]
 dev = [
+  "httpx>=0.28,<1",
   "pytest>=8.3,<10",
 ]
 
 [tool.setuptools.packages.find]
-include = ["packages*", "services*"]
+include = ["apps*", "packages*", "services*"]
 
 [tool.pytest.ini_options]
 addopts = "-ra"

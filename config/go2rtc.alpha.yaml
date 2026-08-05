@@ -1,0 +1,16 @@
+# Runtime copy is created at runtime/go2rtc.yaml.
+# Use the local WebUI at http://127.0.0.1:1984 to add the Xiaomi account and camera.
+# Name the selected Xiaomi camera stream: source
+api:
+  listen: "127.0.0.1:1984"
+rtsp:
+  listen: "127.0.0.1:8554"
+webrtc:
+  listen: "127.0.0.1:8555"
+streams:
+  # Stable HD browser preview generated only while somebody is watching.
+  live: ffmpeg:source#video=mjpeg#width=1280#height=720#raw=-r 10
+  # Hardware-only 1440p compatibility stream, started only for an HD consumer.
+  source_compat: ffmpeg:source#video=h264#hardware=videotoolbox#width=2560#height=1440#bitrate=6M
+log:
+  level: info
