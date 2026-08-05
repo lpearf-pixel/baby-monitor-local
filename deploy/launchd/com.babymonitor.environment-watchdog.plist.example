@@ -3,11 +3,11 @@
 <plist version="1.0">
 <dict>
   <key>Label</key>
-  <string>com.babymonitor.gauge</string>
+  <string>com.babymonitor.environment-watchdog</string>
   <key>ProgramArguments</key>
   <array>
     <string>__PROJECT_ROOT__/.venv-alpha/bin/python</string>
-    <string>__PROJECT_ROOT__/tools/run_gauge_worker.py</string>
+    <string>__PROJECT_ROOT__/tools/run_environment_watchdog.py</string>
     <string>--settings</string>
     <string>__PROJECT_ROOT__/runtime/settings.yaml</string>
     <string>--env-file</string>
@@ -27,8 +27,8 @@
   <key>ProcessType</key>
   <string>Background</string>
   <key>StandardOutPath</key>
-  <string>__PROJECT_ROOT__/runtime/logs/gauge.log</string>
+  <string>__PROJECT_ROOT__/runtime/logs/environment-watchdog.log</string>
   <key>StandardErrorPath</key>
-  <string>__PROJECT_ROOT__/runtime/logs/gauge.log</string>
+  <string>__PROJECT_ROOT__/runtime/logs/environment-watchdog.log</string>
 </dict>
 </plist>

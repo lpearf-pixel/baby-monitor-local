@@ -5,7 +5,6 @@ import os
 import signal
 import sys
 import threading
-import shlex
 from pathlib import Path
 
 
@@ -15,6 +14,7 @@ if str(ROOT) not in sys.path:
 
 from packages.contracts.settings import AppSettings
 from services.environment.bootstrap import build_gauge_worker
+from services.environment.local_env import load_local_env_file
 
 
 def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
@@ -35,26 +35,10 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
     return parser.parse_args(argv)
 
 
-def load_env_file(path: Path) -> None:
-    for raw_line in path.read_text(encoding="utf-8").splitlines():
-        line = raw_line.strip()
-        if not line or line.startswith("#"):
-            continue
-        if line.startswith("export "):
-            line = line.removeprefix("export ").lstrip()
-        name, separator, raw_value = line.partition("=")
-        if not separator or not name.replace("_", "A").isalnum():
-            raise ValueError("environment file contains an invalid assignment")
-        parsed = shlex.split(raw_value, comments=False, posix=True)
-        if len(parsed) > 1:
-            raise ValueError("environment file contains an invalid value")
-        os.environ.setdefault(name, parsed[0] if parsed else "")
-
-
 def main(argv: list[str] | None = None) -> int:
     args = parse_args(argv)
     if args.env_file is not None:
-        load_env_file(args.env_file)
+        load_local_env_file(args.env_file)
     settings = AppSettings.load(args.settings)
     if not settings.environment.enabled:
         return 0

@@ -145,6 +145,10 @@ def test_missing_record_check_is_persisted_and_notified_without_new_reading(
     assert incident.kind == "unreadable"
     assert incident.reasons == ("no_new_reading",)
     assert len(notifier.calls) == 1
+    _, notified_reading = notifier.calls[0]
+    assert notified_reading.state.value == "unavailable"
+    assert notified_reading.temperature_c is None
+    assert notified_reading.captured_at == NOW + timedelta(seconds=601)
 
 
 def test_atomic_commit_failure_restores_in_memory_state(tmp_path: Path) -> None:
@@ -191,3 +195,33 @@ def test_pipeline_schedules_reading_retention_without_deleting_incident_evidence
 
     assert store.get("old") is None
     assert store.get("current") is not None
+
+
+def test_enabling_notifier_does_not_replay_historical_recovered_incidents(
+    tmp_path: Path,
+) -> None:
+    store = EnvironmentStore(tmp_path / "environment.sqlite3")
+    policy = EnvironmentStatePolicy(
+        normal_sustained_seconds=60,
+        recovery_sustained_seconds=60,
+    )
+    quiet = EnvironmentPipelineSink(
+        store=store,
+        state_machine=EnvironmentStateMachine(policy),
+        notifier=None,
+    )
+    quiet.append(reading("high-1", NOW, 27))
+    quiet.append(reading("high-2", NOW + timedelta(seconds=60), 27))
+    quiet.append(reading("normal-1", NOW + timedelta(seconds=120), 22))
+    quiet.append(reading("normal-2", NOW + timedelta(seconds=180), 22))
+    assert store.incidents()[0].state == "recovered"
+
+    notifier = RecordingNotifier()
+    active = EnvironmentPipelineSink.restore(
+        store=store,
+        policy=policy,
+        notifier=notifier,
+    )
+    active.append(reading("later", NOW + timedelta(seconds=240), 22))
+
+    assert notifier.calls == []

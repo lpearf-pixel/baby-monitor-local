@@ -2,8 +2,13 @@ from __future__ import annotations
 
 from datetime import datetime, timedelta
 from typing import Protocol
+from uuid import uuid4
 
-from packages.contracts.events import EnvironmentReading
+from packages.contracts.events import (
+    EnvironmentReading,
+    EnvironmentSourceKind,
+    ReadingFailureReason,
+)
 from services.events.environment_state import (
     EnvironmentIncident,
     EnvironmentStateMachine,
@@ -89,7 +94,15 @@ class EnvironmentPipelineSink:
                 before,
             )
             raise
-        self._deliver_pending(reading)
+        self._deliver_pending(
+            reading,
+            current_recovered_ids={
+                transition.incident.incident_id
+                for transition in transitions
+                if transition.kind == "recovered"
+            },
+            only_incident_ids=None,
+        )
         if (
             self._last_cleanup_at is None
             or reading.captured_at - self._last_cleanup_at >= timedelta(days=1)
@@ -116,9 +129,17 @@ class EnvironmentPipelineSink:
                     before,
                 )
                 raise
-        latest = self._store.latest()
-        if latest is not None:
-            self._deliver_pending(latest)
+        missing_incident_ids = {
+            incident.incident_id
+            for incident in self._state_machine.open_incidents()
+            if incident.kind == "unreadable" and "no_new_reading" in incident.reasons
+        }
+        if missing_incident_ids:
+            self._deliver_pending(
+                self._missing_notification_reading(now),
+                current_recovered_ids=set(),
+                only_incident_ids=missing_incident_ids,
+            )
 
     def _incidents_for_commit(
         self,
@@ -146,10 +167,39 @@ class EnvironmentPipelineSink:
             notified_levels=previous.notified_levels if previous is not None else (),
         )
 
-    def _deliver_pending(self, reading: EnvironmentReading) -> None:
+    @staticmethod
+    def _missing_notification_reading(now: datetime) -> EnvironmentReading:
+        return EnvironmentReading.unavailable(
+            reading_id=str(uuid4()),
+            source_kind=EnvironmentSourceKind.WS2021_GAUGE,
+            captured_at=now,
+            failure_reason=ReadingFailureReason.INTERNAL_ERROR,
+            calibration_version="watchdog",
+            sample_count=0,
+        )
+
+    def _deliver_pending(
+        self,
+        reading: EnvironmentReading,
+        *,
+        current_recovered_ids: set[str],
+        only_incident_ids: set[str] | None,
+    ) -> None:
         if self._notifier is None:
             return
-        for stored in self._store.incidents(limit=1_000):
+        candidates = [
+            incident
+            for incident in self._store.incidents(limit=100)
+            if (
+                incident.state == "open"
+                or incident.incident_id in current_recovered_ids
+            )
+            and (
+                only_incident_ids is None
+                or incident.incident_id in only_incident_ids
+            )
+        ][:2]
+        for stored in candidates:
             marker = "recovered" if stored.state == "recovered" else stored.severity
             if marker in stored.notified_levels:
                 continue

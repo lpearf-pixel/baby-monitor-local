@@ -73,6 +73,8 @@ alpha-logs:
 	@tail -n 80 runtime/logs/api.log 2>/dev/null || true
 	@echo "=== gauge ==="
 	@tail -n 80 runtime/logs/gauge.log 2>/dev/null || true
+	@echo "=== environment watchdog ==="
+	@tail -n 80 runtime/logs/environment-watchdog.log 2>/dev/null || true
 
 alpha-quality-hd:
 	@$(PYTHON) tools/alpha_quality.py apply-hd --config runtime/go2rtc.yaml --backups runtime/backups

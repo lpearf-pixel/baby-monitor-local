@@ -127,7 +127,7 @@ def test_cleanup_preserves_reading_referenced_by_open_incident(
     assert store.get("recent") is not None
 
 
-def test_cleanup_preserves_opening_reading_for_recovered_incident(
+def test_cleanup_releases_old_opening_reading_after_incident_recovery(
     tmp_path: Path,
 ) -> None:
     module = storage_module()
@@ -151,7 +151,8 @@ def test_cleanup_preserves_opening_reading_for_recovered_incident(
 
     store.cleanup(now=NOW, retention_days=365)
 
-    assert store.get(old.reading_id) == old
+    assert store.get(old.reading_id) is None
+    assert store.incident("recovered-incident").opening_reading_id is None
 
 
 def test_pipeline_transaction_rolls_back_reading_when_incident_write_fails(

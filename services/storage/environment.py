@@ -490,6 +490,18 @@ class EnvironmentStore:
             raise ValueError("retention_days must be positive")
         cutoff = (now - timedelta(days=retention_days)).timestamp()
         with self._connect() as connection:
+            connection.execute(
+                """
+                UPDATE environment_incidents
+                SET opening_reading_id = NULL
+                WHERE state = 'recovered'
+                  AND opening_reading_id IN (
+                      SELECT reading_id FROM environment_readings
+                      WHERE captured_epoch < ?
+                  )
+                """,
+                (cutoff,),
+            )
             cursor = connection.execute(
                 """
                 DELETE FROM environment_readings
@@ -497,7 +509,7 @@ class EnvironmentStore:
                   AND reading_id NOT IN (
                       SELECT opening_reading_id
                       FROM environment_incidents
-                      WHERE opening_reading_id IS NOT NULL
+                      WHERE state = 'open' AND opening_reading_id IS NOT NULL
                   )
                 """,
                 (cutoff,),
