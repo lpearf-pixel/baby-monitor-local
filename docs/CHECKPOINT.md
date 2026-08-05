@@ -43,3 +43,22 @@ R1 不读取摄像头、不调用 M2/Ollama、不写数据库或媒体、不发�
 本轮新鲜门禁证据：Python `343 passed`，Node 浏览器 `70 passed`，
 `git diff --check` 退出码为 0。Python 输出仍有一项既有的 FastAPI/Starlette
 弃用警告，本阶段未增加运行时警告。
+
+## Visual frame R2a checkpoint
+
+2026-08-05 在同一视觉功能分支完成安全帧边界：缺少床区时固定返回
+`VISUAL_BED_ZONE_REQUIRED`；所有点均为 `0..1` 归一化坐标，退化多边形被拒绝；
+床区外接矩形每边按自身宽高扩展 15% 并限制在源图范围；隐私多边形先在裁剪图中
+涂黑，再缩放并编码为固定 `960×540`、JPEG 质量 80、单帧不超过 1 MiB。
+
+只有 `PreparedAnalysisFrame` 可以进入 40 秒/21 帧内存环；进程退出后普通帧消失，
+不会写入磁盘。每次复核可按约 2 秒间隔选最近四帧，样本不足时返回空结果。
+所有像素测试使用程序生成四色图，不含家庭画面。
+
+R2a 仍未接入真实捕获 worker，也未实现断流/冻结复核、单飞调度、M2/Ollama、
+SQLite 事件证据、ntfy 或 Dashboard 反馈；这些边界继续阻止将当前代码描述为可用
+的自动照护告警。
+
+R2a 新鲜门禁证据：Python `367 passed`、Node 浏览器 `70 passed`，Python
+编译、部署/工具 Shell 语法和 `git diff --check` 均通过；仍只有一项既有
+FastAPI/Starlette 弃用警告。

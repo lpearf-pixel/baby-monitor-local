@@ -20,9 +20,14 @@
   prone-position and out-of-bed tracks, two-review/10-second confirmation and recovery,
   low-confidence downgrade, adult-intervention audit, deduplication and restart snapshots
   are implemented as pure deterministic code.
+- Visual frame R2a: explicit normalized bed/privacy polygons, 15%-expanded bed crop,
+  privacy masking before resize/encode, fixed 960×540 quality-80 JPEG output, and a
+  40-second/21-frame in-memory ring are implemented with generated-image tests.
 - Fresh R1 software gate on 2026-08-05: 343 Python tests and 70 Node browser tests
   passed; `git diff --check` passed. This remains a software-only result and does not
   represent real-camera or M2 accuracy.
+- Fresh R2a software gate on 2026-08-05: 367 Python tests and 70 Node browser tests
+  passed; Python compilation, shell syntax, and `git diff --check` passed.
 - Next gate: install this fixed Xiaomi Alpha on the Intel i9, reconnect the real
   camera, and run source/HD/browser/notification/environment calibration checks.
   Software-only tests do not satisfy that hardware gate.
@@ -38,8 +43,8 @@
 
 ## Not yet in the usable Alpha
 
-- Safe bed-zone/privacy-mask frame processing, bounded frame memory, and camera freeze
-  detection.
+- Controlled visual capture composition, camera freeze detection, and single-flight
+  review scheduling.
 - Qwen/Ollama model calls, the M2 SSH bridge, and end-to-end face-obstruction,
   prone-position, bed-exit, or adult-intervention alerts.
 - Event video ring/export and cry/audio candidate detection.

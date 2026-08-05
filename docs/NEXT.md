@@ -25,12 +25,13 @@ The repository baseline and environment implementation are complete. Do not rest
 
 1. R1 complete locally: strict Qwen observation contracts and the pure deterministic
    risk state machine are implemented and tested.
-2. Implement R2 bed-zone/privacy-mask processing, deterministic camera freeze checks,
-   bounded frame memory and single-flight scheduling; privacy masking must happen before
-   model transfer or event-media persistence.
-3. Implement R3 against the fixed loopback Qwen/Ollama endpoint and restricted M2 SSH
+2. R2a complete locally: bed-zone crop, privacy masking, bounded JPEG preparation and
+   the 40-second in-memory frame ring are implemented and tested with generated images.
+3. Complete R2b controlled capture composition, deterministic camera freeze checks and
+   single-flight scheduling without adding a disk-backed normal-frame queue.
+4. Implement R3 against the fixed loopback Qwen/Ollama endpoint and restricted M2 SSH
    bridge, including timeout, degraded and recovery behavior.
-4. Add R4 event screenshot/video evidence, real-time text alerts and authenticated
+5. Add R4 event screenshot/video evidence, real-time text alerts and authenticated
    parent feedback without making the model a prerequisite for live viewing.
 
 ## P3 — Release gate
