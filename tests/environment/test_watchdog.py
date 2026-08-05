@@ -92,3 +92,31 @@ def test_watchdog_is_single_state_owner_for_gauge_appended_readings(
     snapshot = store.load_state_snapshot()
     assert snapshot["last_reading_id"] == second.reading_id
     assert datetime.fromisoformat(snapshot["last_record_at"]) == second.captured_at
+
+
+def test_legacy_snapshot_without_cursor_id_does_not_replay_equal_time_reading(
+    tmp_path: Path,
+) -> None:
+    store = EnvironmentStore(tmp_path / "environment.sqlite3")
+    old = available(NOW)
+    store.append(old)
+    store.save_state_snapshot(
+        {
+            "schema_version": 1,
+            "range_incident": None,
+            "unreadable_incident": None,
+            "last_record_at": NOW.isoformat(),
+        },
+        updated_at=NOW,
+    )
+    watchdog = EnvironmentWatchdog(
+        store=store,
+        policy=EnvironmentStatePolicy(),
+        notifier=None,
+    )
+
+    watchdog.tick(NOW + timedelta(seconds=30))
+
+    snapshot = store.load_state_snapshot()
+    assert snapshot.get("last_reading_id") is None
+    assert snapshot["last_record_at"] == NOW.isoformat()

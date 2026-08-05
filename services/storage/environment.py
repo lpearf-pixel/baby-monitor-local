@@ -224,16 +224,20 @@ class EnvironmentStore:
         else:
             if captured_at.tzinfo is None or captured_at.utcoffset() is None:
                 raise ValueError("captured_at must be timezone-aware")
-            clause = (
-                "WHERE captured_epoch > ? "
-                "OR (captured_epoch = ? AND reading_id > ?)"
-            )
-            parameters = (
-                captured_at.timestamp(),
-                captured_at.timestamp(),
-                reading_id or "",
-                limit,
-            )
+            if reading_id is None:
+                clause = "WHERE captured_epoch > ?"
+                parameters = (captured_at.timestamp(), limit)
+            else:
+                clause = (
+                    "WHERE captured_epoch > ? "
+                    "OR (captured_epoch = ? AND reading_id > ?)"
+                )
+                parameters = (
+                    captured_at.timestamp(),
+                    captured_at.timestamp(),
+                    reading_id,
+                    limit,
+                )
         with self._connect() as connection:
             rows = connection.execute(
                 f"""
