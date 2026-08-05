@@ -50,14 +50,15 @@
   function createViewerModel(measure, render) {
     let current = {zoom: 1, x: 0, y: 0};
 
-    function emit() {
-      render({...current});
+    function emit(dimensions = measure()) {
+      render({...current}, dimensions);
     }
 
     function reclamp() {
-      const pan = clampPan({...current, ...measure()});
+      const dimensions = measure();
+      const pan = clampPan({...current, ...dimensions});
       current = {...current, ...pan};
-      emit();
+      emit(dimensions);
     }
 
     function setZoom(zoom) {
@@ -97,6 +98,7 @@
     const viewer = document.getElementById("viewer");
     const mediaPlane = document.getElementById("media-plane");
     const liveImage = document.getElementById("live-image");
+    const snapshotLink = document.getElementById("snapshot-link");
     const hdVideo = document.getElementById("hd-video");
     const hdStatus = document.getElementById("hd-status");
     const fullscreenButton = document.getElementById("fullscreen");
@@ -148,7 +150,7 @@
       };
     }
 
-    function render(state) {
+    function render(state, dimensions) {
       if (state.x === 0 && state.y === 0) {
         mediaPlane.style.transform =
           `translate3d(-50%, -50%, 0) scale(${state.zoom})`;
@@ -162,6 +164,27 @@
         button.setAttribute(
           "aria-pressed",
           String(Number(button.dataset.zoom) === state.zoom),
+        );
+      }
+      if (snapshotLink) {
+        const planeWidth = Math.max(1, dimensions.planeWidth);
+        const planeHeight = Math.max(1, dimensions.planeHeight);
+        const centerX = clamp(
+          0.5 - state.x / (planeWidth * state.zoom),
+          0,
+          1,
+        );
+        const centerY = clamp(
+          0.5 - state.y / (planeHeight * state.zoom),
+          0,
+          1,
+        );
+        snapshotLink.setAttribute(
+          "href",
+          "/snapshot.jpeg" +
+            `?zoom=${state.zoom}` +
+            `&center_x=${centerX.toFixed(6)}` +
+            `&center_y=${centerY.toFixed(6)}`,
         );
       }
       selectMediaZoom(state.zoom);
