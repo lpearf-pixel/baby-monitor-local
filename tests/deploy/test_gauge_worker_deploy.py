@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import plistlib
 import subprocess
+import sys
 from pathlib import Path
 
 
@@ -30,7 +31,7 @@ def test_gauge_launch_agent_is_independent_and_contains_no_secrets() -> None:
 def test_gauge_worker_entrypoint_has_safe_help_without_starting_services() -> None:
     result = subprocess.run(
         [
-            str(ROOT / ".venv-alpha/bin/python"),
+            sys.executable,
             str(ROOT / "tools/run_gauge_worker.py"),
             "--help",
         ],
@@ -104,7 +105,7 @@ def test_disabled_environment_exits_successfully_without_keepalive_loop(
 
     result = subprocess.run(
         [
-            str(ROOT / ".venv-alpha/bin/python"),
+            sys.executable,
             str(ROOT / "tools/run_gauge_worker.py"),
             "--settings",
             str(settings_path),
