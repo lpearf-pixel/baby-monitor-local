@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import base64
+from datetime import UTC, datetime, timedelta
 import re
 from dataclasses import dataclass, field
 from typing import Iterator
@@ -12,6 +13,17 @@ from starlette.websockets import WebSocketDisconnect
 from apps.api.alpha import AlphaRuntime, SnapshotViewport, create_app
 from apps.api.hd_stream import HdBusyError, HdProfile, HdTicket
 from apps.api.ptz import PtzCode, PtzDirection, StepPtzController
+from packages.contracts.events import (
+    EnvironmentReading,
+    EnvironmentSourceKind,
+    ReadingFailureReason,
+)
+from services.events.environment_state import EnvironmentSnapshot
+from services.storage.environment import EnvironmentTrend, TrendWindow
+from tests.gauge.synthetic_dial import calibration as synthetic_calibration
+
+
+NOW = datetime(2026, 8, 5, 12, 0, tzinfo=UTC)
 
 
 def auth(username: str = "parent", password: str = "secret") -> dict[str, str]:
@@ -76,11 +88,86 @@ class FakeHdStream:
         await socket.close(code=1000)  # type: ignore[attr-defined]
 
 
+@dataclass
+class FakeEnvironmentService:
+    current_calls: int = 0
+    trend_calls: list[TrendWindow] = field(default_factory=list)
+    incident_calls: int = 0
+    saved_calibrations: list[object] = field(default_factory=list)
+
+    def current(self, now: datetime) -> EnvironmentSnapshot:
+        self.current_calls += 1
+        old = EnvironmentReading.available(
+            reading_id="old-valid",
+            source_kind=EnvironmentSourceKind.WS2021_GAUGE,
+            captured_at=NOW - timedelta(minutes=1),
+            temperature_c=22,
+            humidity_rh=48,
+            confidence=0.9,
+            calibration_version="calibration-1",
+            sample_count=5,
+            valid_temperature_samples=5,
+            valid_humidity_samples=5,
+        )
+        current = EnvironmentReading.unavailable(
+            reading_id="current-unavailable",
+            source_kind=EnvironmentSourceKind.WS2021_GAUGE,
+            captured_at=NOW,
+            failure_reason=ReadingFailureReason.GLARE,
+            calibration_version="calibration-2",
+            sample_count=5,
+        )
+        return EnvironmentSnapshot(
+            generated_at=now,
+            policy_version="environment-v1",
+            current_reading=current,
+            current_available=False,
+            temperature_c=None,
+            humidity_rh=None,
+            last_valid_reading=old,
+            open_incidents=(),
+        )
+
+    def trend(self, window: TrendWindow, now: datetime) -> EnvironmentTrend:
+        self.trend_calls.append(window)
+        return EnvironmentTrend(
+            window=window,
+            bucket_seconds=300 if window is TrendWindow.HOURS_24 else 3600,
+            started_at=NOW - timedelta(hours=24),
+            ended_at=NOW,
+            buckets=(),
+        )
+
+    def incidents(self) -> tuple[object, ...]:
+        self.incident_calls += 1
+        return ()
+
+    def calibration_status(self) -> dict[str, object]:
+        return {"state": "missing", "schema_version": 2}
+
+    def save_calibration(
+        self,
+        draft: object,
+        reference_jpeg: bytes,
+        now: datetime,
+    ) -> dict[str, object]:
+        self.saved_calibrations.append((draft, reference_jpeg, now))
+        return {"state": "available", "schema_version": 2, "calibration_id": "server-id"}
+
+
+def calibration_draft() -> dict[str, object]:
+    payload = synthetic_calibration().model_dump(mode="json")
+    for server_field in ("schema_version", "calibration_id", "created_at", "reference_version"):
+        payload.pop(server_field)
+    return payload
+
+
 def client(
     gateway: FakeGateway | None = None,
     *,
     ptz: StepPtzController | None = None,
     hd_stream: FakeHdStream | None = None,
+    environment: FakeEnvironmentService | None = None,
 ) -> tuple[TestClient, FakeGateway]:
     fake = gateway or FakeGateway()
     runtime_kwargs: dict[str, object] = dict(
@@ -93,6 +180,8 @@ def client(
         runtime_kwargs["ptz"] = ptz
     if hd_stream is not None:
         runtime_kwargs["hd_stream"] = hd_stream
+    if environment is not None:
+        runtime_kwargs["environment"] = environment
     runtime = AlphaRuntime(**runtime_kwargs)
     return TestClient(create_app(runtime)), fake
 
@@ -111,6 +200,9 @@ def test_dashboard_loads_after_authentication() -> None:
     assert "Baby Monitor Local Alpha" in response.text
     assert "/live.mjpeg" in response.text
     assert "/snapshot.jpeg" in response.text
+    assert 'id="environment-current"' in response.text
+    assert 'src="/assets/environment-dashboard.js"' in response.text
+    assert 'src="/assets/gauge-calibration.js"' in response.text
 
 
 def test_dashboard_exposes_accessible_viewer_controls() -> None:
@@ -188,6 +280,115 @@ def test_hd_player_asset_requires_authentication_and_disables_cache() -> None:
     assert response.status_code == 200
     assert response.headers["content-type"].startswith("text/javascript")
     assert response.headers["cache-control"] == "no-store"
+
+
+@pytest.mark.parametrize(
+    "asset",
+    ["environment-dashboard.js", "gauge-calibration.js"],
+)
+def test_environment_assets_require_authentication_and_disable_cache(
+    asset: str,
+) -> None:
+    app, _ = client()
+
+    assert app.get(f"/assets/{asset}").status_code == 401
+    response = app.get(f"/assets/{asset}", headers=auth())
+    assert response.status_code == 200
+    assert response.headers["cache-control"] == "no-store"
+
+
+def test_environment_current_requires_auth_before_service_access() -> None:
+    environment = FakeEnvironmentService()
+    app, _ = client(environment=environment)
+
+    response = app.get("/api/environment/current")
+
+    assert response.status_code == 401
+    assert environment.current_calls == 0
+
+
+def test_environment_current_keeps_unavailable_and_last_valid_separate() -> None:
+    environment = FakeEnvironmentService()
+    app, _ = client(environment=environment)
+
+    response = app.get("/api/environment/current", headers=auth())
+
+    assert response.status_code == 200
+    assert response.headers["cache-control"] == "no-store"
+    payload = response.json()
+    assert payload["current_reading"]["state"] == "unavailable"
+    assert payload["current_available"] is False
+    assert payload["temperature_c"] is None
+    assert payload["last_valid_reading"]["temperature_c"] == 22
+
+
+@pytest.mark.parametrize(
+    ("window", "expected"),
+    [("24h", TrendWindow.HOURS_24), ("7d", TrendWindow.DAYS_7)],
+)
+def test_environment_trends_accept_only_closed_windows(
+    window: str,
+    expected: TrendWindow,
+) -> None:
+    environment = FakeEnvironmentService()
+    app, _ = client(environment=environment)
+
+    response = app.get(f"/api/environment/trends/{window}", headers=auth())
+
+    assert response.status_code == 200
+    assert response.headers["cache-control"] == "no-store"
+    assert environment.trend_calls == [expected]
+
+
+def test_environment_trends_reject_arbitrary_window_before_service_access() -> None:
+    environment = FakeEnvironmentService()
+    app, _ = client(environment=environment)
+
+    response = app.get("/api/environment/trends/365d", headers=auth())
+
+    assert response.status_code == 422
+    assert environment.trend_calls == []
+
+
+def test_calibration_save_rejects_extra_client_path_before_snapshot() -> None:
+    environment = FakeEnvironmentService()
+    gateway = FakeGateway()
+    app, _ = client(gateway, environment=environment)
+    payload = calibration_draft()
+    payload["reference_path"] = "/private/family/gauge.jpg"
+
+    response = app.put("/api/gauge-calibration", headers=auth(), json=payload)
+
+    assert response.status_code == 422
+    assert gateway.snapshot_viewport is None
+    assert environment.saved_calibrations == []
+
+
+def test_calibration_save_uses_authenticated_fixed_snapshot_viewport() -> None:
+    environment = FakeEnvironmentService()
+    gateway = FakeGateway()
+    app, _ = client(gateway, environment=environment)
+
+    response = app.put(
+        "/api/gauge-calibration",
+        headers=auth(),
+        json=calibration_draft(),
+    )
+
+    assert response.status_code == 201
+    assert response.headers["cache-control"] == "no-store"
+    assert response.json() == {
+        "state": "available",
+        "schema_version": 2,
+        "calibration_id": "server-id",
+    }
+    assert gateway.snapshot_viewport == SnapshotViewport(
+        zoom=2,
+        center_x=0.5,
+        center_y=0.5,
+    )
+    assert len(environment.saved_calibrations) == 1
+    assert environment.saved_calibrations[0][1] == b"JPEG-SNAPSHOT"
 
 
 def test_hd_session_requires_basic_authentication_before_ticket_issue() -> None:

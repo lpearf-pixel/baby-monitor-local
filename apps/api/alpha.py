@@ -2,11 +2,13 @@ from __future__ import annotations
 
 import secrets
 from dataclasses import dataclass, field
+from datetime import UTC, datetime
 from pathlib import Path
 from collections.abc import Mapping
-from typing import Annotated, Iterator, Protocol
+from typing import Annotated, Iterator, Literal, Protocol
 
 from fastapi import Depends, FastAPI, HTTPException, Query, WebSocket, status
+from fastapi.encoders import jsonable_encoder
 from fastapi.responses import HTMLResponse, JSONResponse, Response, StreamingResponse
 from fastapi.security import HTTPBasic, HTTPBasicCredentials
 from pydantic import BaseModel, ConfigDict, Field
@@ -27,6 +29,13 @@ from apps.api.ptz import (
     PtzDirection,
     StepPtzController,
 )
+from services.events.environment_state import EnvironmentIncident, EnvironmentSnapshot
+from services.gauge.calibration import (
+    GaugeFace,
+    GaugeQuadrilateral,
+    NormalizedRect,
+)
+from services.storage.environment import EnvironmentTrend, TrendWindow
 
 
 class AlphaGateway(Protocol):
@@ -43,6 +52,23 @@ class AlphaHdStream(Protocol):
     def issue_ticket(self, profile: HdProfile) -> HdTicket: ...
 
     async def serve(self, socket: HdBrowserSocket) -> None: ...
+
+
+class AlphaEnvironment(Protocol):
+    def current(self, now: datetime) -> EnvironmentSnapshot: ...
+
+    def trend(self, window: TrendWindow, now: datetime) -> EnvironmentTrend: ...
+
+    def incidents(self) -> tuple[EnvironmentIncident, ...]: ...
+
+    def calibration_status(self) -> dict[str, object]: ...
+
+    def save_calibration(
+        self,
+        draft: "GaugeCalibrationSaveRequest",
+        reference_jpeg: bytes,
+        now: datetime,
+    ) -> dict[str, object]: ...
 
 
 class StarletteHdSocket:
@@ -110,6 +136,7 @@ class AlphaRuntime:
         default_factory=lambda: StepPtzController(adapter=DisabledPtzAdapter())
     )
     hd_stream: AlphaHdStream = field(default_factory=HdStreamService)
+    environment: AlphaEnvironment | None = None
 
 
 class SnapshotViewport(BaseModel):
@@ -132,8 +159,25 @@ class HdSessionRequest(BaseModel):
     profile: HdProfile
 
 
+class GaugeCalibrationSaveRequest(BaseModel):
+    model_config = ConfigDict(extra="forbid", frozen=True)
+
+    source_width: int = Field(gt=0, le=4096)
+    source_height: int = Field(gt=0, le=2160)
+    orientation: Literal["landscape", "portrait"]
+    zoom: Literal[2, 3]
+    center_x: float = Field(ge=0, le=1)
+    center_y: float = Field(ge=0, le=1)
+    gauge_quadrilateral: GaugeQuadrilateral
+    gauge_rect: NormalizedRect
+    humidity: GaugeFace
+    temperature: GaugeFace
+
+
 _VIEWER_SCRIPT = Path(__file__).with_name("dashboard_viewer.js")
 _HD_PLAYER_SCRIPT = Path(__file__).with_name("hd_player.js")
+_ENVIRONMENT_SCRIPT = Path(__file__).with_name("environment_dashboard.js")
+_GAUGE_CALIBRATION_SCRIPT = Path(__file__).with_name("gauge_calibration.js")
 
 
 _DASHBOARD = """<!doctype html>
@@ -214,6 +258,16 @@ _DASHBOARD = """<!doctype html>
     <strong>系统状态</strong>
     <pre id="status">正在读取…</pre>
   </section>
+  <section class="card" aria-labelledby="environment-title">
+    <h2 id="environment-title">环境监测</h2>
+    <p id="environment-current" aria-live="polite">正在读取…</p>
+    <p id="environment-detail" class="muted"></p>
+    <p><span class="muted">最近一次有效：</span><span id="environment-last-valid">无</span></p>
+    <p class="row"><button id="environment-trend-24h" type="button">24小时</button><button id="environment-trend-7d" type="button">7天</button></p>
+    <canvas id="environment-trend" width="900" height="220" aria-label="24小时温湿度趋势"></canvas>
+    <pre id="environment-incidents" aria-label="环境事件">无环境事件</pre>
+    <button id="gauge-calibration" type="button">标定温湿度计</button>
+  </section>
 </main>
 <script>
 async function refreshStatus() {
@@ -235,6 +289,8 @@ setInterval(refreshStatus, 15000);
 </script>
 <script defer src="/assets/hd-player.js"></script>
 <script defer src="/assets/dashboard-viewer.js"></script>
+<script defer src="/assets/environment-dashboard.js"></script>
+<script defer src="/assets/gauge-calibration.js"></script>
 </body>
 </html>
 """
@@ -290,6 +346,97 @@ def create_app(runtime: AlphaRuntime) -> FastAPI:
         return Response(
             content=_HD_PLAYER_SCRIPT.read_text(encoding="utf-8"),
             media_type="text/javascript",
+            headers={"Cache-Control": "no-store"},
+        )
+
+    @app.get("/assets/environment-dashboard.js")
+    def environment_dashboard_script(
+        _parent: str = Depends(require_parent),
+    ) -> Response:
+        return Response(
+            content=_ENVIRONMENT_SCRIPT.read_text(encoding="utf-8"),
+            media_type="text/javascript",
+            headers={"Cache-Control": "no-store"},
+        )
+
+    @app.get("/assets/gauge-calibration.js")
+    def gauge_calibration_script(
+        _parent: str = Depends(require_parent),
+    ) -> Response:
+        return Response(
+            content=_GAUGE_CALIBRATION_SCRIPT.read_text(encoding="utf-8"),
+            media_type="text/javascript",
+            headers={"Cache-Control": "no-store"},
+        )
+
+    def environment_service() -> AlphaEnvironment:
+        if runtime.environment is None:
+            raise HTTPException(
+                status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+                detail="ENVIRONMENT_DISABLED",
+            )
+        return runtime.environment
+
+    @app.get("/api/environment/current")
+    def environment_current(
+        _parent: str = Depends(require_parent),
+    ) -> JSONResponse:
+        snapshot = environment_service().current(datetime.now(UTC))
+        return JSONResponse(
+            content=jsonable_encoder(snapshot),
+            headers={"Cache-Control": "no-store"},
+        )
+
+    @app.get("/api/environment/trends/{window}")
+    def environment_trend(
+        window: Literal["24h", "7d"],
+        _parent: str = Depends(require_parent),
+    ) -> JSONResponse:
+        trend = environment_service().trend(TrendWindow(window), datetime.now(UTC))
+        return JSONResponse(
+            content=jsonable_encoder(trend),
+            headers={"Cache-Control": "no-store"},
+        )
+
+    @app.get("/api/environment/incidents")
+    def environment_incidents(
+        _parent: str = Depends(require_parent),
+    ) -> JSONResponse:
+        incidents = environment_service().incidents()
+        return JSONResponse(
+            content=jsonable_encoder({"incidents": incidents}),
+            headers={"Cache-Control": "no-store"},
+        )
+
+    @app.get("/api/gauge-calibration")
+    def gauge_calibration_status(
+        _parent: str = Depends(require_parent),
+    ) -> JSONResponse:
+        return JSONResponse(
+            content=jsonable_encoder(environment_service().calibration_status()),
+            headers={"Cache-Control": "no-store"},
+        )
+
+    @app.put("/api/gauge-calibration", status_code=status.HTTP_201_CREATED)
+    def save_gauge_calibration(
+        request: GaugeCalibrationSaveRequest,
+        _parent: str = Depends(require_parent),
+    ) -> JSONResponse:
+        reference = runtime.gateway.snapshot(
+            SnapshotViewport(
+                zoom=request.zoom,
+                center_x=request.center_x,
+                center_y=request.center_y,
+            )
+        )
+        result = environment_service().save_calibration(
+            request,
+            reference,
+            datetime.now(UTC),
+        )
+        return JSONResponse(
+            status_code=status.HTTP_201_CREATED,
+            content=jsonable_encoder(result),
             headers={"Cache-Control": "no-store"},
         )
 
