@@ -10,7 +10,7 @@ __pycache__/
 .DS_Store
 runtime/
 data/
-events/
+/events/
 recordings/
 snapshots/
 models/*.onnx
