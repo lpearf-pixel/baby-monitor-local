@@ -121,6 +121,8 @@ function browserFixture({fullscreen = true, rejectFullscreen = false} = {}) {
   const mediaPlane = new FakeElement('media-plane', {width: 800, height: 450});
   const liveImage = new FakeElement('live-image');
   liveImage.src = '/live.mjpeg';
+  const snapshotLink = new FakeElement('snapshot-link');
+  snapshotLink.setAttribute('href', '/snapshot.jpeg');
   const hdVideo = new FakeElement('hd-video');
   const hdStatus = new FakeElement('hd-status');
   const fullscreenButton = new FakeElement('fullscreen');
@@ -136,6 +138,7 @@ function browserFixture({fullscreen = true, rejectFullscreen = false} = {}) {
       ['viewer', viewer],
       ['media-plane', mediaPlane],
       ['live-image', liveImage],
+      ['snapshot-link', snapshotLink],
       ['hd-video', hdVideo],
       ['hd-status', hdStatus],
       ['fullscreen', fullscreenButton],
@@ -169,6 +172,7 @@ function browserFixture({fullscreen = true, rejectFullscreen = false} = {}) {
       timerCalls.push({callback, milliseconds});
       return timerCalls.length;
     },
+    snapshotLink,
     timerCalls,
     viewer,
     window,
@@ -266,6 +270,27 @@ test('zoom buttons and pointer drag update the real media transform', () => {
   assert.match(
     fixture.mediaPlane.style.transform,
     /translate3d\(calc\(-50% \+ 800px\), calc\(-50% \+ 450px\), 0\) scale\(3\)/,
+  );
+});
+
+
+test('snapshot link follows the current zoomed and dragged viewport', () => {
+  const fixture = browserFixture();
+  mountDashboardViewer({...fixture, fetch: async () => {}});
+
+  assert.equal(
+    fixture.snapshotLink.getAttribute('href'),
+    '/snapshot.jpeg?zoom=1&center_x=0.500000&center_y=0.500000',
+  );
+
+  fixture.zoomButtons[1].dispatch('click');
+  fixture.viewer.dispatch('pointerdown', {clientX: 100, clientY: 100});
+  fixture.viewer.dispatch('pointermove', {clientX: 300, clientY: 190});
+  fixture.viewer.dispatch('pointerup');
+
+  assert.equal(
+    fixture.snapshotLink.getAttribute('href'),
+    '/snapshot.jpeg?zoom=2&center_x=0.375000&center_y=0.400000',
   );
 });
 

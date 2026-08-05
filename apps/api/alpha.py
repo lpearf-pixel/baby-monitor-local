@@ -4,12 +4,12 @@ import secrets
 from dataclasses import dataclass, field
 from pathlib import Path
 from collections.abc import Mapping
-from typing import Iterator, Protocol
+from typing import Annotated, Iterator, Protocol
 
-from fastapi import Depends, FastAPI, HTTPException, WebSocket, status
+from fastapi import Depends, FastAPI, HTTPException, Query, WebSocket, status
 from fastapi.responses import HTMLResponse, JSONResponse, Response, StreamingResponse
 from fastapi.security import HTTPBasic, HTTPBasicCredentials
-from pydantic import BaseModel, ConfigDict
+from pydantic import BaseModel, ConfigDict, Field
 from starlette.websockets import WebSocketDisconnect
 
 from apps.api.hd_stream import (
@@ -34,7 +34,7 @@ class AlphaGateway(Protocol):
 
     def iter_mjpeg(self) -> Iterator[bytes]: ...
 
-    def snapshot(self) -> bytes: ...
+    def snapshot(self, viewport: "SnapshotViewport") -> bytes: ...
 
     def send_test_notification(self) -> None: ...
 
@@ -110,6 +110,14 @@ class AlphaRuntime:
         default_factory=lambda: StepPtzController(adapter=DisabledPtzAdapter())
     )
     hd_stream: AlphaHdStream = field(default_factory=HdStreamService)
+
+
+class SnapshotViewport(BaseModel):
+    model_config = ConfigDict(extra="forbid", frozen=True)
+
+    zoom: int = Field(default=1, ge=1, le=3)
+    center_x: float = Field(default=0.5, ge=0.0, le=1.0)
+    center_y: float = Field(default=0.5, ge=0.0, le=1.0)
 
 
 class PtzStepRequest(BaseModel):
@@ -198,7 +206,7 @@ _DASHBOARD = """<!doctype html>
     </div>
   </section>
   <section class="card row">
-    <a class="button" href="/snapshot.jpeg" target="_blank" rel="noopener">打开当前截图</a>
+    <a id="snapshot-link" class="button" href="/snapshot.jpeg?zoom=1&amp;center_x=0.500000&amp;center_y=0.500000" target="_blank" rel="noopener">打开当前截图</a>
     <button id="notify" type="button">发送测试通知</button>
     <button id="refresh" type="button">刷新状态</button>
   </section>
@@ -342,9 +350,12 @@ def create_app(runtime: AlphaRuntime) -> FastAPI:
         )
 
     @app.get("/snapshot.jpeg")
-    def snapshot(_parent: str = Depends(require_parent)) -> Response:
+    def snapshot(
+        viewport: Annotated[SnapshotViewport, Query()],
+        _parent: str = Depends(require_parent),
+    ) -> Response:
         return Response(
-            content=runtime.gateway.snapshot(),
+            content=runtime.gateway.snapshot(viewport),
             media_type="image/jpeg",
             headers={"Cache-Control": "no-store"},
         )

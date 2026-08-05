@@ -9,7 +9,7 @@ from fastapi.testclient import TestClient
 import pytest
 from starlette.websockets import WebSocketDisconnect
 
-from apps.api.alpha import AlphaRuntime, create_app
+from apps.api.alpha import AlphaRuntime, SnapshotViewport, create_app
 from apps.api.hd_stream import HdBusyError, HdProfile, HdTicket
 from apps.api.ptz import PtzCode, PtzDirection, StepPtzController
 
@@ -23,6 +23,7 @@ def auth(username: str = "parent", password: str = "secret") -> dict[str, str]:
 class FakeGateway:
     healthy: bool = True
     notification_count: int = 0
+    snapshot_viewport: SnapshotViewport | None = None
 
     def status(self) -> dict[str, object]:
         return {"camera": "online" if self.healthy else "offline", "stream": "live"}
@@ -30,7 +31,8 @@ class FakeGateway:
     def iter_mjpeg(self) -> Iterator[bytes]:
         yield b"--frame\r\nContent-Type: image/jpeg\r\n\r\nJPEG\r\n"
 
-    def snapshot(self) -> bytes:
+    def snapshot(self, viewport: SnapshotViewport) -> bytes:
+        self.snapshot_viewport = viewport
         return b"JPEG-SNAPSHOT"
 
     def send_test_notification(self) -> None:
@@ -120,6 +122,7 @@ def test_dashboard_exposes_accessible_viewer_controls() -> None:
     assert 'id="viewer"' in response.text
     assert 'id="media-plane"' in response.text
     assert 'id="live-image"' in response.text
+    assert 'id="snapshot-link"' in response.text
     assert response.text.count('class="zoom-button"') == 3
     assert response.text.count('class="ptz-button"') == 4
     active_zoom_buttons = re.findall(
@@ -305,12 +308,49 @@ def test_live_proxy_returns_mjpeg_stream() -> None:
     assert b"JPEG" in response.content
 
 
-def test_snapshot_proxy_returns_jpeg() -> None:
-    app, _ = client()
+def test_default_snapshot_proxy_returns_centered_full_frame() -> None:
+    app, gateway = client()
+
     response = app.get("/snapshot.jpeg", headers=auth())
+
     assert response.status_code == 200
     assert response.headers["content-type"] == "image/jpeg"
     assert response.content == b"JPEG-SNAPSHOT"
+    assert gateway.snapshot_viewport == SnapshotViewport()
+
+
+def test_zoomed_snapshot_proxy_forwards_the_current_viewport() -> None:
+    app, gateway = client()
+    response = app.get(
+        "/snapshot.jpeg?zoom=2&center_x=0.375&center_y=0.4",
+        headers=auth(),
+    )
+    assert response.status_code == 200
+    assert response.headers["content-type"] == "image/jpeg"
+    assert response.content == b"JPEG-SNAPSHOT"
+    assert gateway.snapshot_viewport == SnapshotViewport(
+        zoom=2,
+        center_x=0.375,
+        center_y=0.4,
+    )
+
+
+@pytest.mark.parametrize(
+    "query",
+    [
+        "zoom=4&center_x=0.5&center_y=0.5",
+        "zoom=2&center_x=-0.1&center_y=0.5",
+        "zoom=2&center_x=0.5&center_y=1.1",
+        "zoom=2&center_x=0.5&center_y=0.5&src=live",
+    ],
+)
+def test_snapshot_rejects_an_invalid_viewport(query: str) -> None:
+    app, gateway = client()
+
+    response = app.get(f"/snapshot.jpeg?{query}", headers=auth())
+
+    assert response.status_code == 422
+    assert gateway.snapshot_viewport is None
 
 
 def test_notification_test_endpoint_calls_notifier() -> None:
