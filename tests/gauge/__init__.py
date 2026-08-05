@@ -1,0 +1,1 @@
+"""Synthetic gauge test support."""
