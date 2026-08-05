@@ -20,5 +20,10 @@ Dashboard 标定、每分钟一次的独立 gauge worker、连续五帧读表、
 负载降级和两台 Android 通知内容检查。真实画面、表盘参考图、标定 JSON、
 SQLite、Token、私网地址和本地绝对路径不得提交或粘贴到 PR。
 
+2026-08-05 小米优先交付刷新：本地 `codex/basic-usable-alpha` 在 `08963d6`
+之后执行完整软件门禁，316 个 Python 测试与 70 个 Node 浏览器测试通过，
+`git diff --check` 及跟踪媒体/运行数据边界检查通过。该证据仅确认可交付软件包，
+不替代 i9、MJSXJ17CM、三浏览器、两台 Android 与 24/72 小时实机验收。
+
 本阶段固定为只读监测；单一光学来源的控制资格为 `ineligible`，不存在空调、
 加湿器、风扇、插座或其他执行器 API。
