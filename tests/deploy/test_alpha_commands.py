@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import subprocess
+import shutil
 from pathlib import Path
 
 import pytest
@@ -8,6 +9,22 @@ import yaml
 
 
 ROOT = Path(__file__).resolve().parents[2]
+
+
+def test_alpha_status_is_clean_in_downloaded_archive(tmp_path: Path) -> None:
+    shutil.copy2(ROOT / "Makefile", tmp_path / "Makefile")
+
+    result = subprocess.run(
+        ["make", "alpha-status"],
+        cwd=tmp_path,
+        check=False,
+        capture_output=True,
+        text=True,
+    )
+
+    assert result.returncode == 0
+    assert "Source: packaged archive" in result.stdout
+    assert "fatal: not a git repository" not in result.stderr
 
 
 def test_alpha_workflow_does_not_require_chmod() -> None:

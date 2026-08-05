@@ -51,8 +51,12 @@ alpha-stop:
 alpha-restart: alpha-stop alpha-start
 
 alpha-status:
-	@echo "Branch: $$(git branch --show-current)"
-	@echo "Commit: $$(git rev-parse --short HEAD)"
+	@if git rev-parse --is-inside-work-tree >/dev/null 2>&1; then \
+		echo "Branch: $$(git branch --show-current)"; \
+		echo "Commit: $$(git rev-parse --short HEAD)"; \
+	else \
+		echo "Source: packaged archive"; \
+	fi
 	@echo "Dashboard listener:"
 	@lsof -nP -iTCP:$${BABY_MONITOR_PORT:-8080} -sTCP:LISTEN 2>/dev/null || true
 	@echo "go2rtc listener:"
