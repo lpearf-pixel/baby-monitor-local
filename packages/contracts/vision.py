@@ -4,7 +4,7 @@ from datetime import datetime
 from enum import StrEnum
 from typing import Literal
 
-from pydantic import BaseModel, ConfigDict, Field, field_validator
+from pydantic import BaseModel, ConfigDict, Field, field_validator, model_validator
 
 
 class VisionContract(BaseModel):
@@ -72,6 +72,31 @@ class VisualReasonCode(StrEnum):
     OUTSIDE_CANDIDATE = "outside_candidate"
     ADULT_INTERVENTION = "adult_intervention"
     POOR_IMAGE = "poor_image"
+
+
+class NormalizedPoint(VisionContract):
+    x: float = Field(ge=0, le=1)
+    y: float = Field(ge=0, le=1)
+
+
+class NormalizedPolygon(VisionContract):
+    points: tuple[NormalizedPoint, ...] = Field(min_length=3)
+
+    @model_validator(mode="after")
+    def require_distinct_non_zero_area(self) -> "NormalizedPolygon":
+        if len(set(self.points)) < 3:
+            raise ValueError("polygon requires at least three distinct points")
+        double_area = sum(
+            first.x * second.y - second.x * first.y
+            for first, second in zip(
+                self.points,
+                (*self.points[1:], self.points[0]),
+                strict=True,
+            )
+        )
+        if abs(double_area) <= 1e-9:
+            raise ValueError("polygon requires non-zero area")
+        return self
 
 
 class VisualRiskKind(StrEnum):

@@ -1,7 +1,8 @@
 """Validated cross-service contracts."""
-"""Strict shared contracts for local monitor services."""
 
 from packages.contracts.vision import (
+    NormalizedPoint,
+    NormalizedPolygon,
     RiskSnapshot,
     RiskTransition,
     RiskTransitionKind,
@@ -11,6 +12,8 @@ from packages.contracts.vision import (
 )
 
 __all__ = [
+    "NormalizedPoint",
+    "NormalizedPolygon",
     "RiskSnapshot",
     "RiskTransition",
     "RiskTransitionKind",
