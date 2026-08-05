@@ -101,7 +101,7 @@ git commit -m "feat: define strict visual review contracts"
 
 **Interfaces:**
 - Consumes: `VisualReview`, `VisualRiskKind`, `VisualRiskState`, `RiskTransition`, `RiskTransitionKind`, and `RiskSnapshot` from Task 1.
-- Produces: `VisualRiskStateMachine.evaluate(review: VisualReview, observed_at: datetime) -> tuple[RiskTransition, ...]`, `snapshot(snapshot_at: datetime) -> RiskSnapshot`, and `from_snapshot(snapshot: RiskSnapshot) -> VisualRiskStateMachine`.
+- Produces: `VisualRiskStateMachine.evaluate(review: VisualReview, observed_at: datetime) -> tuple[RiskTransition, ...]`, `state_for(risk_kind: VisualRiskKind) -> VisualRiskState`, `snapshot(snapshot_at: datetime) -> RiskSnapshot`, and `from_snapshot(snapshot: RiskSnapshot) -> VisualRiskStateMachine`.
 
 - [ ] **Step 1: Write failing behavior tests**
 
@@ -201,4 +201,3 @@ git commit -m "docs: record visual risk core checkpoint"
 - All types and method names are defined before later tasks consume them.
 - No placeholder implementation steps or household media are present.
 - Each production behavior has an explicit RED and GREEN command.
-
