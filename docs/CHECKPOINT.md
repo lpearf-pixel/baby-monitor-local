@@ -62,3 +62,30 @@ SQLite 事件证据、ntfy 或 Dashboard 反馈；这些边界继续阻止将当
 R2a 新鲜门禁证据：Python `367 passed`、Node 浏览器 `70 passed`，Python
 编译、部署/工具 Shell 语法和 `git diff --check` 均通过；仍只有一项既有
 FastAPI/Starlette 弃用警告。
+
+## Visual capture R2b checkpoint
+
+2026-08-05 在同一视觉功能分支完成 R2b 软件核心。go2rtc 新增固定、按需启动的
+`analysis` 逻辑流，由现有 `source` 生成 `960×540`、1 FPS MJPEG；视觉帧源只连接
+loopback、固定读取 `analysis`，一个迭代器在生命周期内只持有一条 HTTP/MJPEG
+响应，避免每两秒重新建立 Xiaomi CS2 会话。
+
+worker 每两秒最多接受一帧，只有经过床区裁剪和隐私遮罩的
+`PreparedAnalysisFrame` 能进入40秒内存环和未来模型调度器。普通复核至少间隔
+10秒，加急复核至少间隔5秒；任一时刻最多存在一个 Future，忙碌时跳过本轮而不
+积压帧或请求。传输失败使用1/2/4/8秒有界退避，停止事件可以中断等待。
+
+断流与冻结由确定性模块负责。连续60秒源失败才形成 `source_offline`；冻结必须
+同时满足隐私处理后 JPEG 摘要、感知哈希、亮度、噪声和尺寸连续60秒完全一致，
+并在主动重连后的第一帧仍一致。黑暗、低对比或宝宝静止本身不能判定冻结；恢复
+需要有效且发生变化的帧连续20秒。所有转换只输出稳定枚举和持续时间，不包含图片、
+路径、地址或底层异常文本。
+
+R2b 没有添加 Ollama/SSH、真实线程池、SQLite、通知、Dashboard 路由、事件媒体、
+launchd 或自动控制。只有 R3 提供真实本地模型后端后才会部署独立视觉 worker，
+避免出现“进程在运行但没有复核能力”的假健康状态。
+
+R2b 新鲜门禁证据：Python `401 passed`、Node 浏览器 `70 passed`；Python 编译、
+部署/工具 Shell 语法、`git diff --check`、跟踪 runtime/媒体/数据库边界、GitHub
+Token 候选和私钥标记检查均通过。仍只有一项既有 FastAPI/Starlette 弃用警告。
+这些证据不代表真实摄像头连续取流、M2 模型准确率或家庭夜间场景已验收。

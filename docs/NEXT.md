@@ -27,10 +27,12 @@ The repository baseline and environment implementation are complete. Do not rest
    risk state machine are implemented and tested.
 2. R2a complete locally: bed-zone crop, privacy masking, bounded JPEG preparation and
    the 40-second in-memory frame ring are implemented and tested with generated images.
-3. Complete R2b controlled capture composition, deterministic camera freeze checks and
-   single-flight scheduling without adding a disk-backed normal-frame queue.
+3. R2b complete locally: a fixed private analysis stream, one continuous loopback
+   consumer, deterministic disconnect/freeze checks, bounded reconnect and
+   single-flight scheduling are implemented without a disk-backed normal-frame queue.
 4. Implement R3 against the fixed loopback Qwen/Ollama endpoint and restricted M2 SSH
-   bridge, including timeout, degraded and recovery behavior.
+   bridge, including strict client parsing, timeout, degraded/recovery behavior,
+   production worker composition and independent launchd lifecycle.
 5. Add R4 event screenshot/video evidence, real-time text alerts and authenticated
    parent feedback without making the model a prerequisite for live viewing.
 

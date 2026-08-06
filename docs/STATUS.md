@@ -23,14 +23,17 @@
 - Visual frame R2a: explicit normalized bed/privacy polygons, 15%-expanded bed crop,
   privacy masking before resize/encode, fixed 960×540 quality-80 JPEG output, and a
   40-second/21-frame in-memory ring are implemented with generated-image tests.
-- Fresh R1 software gate on 2026-08-05: 343 Python tests and 70 Node browser tests
-  passed; `git diff --check` passed. This remains a software-only result and does not
-  represent real-camera or M2 accuracy.
-- Fresh R2a software gate on 2026-08-05: 367 Python tests and 70 Node browser tests
-  passed; Python compilation, shell syntax, and `git diff --check` passed.
-- Next gate: install this fixed Xiaomi Alpha on the Intel i9, reconnect the real
-  camera, and run source/HD/browser/notification/environment calibration checks.
-  Software-only tests do not satisfy that hardware gate.
+- Visual capture R2b: the fixed private `analysis` profile, one continuous loopback
+  MJPEG consumer, two-second privacy-safe sampling, conservative 60-second
+  disconnect/freeze evidence with reconnect confirmation, bounded reconnect backoff,
+  and ten-second single-flight review scheduling are implemented as local components.
+- Fresh R2b software gate on 2026-08-05: 401 Python tests and 70 Node browser tests
+  passed; Python compilation, shell syntax, `git diff --check`, tracked runtime/media
+  boundaries, GitHub-token candidates and private-key markers passed. This remains a
+  software-only result and does not represent real-camera or M2 accuracy.
+- Next visual gate: R3 fixed loopback Qwen/Ollama client, restricted i9-to-M2 SSH
+  bridge, worker entrypoint and independent launchd lifecycle. The i9 environment
+  calibration and 24-hour gate remain independent and unfinished.
 
 ## Pull request checkpoint
 
@@ -43,11 +46,10 @@
 
 ## Not yet in the usable Alpha
 
-- Controlled visual capture composition, camera freeze detection, and single-flight
-  review scheduling.
 - Qwen/Ollama model calls, the M2 SSH bridge, and end-to-end face-obstruction,
   prone-position, bed-exit, or adult-intervention alerts.
-- Event video ring/export and cry/audio candidate detection.
+- Production visual worker/launchd deployment, authenticated parent feedback, event
+  screenshot/video export, and cry/audio candidate detection.
 - Verified Tailscale external access, real PTZ control, or the 72-hour release gate.
 
 ## Safety gates

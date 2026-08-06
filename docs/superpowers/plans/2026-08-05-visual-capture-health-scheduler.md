@@ -38,7 +38,7 @@
 - Consumes: an already configured runtime mapping containing the private `streams.source` entry.
 - Produces: `ANALYSIS_STREAM`, `with_visual_analysis_stream(config: dict[str, Any]) -> dict[str, Any]`, and HD/subtype transformations that preserve or install the exact analysis profile without exposing `source`.
 
-- [ ] **Step 1: Write failing profile tests**
+- [x] **Step 1: Write failing profile tests**
 
 Import `ANALYSIS_STREAM` and `with_visual_analysis_stream`. Prove the transformation rejects a missing/non-Xiaomi `source`, preserves unknown Xiaomi query parameters and unrelated streams, installs the exact fixed analysis expression, does not mutate its input, and is idempotent:
 
@@ -58,13 +58,13 @@ assert with_visual_analysis_stream(updated) == updated
 
 Also assert `upgrade_to_hd()` and `with_source_subtype()` include `ANALYSIS_STREAM`, so every existing safe quality migration converges on the same profile.
 
-- [ ] **Step 2: Run the tests and verify RED**
+- [x] **Step 2: Run the tests and verify RED**
 
 Run: `.venv-alpha/bin/pytest tests/monitoring/test_alpha_quality.py -q`
 
 Expected: collection fails because `ANALYSIS_STREAM` and `with_visual_analysis_stream` do not exist.
 
-- [ ] **Step 3: Implement the immutable profile transformation**
+- [x] **Step 3: Implement the immutable profile transformation**
 
 Add:
 
@@ -83,13 +83,13 @@ def with_visual_analysis_stream(config: dict[str, Any]) -> dict[str, Any]:
 
 Have `upgrade_to_hd()` and `with_source_subtype()` set the same constant while already operating on their copied mappings. Add the same entry to `config/go2rtc.alpha.yaml`. Do not add a second camera URI or an always-on process; go2rtc starts FFmpeg only when the worker consumes `analysis`.
 
-- [ ] **Step 4: Verify GREEN**
+- [x] **Step 4: Verify GREEN**
 
 Run: `.venv-alpha/bin/pytest tests/monitoring/test_alpha_quality.py tests/monitoring/test_subtype_probe.py -q`
 
 Expected: all profile and subtype tests pass.
 
-- [ ] **Step 5: Commit the analysis profile slice**
+- [x] **Step 5: Commit the analysis profile slice**
 
 ```bash
 git add packages/monitoring/alpha_quality.py config/go2rtc.alpha.yaml tests/monitoring/test_alpha_quality.py
@@ -106,7 +106,7 @@ git commit -m "feat: define private visual analysis stream"
 - Consumes: fixed loopback go2rtc origin and fixed `analysis` stream.
 - Produces: `Go2RtcAnalysisFrameSource.iter_frames(timeout_seconds: float = 8) -> Iterator[CapturedFrame]`; one iterator holds one HTTP response until EOF, close, or transport failure.
 
-- [ ] **Step 1: Write failing continuous-source tests**
+- [x] **Step 1: Write failing continuous-source tests**
 
 Use the existing generated `FakeResponse` and `mjpeg_payload`. Prove five yielded frames use exactly one request to `http://127.0.0.1:1984/api/stream.mjpeg?src=analysis`, preserve chronological aware capture times, and close the response when the iterator closes. Add tests for non-loopback base URLs, malformed boundary/length/JPEG, EOF, naive `now()`, and transport errors. Assert raised messages are only `malformed_mjpeg`, `frame_invalid`, or `frame_source_unavailable`, never the underlying exception text.
 
@@ -120,25 +120,25 @@ assert opener.requests[0][0].endswith("/api/stream.mjpeg?src=analysis")
 assert [frame.captured_at for frame in frames] == times_seen
 ```
 
-- [ ] **Step 2: Run the tests and verify RED**
+- [x] **Step 2: Run the tests and verify RED**
 
 Run: `.venv-alpha/bin/pytest tests/stream/test_frame_source.py -q`
 
 Expected: import fails because `Go2RtcAnalysisFrameSource` does not exist.
 
-- [ ] **Step 3: Implement the continuous iterator**
+- [x] **Step 3: Implement the continuous iterator**
 
 Reuse `_validate_base_url`, `_boundary_from_headers`, `_read_part`, and `_validate_jpeg` through private module helpers instead of duplicating parsing rules. Build requests with `urllib.request.Request`, `urlencode({"src": "analysis"})`, `Accept: multipart/x-mixed-replace`, and the existing `ProxyHandler({})` opener. The generator opens once inside `with`, reads parts until response EOF/error, validates each JPEG and aware timestamp, and wraps all non-contract failures as `FrameSourceUnavailable("frame_source_unavailable")`.
 
 Do not add caller-controlled `src`, raw URLs, headers, or reconnect loops to this class; worker composition owns reconnect policy.
 
-- [ ] **Step 4: Verify GREEN**
+- [x] **Step 4: Verify GREEN**
 
 Run: `.venv-alpha/bin/pytest tests/stream/test_frame_source.py tests/vision/test_frame_policy.py -q`
 
 Expected: all tests pass and existing WS2021 burst behavior is unchanged.
 
-- [ ] **Step 5: Commit the continuous source slice**
+- [x] **Step 5: Commit the continuous source slice**
 
 ```bash
 git add services/stream/frame_source.py tests/stream/test_frame_source.py
@@ -155,7 +155,7 @@ git commit -m "feat: add continuous visual frame source"
 - Consumes: `PreparedAnalysisFrame`, aware wall time, monotonic seconds, and explicit reconnect results.
 - Produces: `FrameHealthState`, `FrameHealthCode`, `FrameHealthTransition`, `VisualFrameHealthMonitor.observe(frame, monotonic_now)`, `source_failed(monotonic_now)`, and `confirm_reconnect(frame, monotonic_now)`.
 
-- [ ] **Step 1: Write failing health tests**
+- [x] **Step 1: Write failing health tests**
 
 Generate 960×540 JPEGs in memory and cover:
 
@@ -181,25 +181,25 @@ frozen = monitor.confirm_reconnect(
 assert frozen.code is FrameHealthCode.FRAME_FROZEN
 ```
 
-- [ ] **Step 2: Run the tests and verify RED**
+- [x] **Step 2: Run the tests and verify RED**
 
 Run: `.venv-alpha/bin/pytest tests/vision/test_frame_health.py -q`
 
 Expected: collection fails because `services.vision.frame_health` does not exist.
 
-- [ ] **Step 3: Implement deterministic fingerprints and transitions**
+- [x] **Step 3: Implement deterministic fingerprints and transitions**
 
 Decode only the already privacy-masked prepared JPEG. Compute an immutable fingerprint containing SHA-256, 8×8 difference hash, rounded mean luminance, rounded luminance standard deviation, width, and height. A frame is usable freeze evidence only when mean luminance is at least `3.0` and standard deviation at least `1.0`.
 
 Keep private monotonic markers for identical-frame start, first source failure, reconnect requirement, open failure state, and recovery start. Exact fingerprint equality for 60 seconds requests one reconnect. `confirm_reconnect()` can open `frame_frozen` only when the post-reconnect fingerprint equals the candidate fingerprint. `source_failed()` opens `source_offline` after 60 seconds. Recovery requires valid fingerprints that change at least once and span 20 seconds. Every public transition contains only enum codes and monotonic duration, never image bytes or paths.
 
-- [ ] **Step 4: Verify GREEN**
+- [x] **Step 4: Verify GREEN**
 
 Run: `.venv-alpha/bin/pytest tests/vision/test_frame_health.py tests/vision/test_frame_policy.py -q`
 
 Expected: all tests pass.
 
-- [ ] **Step 5: Commit the health slice**
+- [x] **Step 5: Commit the health slice**
 
 ```bash
 git add services/vision/frame_health.py tests/vision/test_frame_health.py
@@ -216,7 +216,7 @@ git commit -m "feat: detect visual source degradation"
 - Consumes: four `PreparedAnalysisFrame` objects, injected `Executor`, and injected `review(frames) -> VisualReview` callable.
 - Produces: `VisualReviewScheduler.try_submit(frames, monotonic_now, urgent=False) -> ReviewScheduleDecision`, `poll() -> ReviewCompletion | None`, and `close()`.
 
-- [ ] **Step 1: Write failing scheduler tests**
+- [x] **Step 1: Write failing scheduler tests**
 
 Use a deterministic fake executor/future. Prove the first valid four-frame batch submits, fewer than four frames does not, a second due batch while busy is skipped without calling `submit`, regular submissions are at least 10 seconds apart, urgent submissions are at least 5 seconds apart, completion returns one strict `VisualReview`, exceptions become `ReviewCompletion(code="review_failed")` without exception text, and `close()` cancels a pending future without creating a new one.
 
@@ -228,23 +228,23 @@ assert busy is ReviewScheduleDecision.SKIPPED_BUSY
 assert executor.submit_count == 1
 ```
 
-- [ ] **Step 2: Run the tests and verify RED**
+- [x] **Step 2: Run the tests and verify RED**
 
 Run: `.venv-alpha/bin/pytest tests/vision/test_review_scheduler.py -q`
 
 Expected: collection fails because `services.vision.review_scheduler` does not exist.
 
-- [ ] **Step 3: Implement the scheduler**
+- [x] **Step 3: Implement the scheduler**
 
 Define enum decisions `submitted`, `skipped_busy`, `skipped_not_due`, and `skipped_insufficient_frames`. Store at most one `Future[VisualReview]`. `try_submit()` validates four chronological aware frames and uses the injected executor only when due. `poll()` returns `None` while pending, returns exactly one success/failure completion when done, then clears the future. Failure completions expose only `review_failed`. `close()` marks the scheduler closed and cancels a pending future; later submission raises `RuntimeError("review scheduler is closed")`.
 
-- [ ] **Step 4: Verify GREEN**
+- [x] **Step 4: Verify GREEN**
 
 Run: `.venv-alpha/bin/pytest tests/vision/test_review_scheduler.py tests/contracts/test_vision_review.py -q`
 
 Expected: all tests pass.
 
-- [ ] **Step 5: Commit the scheduler slice**
+- [x] **Step 5: Commit the scheduler slice**
 
 ```bash
 git add services/vision/review_scheduler.py tests/vision/test_review_scheduler.py
@@ -262,7 +262,7 @@ git commit -m "feat: add single-flight visual review scheduler"
 - Consumes: a factory returning `Iterator[CapturedFrame]`, `VisionFramePolicy`, `AnalysisFrameRing`, `VisualFrameHealthMonitor`, `VisualReviewScheduler`, and a stop event.
 - Produces: `VisualWorker.run(stop_event)`, `run_frame(frame, monotonic_now)`, immutable `VisualWorkerHealth`, and callbacks for review completion and frame-health transitions.
 
-- [ ] **Step 1: Write failing worker tests**
+- [x] **Step 1: Write failing worker tests**
 
 Use fake clocks, generated JPEGs, a stream factory, and callbacks. Prove:
 
@@ -287,13 +287,13 @@ worker.run_frame(captured(10), monotonic_now=10.0)
 assert scheduler.submitted_batches == 1
 ```
 
-- [ ] **Step 2: Run the tests and verify RED**
+- [x] **Step 2: Run the tests and verify RED**
 
 Run: `.venv-alpha/bin/pytest tests/vision/test_worker.py -q`
 
 Expected: collection fails because `services.vision.worker` does not exist.
 
-- [ ] **Step 3: Implement the worker composition**
+- [x] **Step 3: Implement the worker composition**
 
 `run_frame()` enforces the 2-second monotonic sampling deadline, prepares the frame, observes health, adds it to the ring, polls the scheduler, selects `ring.select_review_frames(count=4, spacing_seconds=2)`, and tries a regular submission on the 10-second cadence. It forwards only immutable transitions/completions to callbacks.
 
@@ -301,7 +301,7 @@ Expected: collection fails because `services.vision.worker` does not exist.
 
 Do not add `tools/run_visual_worker.py`, launchd, real threads, Ollama, SSH, persistence, or notifications in this task. R3 will compose a real executor/reviewer and only then deploy the independent process.
 
-- [ ] **Step 4: Verify GREEN**
+- [x] **Step 4: Verify GREEN**
 
 Run:
 
@@ -312,7 +312,7 @@ Run:
 
 Expected: all R1/R2 tests pass.
 
-- [ ] **Step 5: Commit the worker core**
+- [x] **Step 5: Commit the worker core**
 
 ```bash
 git add services/vision/worker.py services/vision/__init__.py tests/vision/test_worker.py
@@ -331,11 +331,11 @@ git commit -m "feat: compose visual capture worker core"
 - Consumes: passing R2b modules and tests.
 - Produces: an honest checkpoint that separates software evidence from real i9/M2 accuracy and advances only to R3.
 
-- [ ] **Step 1: Mark completed plan steps and update status**
+- [x] **Step 1: Mark completed plan steps and update status**
 
 Record the exact test counts from the final run. State that continuous loopback capture, privacy-safe sampling, conservative health evidence, bounded reconnect, and single-flight scheduling are implemented in software. Keep real M2/Ollama calls, SSH tunnel, launchd, alert persistence, screenshots/video, ntfy, Dashboard feedback, household accuracy, 24-hour environment acceptance, and 72-hour release validation explicitly pending.
 
-- [ ] **Step 2: Run focused and full verification**
+- [x] **Step 2: Run focused and full verification**
 
 ```bash
 .venv-alpha/bin/pytest tests/vision tests/stream/test_frame_source.py tests/monitoring/test_alpha_quality.py tests/contracts/test_vision_review.py -q
@@ -349,11 +349,11 @@ git status --short
 
 Expected: all Python and frontend tests pass; compilation, shell syntax, diff check, and worktree inspection succeed.
 
-- [ ] **Step 3: Run public-repository boundary checks**
+- [x] **Step 3: Run public-repository boundary checks**
 
 Confirm no tracked path starts with `runtime/`, no tracked media/database/environment file was added, and no GitHub token/private-key marker occurs in the diff. Print only candidate counts, never candidate values.
 
-- [ ] **Step 4: Commit the R2b checkpoint**
+- [x] **Step 4: Commit the R2b checkpoint**
 
 ```bash
 git add docs/STATUS.md docs/CHECKPOINT.md docs/NEXT.md docs/superpowers/plans/2026-08-05-visual-capture-health-scheduler.md
