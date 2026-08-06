@@ -5,7 +5,7 @@ from collections.abc import Callable, Iterator
 from dataclasses import dataclass, replace
 from typing import Literal, Protocol
 
-from services.stream.frame_source import CapturedFrame, FrameSourceUnavailable
+from services.stream.frame_source import CapturedFrame
 from services.vision.frame_health import (
     FrameHealthCode,
     FrameHealthTransition,
@@ -198,15 +198,30 @@ class VisualWorker:
         try:
             while not stop_event.is_set():
                 intentional_reconnect = False
+                failure_kind: Literal["source", "internal"] | None = None
                 try:
                     iterator = iter(self._stream_factory())
-                    for frame in iterator:
-                        if stop_event.is_set():
+                except Exception:
+                    failure_kind = "source"
+                else:
+                    while not stop_event.is_set():
+                        try:
+                            frame = next(iterator)
+                        except StopIteration:
+                            if not stop_event.is_set():
+                                failure_kind = "source"
                             break
-                        self.run_frame(
-                            frame,
-                            monotonic_now=self._monotonic(),
-                        )
+                        except Exception:
+                            failure_kind = "source"
+                            break
+                        try:
+                            self.run_frame(
+                                frame,
+                                monotonic_now=self._monotonic(),
+                            )
+                        except Exception:
+                            failure_kind = "internal"
+                            break
                         backoff_index = 0
                         if self._reconnect_requested:
                             self._reconnect_requested = False
@@ -217,14 +232,15 @@ class VisualWorker:
                                 reconnects=self._health.reconnects + 1,
                             )
                             break
-                    else:
-                        if not stop_event.is_set():
-                            raise FrameSourceUnavailable(
-                                "frame_source_unavailable"
-                            )
-                except Exception:
-                    if stop_event.is_set():
-                        break
+                finally:
+                    self._close_iterator(iterator)
+                    iterator = None
+
+                if stop_event.is_set():
+                    break
+                if intentional_reconnect:
+                    continue
+                if failure_kind == "source":
                     transition = self._frame_health.source_failed(
                         monotonic_now=self._monotonic()
                     )
@@ -236,13 +252,15 @@ class VisualWorker:
                         skipped_frames=self._health.skipped_frames,
                         reconnects=self._health.reconnects,
                     )
-                finally:
-                    self._close_iterator(iterator)
-                    iterator = None
-
-                if stop_event.is_set():
-                    break
-                if intentional_reconnect:
+                elif failure_kind == "internal":
+                    self._health = VisualWorkerHealth(
+                        state="degraded",
+                        code="worker_internal_error",
+                        accepted_frames=self._health.accepted_frames,
+                        skipped_frames=self._health.skipped_frames,
+                        reconnects=self._health.reconnects,
+                    )
+                else:
                     continue
                 delay = RECONNECT_BACKOFF_SECONDS[
                     min(backoff_index, len(RECONNECT_BACKOFF_SECONDS) - 1)
@@ -295,4 +313,7 @@ class VisualWorker:
             return
         close = getattr(iterator, "close", None)
         if close is not None:
-            close()
+            try:
+                close()
+            except Exception:
+                return

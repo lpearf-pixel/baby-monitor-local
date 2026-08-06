@@ -27,7 +27,7 @@
   MJPEG consumer, two-second privacy-safe sampling, conservative 60-second
   disconnect/freeze evidence with reconnect confirmation, bounded reconnect backoff,
   and ten-second single-flight review scheduling are implemented as local components.
-- Fresh R2b software gate on 2026-08-05: 401 Python tests and 70 Node browser tests
+- Fresh R2b software gate on 2026-08-05: 402 Python tests and 70 Node browser tests
   passed; Python compilation, shell syntax, `git diff --check`, tracked runtime/media
   boundaries, GitHub-token candidates and private-key markers passed. This remains a
   software-only result and does not represent real-camera or M2 accuracy.

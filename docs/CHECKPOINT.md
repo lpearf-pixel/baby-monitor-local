@@ -85,7 +85,11 @@ R2b 没有添加 Ollama/SSH、真实线程池、SQLite、通知、Dashboard 路�
 launchd 或自动控制。只有 R3 提供真实本地模型后端后才会部署独立视觉 worker，
 避免出现“进程在运行但没有复核能力”的假健康状态。
 
-R2b 新鲜门禁证据：Python `401 passed`、Node 浏览器 `70 passed`；Python 编译、
+内部 worker、状态机或回调异常与摄像头传输失败分开计数；只有打开或读取流失败
+才能进入 `source_failed`，内部异常仅形成脱敏 `worker_internal_error`，避免
+伪造摄像头离线证据。
+
+R2b 新鲜门禁证据：Python `402 passed`、Node 浏览器 `70 passed`；Python 编译、
 部署/工具 Shell 语法、`git diff --check`、跟踪 runtime/媒体/数据库边界、GitHub
 Token 候选和私钥标记检查均通过。仍只有一项既有 FastAPI/Starlette 弃用警告。
 这些证据不代表真实摄像头连续取流、M2 模型准确率或家庭夜间场景已验收。

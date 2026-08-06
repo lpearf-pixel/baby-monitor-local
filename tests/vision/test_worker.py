@@ -140,6 +140,13 @@ class FakeStopEvent:
         return self.stopped
 
 
+class StopOnWaitEvent(FakeStopEvent):
+    def wait(self, timeout: float) -> bool:
+        self.waits.append(timeout)
+        self.stopped = True
+        return True
+
+
 class ClosingIterator:
     def __init__(
         self,
@@ -310,6 +317,34 @@ def test_reconnect_required_confirms_the_first_frame_from_new_stream() -> None:
     assert transitions[0].code is FrameHealthCode.RECONNECT_REQUIRED
     assert first.closed is True
     assert second.closed is True
+
+
+def test_internal_worker_failure_is_not_reported_as_camera_offline() -> None:
+    class BrokenHealth(RecordingHealth):
+        def observe(
+            self,
+            frame: PreparedAnalysisFrame,
+            *,
+            monotonic_now: float,
+        ) -> FrameHealthTransition | None:
+            raise RuntimeError("credential at /private/family/internal")
+
+    stop = StopOnWaitEvent()
+    stream = ClosingIterator([captured(0)])
+    health = BrokenHealth()
+    ticks = iter([0.0, 0.0])
+    worker = build_worker(
+        health=health,
+        stream_factory=lambda: stream,
+        monotonic=lambda: next(ticks),
+    )
+
+    worker.run(stop)
+
+    assert health.failure_times == []
+    assert worker.health().code == "worker_internal_error"
+    assert "/private" not in repr(worker.health())
+    assert stream.closed is True
 
 
 def test_worker_module_has_no_r3_or_r4_side_effect_imports() -> None:
