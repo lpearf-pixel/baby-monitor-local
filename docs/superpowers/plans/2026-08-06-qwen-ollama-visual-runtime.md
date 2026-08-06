@@ -109,7 +109,7 @@ git commit -m "feat: define fixed visual runtime settings"
 - Produces: `OllamaVisualReviewer.review(frames) -> VisualReview`.
 - Produces: stable `OllamaReviewError("visual_review_failed")` for every unsafe or invalid failure.
 
-- [ ] **Step 1: Write failing client contract tests**
+- [x] **Step 1: Write failing client contract tests**
 
 Cover one successful synthetic response and mutations for wrong frame count, per-frame/total byte overflow, alternate origin, request path drift, proxy use, timeout drift, model mismatch, non-JSON/extra fields, oversized HTTP response, incomplete response, and a transport exception containing a private path. Assert the real outgoing JSON body uses exactly:
 
@@ -129,23 +129,23 @@ Cover one successful synthetic response and mutations for wrong frame count, per
 }
 ```
 
-- [ ] **Step 2: Verify RED**
+- [x] **Step 2: Verify RED**
 
 Run: `./.venv-alpha/bin/python -m pytest tests/vision/test_ollama_client.py -q`
 
 Expected: FAIL because `services.vision.ollama_client` does not exist.
 
-- [ ] **Step 3: Implement bounded request/response handling**
+- [x] **Step 3: Implement bounded request/response handling**
 
 Use `urllib.request.build_opener(ProxyHandler({}))`, an injected opener for tests, and `Request(method="POST", headers={"Content-Type": "application/json"})`. Read at most 64 KiB plus one byte, require HTTP JSON with exact model, `done is True`, a string `message.content`, no `tool_calls`, and validate content with `VisualReview.model_validate_json`. Catch all boundary exceptions and raise only the stable error code; never include `repr(exc)`.
 
-- [ ] **Step 4: Verify GREEN**
+- [x] **Step 4: Verify GREEN**
 
 Run: `./.venv-alpha/bin/python -m pytest tests/vision/test_ollama_client.py tests/contracts/test_vision_review.py -q`
 
 Expected: PASS with no new warnings.
 
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
 
 ```bash
 git add services/vision/ollama_client.py tests/vision/test_ollama_client.py
