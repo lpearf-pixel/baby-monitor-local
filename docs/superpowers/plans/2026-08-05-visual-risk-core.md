@@ -58,7 +58,8 @@ assert review.face_visibility is FaceVisibility.NOT_VISIBLE
 
 - [ ] **Step 2: Run the tests and verify RED**
 
-Run: `.venv-alpha/bin/pytest tests/contracts/test_vision_review.py -q`  
+Run: `.venv-alpha/bin/pytest tests/contracts/test_vision_review.py -q`
+
 Expected: FAIL during collection because `packages.contracts.vision` does not exist.
 
 - [ ] **Step 3: Implement the immutable strict contracts**
@@ -81,7 +82,8 @@ class RiskTransition(VisionContract):
 
 - [ ] **Step 4: Run the contract tests and verify GREEN**
 
-Run: `.venv-alpha/bin/pytest tests/contracts/test_vision_review.py -q`  
+Run: `.venv-alpha/bin/pytest tests/contracts/test_vision_review.py -q`
+
 Expected: all tests PASS with no warnings.
 
 - [ ] **Step 5: Commit the contract slice**
@@ -119,7 +121,8 @@ Add separate tests for prone and outside candidates, two observations less than 
 
 - [ ] **Step 2: Run the state tests and verify RED**
 
-Run: `.venv-alpha/bin/pytest tests/vision/test_risk_state.py -q`  
+Run: `.venv-alpha/bin/pytest tests/vision/test_risk_state.py -q`
+
 Expected: FAIL during collection because `services.vision.risk_state` does not exist.
 
 - [ ] **Step 3: Implement the minimal pure state machine**
@@ -137,7 +140,8 @@ Safe evidence is exact: face `clear`; posture one of `supine/side/upright`; bed 
 
 - [ ] **Step 4: Run state and contract tests and verify GREEN**
 
-Run: `.venv-alpha/bin/pytest tests/vision/test_risk_state.py tests/contracts/test_vision_review.py -q`  
+Run: `.venv-alpha/bin/pytest tests/vision/test_risk_state.py tests/contracts/test_vision_review.py -q`
+
 Expected: all tests PASS.
 
 - [ ] **Step 5: Commit the deterministic state slice**
@@ -166,7 +170,8 @@ Open a face alert, start one recovery observation, snapshot, restore, and prove 
 
 - [ ] **Step 2: Run the restart tests and verify RED**
 
-Run: `.venv-alpha/bin/pytest tests/vision/test_risk_state.py -q`  
+Run: `.venv-alpha/bin/pytest tests/vision/test_risk_state.py -q`
+
 Expected: the new restart assertions FAIL because snapshot restoration is not implemented yet.
 
 - [ ] **Step 3: Implement snapshot creation and restoration**

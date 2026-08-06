@@ -38,7 +38,8 @@ Test a valid rectangle, missing bed zone, out-of-range coordinates, fewer than t
 
 - [ ] **Step 2: Verify RED**
 
-Run: `.venv-alpha/bin/pytest tests/vision/test_frame_policy.py -q`  
+Run: `.venv-alpha/bin/pytest tests/vision/test_frame_policy.py -q`
+
 Expected: collection fails because geometry and policy modules do not exist.
 
 - [ ] **Step 3: Implement strict geometry and policy validation**
@@ -47,7 +48,8 @@ Use frozen Pydantic contracts and the shoelace formula. `VisionFramePolicy(None)
 
 - [ ] **Step 4: Verify GREEN and commit**
 
-Run: `.venv-alpha/bin/pytest tests/vision/test_frame_policy.py tests/contracts/test_vision_review.py -q`  
+Run: `.venv-alpha/bin/pytest tests/vision/test_frame_policy.py tests/contracts/test_vision_review.py -q`
+
 Expected: all tests pass.
 
 ```bash
@@ -71,7 +73,8 @@ Generate a 200×100 RGB image with four colored quadrants. Use bed zone `(0.25,0
 
 - [ ] **Step 2: Verify RED**
 
-Run: `.venv-alpha/bin/pytest tests/vision/test_frame_policy.py -q`  
+Run: `.venv-alpha/bin/pytest tests/vision/test_frame_policy.py -q`
+
 Expected: new tests fail because `prepare()` is absent.
 
 - [ ] **Step 3: Implement the safe pixel pipeline**
@@ -80,7 +83,8 @@ Decode with Pillow, verify JPEG and declared dimensions, calculate integer clamp
 
 - [ ] **Step 4: Verify GREEN and commit**
 
-Run: `.venv-alpha/bin/pytest tests/vision/test_frame_policy.py -q`  
+Run: `.venv-alpha/bin/pytest tests/vision/test_frame_policy.py -q`
+
 Expected: all tests pass and output stays below 1 MiB.
 
 ```bash
@@ -107,7 +111,8 @@ Use tiny in-memory JPEG byte strings and aware timestamps to prove age eviction,
 
 - [ ] **Step 2: Verify RED**
 
-Run: `.venv-alpha/bin/pytest tests/vision/test_frame_ring.py -q`  
+Run: `.venv-alpha/bin/pytest tests/vision/test_frame_ring.py -q`
+
 Expected: collection fails because `frame_ring` does not exist.
 
 - [ ] **Step 3: Implement bounded ring behavior**
