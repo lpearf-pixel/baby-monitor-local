@@ -8,6 +8,7 @@ import pytest
 import yaml
 
 from packages.monitoring.alpha_quality import (
+    ANALYSIS_STREAM,
     COMPAT_HD,
     LIVE_HD,
     QualityConfigError,
@@ -15,6 +16,7 @@ from packages.monitoring.alpha_quality import (
     inspect_quality,
     rollback_latest,
     upgrade_to_hd,
+    with_visual_analysis_stream,
     with_source_subtype,
 )
 
@@ -71,6 +73,40 @@ def test_upgrade_is_idempotent() -> None:
     assert twice == once
     assert twice["streams"]["source"].count("subtype=hd") == 1
     assert twice["streams"]["source_compat"] == COMPAT_HD
+    assert twice["streams"]["analysis"] == ANALYSIS_STREAM
+
+
+def test_visual_analysis_profile_is_fixed_idempotent_and_preserves_input() -> None:
+    original = {
+        "streams": {
+            "source": (
+                "xiaomi://device:cn@192.0.2.10?"
+                "did=example&vendor_hint=keep"
+            ),
+            "recording": "keep",
+        }
+    }
+
+    updated = with_visual_analysis_stream(original)
+
+    assert updated["streams"]["analysis"] == ANALYSIS_STREAM
+    assert updated["streams"]["recording"] == "keep"
+    assert original["streams"].get("analysis") is None
+    assert with_visual_analysis_stream(updated) == updated
+
+
+@pytest.mark.parametrize(
+    "config",
+    [
+        {"streams": {}},
+        {"streams": {"source": "rtsp://camera.example/stream"}},
+    ],
+)
+def test_visual_analysis_profile_requires_configured_xiaomi_source(
+    config: dict[str, object],
+) -> None:
+    with pytest.raises(QualityConfigError, match="SOURCE_NOT_CONFIGURED"):
+        with_visual_analysis_stream(config)
 
 
 def test_inspect_quality_returns_only_derived_values() -> None:
@@ -135,6 +171,7 @@ def test_source_subtype_candidate_preserves_unknown_parameters_and_input() -> No
     assert "vendor_hint=keep" in updated["streams"]["source"]
     assert updated["streams"]["live"] == LIVE_HD
     assert updated["streams"]["source_compat"] == COMPAT_HD
+    assert updated["streams"]["analysis"] == ANALYSIS_STREAM
     assert "subtype=hd" in original["streams"]["source"]
 
 
