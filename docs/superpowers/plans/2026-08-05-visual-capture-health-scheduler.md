@@ -172,10 +172,12 @@ Generate 960×540 JPEGs in memory and cover:
 Representative assertion:
 
 ```python
-monitor.observe(frame("red"), NOW, 0.0)
-candidate = monitor.observe(frame("red"), NOW + timedelta(seconds=60), 60.0)
+monitor.observe(frame("red", seconds=0), monotonic_now=0.0)
+candidate = monitor.observe(frame("red", seconds=60), monotonic_now=60.0)
 assert candidate.code is FrameHealthCode.RECONNECT_REQUIRED
-frozen = monitor.confirm_reconnect(frame("red"), 61.0)
+frozen = monitor.confirm_reconnect(
+    frame("red", seconds=61), monotonic_now=61.0
+)
 assert frozen.code is FrameHealthCode.FRAME_FROZEN
 ```
 
