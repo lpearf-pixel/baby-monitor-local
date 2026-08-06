@@ -166,25 +166,25 @@ git commit -m "feat: add fixed local qwen visual reviewer"
 - Produces: `VisualModelHealthMonitor.failed(monotonic_now)` and `.succeeded(monotonic_now)` returning optional redacted `ModelHealthTransition`.
 - Produces: `VisualReviewRuntime.handle(completion)` feeding successful `VisualReview` into `VisualRiskStateMachine` and failed completions only into model health.
 
-- [ ] **Step 1: Write failing health tests**
+- [x] **Step 1: Write failing health tests**
 
 Prove one or two failures do not degrade; the third failure degrades once; a 60-second failure span also degrades once; repeated failures do not duplicate; one success does not recover; two successes recover once; monotonic rollback is rejected without state mutation.
 
-- [ ] **Step 2: Verify RED**
+- [x] **Step 2: Verify RED**
 
 Run: `./.venv-alpha/bin/python -m pytest tests/vision/test_model_health.py -q`
 
 Expected: FAIL because the module does not exist.
 
-- [ ] **Step 3: Implement the pure model-health state machine**
+- [x] **Step 3: Implement the pure model-health state machine**
 
 Expose only `healthy|degraded` states and `model_degraded|model_recovered` transitions with counts/duration. Store no exception, endpoint, prompt, model output, image, or path.
 
-- [ ] **Step 4: Write RED review-runtime tests**
+- [x] **Step 4: Write RED review-runtime tests**
 
 Prove an `OK` completion invokes the real `VisualRiskStateMachine` with the completion review and its timezone-aware frame/review time, a `REVIEW_FAILED` completion never advances risk evidence, model health transitions are forwarded once, and callback failures are redacted rather than reclassified as camera failures.
 
-- [ ] **Step 5: Implement and verify review handling**
+- [x] **Step 5: Implement and verify review handling**
 
 Run:
 
@@ -194,7 +194,7 @@ Run:
 
 Expected: PASS.
 
-- [ ] **Step 6: Commit**
+- [x] **Step 6: Commit**
 
 ```bash
 git add services/vision/model_health.py services/vision/review_runtime.py tests/vision/test_model_health.py tests/vision/test_review_runtime.py
