@@ -84,6 +84,7 @@ make alpha-start
 make alpha-stop
 make alpha-restart
 make alpha-status
+make alpha-visual-status
 make alpha-logs
 make alpha-quality-info
 make alpha-source-check
@@ -343,7 +344,72 @@ gauge 和缺记录 watchdog job，登录和异常退出后由 launchd 恢复。w
 环境监测当前固定为只读。Qwen/M2 离线不影响每分钟读表；表盘不可读也不影响
 视觉复核。系统没有空调、加湿器、除湿器、风扇或智能插座执行器 API。
 
-## 10. Android 通知
+## 10. 配置 M2 本地 Qwen3-VL 复核
+
+固定模型为：
+
+```text
+qwen3-vl:8b-instruct-q4_K_M
+```
+
+M2 上的 Ollama 必须继续只监听默认 `127.0.0.1:11434`。不要设置
+`OLLAMA_HOST=0.0.0.0:11434`，不要配置路由器端口转发或 Tailscale Funnel。
+`ollama ps` 在没有正在执行的请求时为空是正常现象；视觉 worker 发出请求后
+模型自动加载，并在空闲五分钟后允许 Ollama 释放内存。
+
+在 i9 创建只用于该隧道的密钥，不复用日常 SSH 密钥：
+
+```bash
+ssh-keygen -t ed25519 -f "$HOME/.ssh/baby-monitor-m2" \
+  -C baby-monitor-ollama-tunnel
+chmod 600 "$HOME/.ssh/baby-monitor-m2"
+```
+
+把 `.pub` 公钥加入 M2 上专用 SSH 账户的 `~/.ssh/authorized_keys`，并在同一行
+公钥前加以下限制：
+
+```text
+restrict,port-forwarding,permitopen="127.0.0.1:11434"
+```
+
+这允许唯一目标端口转发，但不授予交互式 Shell、PTY、agent/X11 转发。M2 专用
+账户关闭密码登录。首次连接前，在 M2 本机查看 SSH host key 指纹，并在 i9
+首次接受 host key 时人工核对；不要未经核对直接导入 `ssh-keyscan` 结果。
+
+在 i9 生成本地 launchd 隧道配置：
+
+```bash
+cd ~/dev/baby-monitor-local
+./.venv-alpha/bin/python tools/configure_ollama_tunnel.py \
+  --target '<专用账户>@<M2私网IPv4或.local主机名>' \
+  --identity "$HOME/.ssh/baby-monitor-m2"
+```
+
+配置器只接受 RFC1918 私网 IPv4 或 `.local` 主机名，只接受当前用户拥有、位于
+`~/.ssh/` 且权限为 `400/600` 的普通文件。生成的隧道固定为：
+
+```text
+i9 127.0.0.1:11435 → SSH → M2 127.0.0.1:11434
+```
+
+`runtime/settings.yaml` 中 `visual.enabled` 默认是 `false`。必须在 i9 本地填写
+真实、归一化的 `bed_zone`，可选填写 `privacy_masks`，再改为 `true`；不要把该
+床区配置、截图或画面发到聊天、Issue 或 PR。没有床区时进程固定返回
+`VISUAL_BED_ZONE_REQUIRED`，不会把全房间画面送给模型。
+
+完成本地床区配置后：
+
+```bash
+make alpha-restart
+make alpha-visual-status
+```
+
+预期看到 visual worker 与 tunnel 为 `running`、Ollama bridge 为 `reachable`。
+状态命令不会显示 M2 地址、SSH 参数、模型原始输出或图片。R3 只建立本地复核和
+确定性风险候选；当前仍没有事件截图/视频、ntfy 风险通知或 Dashboard 人工反馈，
+这些属于 R4。它也不是医疗监护，不能替代成人持续照护。
+
+## 11. Android 通知
 
 两台 Android 安装 ntfy，并订阅：
 
@@ -356,7 +422,7 @@ grep '^NTFY_TOPIC=' runtime/alpha.env
 环境异常通知只发送文字、读数、采集时间、稳定原因码和鉴权链接，不上传宝宝
 画面、表盘截图、私网地址或本地路径。
 
-## 11. 后续外部访问
+## 12. 后续外部访问
 
 外部访问由 Issue #5 跟踪。目标命令为：
 
@@ -373,7 +439,7 @@ tailscale funnel 8080
 
 也禁止路由器转发 `1984`、`8080`、`8554`、`8555`。
 
-## 12. 视频和功能边界
+## 13. 视频和功能边界
 
 1× 模式继续使用 1280×720、10 FPS MJPEG；2×/3× 会按需申请绑定 profile 的
 一次性票据，通过 Dashboard 的同源 WebSocket 中继连接仅限本机的 go2rtc。
@@ -487,7 +553,7 @@ microSD 回放继续使用米家 App。
 
 本系统不是呼吸、心率、血氧、窒息或医疗监护设备。
 
-## 13. 已验证故障案例
+## 14. 已验证故障案例
 
 Intel macOS 上遇到以下现象时：
 

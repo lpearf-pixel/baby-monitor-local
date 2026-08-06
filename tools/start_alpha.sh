@@ -7,10 +7,15 @@ GO2RTC_PID="$ROOT/runtime/pids/go2rtc.pid"
 API_PID="$ROOT/runtime/pids/api.pid"
 GAUGE_PID="$ROOT/runtime/pids/gauge.pid"
 WATCHDOG_PID="$ROOT/runtime/pids/environment-watchdog.pid"
+VISUAL_PID="$ROOT/runtime/pids/visual.pid"
 GAUGE_LABEL="com.babymonitor.gauge"
 GAUGE_PLIST="$HOME/Library/LaunchAgents/${GAUGE_LABEL}.plist"
 WATCHDOG_LABEL="com.babymonitor.environment-watchdog"
 WATCHDOG_PLIST="$HOME/Library/LaunchAgents/${WATCHDOG_LABEL}.plist"
+VISUAL_LABEL="com.babymonitor.visual"
+VISUAL_PLIST="$HOME/Library/LaunchAgents/${VISUAL_LABEL}.plist"
+TUNNEL_LABEL="com.babymonitor.ollama-tunnel"
+TUNNEL_PLIST="$HOME/Library/LaunchAgents/${TUNNEL_LABEL}.plist"
 
 if [[ ! -f "$ENV_FILE" || ! -x "$ROOT/.local/bin/go2rtc" || ! -x "$ROOT/.venv-alpha/bin/uvicorn" ]]; then
   echo "Alpha is not installed. Run tools/install_alpha_macos.sh first." >&2
@@ -79,6 +84,18 @@ fi
 
 if [[ "$(uname -s)" == "Darwin" ]] && command -v launchctl >/dev/null 2>&1; then
   GAUGE_DOMAIN="gui/$(id -u)"
+  if [[ -f "$TUNNEL_PLIST" ]]; then
+    if ! launchctl print "${GAUGE_DOMAIN}/${TUNNEL_LABEL}" >/dev/null 2>&1; then
+      launchctl bootstrap "$GAUGE_DOMAIN" "$TUNNEL_PLIST"
+    fi
+    launchctl kickstart -k "${GAUGE_DOMAIN}/${TUNNEL_LABEL}"
+  fi
+  if [[ -f "$VISUAL_PLIST" ]]; then
+    if ! launchctl print "${GAUGE_DOMAIN}/${VISUAL_LABEL}" >/dev/null 2>&1; then
+      launchctl bootstrap "$GAUGE_DOMAIN" "$VISUAL_PLIST"
+    fi
+    launchctl kickstart -k "${GAUGE_DOMAIN}/${VISUAL_LABEL}"
+  fi
   if ! launchctl print "${GAUGE_DOMAIN}/${WATCHDOG_LABEL}" >/dev/null 2>&1; then
     launchctl bootstrap "$GAUGE_DOMAIN" "$WATCHDOG_PLIST"
   fi
@@ -88,6 +105,10 @@ if [[ "$(uname -s)" == "Darwin" ]] && command -v launchctl >/dev/null 2>&1; then
   fi
   launchctl kickstart -k "${GAUGE_DOMAIN}/${GAUGE_LABEL}"
 else
+  start_if_stopped "$VISUAL_PID" \
+    nohup "$ROOT/.venv-alpha/bin/python" "$ROOT/tools/run_visual_worker.py" \
+    --settings "$BABY_MONITOR_SETTINGS_PATH" --env-file "$ENV_FILE" \
+    >"$ROOT/runtime/logs/visual.log" 2>&1
   start_if_stopped "$WATCHDOG_PID" \
     nohup "$ROOT/.venv-alpha/bin/python" "$ROOT/tools/run_environment_watchdog.py" \
     --settings "$BABY_MONITOR_SETTINGS_PATH" --env-file "$ENV_FILE" \

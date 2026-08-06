@@ -93,3 +93,32 @@ R2b 新鲜门禁证据：Python `402 passed`、Node 浏览器 `70 passed`；Pyth
 部署/工具 Shell 语法、`git diff --check`、跟踪 runtime/媒体/数据库边界、GitHub
 Token 候选和私钥标记检查均通过。仍只有一项既有 FastAPI/Starlette 弃用警告。
 这些证据不代表真实摄像头连续取流、M2 模型准确率或家庭夜间场景已验收。
+
+## Visual runtime R3 checkpoint
+
+2026-08-06 在同一视觉功能分支完成 R3 软件接线。配置默认关闭；启用时必须存在
+本机私有 `bed_zone`。模型标签固定为 `qwen3-vl:8b-instruct-q4_K_M`，i9 只允许
+访问 `http://127.0.0.1:11435/api/chat`，不能通过配置或 HTTP 请求替换 endpoint、
+模型或提示词。每次只发送四张已完成床区裁剪与隐私遮罩的内存 JPEG，单帧最多
+1 MiB、总计最多 4 MiB；禁用环境代理，20秒超时，关闭 streaming/thinking，
+温度为0，五分钟 keep-alive。
+
+模型响应必须匹配固定模型、完成状态和严格 `VisualReview` schema v1。原始输出、
+底层异常、图片、路径和 endpoint 不进入日志或健康状态。连续3次失败或持续60秒
+才形成一次 `model_degraded`，连续2次成功才形成一次 `model_recovered`；失败复核
+不会推进遮脸、趴睡或离床证据，成功复核仍由 i9 确定性状态机进行两次/10秒确认。
+
+生产视觉 worker 现在拥有一条连续 `analysis` 连接和一个模型执行线程，作为独立
+launchd job 运行；受限 SSH 隧道是另一个 job，仅允许 i9
+`127.0.0.1:11435` 转发到 M2 `127.0.0.1:11434`，使用 BatchMode、严格 host key
+核对、单一 `-L` 和专用 mode 400/600 密钥。视觉或隧道故障不会重启 Dashboard、
+go2rtc、gauge worker 或 M2 Ollama。
+
+R3 新鲜软件门禁：Python `451 passed`、Node 浏览器 `70 passed`；Python 编译、
+Shell 语法、Make dry-run 和 `git diff --check` 通过，仅保留既有 Starlette/httpx
+弃用警告。M2 已下载模型但 `ollama ps` 空闲为空是正常现象，不构成真实推理门禁。
+
+仍待在 i9/M2 本地生成专用 SSH 密钥、核对 host key、安装隧道、填写真实床区，
+并验证四帧真实响应、冷/热加载、P95≤8秒、白天/黑暗/蚊帐/成人/空床/模拟遮挡、
+断开 M2 降级与恢复。R3 不保存事件媒体、不发送风险 ntfy、不提供 Dashboard
+反馈；这些属于 R4。本阶段不能宣称医疗监护、无人照护或家庭准确率已经通过。

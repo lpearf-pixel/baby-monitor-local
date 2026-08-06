@@ -27,13 +27,19 @@
   MJPEG consumer, two-second privacy-safe sampling, conservative 60-second
   disconnect/freeze evidence with reconnect confirmation, bounded reconnect backoff,
   and ten-second single-flight review scheduling are implemented as local components.
-- Fresh R2b software gate on 2026-08-05: 402 Python tests and 70 Node browser tests
+- Visual runtime R3 software: strict disabled-by-default settings, the fixed
+  `qwen3-vl:8b-instruct-q4_K_M` loopback-only Ollama client, four-frame/4 MiB
+  request bounds, proxy-free 20-second calls, strict schema parsing, deterministic
+  three-failure/60-second degradation and two-success recovery, real worker
+  composition, and independent visual/tunnel launchd units are implemented locally.
+- Fresh R3 software gate on 2026-08-06: 451 Python tests and 70 Node browser tests
   passed; Python compilation, shell syntax, `git diff --check`, tracked runtime/media
   boundaries, GitHub-token candidates and private-key markers passed. This remains a
   software-only result and does not represent real-camera or M2 accuracy.
-- Next visual gate: R3 fixed loopback Qwen/Ollama client, restricted i9-to-M2 SSH
-  bridge, worker entrypoint and independent launchd lifecycle. The i9 environment
-  calibration and 24-hour gate remain independent and unfinished.
+- Next visual gate: install the restricted i9-to-M2 SSH bridge, configure the private
+  bed zone on i9, verify the real four-frame Qwen contract and P95 latency, and record
+  daylight/night/occlusion/adult/empty-bed candidates before R4 evidence and alerts.
+  The i9 environment calibration and 24-hour gate remain independent and unfinished.
 
 ## Pull request checkpoint
 
@@ -46,8 +52,9 @@
 
 ## Not yet in the usable Alpha
 
-- Qwen/Ollama model calls, the M2 SSH bridge, and end-to-end face-obstruction,
-  prone-position, bed-exit, or adult-intervention alerts.
+- Installed i9-to-M2 SSH bridge, private bed-zone configuration, and end-to-end
+  household validation of face-obstruction, prone-position, bed-exit, or
+  adult-intervention candidates.
 - Production visual worker/launchd deployment, authenticated parent feedback, event
   screenshot/video export, and cry/audio candidate detection.
 - Verified Tailscale external access, real PTZ control, or the 72-hour release gate.

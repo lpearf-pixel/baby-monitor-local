@@ -2,7 +2,7 @@ SHELL := /bin/bash
 PYTHON := ./.venv-alpha/bin/python
 .DEFAULT_GOAL := help
 
-.PHONY: help alpha-update alpha-install alpha-start alpha-stop alpha-restart alpha-status alpha-logs alpha-quality-hd alpha-quality-info alpha-quality-rollback alpha-source-check alpha-subtype-probe alpha-subtype-apply alpha-go2rtc-info alpha-go2rtc-rebuild alpha-go2rtc-rollback
+.PHONY: help alpha-update alpha-install alpha-start alpha-stop alpha-restart alpha-status alpha-visual-status alpha-logs alpha-quality-hd alpha-quality-info alpha-quality-rollback alpha-source-check alpha-subtype-probe alpha-subtype-apply alpha-go2rtc-info alpha-go2rtc-rebuild alpha-go2rtc-rollback
 
 help:
 	@echo "Baby Monitor Local Alpha commands:"
@@ -12,6 +12,7 @@ help:
 	@echo "  make alpha-stop              Stop Alpha services"
 	@echo "  make alpha-restart           Restart Alpha services"
 	@echo "  make alpha-status            Show branch, listeners and health"
+	@echo "  make alpha-visual-status     Show redacted visual worker and M2 bridge health"
 	@echo "  make alpha-logs              Tail recent service logs"
 	@echo "  make alpha-quality-hd        Enable 720p MJPEG plus on-demand VideoToolbox HD"
 	@echo "  make alpha-quality-info      Show non-sensitive preview quality settings"
@@ -124,3 +125,19 @@ alpha-subtype-apply:
 		--minimum-width 1920 \
 		--minimum-height 1080 \
 		--restart-command "make --no-print-directory alpha-restart"
+
+alpha-visual-status:
+	@echo "Visual worker:"
+	@if [[ "$$(uname -s)" == "Darwin" ]] && launchctl print "gui/$$(id -u)/com.babymonitor.visual" >/dev/null 2>&1; then \
+		echo "running (launchd)"; \
+	elif [[ -f runtime/pids/visual.pid ]] && kill -0 "$$(cat runtime/pids/visual.pid)" 2>/dev/null; then \
+		echo "running (pid)"; \
+	else echo "offline"; fi
+	@echo "Ollama tunnel:"
+	@if [[ "$$(uname -s)" == "Darwin" ]] && launchctl print "gui/$$(id -u)/com.babymonitor.ollama-tunnel" >/dev/null 2>&1; then \
+		echo "running (launchd)"; \
+	else echo "offline"; fi
+	@echo "Ollama bridge:"
+	@if curl -fsS --noproxy '*' --max-time 2 http://127.0.0.1:11435/api/version >/dev/null 2>&1; then \
+		echo "reachable"; \
+	else echo "unreachable"; fi

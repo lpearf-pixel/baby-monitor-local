@@ -267,25 +267,25 @@ git commit -m "feat: compose independent visual review worker"
 - Produces: tunnel label `com.babymonitor.ollama-tunnel` forwarding `127.0.0.1:11435` to M2 `127.0.0.1:11434`.
 - Produces: `make alpha-visual-status` with redacted process/listener/health categories only.
 
-- [ ] **Step 1: Write failing deployment behavior tests**
+- [x] **Step 1: Write failing deployment behavior tests**
 
 Parse both plists with `plistlib` and prove independent labels, `RunAtLoad`, restart-on-failure, background process type, separate logs, no credentials, and no Dashboard/go2rtc restart coupling. Execute the tunnel configurator against a temporary home and assert it rejects a non-loopback forward, interactive/password SSH options, unsafe identity permissions, shell metacharacters, and unresolved placeholders.
 
-- [ ] **Step 2: Verify RED**
+- [x] **Step 2: Verify RED**
 
 Run: `./.venv-alpha/bin/python -m pytest tests/deploy/test_visual_worker_deploy.py -q`
 
 Expected: FAIL because the launchd files/configurator do not exist.
 
-- [ ] **Step 3: Implement launchd and configuration**
+- [x] **Step 3: Implement launchd and configuration**
 
 The tunnel `ProgramArguments` must include `/usr/bin/ssh`, `-N`, `-T`, `BatchMode=yes`, `ExitOnForwardFailure=yes`, `IdentitiesOnly=yes`, `ServerAliveInterval=15`, `ServerAliveCountMax=3`, the dedicated identity path, and `-L 127.0.0.1:11435:127.0.0.1:11434`. The configurator writes only to ignored `runtime/launchd` and the user's `~/Library/LaunchAgents`; it never prints the target or identity path.
 
-- [ ] **Step 4: Integrate safe lifecycle commands**
+- [x] **Step 4: Integrate safe lifecycle commands**
 
 `alpha-start` starts the visual worker independently when its plist exists; the tunnel starts only after the user has explicitly configured its rendered plist. `alpha-stop` unloads these two labels without touching M2 Ollama. `alpha-visual-status` prints whether local port 11435, the tunnel, and the worker are up, but never dumps logs, SSH arguments, settings, or model responses.
 
-- [ ] **Step 5: Verify deployment and full gates**
+- [x] **Step 5: Verify deployment and full gates**
 
 Run:
 
@@ -300,7 +300,7 @@ git diff --check
 
 Expected: all gates PASS; only the existing Starlette/httpx warning may remain.
 
-- [ ] **Step 6: Update status and commit**
+- [x] **Step 6: Update status and commit**
 
 Mark R3 software complete but M2/i9 household accuracy, tunnel installation, P95 latency, model warm/cold load, 24-hour environment acceptance, R4 evidence/notification, and 72-hour release validation pending.
 

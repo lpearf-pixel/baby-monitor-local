@@ -41,11 +41,16 @@ sed "s|__PROJECT_ROOT__|$ROOT|g" \
 sed "s|__PROJECT_ROOT__|$ROOT|g" \
   "$ROOT/deploy/launchd/com.babymonitor.environment-watchdog.plist.example" \
   >"$ROOT/runtime/launchd/com.babymonitor.environment-watchdog.plist"
+sed "s|__PROJECT_ROOT__|$ROOT|g" \
+  "$ROOT/deploy/launchd/com.babymonitor.visual.plist.example" \
+  >"$ROOT/runtime/launchd/com.babymonitor.visual.plist"
 mkdir -p "$HOME/Library/LaunchAgents"
 cp "$ROOT/runtime/launchd/com.babymonitor.gauge.plist" \
   "$HOME/Library/LaunchAgents/com.babymonitor.gauge.plist"
 cp "$ROOT/runtime/launchd/com.babymonitor.environment-watchdog.plist" \
   "$HOME/Library/LaunchAgents/com.babymonitor.environment-watchdog.plist"
+cp "$ROOT/runtime/launchd/com.babymonitor.visual.plist" \
+  "$HOME/Library/LaunchAgents/com.babymonitor.visual.plist"
 
 if [[ ! -f "$ROOT/runtime/alpha.env" ]]; then
   password="$(openssl rand -hex 20 | cut -c 1-28)"
@@ -86,11 +91,18 @@ Alpha installation prepared.
 5. Use the authenticated Tailscale Serve HTTPS URL as BABY_MONITOR_DASHBOARD_URL
    in runtime/alpha.env before enabling environment ntfy incident links.
 
+6. Visual review remains disabled until runtime/settings.yaml contains a private
+   bed_zone. Configure the dedicated M2 SSH key and tunnel with:
+   $ROOT/.venv-alpha/bin/python $ROOT/tools/configure_ollama_tunnel.py \
+     --target '<dedicated-user>@<private-M2-host>' \
+     --identity '$HOME/.ssh/baby-monitor-m2'
+
 Useful commands:
    make -C "$ROOT" alpha-quality-hd
    make -C "$ROOT" alpha-quality-info
    make -C "$ROOT" alpha-source-check
    make -C "$ROOT" alpha-status
+   make -C "$ROOT" alpha-visual-status
    make -C "$ROOT" alpha-logs
    make -C "$ROOT" alpha-stop
 

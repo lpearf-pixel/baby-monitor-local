@@ -30,10 +30,11 @@ The repository baseline and environment implementation are complete. Do not rest
 3. R2b complete locally: a fixed private analysis stream, one continuous loopback
    consumer, deterministic disconnect/freeze checks, bounded reconnect and
    single-flight scheduling are implemented without a disk-backed normal-frame queue.
-4. Implement R3 against the fixed loopback Qwen/Ollama endpoint and restricted M2 SSH
-   bridge, including strict client parsing, timeout, degraded/recovery behavior,
-   production worker composition and independent launchd lifecycle.
-5. Add R4 event screenshot/video evidence, real-time text alerts and authenticated
+4. R3 software complete locally: fixed loopback Qwen/Ollama endpoint, strict client
+   parsing, timeout, degraded/recovery behavior, production worker composition and
+   independent launchd lifecycle. Next install the restricted tunnel and private bed
+   zone, then verify real response schema, P95 latency and household candidate scenes.
+5. After the R3 real-device gate, add R4 event screenshot/video evidence, real-time text alerts and authenticated
    parent feedback without making the model a prerequisite for live viewing.
 
 ## P3 — Release gate
