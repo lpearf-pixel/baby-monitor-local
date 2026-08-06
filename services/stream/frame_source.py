@@ -7,7 +7,7 @@ from contextlib import AbstractContextManager
 from dataclasses import dataclass
 from datetime import UTC, datetime
 from io import BytesIO
-from typing import BinaryIO, Protocol
+from typing import BinaryIO, Iterator, Protocol
 from urllib.parse import urlencode, urlsplit
 from urllib.request import ProxyHandler, Request, build_opener
 
@@ -220,3 +220,39 @@ class Go2RtcControlledFrameSource:
         ):
             raise FrameSourceUnavailable("frame_invalid")
         return width, height
+
+
+class Go2RtcAnalysisFrameSource(Go2RtcControlledFrameSource):
+    """Streams validated frames from the fixed local `analysis` stream."""
+
+    def iter_frames(self, *, timeout_seconds: float = 8) -> Iterator[CapturedFrame]:
+        if not 0 < timeout_seconds <= MAX_BURST_SECONDS:
+            raise ValueError("timeout_seconds must be between 0 and 8")
+
+        request = Request(
+            f"{self._base_url}/api/stream.mjpeg?"
+            f"{urlencode({'src': 'analysis'})}",
+            headers={"Accept": "multipart/x-mixed-replace"},
+        )
+        try:
+            with self._opener(request, timeout_seconds) as response:
+                boundary = self._boundary_from_headers(response)
+                while True:
+                    payload = self._read_part(response, boundary)
+                    width, height = self._validate_jpeg(payload)
+                    captured_at = self._now()
+                    if (
+                        captured_at.tzinfo is None
+                        or captured_at.utcoffset() is None
+                    ):
+                        raise FrameSourceUnavailable("frame_invalid")
+                    yield CapturedFrame(
+                        jpeg=payload,
+                        captured_at=captured_at,
+                        width=width,
+                        height=height,
+                    )
+        except FrameSourceUnavailable:
+            raise
+        except Exception as exc:
+            raise FrameSourceUnavailable("frame_source_unavailable") from exc
