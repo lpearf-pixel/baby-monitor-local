@@ -215,21 +215,21 @@ git commit -m "feat: gate visual model degradation and recovery"
 - Produces: `VisualRuntimeResources(worker, executor, runtime)` context owner.
 - Produces: CLI `tools/run_visual_worker.py --settings PATH [--env-file PATH]`.
 
-- [ ] **Step 1: Write failing composition tests**
+- [x] **Step 1: Write failing composition tests**
 
 Prove the bootstrap uses `Go2RtcAnalysisFrameSource`, `VisionFramePolicy`, `AnalysisFrameRing`, `VisualFrameHealthMonitor`, one-worker `ThreadPoolExecutor`, the fixed `OllamaVisualReviewer`, `VisualReviewScheduler`, `VisualRiskStateMachine`, and `VisualReviewRuntime`. Prove visual-disabled exits successfully without opening a frame stream or model connection.
 
-- [ ] **Step 2: Verify RED**
+- [x] **Step 2: Verify RED**
 
 Run: `./.venv-alpha/bin/python -m pytest tests/vision/test_bootstrap.py tests/deploy/test_visual_worker_deploy.py -q`
 
 Expected: FAIL because the bootstrap and entrypoint do not exist.
 
-- [ ] **Step 3: Implement lifecycle ownership**
+- [x] **Step 3: Implement lifecycle ownership**
 
 The resource owner closes the scheduler and shuts down the executor with `cancel_futures=True`; SIGTERM/SIGINT set one `threading.Event`. The entrypoint emits no model content or frame bytes and returns nonzero only for a stable startup/configuration failure.
 
-- [ ] **Step 4: Verify GREEN**
+- [x] **Step 4: Verify GREEN**
 
 Run:
 
@@ -240,7 +240,7 @@ Run:
 
 Expected: PASS; help exits 0 without starting services.
 
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
 
 ```bash
 git add services/vision/bootstrap.py tools/run_visual_worker.py tests/vision/test_bootstrap.py tests/deploy/test_visual_worker_deploy.py
