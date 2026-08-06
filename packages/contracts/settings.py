@@ -16,6 +16,11 @@ from pydantic import (
 )
 
 from packages.contracts.events import EnvironmentSourceKind
+from packages.contracts.vision import NormalizedPolygon
+
+
+VISUAL_MODEL_NAME = "qwen3-vl:8b-instruct-q4_K_M"
+VISUAL_OLLAMA_BASE_URL = "http://127.0.0.1:11435"
 
 
 class UnsafeCredentialError(ValueError):
@@ -146,6 +151,26 @@ class EnvironmentSettings(StrictSettingsModel):
         return self
 
 
+class VisualSettings(StrictSettingsModel):
+    enabled: bool = False
+    model: Literal["qwen3-vl:8b-instruct-q4_K_M"] = VISUAL_MODEL_NAME
+    ollama_base_url: Literal["http://127.0.0.1:11435"] = (
+        VISUAL_OLLAMA_BASE_URL
+    )
+    bed_zone: NormalizedPolygon | None = None
+    privacy_masks: tuple[NormalizedPolygon, ...] = ()
+    request_timeout_seconds: Literal[20] = 20
+    model_degraded_seconds: Literal[60] = 60
+    model_failure_threshold: Literal[3] = 3
+    model_recovery_successes: Literal[2] = 2
+
+    @model_validator(mode="after")
+    def require_bed_zone_when_enabled(self) -> "VisualSettings":
+        if self.enabled and self.bed_zone is None:
+            raise ValueError("VISUAL_BED_ZONE_REQUIRED")
+        return self
+
+
 class NotificationSettings(StrictSettingsModel):
     ntfy_topic: str = Field(min_length=1)
     ntfy_token_env: EnvironmentVariableName
@@ -208,6 +233,7 @@ class AppSettings(StrictSettingsModel):
     retention: RetentionSettings = RetentionSettings()
     thresholds: ThresholdSettings = ThresholdSettings()
     environment: EnvironmentSettings = EnvironmentSettings()
+    visual: VisualSettings = VisualSettings()
     notifications: NotificationSettings
     security: SecuritySettings
 

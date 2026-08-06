@@ -3,8 +3,17 @@
     "ApplicationSettings": {
       "additionalProperties": false,
       "properties": {
-        "timezone": {"default": "Asia/Shanghai", "title": "Timezone", "type": "string"},
-        "data_dir": {"default": "runtime", "format": "path", "title": "Data Dir", "type": "string"}
+        "timezone": {
+          "default": "Asia/Shanghai",
+          "title": "Timezone",
+          "type": "string"
+        },
+        "data_dir": {
+          "default": "runtime",
+          "format": "path",
+          "title": "Data Dir",
+          "type": "string"
+        }
       },
       "title": "ApplicationSettings",
       "type": "object"
@@ -12,11 +21,26 @@
     "CameraSettings": {
       "additionalProperties": false,
       "properties": {
-        "identifier": {"minLength": 1, "title": "Identifier", "type": "string"},
-        "model": {"minLength": 1, "title": "Model", "type": "string"},
-        "account_secret_env": {"title": "Account Secret Env", "type": "string"}
+        "identifier": {
+          "minLength": 1,
+          "title": "Identifier",
+          "type": "string"
+        },
+        "model": {
+          "minLength": 1,
+          "title": "Model",
+          "type": "string"
+        },
+        "account_secret_env": {
+          "title": "Account Secret Env",
+          "type": "string"
+        }
       },
-      "required": ["identifier", "model", "account_secret_env"],
+      "required": [
+        "identifier",
+        "model",
+        "account_secret_env"
+      ],
       "title": "CameraSettings",
       "type": "object"
     },
@@ -42,54 +66,205 @@
     "EnvironmentSettings": {
       "additionalProperties": false,
       "properties": {
-        "enabled": {"default": true, "title": "Enabled", "type": "boolean"},
+        "enabled": {
+          "default": true,
+          "title": "Enabled",
+          "type": "boolean"
+        },
         "source_kind": {
-          "default": "ws2021_gauge",
-          "enum": ["ws2021_gauge", "bluetooth", "mqtt", "lan_sensor"],
-          "title": "Source Kind",
+          "$ref": "#/$defs/EnvironmentSourceKind",
+          "default": "ws2021_gauge"
+        },
+        "interval_seconds": {
+          "default": 60,
+          "exclusiveMinimum": 0,
+          "title": "Interval Seconds",
+          "type": "integer"
+        },
+        "freshness_seconds": {
+          "default": 90,
+          "exclusiveMinimum": 0,
+          "title": "Freshness Seconds",
+          "type": "integer"
+        },
+        "burst_frames": {
+          "default": 5,
+          "maximum": 5,
+          "minimum": 3,
+          "title": "Burst Frames",
+          "type": "integer"
+        },
+        "burst_interval_ms": {
+          "default": 500,
+          "maximum": 2000,
+          "minimum": 0,
+          "title": "Burst Interval Ms",
+          "type": "integer"
+        },
+        "minimum_confidence": {
+          "default": 0.75,
+          "maximum": 1,
+          "minimum": 0.5,
+          "title": "Minimum Confidence",
+          "type": "number"
+        },
+        "unreadable_seconds": {
+          "default": 600,
+          "exclusiveMinimum": 0,
+          "title": "Unreadable Seconds",
+          "type": "integer"
+        },
+        "normal_sustained_seconds": {
+          "default": 300,
+          "exclusiveMinimum": 0,
+          "title": "Normal Sustained Seconds",
+          "type": "integer"
+        },
+        "recovery_sustained_seconds": {
+          "default": 300,
+          "exclusiveMinimum": 0,
+          "title": "Recovery Sustained Seconds",
+          "type": "integer"
+        },
+        "critical_confirmations": {
+          "default": 2,
+          "maximum": 10,
+          "minimum": 2,
+          "title": "Critical Confirmations",
+          "type": "integer"
+        },
+        "critical_min_span_seconds": {
+          "default": 60,
+          "exclusiveMinimum": 0,
+          "title": "Critical Min Span Seconds",
+          "type": "integer"
+        },
+        "calibration_path": {
+          "default": "runtime/calibration/ws2021-v1.json",
+          "format": "path",
+          "title": "Calibration Path",
           "type": "string"
         },
-        "interval_seconds": {"default": 60, "exclusiveMinimum": 0, "title": "Interval Seconds", "type": "integer"},
-        "freshness_seconds": {"default": 90, "exclusiveMinimum": 0, "title": "Freshness Seconds", "type": "integer"},
-        "burst_frames": {"default": 5, "maximum": 5, "minimum": 3, "title": "Burst Frames", "type": "integer"},
-        "burst_interval_ms": {"default": 500, "maximum": 2000, "minimum": 0, "title": "Burst Interval Ms", "type": "integer"},
-        "minimum_confidence": {"default": 0.75, "maximum": 1, "minimum": 0.5, "title": "Minimum Confidence", "type": "number"},
-        "unreadable_seconds": {"default": 600, "exclusiveMinimum": 0, "title": "Unreadable Seconds", "type": "integer"},
-        "normal_sustained_seconds": {"default": 300, "exclusiveMinimum": 0, "title": "Normal Sustained Seconds", "type": "integer"},
-        "recovery_sustained_seconds": {"default": 300, "exclusiveMinimum": 0, "title": "Recovery Sustained Seconds", "type": "integer"},
-        "critical_confirmations": {"default": 2, "maximum": 10, "minimum": 2, "title": "Critical Confirmations", "type": "integer"},
-        "critical_min_span_seconds": {"default": 60, "exclusiveMinimum": 0, "title": "Critical Min Span Seconds", "type": "integer"},
-        "calibration_path": {"default": "runtime/calibration/ws2021-v1.json", "format": "path", "title": "Calibration Path", "type": "string"},
         "policy": {
           "$ref": "#/$defs/EnvironmentPolicySettings",
-          "default": {"mode": "monitor_only", "required_independent_sources_for_control": 2}
+          "default": {
+            "mode": "monitor_only",
+            "required_independent_sources_for_control": 2
+          }
         }
       },
       "title": "EnvironmentSettings",
       "type": "object"
     },
+    "EnvironmentSourceKind": {
+      "enum": [
+        "ws2021_gauge",
+        "bluetooth",
+        "mqtt",
+        "lan_sensor"
+      ],
+      "title": "EnvironmentSourceKind",
+      "type": "string"
+    },
+    "NormalizedPoint": {
+      "additionalProperties": false,
+      "properties": {
+        "x": {
+          "maximum": 1,
+          "minimum": 0,
+          "title": "X",
+          "type": "number"
+        },
+        "y": {
+          "maximum": 1,
+          "minimum": 0,
+          "title": "Y",
+          "type": "number"
+        }
+      },
+      "required": [
+        "x",
+        "y"
+      ],
+      "title": "NormalizedPoint",
+      "type": "object"
+    },
+    "NormalizedPolygon": {
+      "additionalProperties": false,
+      "properties": {
+        "points": {
+          "items": {
+            "$ref": "#/$defs/NormalizedPoint"
+          },
+          "minItems": 3,
+          "title": "Points",
+          "type": "array"
+        }
+      },
+      "required": [
+        "points"
+      ],
+      "title": "NormalizedPolygon",
+      "type": "object"
+    },
     "NotificationSettings": {
       "additionalProperties": false,
       "properties": {
-        "ntfy_topic": {"minLength": 1, "title": "Ntfy Topic", "type": "string"},
-        "ntfy_token_env": {"title": "Ntfy Token Env", "type": "string"},
-        "enable_wecom": {"default": true, "title": "Enable Wecom", "type": "boolean"},
+        "ntfy_topic": {
+          "minLength": 1,
+          "title": "Ntfy Topic",
+          "type": "string"
+        },
+        "ntfy_token_env": {
+          "title": "Ntfy Token Env",
+          "type": "string"
+        },
+        "enable_wecom": {
+          "default": true,
+          "title": "Enable Wecom",
+          "type": "boolean"
+        },
         "wecom_webhook_env": {
-          "anyOf": [{"type": "string"}, {"type": "null"}],
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
           "default": null,
           "title": "Wecom Webhook Env"
         }
       },
-      "required": ["ntfy_topic", "ntfy_token_env"],
+      "required": [
+        "ntfy_topic",
+        "ntfy_token_env"
+      ],
       "title": "NotificationSettings",
       "type": "object"
     },
     "RetentionSettings": {
       "additionalProperties": false,
       "properties": {
-        "event_retention_days": {"default": 30, "exclusiveMinimum": 0, "title": "Event Retention Days", "type": "integer"},
-        "event_quota_gb": {"default": 30, "minimum": 1, "title": "Event Quota Gb", "type": "integer"},
-        "reading_retention_days": {"default": 365, "exclusiveMinimum": 0, "title": "Reading Retention Days", "type": "integer"}
+        "event_retention_days": {
+          "default": 30,
+          "exclusiveMinimum": 0,
+          "title": "Event Retention Days",
+          "type": "integer"
+        },
+        "event_quota_gb": {
+          "default": 30,
+          "minimum": 1,
+          "title": "Event Quota Gb",
+          "type": "integer"
+        },
+        "reading_retention_days": {
+          "default": 365,
+          "exclusiveMinimum": 0,
+          "title": "Reading Retention Days",
+          "type": "integer"
+        }
       },
       "title": "RetentionSettings",
       "type": "object"
@@ -97,21 +272,56 @@
     "SecuritySettings": {
       "additionalProperties": false,
       "properties": {
-        "session_secret_env": {"title": "Session Secret Env", "type": "string"},
-        "public_port_mapping_allowed": {"default": false, "title": "Public Port Mapping Allowed", "type": "boolean"}
+        "session_secret_env": {
+          "title": "Session Secret Env",
+          "type": "string"
+        },
+        "public_port_mapping_allowed": {
+          "default": false,
+          "title": "Public Port Mapping Allowed",
+          "type": "boolean"
+        }
       },
-      "required": ["session_secret_env"],
+      "required": [
+        "session_secret_env"
+      ],
       "title": "SecuritySettings",
       "type": "object"
     },
     "StreamSettings": {
       "additionalProperties": false,
       "properties": {
-        "go2rtc_api_host": {"default": "127.0.0.1", "title": "Go2Rtc Api Host", "type": "string"},
-        "go2rtc_api_port": {"default": 1984, "maximum": 65535, "minimum": 1, "title": "Go2Rtc Api Port", "type": "integer"},
-        "analysis_width": {"default": 960, "exclusiveMinimum": 0, "title": "Analysis Width", "type": "integer"},
-        "analysis_height": {"default": 540, "exclusiveMinimum": 0, "title": "Analysis Height", "type": "integer"},
-        "analysis_fps": {"default": 5, "maximum": 5, "minimum": 1, "title": "Analysis Fps", "type": "integer"}
+        "go2rtc_api_host": {
+          "default": "127.0.0.1",
+          "title": "Go2Rtc Api Host",
+          "type": "string"
+        },
+        "go2rtc_api_port": {
+          "default": 1984,
+          "maximum": 65535,
+          "minimum": 1,
+          "title": "Go2Rtc Api Port",
+          "type": "integer"
+        },
+        "analysis_width": {
+          "default": 960,
+          "exclusiveMinimum": 0,
+          "title": "Analysis Width",
+          "type": "integer"
+        },
+        "analysis_height": {
+          "default": 540,
+          "exclusiveMinimum": 0,
+          "title": "Analysis Height",
+          "type": "integer"
+        },
+        "analysis_fps": {
+          "default": 5,
+          "maximum": 5,
+          "minimum": 1,
+          "title": "Analysis Fps",
+          "type": "integer"
+        }
       },
       "title": "StreamSettings",
       "type": "object"
@@ -119,32 +329,224 @@
     "ThresholdSettings": {
       "additionalProperties": false,
       "properties": {
-        "temperature_low_c": {"default": 18, "title": "Temperature Low C", "type": "number"},
-        "temperature_high_c": {"default": 26, "title": "Temperature High C", "type": "number"},
-        "temperature_critical_low_c": {"default": 15, "title": "Temperature Critical Low C", "type": "number"},
-        "temperature_critical_high_c": {"default": 30, "title": "Temperature Critical High C", "type": "number"},
-        "humidity_low_rh": {"default": 35, "maximum": 100, "minimum": 0, "title": "Humidity Low Rh", "type": "number"},
-        "humidity_high_rh": {"default": 60, "maximum": 100, "minimum": 0, "title": "Humidity High Rh", "type": "number"},
-        "humidity_critical_low_rh": {"default": 25, "maximum": 100, "minimum": 0, "title": "Humidity Critical Low Rh", "type": "number"},
-        "humidity_critical_high_rh": {"default": 75, "maximum": 100, "minimum": 0, "title": "Humidity Critical High Rh", "type": "number"},
-        "sustained_seconds": {"default": 300, "exclusiveMinimum": 0, "title": "Sustained Seconds", "type": "integer"}
+        "temperature_low_c": {
+          "default": 18,
+          "title": "Temperature Low C",
+          "type": "number"
+        },
+        "temperature_high_c": {
+          "default": 26,
+          "title": "Temperature High C",
+          "type": "number"
+        },
+        "temperature_critical_low_c": {
+          "default": 15,
+          "title": "Temperature Critical Low C",
+          "type": "number"
+        },
+        "temperature_critical_high_c": {
+          "default": 30,
+          "title": "Temperature Critical High C",
+          "type": "number"
+        },
+        "humidity_low_rh": {
+          "default": 35,
+          "maximum": 100,
+          "minimum": 0,
+          "title": "Humidity Low Rh",
+          "type": "number"
+        },
+        "humidity_high_rh": {
+          "default": 60,
+          "maximum": 100,
+          "minimum": 0,
+          "title": "Humidity High Rh",
+          "type": "number"
+        },
+        "humidity_critical_low_rh": {
+          "default": 25,
+          "maximum": 100,
+          "minimum": 0,
+          "title": "Humidity Critical Low Rh",
+          "type": "number"
+        },
+        "humidity_critical_high_rh": {
+          "default": 75,
+          "maximum": 100,
+          "minimum": 0,
+          "title": "Humidity Critical High Rh",
+          "type": "number"
+        },
+        "sustained_seconds": {
+          "default": 300,
+          "exclusiveMinimum": 0,
+          "title": "Sustained Seconds",
+          "type": "integer"
+        }
       },
       "title": "ThresholdSettings",
+      "type": "object"
+    },
+    "VisualSettings": {
+      "additionalProperties": false,
+      "properties": {
+        "enabled": {
+          "default": false,
+          "title": "Enabled",
+          "type": "boolean"
+        },
+        "model": {
+          "const": "qwen3-vl:8b-instruct-q4_K_M",
+          "default": "qwen3-vl:8b-instruct-q4_K_M",
+          "title": "Model",
+          "type": "string"
+        },
+        "ollama_base_url": {
+          "const": "http://127.0.0.1:11435",
+          "default": "http://127.0.0.1:11435",
+          "title": "Ollama Base Url",
+          "type": "string"
+        },
+        "bed_zone": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/NormalizedPolygon"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "privacy_masks": {
+          "default": [],
+          "items": {
+            "$ref": "#/$defs/NormalizedPolygon"
+          },
+          "title": "Privacy Masks",
+          "type": "array"
+        },
+        "request_timeout_seconds": {
+          "const": 20,
+          "default": 20,
+          "title": "Request Timeout Seconds",
+          "type": "integer"
+        },
+        "model_degraded_seconds": {
+          "const": 60,
+          "default": 60,
+          "title": "Model Degraded Seconds",
+          "type": "integer"
+        },
+        "model_failure_threshold": {
+          "const": 3,
+          "default": 3,
+          "title": "Model Failure Threshold",
+          "type": "integer"
+        },
+        "model_recovery_successes": {
+          "const": 2,
+          "default": 2,
+          "title": "Model Recovery Successes",
+          "type": "integer"
+        }
+      },
+      "title": "VisualSettings",
       "type": "object"
     }
   },
   "additionalProperties": false,
   "properties": {
-    "app": {"$ref": "#/$defs/ApplicationSettings", "default": {"timezone": "Asia/Shanghai", "data_dir": "runtime"}},
-    "camera": {"$ref": "#/$defs/CameraSettings"},
-    "stream": {"$ref": "#/$defs/StreamSettings", "default": {"go2rtc_api_host": "127.0.0.1", "go2rtc_api_port": 1984, "analysis_width": 960, "analysis_height": 540, "analysis_fps": 5}},
-    "retention": {"$ref": "#/$defs/RetentionSettings", "default": {"event_retention_days": 30, "event_quota_gb": 30, "reading_retention_days": 365}},
-    "thresholds": {"$ref": "#/$defs/ThresholdSettings", "default": {"temperature_low_c": 18.0, "temperature_high_c": 26.0, "temperature_critical_low_c": 15.0, "temperature_critical_high_c": 30.0, "humidity_low_rh": 35.0, "humidity_high_rh": 60.0, "humidity_critical_low_rh": 25.0, "humidity_critical_high_rh": 75.0, "sustained_seconds": 300}},
-    "environment": {"$ref": "#/$defs/EnvironmentSettings", "default": {"enabled": true, "source_kind": "ws2021_gauge", "interval_seconds": 60, "freshness_seconds": 90, "burst_frames": 5, "burst_interval_ms": 500, "minimum_confidence": 0.75, "unreadable_seconds": 600, "normal_sustained_seconds": 300, "recovery_sustained_seconds": 300, "critical_confirmations": 2, "critical_min_span_seconds": 60, "calibration_path": "runtime/calibration/ws2021-v1.json", "policy": {"mode": "monitor_only", "required_independent_sources_for_control": 2}}},
-    "notifications": {"$ref": "#/$defs/NotificationSettings"},
-    "security": {"$ref": "#/$defs/SecuritySettings"}
+    "app": {
+      "$ref": "#/$defs/ApplicationSettings",
+      "default": {
+        "timezone": "Asia/Shanghai",
+        "data_dir": "runtime"
+      }
+    },
+    "camera": {
+      "$ref": "#/$defs/CameraSettings"
+    },
+    "stream": {
+      "$ref": "#/$defs/StreamSettings",
+      "default": {
+        "go2rtc_api_host": "127.0.0.1",
+        "go2rtc_api_port": 1984,
+        "analysis_width": 960,
+        "analysis_height": 540,
+        "analysis_fps": 5
+      }
+    },
+    "retention": {
+      "$ref": "#/$defs/RetentionSettings",
+      "default": {
+        "event_retention_days": 30,
+        "event_quota_gb": 30,
+        "reading_retention_days": 365
+      }
+    },
+    "thresholds": {
+      "$ref": "#/$defs/ThresholdSettings",
+      "default": {
+        "temperature_low_c": 18.0,
+        "temperature_high_c": 26.0,
+        "temperature_critical_low_c": 15.0,
+        "temperature_critical_high_c": 30.0,
+        "humidity_low_rh": 35.0,
+        "humidity_high_rh": 60.0,
+        "humidity_critical_low_rh": 25.0,
+        "humidity_critical_high_rh": 75.0,
+        "sustained_seconds": 300
+      }
+    },
+    "environment": {
+      "$ref": "#/$defs/EnvironmentSettings",
+      "default": {
+        "enabled": true,
+        "source_kind": "ws2021_gauge",
+        "interval_seconds": 60,
+        "freshness_seconds": 90,
+        "burst_frames": 5,
+        "burst_interval_ms": 500,
+        "minimum_confidence": 0.75,
+        "unreadable_seconds": 600,
+        "normal_sustained_seconds": 300,
+        "recovery_sustained_seconds": 300,
+        "critical_confirmations": 2,
+        "critical_min_span_seconds": 60,
+        "calibration_path": "runtime/calibration/ws2021-v1.json",
+        "policy": {
+          "mode": "monitor_only",
+          "required_independent_sources_for_control": 2
+        }
+      }
+    },
+    "visual": {
+      "$ref": "#/$defs/VisualSettings",
+      "default": {
+        "enabled": false,
+        "model": "qwen3-vl:8b-instruct-q4_K_M",
+        "ollama_base_url": "http://127.0.0.1:11435",
+        "bed_zone": null,
+        "privacy_masks": [],
+        "request_timeout_seconds": 20,
+        "model_degraded_seconds": 60,
+        "model_failure_threshold": 3,
+        "model_recovery_successes": 2
+      }
+    },
+    "notifications": {
+      "$ref": "#/$defs/NotificationSettings"
+    },
+    "security": {
+      "$ref": "#/$defs/SecuritySettings"
+    }
   },
-  "required": ["camera", "notifications", "security"],
+  "required": [
+    "camera",
+    "notifications",
+    "security"
+  ],
   "title": "AppSettings",
   "type": "object"
 }

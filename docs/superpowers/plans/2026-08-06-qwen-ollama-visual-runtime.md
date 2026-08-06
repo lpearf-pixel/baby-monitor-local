@@ -35,17 +35,17 @@
 - Produces: `VisualSettings(enabled, model, ollama_base_url, bed_zone, privacy_masks, request_timeout_seconds, model_degraded_seconds, model_failure_threshold, model_recovery_successes)`.
 - Produces: `AppSettings.visual: VisualSettings`.
 
-- [ ] **Step 1: Write failing settings tests**
+- [x] **Step 1: Write failing settings tests**
 
 Add tests that load a disabled example, enable visual review only with a valid `NormalizedPolygon`, reject a missing bed zone while enabled, reject any model other than `qwen3-vl:8b-instruct-q4_K_M`, reject non-loopback or alternate gateway URLs, and assert `additionalProperties: false` in the checked-in schema.
 
-- [ ] **Step 2: Verify RED**
+- [x] **Step 2: Verify RED**
 
 Run: `./.venv-alpha/bin/python -m pytest tests/contracts/test_settings.py -q`
 
 Expected: FAIL because `VisualSettings` and `AppSettings.visual` do not exist.
 
-- [ ] **Step 3: Add the minimal strict contract**
+- [x] **Step 3: Add the minimal strict contract**
 
 Implement the following public shape and validators:
 
@@ -70,7 +70,7 @@ class VisualSettings(StrictSettingsModel):
 
 Keep the example disabled with `bed_zone: null`; local users must add their private normalized polygon before enabling it.
 
-- [ ] **Step 4: Generate and verify the schema**
+- [x] **Step 4: Generate and verify the schema**
 
 Run:
 
@@ -89,7 +89,7 @@ PY
 
 Expected: settings tests PASS and the schema contains a strict `VisualSettings` definition.
 
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
 
 ```bash
 git add packages/contracts/settings.py config/settings.example.yaml config/settings.schema.json tests/contracts/test_settings.py
