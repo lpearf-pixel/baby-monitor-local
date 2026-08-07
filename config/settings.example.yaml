@@ -52,6 +52,8 @@ visual:
   model_degraded_seconds: 60
   model_failure_threshold: 3
   model_recovery_successes: 2
+  realtime:
+    enabled: false
 notifications:
   ntfy_topic: replace-with-private-topic
   ntfy_token_env: NTFY_TOKEN

@@ -151,6 +151,10 @@ class EnvironmentSettings(StrictSettingsModel):
         return self
 
 
+class RealtimeVisualSettings(StrictSettingsModel):
+    enabled: bool = False
+
+
 class VisualSettings(StrictSettingsModel):
     enabled: bool = False
     model: Literal["qwen3-vl:8b-instruct-q4_K_M"] = VISUAL_MODEL_NAME
@@ -163,6 +167,7 @@ class VisualSettings(StrictSettingsModel):
     model_degraded_seconds: Literal[60] = 60
     model_failure_threshold: Literal[3] = 3
     model_recovery_successes: Literal[2] = 2
+    realtime: RealtimeVisualSettings = RealtimeVisualSettings()
 
     @model_validator(mode="after")
     def require_bed_zone_when_enabled(self) -> "VisualSettings":

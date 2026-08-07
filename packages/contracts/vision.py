@@ -74,6 +74,47 @@ class VisualReasonCode(StrEnum):
     POOR_IMAGE = "poor_image"
 
 
+class SceneQuality(StrEnum):
+    USABLE = "usable"
+    DARK = "dark"
+    FLAT = "flat"
+    BLURRED = "blurred"
+    UNCERTAIN = "uncertain"
+
+
+class BedSubjectTrack(StrEnum):
+    INSIDE = "inside"
+    BOUNDARY = "boundary"
+    MISSING = "missing"
+    UNCERTAIN = "uncertain"
+
+
+class AdultTrack(StrEnum):
+    ABSENT = "absent"
+    INTERSECTING_BED = "intersecting_bed"
+    UNCERTAIN = "uncertain"
+
+
+class HeadFaceState(StrEnum):
+    VISIBLE = "visible"
+    TEMPORARILY_MISSING = "temporarily_missing"
+    UNCERTAIN = "uncertain"
+
+
+class RealtimeCandidateKind(StrEnum):
+    SIGNIFICANT_BED_MOTION = "significant_bed_motion"
+    POSSIBLE_ROLLOVER_OR_PRONE = "possible_rollover_or_prone"
+    POSSIBLE_FACE_OBSTRUCTION = "possible_face_obstruction"
+    POSSIBLE_EXIT = "possible_exit"
+    ADULT_INTERVENTION = "adult_intervention"
+    CAMERA_OBSTRUCTED = "camera_obstructed"
+
+
+class RealtimeCandidateTransitionKind(StrEnum):
+    WATCH_OPENED = "watch_opened"
+    CANDIDATE_CLEARED = "candidate_cleared"
+
+
 class NormalizedPoint(VisionContract):
     x: float = Field(ge=0, le=1)
     y: float = Field(ge=0, le=1)
@@ -160,3 +201,21 @@ class RiskSnapshot(VisionContract):
     open_risks: frozenset[VisualRiskKind] = frozenset()
 
     _aware_snapshot_at = field_validator("snapshot_at")(_require_aware)
+
+
+class RealtimeObservation(VisionContract):
+    motion_ratio: float = Field(ge=0, le=1, allow_inf_nan=False)
+    scene_quality: SceneQuality
+    pose_count: int | None = Field(default=None, ge=0)
+    face_count: int | None = Field(default=None, ge=0)
+    bed_subject_track: BedSubjectTrack
+    adult_track: AdultTrack
+    head_face_state: HeadFaceState
+    processing_ms: float = Field(ge=0, allow_inf_nan=False)
+
+
+class RealtimeCandidateTransition(VisionContract):
+    transition_kind: RealtimeCandidateTransitionKind
+    candidate_kind: RealtimeCandidateKind
+    monotonic_at: float = Field(ge=0, allow_inf_nan=False)
+    rule_version: Literal["realtime-visual-v1"] = "realtime-visual-v1"

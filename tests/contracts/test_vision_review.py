@@ -6,10 +6,18 @@ import pytest
 from pydantic import ValidationError
 
 from packages.contracts.vision import (
+    AdultTrack,
+    BedSubjectTrack,
     FaceVisibility,
+    HeadFaceState,
+    RealtimeCandidateKind,
+    RealtimeCandidateTransition,
+    RealtimeCandidateTransitionKind,
+    RealtimeObservation,
     RiskSnapshot,
     RiskTransition,
     RiskTransitionKind,
+    SceneQuality,
     VisualReview,
     VisualRiskKind,
     VisualRiskState,
@@ -117,3 +125,89 @@ def test_snapshot_round_trips_only_typed_open_risks() -> None:
     restored = RiskSnapshot.model_validate_json(snapshot.model_dump_json())
 
     assert restored == snapshot
+
+
+def valid_realtime_observation_payload() -> dict[str, object]:
+    return {
+        "motion_ratio": 0.2,
+        "scene_quality": "usable",
+        "pose_count": 1,
+        "face_count": 1,
+        "bed_subject_track": "inside",
+        "adult_track": "absent",
+        "head_face_state": "visible",
+        "processing_ms": 12.5,
+    }
+
+
+def test_realtime_observation_is_strict_bounded_and_model_optional() -> None:
+    observation = RealtimeObservation.model_validate(
+        valid_realtime_observation_payload()
+    )
+
+    assert observation.scene_quality is SceneQuality.USABLE
+    assert observation.bed_subject_track is BedSubjectTrack.INSIDE
+    assert observation.adult_track is AdultTrack.ABSENT
+    assert observation.head_face_state is HeadFaceState.VISIBLE
+
+    unavailable = valid_realtime_observation_payload()
+    unavailable["pose_count"] = None
+    unavailable["face_count"] = None
+    assert RealtimeObservation.model_validate(unavailable).pose_count is None
+
+
+@pytest.mark.parametrize(
+    ("field", "value"),
+    [
+        ("motion_ratio", -0.01),
+        ("motion_ratio", 1.01),
+        ("pose_count", -1),
+        ("face_count", -1),
+        ("processing_ms", -0.01),
+        ("processing_ms", float("nan")),
+        ("processing_ms", float("inf")),
+        ("scene_quality", "occluded"),
+    ],
+)
+def test_realtime_observation_rejects_invalid_values(
+    field: str,
+    value: object,
+) -> None:
+    payload = valid_realtime_observation_payload()
+    payload[field] = value
+
+    with pytest.raises(ValidationError):
+        RealtimeObservation.model_validate(payload)
+
+
+def test_realtime_observation_rejects_extra_model_output() -> None:
+    payload = valid_realtime_observation_payload()
+    payload["keypoints"] = [[0.2, 0.3]]
+
+    with pytest.raises(ValidationError, match="Extra inputs are not permitted"):
+        RealtimeObservation.model_validate(payload)
+
+
+def test_realtime_transition_cannot_represent_alert_or_recovery() -> None:
+    transition = RealtimeCandidateTransition(
+        transition_kind=RealtimeCandidateTransitionKind.WATCH_OPENED,
+        candidate_kind=RealtimeCandidateKind.POSSIBLE_FACE_OBSTRUCTION,
+        monotonic_at=12.5,
+    )
+
+    assert transition.rule_version == "realtime-visual-v1"
+    assert {kind.value for kind in RealtimeCandidateTransitionKind} == {
+        "watch_opened",
+        "candidate_cleared",
+    }
+    assert "alert_opened" not in {kind.value for kind in RealtimeCandidateTransitionKind}
+    assert "recovered" not in {kind.value for kind in RealtimeCandidateTransitionKind}
+
+    with pytest.raises(ValidationError):
+        RealtimeCandidateTransition.model_validate(
+            {
+                "transition_kind": "alert_opened",
+                "candidate_kind": "possible_face_obstruction",
+                "monotonic_at": 12.5,
+            }
+        )

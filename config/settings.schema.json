@@ -244,6 +244,18 @@
       "title": "NotificationSettings",
       "type": "object"
     },
+    "RealtimeVisualSettings": {
+      "additionalProperties": false,
+      "properties": {
+        "enabled": {
+          "default": false,
+          "title": "Enabled",
+          "type": "boolean"
+        }
+      },
+      "title": "RealtimeVisualSettings",
+      "type": "object"
+    },
     "RetentionSettings": {
       "additionalProperties": false,
       "properties": {
@@ -449,6 +461,12 @@
           "default": 2,
           "title": "Model Recovery Successes",
           "type": "integer"
+        },
+        "realtime": {
+          "$ref": "#/$defs/RealtimeVisualSettings",
+          "default": {
+            "enabled": false
+          }
         }
       },
       "title": "VisualSettings",
@@ -532,7 +550,10 @@
         "request_timeout_seconds": 20,
         "model_degraded_seconds": 60,
         "model_failure_threshold": 3,
-        "model_recovery_successes": 2
+        "model_recovery_successes": 2,
+        "realtime": {
+          "enabled": false
+        }
       }
     },
     "notifications": {

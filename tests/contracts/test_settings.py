@@ -116,6 +116,21 @@ def test_visual_review_can_enable_only_with_a_normalized_bed_zone(
     assert settings.visual.ollama_base_url == "http://127.0.0.1:11435"
     assert settings.visual.bed_zone is not None
     assert len(settings.visual.bed_zone.points) == 4
+    assert settings.visual.realtime.enabled is False
+
+
+def test_realtime_visual_layer_is_explicitly_opt_in(tmp_path: Path) -> None:
+    content = visual_yaml().replace(
+        "  model_recovery_successes: 2\n",
+        "  model_recovery_successes: 2\n"
+        "  realtime:\n"
+        "    enabled: true\n",
+    )
+
+    settings = AppSettings.load(write_settings(tmp_path, content))
+
+    assert settings.visual.enabled is True
+    assert settings.visual.realtime.enabled is True
 
 
 def test_visual_review_rejects_enabled_without_bed_zone(tmp_path: Path) -> None:
@@ -338,3 +353,7 @@ def test_checked_in_schema_contains_strict_visual_runtime_contract() -> None:
     assert properties["model"]["const"] == "qwen3-vl:8b-instruct-q4_K_M"
     assert properties["ollama_base_url"]["const"] == "http://127.0.0.1:11435"
     assert properties["request_timeout_seconds"]["const"] == 20
+    assert properties["realtime"]["$ref"] == "#/$defs/RealtimeVisualSettings"
+    realtime = schema["$defs"]["RealtimeVisualSettings"]
+    assert realtime["additionalProperties"] is False
+    assert realtime["properties"]["enabled"]["default"] is False
