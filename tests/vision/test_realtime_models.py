@@ -1,8 +1,11 @@
 from __future__ import annotations
 
+import sys
 from pathlib import Path
+from types import SimpleNamespace
 
 import numpy as np
+from packages.monitoring.realtime_models import ModelAssetCode, ModelAssetStatus
 
 from services.vision.realtime_models import (
     OpenVinoYuNetBackend,
@@ -44,6 +47,36 @@ def test_missing_assets_return_no_backend_without_importing_openvino(
     tmp_path: Path,
 ) -> None:
     assert build_realtime_model_backend(tmp_path) is None
+
+
+def test_official_openvino_build_suffix_is_accepted(
+    monkeypatch,
+    tmp_path: Path,
+) -> None:
+    from services.vision import realtime_models
+
+    expected_backend = object()
+    monkeypatch.setattr(
+        realtime_models,
+        "verify_realtime_model_assets",
+        lambda _root: ModelAssetStatus(ModelAssetCode.OK, 3),
+    )
+    monkeypatch.setitem(
+        sys.modules,
+        "openvino",
+        SimpleNamespace(
+            __version__=(
+                "2025.4.1-20426-82bbf0292c5-releases/2025/4"
+            )
+        ),
+    )
+    monkeypatch.setattr(
+        realtime_models,
+        "OpenVinoYuNetBackend",
+        lambda _root, _openvino: expected_backend,
+    )
+
+    assert build_realtime_model_backend(tmp_path) is expected_backend
 
 
 def test_backend_error_is_stable_and_redacted() -> None:

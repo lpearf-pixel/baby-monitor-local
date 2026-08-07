@@ -294,7 +294,7 @@ def build_realtime_model_backend(root: Path) -> RealtimeModelBackend | None:
         import openvino
 
         version = str(getattr(openvino, "__version__", ""))
-        if version != "2025.4.1":
+        if version != "2025.4.1" and not version.startswith("2025.4.1-"):
             return None
         return OpenVinoYuNetBackend(root, openvino)
     except Exception:
