@@ -2,7 +2,7 @@ SHELL := /bin/bash
 PYTHON := ./.venv-alpha/bin/python
 .DEFAULT_GOAL := help
 
-.PHONY: help alpha-update alpha-install alpha-start alpha-stop alpha-restart alpha-status alpha-visual-status alpha-logs alpha-quality-hd alpha-quality-info alpha-quality-rollback alpha-source-check alpha-subtype-probe alpha-subtype-apply alpha-go2rtc-info alpha-go2rtc-rebuild alpha-go2rtc-rollback
+.PHONY: help alpha-update alpha-install alpha-start alpha-stop alpha-restart alpha-status alpha-visual-status alpha-logs alpha-quality-hd alpha-quality-info alpha-quality-rollback alpha-source-check alpha-subtype-probe alpha-subtype-apply alpha-go2rtc-info alpha-go2rtc-rebuild alpha-go2rtc-rollback alpha-realtime-models-check alpha-realtime-models-install
 
 help:
 	@echo "Baby Monitor Local Alpha commands:"
@@ -23,6 +23,8 @@ help:
 	@echo "  make alpha-go2rtc-info       Show non-sensitive pinned build metadata"
 	@echo "  make alpha-go2rtc-rebuild    Rebuild the pinned patched go2rtc binary"
 	@echo "  make alpha-go2rtc-rollback   Restore the newest valid go2rtc backup"
+	@echo "  make alpha-realtime-models-check    Verify pinned realtime visual models"
+	@echo "  make alpha-realtime-models-install  Explicitly install pinned models"
 
 alpha-update:
 	@git config core.fileMode false
@@ -42,6 +44,12 @@ alpha-go2rtc-rebuild:
 
 alpha-go2rtc-rollback:
 	@$(PYTHON) tools/go2rtc_build.py rollback
+
+alpha-realtime-models-check:
+	@$(PYTHON) tools/realtime_models.py check
+
+alpha-realtime-models-install:
+	@$(PYTHON) tools/realtime_models.py install
 
 alpha-start:
 	@bash tools/start_alpha.sh

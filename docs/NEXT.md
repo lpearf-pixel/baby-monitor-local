@@ -34,7 +34,11 @@ The repository baseline and environment implementation are complete. Do not rest
    parsing, timeout, degraded/recovery behavior, production worker composition and
    independent launchd lifecycle. Next install the restricted tunnel and private bed
    zone, then verify real response schema, P95 latency and household candidate scenes.
-5. After the R3 real-device gate, add R4 event screenshot/video evidence, real-time text alerts and authenticated
+5. R3.5 software complete locally: explicitly install and verify pinned local models,
+   review the preserved i9 runtime YAML before adding `analysis_realtime`, enable the
+   private setting, then measure 5/3/1 FPS, candidate latency and the seven required
+   household scenarios. Software tests do not establish household accuracy.
+6. After the R3/R3.5 real-device gate, add R4 event screenshot/video evidence, real-time text alerts and authenticated
    parent feedback without making the model a prerequisite for live viewing.
 
 ## P3 — Release gate

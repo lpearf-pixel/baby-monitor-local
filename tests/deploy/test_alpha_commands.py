@@ -136,6 +136,44 @@ def test_default_config_has_fixed_on_demand_videotoolbox_profile() -> None:
     )
 
 
+def test_default_config_has_separate_one_and_five_fps_analysis_profiles() -> None:
+    config = yaml.safe_load(
+        (ROOT / "config/go2rtc.alpha.yaml").read_text(encoding="utf-8")
+    )
+
+    assert config["streams"]["analysis"] == (
+        "ffmpeg:source#video=mjpeg#width=960#height=540#raw=-r 1"
+    )
+    assert config["streams"]["analysis_realtime"] == (
+        "ffmpeg:source#video=mjpeg#width=960#height=540#raw=-r 5"
+    )
+    assert "audio" not in config["streams"]["analysis_realtime"]
+
+
+def test_realtime_model_commands_are_explicit_and_not_part_of_startup() -> None:
+    check = subprocess.run(
+        ["make", "-n", "alpha-realtime-models-check"],
+        cwd=ROOT,
+        check=False,
+        capture_output=True,
+        text=True,
+    )
+    install = subprocess.run(
+        ["make", "-n", "alpha-realtime-models-install"],
+        cwd=ROOT,
+        check=False,
+        capture_output=True,
+        text=True,
+    )
+    startup = (ROOT / "tools/start_alpha.sh").read_text(encoding="utf-8")
+
+    assert check.returncode == 0
+    assert "tools/realtime_models.py check" in check.stdout
+    assert install.returncode == 0
+    assert "tools/realtime_models.py install" in install.stdout
+    assert "realtime_models.py install" not in startup
+
+
 def test_installer_preserves_existing_runtime_config() -> None:
     content = (ROOT / "tools/install_alpha_macos.sh").read_text(encoding="utf-8")
 

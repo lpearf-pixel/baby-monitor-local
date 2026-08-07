@@ -118,6 +118,22 @@ R3 新鲜软件门禁：Python `451 passed`、Node 浏览器 `70 passed`；Pytho
 Shell 语法、Make dry-run 和 `git diff --check` 通过，仅保留既有 Starlette/httpx
 弃用警告。M2 已下载模型但 `ollama ps` 空闲为空是正常现象，不构成真实推理门禁。
 
+## Realtime visual R3.5 checkpoint
+
+2026-08-06 已实现默认关闭的轻量实时视觉路径。启用时 worker 只消费独立的
+`analysis_realtime` 5 FPS 本机流；每个安全帧进入 OpenCV/可选专用模型，但 Qwen
+内存环仍最多每 2 秒加入一帧，常规复核仍为 10 秒一次。语义 watch 在帧环预热后
+可立即请求一次受现有 5 秒限流和单飞门约束的紧急复核。
+
+快速层只输出 `watch_opened/candidate_cleared`，无法创建或恢复现有高风险告警。
+模型文件固定大小与 SHA-256，只有显式 `make alpha-realtime-models-install` 才下载；
+模型缺失、版本不符或推理失败时，姿态/人脸语义保持不可用，运动、画面质量、断流、
+冻结和常规 Qwen 路径继续工作。所有自动化图像均为程序生成。
+
+本检查点仍不是 i9 实机通过。现有安装器会保留用户的 `runtime/go2rtc.yaml`，因此
+启用前必须人工审查并加入 `analysis_realtime`，再记录空床、玩偶、成人、夜视、
+遮挡、蚊帐和正常翻身各至少 10 次，以及 P50/P95、CPU 和 5→3→1 FPS 降级证据。
+
 仍待在 i9/M2 本地生成专用 SSH 密钥、核对 host key、安装隧道、填写真实床区，
 并验证四帧真实响应、冷/热加载、P95≤8秒、白天/黑暗/蚊帐/成人/空床/模拟遮挡、
 断开 M2 降级与恢复。R3 不保存事件媒体、不发送风险 ntfy、不提供 Dashboard

@@ -32,11 +32,19 @@
   request bounds, proxy-free 20-second calls, strict schema parsing, deterministic
   three-failure/60-second degradation and two-success recovery, real worker
   composition, and independent visual/tunnel launchd units are implemented locally.
+- Realtime visual R3.5 software: an opt-in `analysis_realtime` 960×540/5 FPS path,
+  privacy-safe OpenCV analysis, pinned YuNet/OpenVINO model verification, deterministic
+  watch-only candidate tracks, 5/3/1 FPS load degradation, independent two-second Qwen
+  ring sampling, and immediate urgent review scheduling are implemented locally.
+  Missing models preserve motion, scene health and regular Qwen review while semantic
+  tracks remain unavailable; the fast path cannot open or recover a risk alert.
 - Fresh R3 software gate on 2026-08-06: 451 Python tests and 70 Node browser tests
   passed; Python compilation, shell syntax, `git diff --check`, tracked runtime/media
   boundaries, GitHub-token candidates and private-key markers passed. This remains a
   software-only result and does not represent real-camera or M2 accuracy.
-- Next visual gate: install the restricted i9-to-M2 SSH bridge, configure the private
+- Next visual gate: explicitly install the pinned R3.5 models, add the reviewed
+  `analysis_realtime` profile to the preserved i9 runtime YAML, enable the private
+  realtime setting, install the restricted i9-to-M2 SSH bridge, configure the private
   bed zone on i9, verify the real four-frame Qwen contract and P95 latency, and record
   daylight/night/occlusion/adult/empty-bed candidates before R4 evidence and alerts.
   The i9 environment calibration and 24-hour gate remain independent and unfinished.
