@@ -5,6 +5,7 @@ from packages.contracts.settings import (
     CameraSettings,
     NotificationSettings,
     SecuritySettings,
+    RealtimeVisualSettings,
     VisualSettings,
 )
 from packages.contracts.vision import NormalizedPoint, NormalizedPolygon
@@ -17,6 +18,9 @@ from services.vision.review_runtime import VisualReviewRuntime
 from services.vision.review_scheduler import VisualReviewScheduler
 from services.vision.risk_state import VisualRiskStateMachine
 from services.vision.worker import VisualWorker
+from services.vision.realtime_analyzer import RealtimeVisualAnalyzer
+from services.vision.realtime_candidates import RealtimeCandidateStateMachine
+from services.vision.realtime_load import RealtimeLoadController
 
 
 def bed_zone() -> NormalizedPolygon:
@@ -30,7 +34,7 @@ def bed_zone() -> NormalizedPolygon:
     )
 
 
-def settings(*, enabled: bool = True) -> AppSettings:
+def settings(*, enabled: bool = True, realtime_enabled: bool = False) -> AppSettings:
     return AppSettings(
         camera=CameraSettings(
             identifier="nursery-main",
@@ -40,6 +44,7 @@ def settings(*, enabled: bool = True) -> AppSettings:
         visual=VisualSettings(
             enabled=enabled,
             bed_zone=bed_zone() if enabled else None,
+            realtime=RealtimeVisualSettings(enabled=realtime_enabled),
         ),
         notifications=NotificationSettings(
             ntfy_topic="replace-with-private-topic",
@@ -88,3 +93,18 @@ def test_resource_close_is_idempotent() -> None:
     resources.close()
     resources.close()
 
+
+def test_bootstrap_composes_opt_in_realtime_path_without_models() -> None:
+    from services.vision.bootstrap import build_visual_runtime
+
+    resources = build_visual_runtime(settings(realtime_enabled=True))
+    try:
+        assert resources.source._stream_name == "analysis_realtime"
+        assert isinstance(resources.realtime_analyzer, RealtimeVisualAnalyzer)
+        assert isinstance(
+            resources.candidate_machine,
+            RealtimeCandidateStateMachine,
+        )
+        assert isinstance(resources.load_controller, RealtimeLoadController)
+    finally:
+        resources.close()

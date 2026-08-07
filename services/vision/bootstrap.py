@@ -11,6 +11,10 @@ from services.vision.frame_ring import AnalysisFrameRing
 from services.vision.ollama_client import OllamaVisualReviewer
 from services.vision.review_runtime import VisualReviewRuntime
 from services.vision.review_scheduler import VisualReviewScheduler
+from services.vision.realtime_analyzer import RealtimeVisualAnalyzer
+from services.vision.realtime_candidates import RealtimeCandidateStateMachine
+from services.vision.realtime_load import RealtimeLoadController
+from services.vision.realtime_models import build_realtime_model_backend
 from services.vision.risk_state import VisualRiskStateMachine
 from services.vision.worker import VisualWorker
 
@@ -27,6 +31,9 @@ class VisualRuntimeResources:
     scheduler: VisualReviewScheduler
     risk_machine: VisualRiskStateMachine
     executor: ThreadPoolExecutor
+    realtime_analyzer: RealtimeVisualAnalyzer | None = None
+    candidate_machine: RealtimeCandidateStateMachine | None = None
+    load_controller: RealtimeLoadController | None = None
     _closed: bool = field(default=False, init=False, repr=False)
 
     def close(self) -> None:
@@ -43,11 +50,13 @@ def build_visual_runtime(settings: AppSettings) -> VisualRuntimeResources:
     if settings.visual.bed_zone is None:
         raise ValueError("VISUAL_BED_ZONE_REQUIRED")
 
+    realtime_enabled = settings.visual.realtime.enabled
     source = Go2RtcAnalysisFrameSource(
         base_url=_go2rtc_base_url(
             settings.stream.go2rtc_api_host,
             settings.stream.go2rtc_api_port,
-        )
+        ),
+        stream_name=("analysis_realtime" if realtime_enabled else "analysis"),
     )
     policy = VisionFramePolicy(
         bed_zone=settings.visual.bed_zone,
@@ -66,6 +75,18 @@ def build_visual_runtime(settings: AppSettings) -> VisualRuntimeResources:
     )
     risk_machine = VisualRiskStateMachine()
     runtime = VisualReviewRuntime(risk_machine=risk_machine)
+    realtime_analyzer: RealtimeVisualAnalyzer | None = None
+    candidate_machine: RealtimeCandidateStateMachine | None = None
+    load_controller: RealtimeLoadController | None = None
+    if realtime_enabled:
+        model_root = (
+            settings.app.data_dir / "models" / "openvino-2025.4.1"
+        )
+        realtime_analyzer = RealtimeVisualAnalyzer(
+            model_backend=build_realtime_model_backend(model_root)
+        )
+        candidate_machine = RealtimeCandidateStateMachine()
+        load_controller = RealtimeLoadController()
     worker = VisualWorker(
         stream_factory=lambda: source.iter_frames(timeout_seconds=8),
         frame_policy=policy,
@@ -73,6 +94,9 @@ def build_visual_runtime(settings: AppSettings) -> VisualRuntimeResources:
         frame_health=frame_health,
         review_scheduler=scheduler,
         on_review_completion=runtime.handle,
+        realtime_analyzer=realtime_analyzer,
+        candidate_machine=candidate_machine,
+        load_controller=load_controller,
     )
     return VisualRuntimeResources(
         worker=worker,
@@ -85,10 +109,12 @@ def build_visual_runtime(settings: AppSettings) -> VisualRuntimeResources:
         scheduler=scheduler,
         risk_machine=risk_machine,
         executor=executor,
+        realtime_analyzer=realtime_analyzer,
+        candidate_machine=candidate_machine,
+        load_controller=load_controller,
     )
 
 
 def _go2rtc_base_url(host: str, port: int) -> str:
     formatted_host = f"[{host}]" if ":" in host else host
     return f"http://{formatted_host}:{port}"
-

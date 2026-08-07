@@ -11,12 +11,19 @@ from services.vision.frame_health import (
 )
 from services.vision.frame_policy import PreparedAnalysisFrame
 from services.vision.review_scheduler import ReviewScheduleDecision
+from packages.contracts.vision import (
+    RealtimeCandidateKind,
+    RealtimeCandidateTransition,
+    RealtimeCandidateTransitionKind,
+    RealtimeObservation,
+)
+from services.vision.realtime_load import RealtimeLoadStatus
 
 
 NOW = datetime(2026, 8, 5, 12, 0, tzinfo=UTC)
 
 
-def captured(seconds: int, payload: bytes | None = None) -> CapturedFrame:
+def captured(seconds: float, payload: bytes | None = None) -> CapturedFrame:
     return CapturedFrame(
         jpeg=payload if payload is not None else f"original-{seconds}".encode(),
         captured_at=NOW + timedelta(seconds=seconds),
@@ -127,6 +134,62 @@ class RecordingScheduler:
         self.closed = True
 
 
+class RecordingRealtimeAnalyzer:
+    def __init__(self) -> None:
+        self.calls: list[PreparedAnalysisFrame] = []
+
+    def analyze(
+        self,
+        frame: PreparedAnalysisFrame,
+        *,
+        monotonic_now: float,
+    ) -> RealtimeObservation:
+        self.calls.append(frame)
+        return RealtimeObservation(
+            motion_ratio=0.0,
+            scene_quality="usable",
+            pose_count=1,
+            face_count=1,
+            bed_subject_track="inside",
+            adult_track="absent",
+            head_face_state="visible",
+            processing_ms=10.0,
+        )
+
+
+class RecordingCandidateMachine:
+    def __init__(self, *, open_at: float | None = None) -> None:
+        self.open_at = open_at
+        self.calls: list[float] = []
+
+    def evaluate(
+        self,
+        observation: RealtimeObservation,
+        *,
+        monotonic_now: float,
+    ) -> tuple[RealtimeCandidateTransition, ...]:
+        self.calls.append(monotonic_now)
+        if self.open_at is not None and abs(monotonic_now - self.open_at) < 1e-6:
+            return (
+                RealtimeCandidateTransition(
+                    transition_kind=RealtimeCandidateTransitionKind.WATCH_OPENED,
+                    candidate_kind=RealtimeCandidateKind.POSSIBLE_FACE_OBSTRUCTION,
+                    monotonic_at=monotonic_now,
+                ),
+            )
+        return ()
+
+
+class FixedLoadController:
+    def observe(
+        self,
+        processing_ms: float,
+        *,
+        monotonic_now: float,
+    ) -> RealtimeLoadStatus:
+        return RealtimeLoadStatus(target_fps=5, p95_ms=processing_ms)
+
+
 class FakeStopEvent:
     def __init__(self) -> None:
         self.stopped = False
@@ -192,6 +255,10 @@ def build_worker(
     stream_factory: object | None = None,
     monotonic: object | None = None,
     transitions: list[FrameHealthTransition] | None = None,
+    realtime_analyzer: object | None = None,
+    candidate_machine: object | None = None,
+    load_controller: object | None = None,
+    candidate_transitions: list[RealtimeCandidateTransition] | None = None,
 ):
     module = worker_module()
     transition_sink = transitions if transitions is not None else []
@@ -203,6 +270,14 @@ def build_worker(
         review_scheduler=scheduler or RecordingScheduler(),
         monotonic=monotonic or (lambda: 0.0),
         on_frame_health=transition_sink.append,
+        realtime_analyzer=realtime_analyzer,
+        candidate_machine=candidate_machine,
+        load_controller=load_controller,
+        on_realtime_candidate=(
+            candidate_transitions.append
+            if candidate_transitions is not None
+            else None
+        ),
     )
 
 
@@ -226,6 +301,61 @@ def test_worker_samples_every_two_seconds_and_reviews_first_at_ten() -> None:
     assert [item.captured_at.second for item in submitted] == [4, 6, 8, 10]
     assert submitted_at == 10.0
     assert urgent is False
+
+
+def test_realtime_worker_analyzes_five_fps_but_samples_ring_every_two_seconds() -> None:
+    policy = RecordingPolicy()
+    ring = RecordingRing()
+    scheduler = RecordingScheduler()
+    analyzer = RecordingRealtimeAnalyzer()
+    candidates = RecordingCandidateMachine()
+    worker = build_worker(
+        policy=policy,
+        ring=ring,
+        scheduler=scheduler,
+        realtime_analyzer=analyzer,
+        candidate_machine=candidates,
+        load_controller=FixedLoadController(),
+    )
+
+    for tick in range(51):
+        second = tick / 5
+        worker.run_frame(captured(second), monotonic_now=second)
+
+    assert len(analyzer.calls) == 51
+    assert len(ring.frames) == 6
+    assert [round((item.captured_at - NOW).total_seconds()) for item in ring.frames] == [
+        0,
+        2,
+        4,
+        6,
+        8,
+        10,
+    ]
+    assert [(call[1], call[2]) for call in scheduler.calls] == [(10.0, False)]
+
+
+def test_semantic_watch_uses_warm_ring_for_immediate_urgent_review() -> None:
+    ring = RecordingRing()
+    scheduler = RecordingScheduler()
+    analyzer = RecordingRealtimeAnalyzer()
+    transitions: list[RealtimeCandidateTransition] = []
+    worker = build_worker(
+        ring=ring,
+        scheduler=scheduler,
+        realtime_analyzer=analyzer,
+        candidate_machine=RecordingCandidateMachine(open_at=6.0),
+        load_controller=FixedLoadController(),
+        candidate_transitions=transitions,
+    )
+
+    for tick in range(31):
+        second = tick / 5
+        worker.run_frame(captured(second), monotonic_now=second)
+
+    assert len(transitions) == 1
+    assert scheduler.calls[-1][1:] == (6.0, True)
+    assert len(scheduler.calls[-1][0]) == 4
 
 
 def test_only_prepared_frames_enter_ring_and_scheduler() -> None:

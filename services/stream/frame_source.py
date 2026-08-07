@@ -7,7 +7,7 @@ from contextlib import AbstractContextManager
 from dataclasses import dataclass
 from datetime import UTC, datetime
 from io import BytesIO
-from typing import BinaryIO, Iterator, Protocol
+from typing import BinaryIO, Iterator, Literal, Protocol
 from urllib.parse import urlencode, urlsplit
 from urllib.request import ProxyHandler, Request, build_opener
 
@@ -225,13 +225,24 @@ class Go2RtcControlledFrameSource:
 class Go2RtcAnalysisFrameSource(Go2RtcControlledFrameSource):
     """Streams validated frames from the fixed local `analysis` stream."""
 
+    def __init__(
+        self,
+        *,
+        stream_name: Literal["analysis", "analysis_realtime"] = "analysis",
+        **kwargs: object,
+    ) -> None:
+        if stream_name not in {"analysis", "analysis_realtime"}:
+            raise ValueError("analysis stream name is not allowed")
+        super().__init__(**kwargs)  # type: ignore[arg-type]
+        self._stream_name = stream_name
+
     def iter_frames(self, *, timeout_seconds: float = 8) -> Iterator[CapturedFrame]:
         if not 0 < timeout_seconds <= MAX_BURST_SECONDS:
             raise ValueError("timeout_seconds must be between 0 and 8")
 
         request = Request(
             f"{self._base_url}/api/stream.mjpeg?"
-            f"{urlencode({'src': 'analysis'})}",
+            f"{urlencode({'src': self._stream_name})}",
             headers={"Accept": "multipart/x-mixed-replace"},
         )
         try:

@@ -206,6 +206,31 @@ def test_analysis_stream_uses_one_continuous_loopback_response() -> None:
     assert {(frame.width, frame.height) for frame in frames} == {(64, 48)}
 
 
+def test_realtime_analysis_stream_uses_only_the_fixed_realtime_name() -> None:
+    module = frame_source_module()
+    response = FakeResponse(mjpeg_payload([jpeg_frame("red")]))
+    opener = RecordingOpener(response)
+    source = module.Go2RtcAnalysisFrameSource(
+        stream_name="analysis_realtime",
+        opener=opener,
+    )
+
+    iterator = source.iter_frames(timeout_seconds=8)
+    next(iterator)
+    iterator.close()
+
+    assert opener.requests == [
+        ("http://127.0.0.1:1984/api/stream.mjpeg?src=analysis_realtime", 8)
+    ]
+
+
+def test_analysis_stream_rejects_unknown_stream_name() -> None:
+    module = frame_source_module()
+
+    with pytest.raises(ValueError, match="analysis stream name"):
+        module.Go2RtcAnalysisFrameSource(stream_name="private-camera")
+
+
 def test_analysis_stream_rejects_non_loopback_base_url() -> None:
     module = frame_source_module()
 
