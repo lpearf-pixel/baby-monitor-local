@@ -92,6 +92,8 @@ def decode_pose_maps(
         or pafs.shape[0] != 38
         or heatmaps.shape[0] != 19
         or pafs.shape[1:] != heatmaps.shape[1:]
+        or not np.isfinite(pafs).all()
+        or not np.isfinite(heatmaps).all()
     ):
         raise ValueError("realtime_model_output_invalid")
     height, width = heatmaps.shape[1:]
@@ -292,7 +294,7 @@ def build_realtime_model_backend(root: Path) -> RealtimeModelBackend | None:
         import openvino
 
         version = str(getattr(openvino, "__version__", ""))
-        if not version.startswith("2025.4"):
+        if version != "2025.4.1":
             return None
         return OpenVinoYuNetBackend(root, openvino)
     except Exception:

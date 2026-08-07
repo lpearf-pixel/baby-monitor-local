@@ -134,7 +134,7 @@ Shell 语法、Make dry-run 和 `git diff --check` 通过，仅保留既有 Star
 启用前必须人工审查并加入 `analysis_realtime`，再记录空床、玩偶、成人、夜视、
 遮挡、蚊帐和正常翻身各至少 10 次，以及 P50/P95、CPU 和 5→3→1 FPS 降级证据。
 
-2026-08-07 复审修正后新鲜软件门禁：Python `508 passed`、Node 浏览器
+2026-08-07 复审修正后新鲜软件门禁：Python `510 passed`、Node 浏览器
 `70 passed`；Python 编译、Shell 语法、schema 解析和 `git diff --check` 均通过，
 仅保留既有 Starlette/httpx 弃用警告。姿态人数改由 PAF 连接后的骨架分组生成；
 模型/负载降级状态、降载下逐帧源健康检查、持续模糊遮挡和 3 FPS 截止时间均有
