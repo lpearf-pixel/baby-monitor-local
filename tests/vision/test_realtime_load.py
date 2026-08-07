@@ -18,6 +18,68 @@ def feed(controller: object, start: float, end: float, value: float) -> object:
     return status
 
 
+def test_load_reports_hand_calculated_bounded_distribution() -> None:
+    module = load_module()
+    controller = module.RealtimeLoadController()
+
+    status = None
+    for monotonic_now, processing_ms in enumerate(
+        (10.001, 20.002, 30.003, 40.004)
+    ):
+        status = controller.observe(
+            processing_ms,
+            monotonic_now=float(monotonic_now),
+        )
+
+    assert status is not None
+    assert status.sample_count == 4
+    assert status.p50_ms == 20.002
+    assert status.p95_ms == 40.004
+    assert status.max_ms == 40.004
+
+
+def test_load_rounds_half_up_to_three_decimal_places() -> None:
+    module = load_module()
+    controller = module.RealtimeLoadController()
+
+    status = controller.observe(202.2505, monotonic_now=0.0)
+
+    assert status.p50_ms == 202.251
+    assert status.p95_ms == 202.251
+    assert status.max_ms == 202.251
+
+
+def test_load_accepts_large_finite_processing_time() -> None:
+    module = load_module()
+    controller = module.RealtimeLoadController()
+
+    status = controller.observe(1e30, monotonic_now=0.0)
+
+    assert status.p50_ms == 1e30
+    assert status.p95_ms == 1e30
+    assert status.max_ms == 1e30
+
+
+def test_load_evicts_expired_samples_and_caps_window_at_fifty_one() -> None:
+    module = load_module()
+    controller = module.RealtimeLoadController()
+
+    for tick in range(101):
+        status = controller.observe(10.0, monotonic_now=tick / 10)
+
+    assert status.sample_count == 51
+
+    expired = module.RealtimeLoadController()
+    expired.observe(10.0, monotonic_now=0.0)
+    expired.observe(20.0, monotonic_now=10.0)
+    status = expired.observe(30.0, monotonic_now=10.001)
+
+    assert status.sample_count == 2
+    assert status.p50_ms == 20.0
+    assert status.p95_ms == 30.0
+    assert status.max_ms == 30.0
+
+
 def test_load_degrades_from_five_to_three_after_five_overloaded_seconds() -> None:
     module = load_module()
     controller = module.RealtimeLoadController()

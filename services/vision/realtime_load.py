@@ -3,6 +3,7 @@ from __future__ import annotations
 import math
 from collections import deque
 from dataclasses import dataclass
+from decimal import ROUND_HALF_UP, Decimal, localcontext
 from enum import StrEnum
 from typing import Literal
 
@@ -15,14 +16,17 @@ class RealtimeLoadTransitionCode(StrEnum):
 @dataclass(frozen=True)
 class RealtimeLoadStatus:
     target_fps: Literal[1, 3, 5]
+    sample_count: int
+    p50_ms: float
     p95_ms: float
+    max_ms: float
     transition_code: RealtimeLoadTransitionCode | None = None
 
 
 class RealtimeLoadController:
     def __init__(self) -> None:
         self._target_fps: Literal[1, 3, 5] = 5
-        self._samples: deque[tuple[float, float]] = deque()
+        self._samples: deque[tuple[float, float]] = deque(maxlen=51)
         self._last_monotonic: float | None = None
         self._overload_since: float | None = None
         self._healthy_since: float | None = None
@@ -43,7 +47,7 @@ class RealtimeLoadController:
         self._samples.append((monotonic_now, processing_ms))
         while self._samples and monotonic_now - self._samples[0][0] > 10.0:
             self._samples.popleft()
-        p95 = self._p95()
+        sample_count, p50, p95, maximum = self._distribution()
         transition: RealtimeLoadTransitionCode | None = None
 
         budget, duration = (
@@ -71,16 +75,37 @@ class RealtimeLoadController:
                 self._healthy_since = None
         return RealtimeLoadStatus(
             target_fps=self._target_fps,
+            sample_count=sample_count,
+            p50_ms=p50,
             p95_ms=p95,
+            max_ms=maximum,
             transition_code=transition,
         )
 
-    def _p95(self) -> float:
+    def _distribution(self) -> tuple[int, float, float, float]:
         values = sorted(value for _, value in self._samples)
-        index = max(0, math.ceil(0.95 * len(values)) - 1)
-        return round(values[index], 3)
+        p50_index = max(0, math.ceil(0.50 * len(values)) - 1)
+        p95_index = max(0, math.ceil(0.95 * len(values)) - 1)
+        return (
+            len(values),
+            _round_milliseconds(values[p50_index]),
+            _round_milliseconds(values[p95_index]),
+            _round_milliseconds(values[-1]),
+        )
 
     def _reset_evidence(self) -> None:
         self._samples.clear()
         self._overload_since = None
         self._healthy_since = None
+
+
+def _round_milliseconds(value: float) -> float:
+    decimal_value = Decimal(str(value))
+    with localcontext() as context:
+        context.prec = max(28, decimal_value.adjusted() + 4)
+        return float(
+            decimal_value.quantize(
+                Decimal("0.001"),
+                rounding=ROUND_HALF_UP,
+            )
+        )

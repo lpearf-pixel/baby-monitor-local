@@ -1,7 +1,10 @@
 from __future__ import annotations
 
+from dataclasses import FrozenInstanceError, fields
 from datetime import UTC, datetime, timedelta
 from pathlib import Path
+
+import pytest
 
 from services.stream.frame_source import CapturedFrame, FrameSourceUnavailable
 from services.vision.frame_health import (
@@ -195,9 +198,18 @@ class FixedLoadController:
         self,
         target_fps: int = 5,
         transition_code: RealtimeLoadTransitionCode | None = None,
+        *,
+        sample_count: int = 1,
+        p50_ms: float = 10.0,
+        p95_ms: float = 10.0,
+        max_ms: float = 10.0,
     ) -> None:
         self.target_fps = target_fps
         self.transition_code = transition_code
+        self.sample_count = sample_count
+        self.p50_ms = p50_ms
+        self.p95_ms = p95_ms
+        self.max_ms = max_ms
 
     def observe(
         self,
@@ -209,7 +221,10 @@ class FixedLoadController:
         self.transition_code = None
         return RealtimeLoadStatus(
             target_fps=self.target_fps,
-            p95_ms=processing_ms,
+            sample_count=self.sample_count,
+            p50_ms=self.p50_ms,
+            p95_ms=self.p95_ms,
+            max_ms=self.max_ms,
             transition_code=transition,
         )
 
@@ -284,9 +299,15 @@ def build_worker(
     load_controller: object | None = None,
     candidate_transitions: list[RealtimeCandidateTransition] | None = None,
     realtime_health: list[str] | None = None,
+    realtime_status: object | None = None,
 ):
     module = worker_module()
     transition_sink = transitions if transitions is not None else []
+    realtime_status_kwargs = (
+        {"on_realtime_status": realtime_status}
+        if realtime_status is not None
+        else {}
+    )
     return module.VisualWorker(
         stream_factory=stream_factory or (lambda: iter(())),
         frame_policy=policy or RecordingPolicy(),
@@ -306,6 +327,7 @@ def build_worker(
         on_realtime_health=(
             realtime_health.append if realtime_health is not None else None
         ),
+        **realtime_status_kwargs,
     )
 
 
@@ -425,6 +447,66 @@ def test_model_and_load_health_transitions_are_published_and_redacted() -> None:
     assert health_codes == ["realtime_model_degraded", "realtime_degraded"]
     assert worker.health().realtime_model_state == "degraded"
     assert worker.health().realtime_fps == 3
+    assert "/private" not in repr(worker.health())
+
+
+def test_successful_analysis_publishes_only_redacted_aggregate_status() -> None:
+    snapshots: list[object] = []
+    worker = build_worker(
+        realtime_analyzer=RecordingRealtimeAnalyzer(),
+        candidate_machine=RecordingCandidateMachine(),
+        load_controller=FixedLoadController(
+            target_fps=3,
+            sample_count=7,
+            p50_ms=101.125,
+            p95_ms=202.25,
+            max_ms=303.375,
+        ),
+        realtime_status=snapshots.append,
+    )
+
+    worker.run_frame(captured(0), monotonic_now=0.0)
+
+    assert len(snapshots) == 1
+    snapshot = snapshots[0]
+    assert {field.name for field in fields(snapshot)} == {
+        "realtime_fps",
+        "sample_count",
+        "processing_p50_ms",
+        "processing_p95_ms",
+        "processing_max_ms",
+        "realtime_model_state",
+    }
+    assert snapshot.realtime_fps == 3
+    assert snapshot.sample_count == 7
+    assert snapshot.processing_p50_ms == 101.125
+    assert snapshot.processing_p95_ms == 202.25
+    assert snapshot.processing_max_ms == 303.375
+    assert snapshot.realtime_model_state == "available"
+    with pytest.raises(FrozenInstanceError):
+        snapshot.sample_count = 8
+
+
+def test_status_callback_failure_does_not_interrupt_candidate_analysis() -> None:
+    health_codes: list[str] = []
+    candidates = RecordingCandidateMachine()
+
+    def fail_status(_snapshot: object) -> None:
+        raise RuntimeError("/private/household/status.json")
+
+    worker = build_worker(
+        realtime_analyzer=RecordingRealtimeAnalyzer(),
+        candidate_machine=candidates,
+        load_controller=FixedLoadController(),
+        realtime_health=health_codes,
+        realtime_status=fail_status,
+    )
+
+    worker.run_frame(captured(0), monotonic_now=0.0)
+
+    assert candidates.calls == [0.0]
+    assert health_codes == ["realtime_status_write_failed"]
+    assert worker.health().code == "ok"
     assert "/private" not in repr(worker.health())
 
 

@@ -135,17 +135,31 @@ alpha-subtype-apply:
 		--restart-command "make --no-print-directory alpha-restart"
 
 alpha-visual-status:
-	@echo "Visual worker:"
-	@if [[ "$$(uname -s)" == "Darwin" ]] && launchctl print "gui/$$(id -u)/com.babymonitor.visual" >/dev/null 2>&1; then \
+	@metrics_status=0; \
+	visual_running=0; \
+	echo "Visual worker:"; \
+	if [[ "$$(uname -s)" == "Darwin" ]] && launchctl print "gui/$$(id -u)/com.babymonitor.visual" >/dev/null 2>&1; then \
 		echo "running (launchd)"; \
+		visual_running=1; \
 	elif [[ -f runtime/pids/visual.pid ]] && kill -0 "$$(cat runtime/pids/visual.pid)" 2>/dev/null; then \
 		echo "running (pid)"; \
-	else echo "offline"; fi
-	@echo "Ollama tunnel:"
-	@if [[ "$$(uname -s)" == "Darwin" ]] && launchctl print "gui/$$(id -u)/com.babymonitor.ollama-tunnel" >/dev/null 2>&1; then \
+		visual_running=1; \
+	else \
+		echo "offline"; \
+	fi; \
+	if [[ "$$visual_running" -eq 1 ]]; then \
+		$(PYTHON) tools/realtime_visual_status.py || metrics_status=$$?; \
+	fi; \
+	echo "Ollama tunnel:"; \
+	if [[ "$$(uname -s)" == "Darwin" ]] && launchctl print "gui/$$(id -u)/com.babymonitor.ollama-tunnel" >/dev/null 2>&1; then \
 		echo "running (launchd)"; \
-	else echo "offline"; fi
-	@echo "Ollama bridge:"
-	@if curl -fsS --noproxy '*' --max-time 2 http://127.0.0.1:11435/api/version >/dev/null 2>&1; then \
+	else \
+		echo "offline"; \
+	fi; \
+	echo "Ollama bridge:"; \
+	if curl -fsS --noproxy '*' --max-time 2 http://127.0.0.1:11435/api/version >/dev/null 2>&1; then \
 		echo "reachable"; \
-	else echo "unreachable"; fi
+	else \
+		echo "unreachable"; \
+	fi; \
+	exit "$$metrics_status"

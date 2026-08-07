@@ -22,6 +22,7 @@ from services.vision.review_scheduler import (
     ReviewCompletion,
     VisualReviewScheduler,
 )
+from services.vision.realtime_status import RealtimeVisualMetricsSnapshot
 
 
 SAMPLE_INTERVAL_SECONDS = 2.0
@@ -110,6 +111,10 @@ class CandidateMachineLike(Protocol):
 
 class LoadStatusLike(Protocol):
     target_fps: Literal[1, 3, 5]
+    sample_count: int
+    p50_ms: float
+    p95_ms: float
+    max_ms: float
     transition_code: object | None
 
 
@@ -153,6 +158,8 @@ class VisualWorker:
         on_realtime_candidate: Callable[[RealtimeCandidateTransition], None]
         | None = None,
         on_realtime_health: Callable[[str], None] | None = None,
+        on_realtime_status: Callable[[RealtimeVisualMetricsSnapshot], None]
+        | None = None,
     ) -> None:
         self._stream_factory = stream_factory
         self._frame_policy = frame_policy
@@ -171,6 +178,7 @@ class VisualWorker:
             on_realtime_candidate or (lambda _transition: None)
         )
         self._on_realtime_health = on_realtime_health or (lambda _code: None)
+        self._on_realtime_status = on_realtime_status or (lambda _status: None)
         self._realtime_enabled = all(
             component is not None
             for component in (realtime_analyzer, candidate_machine, load_controller)
@@ -289,13 +297,14 @@ class VisualWorker:
                 )
                 previous_target_fps = self._target_realtime_fps
                 self._target_realtime_fps = load_status.target_fps
+                realtime_model_state = getattr(
+                    self._realtime_analyzer,
+                    "model_state",
+                    "degraded",
+                )
                 self._health = replace(
                     self._health,
-                    realtime_model_state=getattr(
-                        self._realtime_analyzer,
-                        "model_state",
-                        "degraded",
-                    ),
+                    realtime_model_state=realtime_model_state,
                     realtime_fps=self._target_realtime_fps,
                 )
                 self._publish_realtime_health(
@@ -305,6 +314,21 @@ class VisualWorker:
                 self._publish_realtime_health(
                     getattr(transition_code, "value", transition_code)
                 )
+                try:
+                    self._on_realtime_status(
+                        RealtimeVisualMetricsSnapshot(
+                            realtime_fps=self._target_realtime_fps,
+                            sample_count=load_status.sample_count,
+                            processing_p50_ms=load_status.p50_ms,
+                            processing_p95_ms=load_status.p95_ms,
+                            processing_max_ms=load_status.max_ms,
+                            realtime_model_state=realtime_model_state,
+                        )
+                    )
+                except Exception:
+                    self._publish_realtime_health(
+                        "realtime_status_write_failed"
+                    )
                 self._schedule_next_analysis(
                     monotonic_now,
                     target_changed=(

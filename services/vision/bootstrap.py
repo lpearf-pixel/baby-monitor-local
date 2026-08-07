@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+from collections.abc import Callable
 from concurrent.futures import ThreadPoolExecutor
 from dataclasses import dataclass, field
 
@@ -15,6 +16,7 @@ from services.vision.realtime_analyzer import RealtimeVisualAnalyzer
 from services.vision.realtime_candidates import RealtimeCandidateStateMachine
 from services.vision.realtime_load import RealtimeLoadController
 from services.vision.realtime_models import build_realtime_model_backend
+from services.vision.realtime_status import RealtimeVisualMetricsSnapshot
 from services.vision.risk_state import VisualRiskStateMachine
 from services.vision.worker import VisualWorker
 
@@ -44,7 +46,12 @@ class VisualRuntimeResources:
         self.executor.shutdown(wait=False, cancel_futures=True)
 
 
-def build_visual_runtime(settings: AppSettings) -> VisualRuntimeResources:
+def build_visual_runtime(
+    settings: AppSettings,
+    *,
+    on_realtime_status: Callable[[RealtimeVisualMetricsSnapshot], None]
+    | None = None,
+) -> VisualRuntimeResources:
     if not settings.visual.enabled:
         raise ValueError("visual_review_disabled")
     if settings.visual.bed_zone is None:
@@ -97,6 +104,7 @@ def build_visual_runtime(settings: AppSettings) -> VisualRuntimeResources:
         realtime_analyzer=realtime_analyzer,
         candidate_machine=candidate_machine,
         load_controller=load_controller,
+        on_realtime_status=on_realtime_status,
     )
     return VisualRuntimeResources(
         worker=worker,

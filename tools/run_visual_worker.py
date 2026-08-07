@@ -14,6 +14,10 @@ if str(ROOT) not in sys.path:
 from packages.contracts.settings import AppSettings
 from services.environment.local_env import load_local_env_file
 from services.vision.bootstrap import build_visual_runtime
+from services.vision.realtime_status import (
+    RealtimeVisualStatusPublisher,
+    RealtimeVisualStatusWriter,
+)
 
 
 def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
@@ -36,14 +40,29 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
 
 def main(argv: list[str] | None = None) -> int:
     args = parse_args(argv)
+    status_publisher: RealtimeVisualStatusPublisher | None = None
     try:
         if args.env_file is not None:
             load_local_env_file(args.env_file)
         settings = AppSettings.load(args.settings)
         if not settings.visual.enabled:
             return 0
-        resources = build_visual_runtime(settings)
+        status_publisher = RealtimeVisualStatusPublisher(
+            RealtimeVisualStatusWriter(
+                ROOT / "runtime/status/realtime-visual.json"
+            ),
+            on_failure=lambda _code: print(
+                "realtime_status_write_failed",
+                file=sys.stderr,
+            ),
+        )
+        resources = build_visual_runtime(
+            settings,
+            on_realtime_status=status_publisher,
+        )
     except Exception:
+        if status_publisher is not None:
+            status_publisher.close()
         print("visual_worker_startup_failed", file=sys.stderr)
         return 2
 
@@ -54,13 +73,24 @@ def main(argv: list[str] | None = None) -> int:
 
     signal.signal(signal.SIGTERM, stop)
     signal.signal(signal.SIGINT, stop)
+    runtime_failed = False
     try:
         resources.worker.run(stop_event)
     except Exception:
+        runtime_failed = True
+    finally:
+        try:
+            resources.close()
+        except Exception:
+            runtime_failed = True
+        try:
+            assert status_publisher is not None
+            status_publisher.close()
+        except Exception:
+            runtime_failed = True
+    if runtime_failed:
         print("visual_worker_runtime_failed", file=sys.stderr)
         return 2
-    finally:
-        resources.close()
     return 0
 
 

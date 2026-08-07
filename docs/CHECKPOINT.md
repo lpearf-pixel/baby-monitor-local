@@ -140,6 +140,22 @@ Shell 语法、Make dry-run 和 `git diff --check` 通过，仅保留既有 Star
 模型/负载降级状态、降载下逐帧源健康检查、持续模糊遮挡和 3 FPS 截止时间均有
 合成回归测试。此结果仍不替代 i9 实机和家庭场景验收。
 
+2026-08-07 已补齐脱敏生产性能观测面：负载控制器只保留最近 10 秒、最多 51 个
+处理耗时样本并输出 nearest-rank P50/P95/最大值；worker 通过单槽 latest-wins
+后台 publisher 原子写入 mode `0600` 的本地 schema-v1 状态文件，慢磁盘和 `fsync`
+不再阻塞实时分析或候选评估。状态命令严格区分 available、unavailable、stale 和
+invalid，拒绝额外/重复字段、布尔伪装数值与非有限数值，并且不输出路径、异常、
+画面或候选结果。`alpha-visual-status` 在指标失败时仍完整报告既有 worker、隧道和
+bridge 状态，最后再以非零码 fail closed。
+
+本轮新鲜软件门禁：Python `558 passed`、Node 浏览器 `70 passed`；Python 编译、
+schema 解析、Shell 语法、Make dry-run、`git diff --check`、跟踪 runtime/媒体/数据库
+边界及 Token、私钥、私网地址字面量扫描均通过，仅保留既有 Starlette/httpx 弃用
+警告。该证据不代表 i9 性能门完成；必须部署本提交后连续运行至少 10 分钟，记录
+当前 5/3/1 FPS 档位、样本数、P50/P95/最大值。5 FPS 要求 P95 不超过 `180ms`，
+自动稳定在 3 FPS 时要求 P95 不超过 `300ms`；1 FPS、stale、invalid 或模型 degraded
+均不得通过首期门。
+
 仍待在 i9/M2 本地生成专用 SSH 密钥、核对 host key、安装隧道、填写真实床区，
 并验证四帧真实响应、冷/热加载、P95≤8秒、白天/黑暗/蚊帐/成人/空床/模拟遮挡、
 断开 M2 降级与恢复。R3 不保存事件媒体、不发送风险 ntfy、不提供 Dashboard

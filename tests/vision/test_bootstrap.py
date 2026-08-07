@@ -108,3 +108,19 @@ def test_bootstrap_composes_opt_in_realtime_path_without_models() -> None:
         assert isinstance(resources.load_controller, RealtimeLoadController)
     finally:
         resources.close()
+
+
+def test_bootstrap_delivers_realtime_status_callback_to_worker() -> None:
+    from services.vision.bootstrap import build_visual_runtime
+
+    received: list[object] = []
+    resources = build_visual_runtime(
+        settings(realtime_enabled=True),
+        on_realtime_status=received.append,
+    )
+    marker = object()
+    try:
+        resources.worker._on_realtime_status(marker)
+        assert received == [marker]
+    finally:
+        resources.close()
