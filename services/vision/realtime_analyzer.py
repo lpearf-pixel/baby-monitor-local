@@ -34,6 +34,21 @@ class RealtimeVisualAnalyzer:
         self._previous_mean_luma: float | None = None
         self._uncertain_until: float | None = None
         self._last_monotonic: float | None = None
+        self._model_state = (
+            "available" if model_backend is not None else "degraded"
+        )
+        self._pending_health_transition: str | None = (
+            None if model_backend is not None else "realtime_model_degraded"
+        )
+
+    @property
+    def model_state(self) -> str:
+        return self._model_state
+
+    def pop_health_transition(self) -> str | None:
+        transition = self._pending_health_transition
+        self._pending_health_transition = None
+        return transition
 
     def analyze(
         self,
@@ -100,6 +115,7 @@ class RealtimeVisualAnalyzer:
         try:
             signals = self._model_backend.infer(bgr)
         except (RealtimeModelError, ValueError, RuntimeError):
+            self._set_model_state("degraded")
             return (
                 None,
                 None,
@@ -107,6 +123,7 @@ class RealtimeVisualAnalyzer:
                 AdultTrack.UNCERTAIN,
                 HeadFaceState.UNCERTAIN,
             )
+        self._set_model_state("available")
         pose_count = len(signals.pose_centers)
         face_count = len(signals.face_boxes)
         if not signals.pose_centers:
@@ -130,6 +147,16 @@ class RealtimeVisualAnalyzer:
         else:
             face_state = HeadFaceState.UNCERTAIN
         return pose_count, face_count, bed_track, adult_track, face_state
+
+    def _set_model_state(self, state: str) -> None:
+        if state == self._model_state:
+            return
+        self._model_state = state
+        self._pending_health_transition = (
+            "realtime_model_recovered"
+            if state == "available"
+            else "realtime_model_degraded"
+        )
 
     def _motion_ratio(self, gray: np.ndarray) -> float:
         previous = self._previous_gray

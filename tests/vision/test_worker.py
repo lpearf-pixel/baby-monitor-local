@@ -17,7 +17,10 @@ from packages.contracts.vision import (
     RealtimeCandidateTransitionKind,
     RealtimeObservation,
 )
-from services.vision.realtime_load import RealtimeLoadStatus
+from services.vision.realtime_load import (
+    RealtimeLoadStatus,
+    RealtimeLoadTransitionCode,
+)
 
 
 NOW = datetime(2026, 8, 5, 12, 0, tzinfo=UTC)
@@ -137,6 +140,8 @@ class RecordingScheduler:
 class RecordingRealtimeAnalyzer:
     def __init__(self) -> None:
         self.calls: list[PreparedAnalysisFrame] = []
+        self.model_state = "available"
+        self._health_transition: str | None = None
 
     def analyze(
         self,
@@ -155,6 +160,11 @@ class RecordingRealtimeAnalyzer:
             head_face_state="visible",
             processing_ms=10.0,
         )
+
+    def pop_health_transition(self) -> str | None:
+        transition = self._health_transition
+        self._health_transition = None
+        return transition
 
 
 class RecordingCandidateMachine:
@@ -181,13 +191,27 @@ class RecordingCandidateMachine:
 
 
 class FixedLoadController:
+    def __init__(
+        self,
+        target_fps: int = 5,
+        transition_code: RealtimeLoadTransitionCode | None = None,
+    ) -> None:
+        self.target_fps = target_fps
+        self.transition_code = transition_code
+
     def observe(
         self,
         processing_ms: float,
         *,
         monotonic_now: float,
     ) -> RealtimeLoadStatus:
-        return RealtimeLoadStatus(target_fps=5, p95_ms=processing_ms)
+        transition = self.transition_code
+        self.transition_code = None
+        return RealtimeLoadStatus(
+            target_fps=self.target_fps,
+            p95_ms=processing_ms,
+            transition_code=transition,
+        )
 
 
 class FakeStopEvent:
@@ -259,6 +283,7 @@ def build_worker(
     candidate_machine: object | None = None,
     load_controller: object | None = None,
     candidate_transitions: list[RealtimeCandidateTransition] | None = None,
+    realtime_health: list[str] | None = None,
 ):
     module = worker_module()
     transition_sink = transitions if transitions is not None else []
@@ -277,6 +302,9 @@ def build_worker(
             candidate_transitions.append
             if candidate_transitions is not None
             else None
+        ),
+        on_realtime_health=(
+            realtime_health.append if realtime_health is not None else None
         ),
     )
 
@@ -356,6 +384,63 @@ def test_semantic_watch_uses_warm_ring_for_immediate_urgent_review() -> None:
     assert len(transitions) == 1
     assert scheduler.calls[-1][1:] == (6.0, True)
     assert len(scheduler.calls[-1][0]) == 4
+
+
+def test_load_shedding_preserves_every_frame_health_observation() -> None:
+    health = RecordingHealth()
+    analyzer = RecordingRealtimeAnalyzer()
+    worker = build_worker(
+        health=health,
+        realtime_analyzer=analyzer,
+        candidate_machine=RecordingCandidateMachine(),
+        load_controller=FixedLoadController(target_fps=1),
+    )
+
+    for tick in range(6):
+        second = tick / 5
+        worker.run_frame(captured(second), monotonic_now=second)
+
+    assert len(health.observe_calls) == 6
+    assert len(analyzer.calls) == 2
+    assert worker.health().realtime_fps == 1
+
+
+def test_model_and_load_health_transitions_are_published_and_redacted() -> None:
+    analyzer = RecordingRealtimeAnalyzer()
+    analyzer.model_state = "degraded"
+    analyzer._health_transition = "realtime_model_degraded"
+    health_codes: list[str] = []
+    worker = build_worker(
+        realtime_analyzer=analyzer,
+        candidate_machine=RecordingCandidateMachine(),
+        load_controller=FixedLoadController(
+            target_fps=3,
+            transition_code=RealtimeLoadTransitionCode.DEGRADED,
+        ),
+        realtime_health=health_codes,
+    )
+
+    worker.run_frame(captured(0), monotonic_now=0.0)
+
+    assert health_codes == ["realtime_model_degraded", "realtime_degraded"]
+    assert worker.health().realtime_model_state == "degraded"
+    assert worker.health().realtime_fps == 3
+    assert "/private" not in repr(worker.health())
+
+
+def test_three_fps_deadline_carries_forward_on_five_fps_input() -> None:
+    analyzer = RecordingRealtimeAnalyzer()
+    worker = build_worker(
+        realtime_analyzer=analyzer,
+        candidate_machine=RecordingCandidateMachine(),
+        load_controller=FixedLoadController(target_fps=3),
+    )
+
+    for tick in range(11):
+        second = tick / 5
+        worker.run_frame(captured(second), monotonic_now=second)
+
+    assert len(analyzer.calls) == 7
 
 
 def test_only_prepared_frames_enter_ring_and_scheduler() -> None:

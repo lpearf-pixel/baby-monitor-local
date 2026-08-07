@@ -54,6 +54,7 @@ class RealtimeCandidateStateMachine:
         obstructed = observation.scene_quality in {
             SceneQuality.DARK,
             SceneQuality.FLAT,
+            SceneQuality.BLURRED,
         }
         transition = self._advance(
             RealtimeCandidateKind.CAMERA_OBSTRUCTED,

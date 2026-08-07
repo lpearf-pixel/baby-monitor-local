@@ -42,6 +42,12 @@
   passed; Python compilation, shell syntax, `git diff --check`, tracked runtime/media
   boundaries, GitHub-token candidates and private-key markers passed. This remains a
   software-only result and does not represent real-camera or M2 accuracy.
+- Fresh R3.5 software gate on 2026-08-07: 508 Python tests and 70 Node browser
+  tests passed; Python compilation, shell syntax, schema parsing and
+  `git diff --check` passed. The OpenPose output now uses PAF-connected person
+  grouping rather than heatmap-peak counting; model/load health transitions,
+  every-frame source health checks and blurred-camera watches have regression
+  coverage. This remains synthetic software evidence, not an i9 household gate.
 - Next visual gate: explicitly install the pinned R3.5 models, add the reviewed
   `analysis_realtime` profile to the preserved i9 runtime YAML, enable the private
   realtime setting, install the restricted i9-to-M2 SSH bridge, configure the private

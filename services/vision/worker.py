@@ -87,12 +87,16 @@ class ReviewSchedulerLike(Protocol):
 
 
 class RealtimeAnalyzerLike(Protocol):
+    model_state: str
+
     def analyze(
         self,
         frame: PreparedAnalysisFrame,
         *,
         monotonic_now: float,
     ) -> RealtimeObservation: ...
+
+    def pop_health_transition(self) -> str | None: ...
 
 
 class CandidateMachineLike(Protocol):
@@ -106,6 +110,7 @@ class CandidateMachineLike(Protocol):
 
 class LoadStatusLike(Protocol):
     target_fps: Literal[1, 3, 5]
+    transition_code: object | None
 
 
 class LoadControllerLike(Protocol):
@@ -124,6 +129,10 @@ class VisualWorkerHealth:
     accepted_frames: int = 0
     skipped_frames: int = 0
     reconnects: int = 0
+    realtime_model_state: Literal["disabled", "available", "degraded"] = (
+        "disabled"
+    )
+    realtime_fps: Literal[1, 3, 5] | None = None
 
 
 class VisualWorker:
@@ -143,6 +152,7 @@ class VisualWorker:
         load_controller: LoadControllerLike | None = None,
         on_realtime_candidate: Callable[[RealtimeCandidateTransition], None]
         | None = None,
+        on_realtime_health: Callable[[str], None] | None = None,
     ) -> None:
         self._stream_factory = stream_factory
         self._frame_policy = frame_policy
@@ -160,6 +170,7 @@ class VisualWorker:
         self._on_realtime_candidate = (
             on_realtime_candidate or (lambda _transition: None)
         )
+        self._on_realtime_health = on_realtime_health or (lambda _code: None)
         self._realtime_enabled = all(
             component is not None
             for component in (realtime_analyzer, candidate_machine, load_controller)
@@ -169,9 +180,20 @@ class VisualWorker:
             for component in (realtime_analyzer, candidate_machine, load_controller)
         ) and not self._realtime_enabled:
             raise ValueError("realtime visual components must be configured together")
-        self._health = VisualWorkerHealth(state="degraded", code="not_started")
+        initial_model_state = (
+            getattr(realtime_analyzer, "model_state", "degraded")
+            if self._realtime_enabled
+            else "disabled"
+        )
+        self._health = VisualWorkerHealth(
+            state="degraded",
+            code="not_started",
+            realtime_model_state=initial_model_state,
+            realtime_fps=5 if self._realtime_enabled else None,
+        )
         self._last_monotonic: float | None = None
         self._next_sample_at: float | None = None
+        self._next_analysis_at: float | None = None
         self._next_ring_at: float | None = None
         self._target_realtime_fps: Literal[1, 3, 5] = 5
         self._next_review_at: float | None = None
@@ -194,28 +216,27 @@ class VisualWorker:
         if completion is not None:
             self._on_review_completion(completion)
 
-        interval = (
-            1.0 / self._target_realtime_fps
-            if self._realtime_enabled
-            else SAMPLE_INTERVAL_SECONDS
-        )
-        if self._next_sample_at is not None and monotonic_now + 1e-9 < self._next_sample_at:
+        if (
+            not self._realtime_enabled
+            and self._next_sample_at is not None
+            and monotonic_now + 1e-9 < self._next_sample_at
+        ):
             self._health = replace(
                 self._health,
                 skipped_frames=self._health.skipped_frames + 1,
             )
             return None
-        self._next_sample_at = monotonic_now + interval
+        if not self._realtime_enabled:
+            self._next_sample_at = monotonic_now + SAMPLE_INTERVAL_SECONDS
 
         try:
             prepared = self._frame_policy.prepare(frame)
         except Exception:
-            self._health = VisualWorkerHealth(
+            self._health = replace(
+                self._health,
                 state="degraded",
                 code="frame_policy_failed",
-                accepted_frames=self._health.accepted_frames,
                 skipped_frames=self._health.skipped_frames + 1,
-                reconnects=self._health.reconnects,
             )
             return None
 
@@ -246,7 +267,14 @@ class VisualWorker:
         if not self._frame_incident_open and not self._reconnect_requested:
             self._health = replace(self._health, state="healthy", code="ok")
 
-        if self._realtime_enabled:
+        analysis_due = (
+            self._realtime_enabled
+            and (
+                self._next_analysis_at is None
+                or monotonic_now + 1e-9 >= self._next_analysis_at
+            )
+        )
+        if analysis_due:
             assert self._realtime_analyzer is not None
             assert self._candidate_machine is not None
             assert self._load_controller is not None
@@ -259,13 +287,39 @@ class VisualWorker:
                     observation.processing_ms,
                     monotonic_now=monotonic_now,
                 )
+                previous_target_fps = self._target_realtime_fps
                 self._target_realtime_fps = load_status.target_fps
+                self._health = replace(
+                    self._health,
+                    realtime_model_state=getattr(
+                        self._realtime_analyzer,
+                        "model_state",
+                        "degraded",
+                    ),
+                    realtime_fps=self._target_realtime_fps,
+                )
+                self._publish_realtime_health(
+                    self._realtime_analyzer.pop_health_transition()
+                )
+                transition_code = getattr(load_status, "transition_code", None)
+                self._publish_realtime_health(
+                    getattr(transition_code, "value", transition_code)
+                )
+                self._schedule_next_analysis(
+                    monotonic_now,
+                    target_changed=(
+                        previous_target_fps != self._target_realtime_fps
+                    ),
+                )
                 candidate_transitions = self._candidate_machine.evaluate(
                     observation,
                     monotonic_now=monotonic_now,
                 )
             except Exception:
                 candidate_transitions = ()
+                self._next_analysis_at = (
+                    monotonic_now + 1.0 / self._target_realtime_fps
+                )
                 self._health = replace(
                     self._health,
                     state="degraded",
@@ -302,6 +356,33 @@ class VisualWorker:
             )
             self._next_review_at = monotonic_now + REVIEW_INTERVAL_SECONDS
         return prepared
+
+    def _schedule_next_analysis(
+        self,
+        monotonic_now: float,
+        *,
+        target_changed: bool,
+    ) -> None:
+        interval = 1.0 / self._target_realtime_fps
+        if self._next_analysis_at is None or target_changed:
+            self._next_analysis_at = monotonic_now + interval
+            return
+        next_at = self._next_analysis_at + interval
+        while next_at <= monotonic_now + 1e-9:
+            next_at += interval
+        self._next_analysis_at = next_at
+
+    def _publish_realtime_health(self, code: object | None) -> None:
+        if not isinstance(code, str) or not code:
+            return
+        try:
+            self._on_realtime_health(code)
+        except Exception:
+            self._health = replace(
+                self._health,
+                state="degraded",
+                code="realtime_health_callback_failed",
+            )
 
     def _submit_urgent(self, monotonic_now: float) -> None:
         review_frames = self._frame_ring.select_review_frames(
@@ -371,20 +452,16 @@ class VisualWorker:
                         monotonic_now=self._monotonic()
                     )
                     self._handle_frame_transition(transition)
-                    self._health = VisualWorkerHealth(
+                    self._health = replace(
+                        self._health,
                         state="degraded",
                         code="frame_source_unavailable",
-                        accepted_frames=self._health.accepted_frames,
-                        skipped_frames=self._health.skipped_frames,
-                        reconnects=self._health.reconnects,
                     )
                 elif failure_kind == "internal":
-                    self._health = VisualWorkerHealth(
+                    self._health = replace(
+                        self._health,
                         state="degraded",
                         code="worker_internal_error",
-                        accepted_frames=self._health.accepted_frames,
-                        skipped_frames=self._health.skipped_frames,
-                        reconnects=self._health.reconnects,
                     )
                 else:
                     continue

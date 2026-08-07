@@ -178,6 +178,17 @@ def test_camera_obstruction_works_during_warmup_and_requires_two_seconds() -> No
     assert opened(transition) == {RealtimeCandidateKind.CAMERA_OBSTRUCTED}
 
 
+def test_persistent_blur_can_open_camera_obstruction_after_infrared_grace() -> None:
+    module = candidate_module()
+    machine = module.RealtimeCandidateStateMachine()
+    blurred = observation(scene_quality="blurred")
+
+    assert machine.evaluate(blurred, monotonic_now=0.0) == ()
+    transition = machine.evaluate(blurred, monotonic_now=2.0)
+
+    assert opened(transition) == {RealtimeCandidateKind.CAMERA_OBSTRUCTED}
+
+
 def test_uncertain_or_model_unavailable_input_cannot_open_semantic_candidate() -> None:
     module = candidate_module()
     machine = module.RealtimeCandidateStateMachine()

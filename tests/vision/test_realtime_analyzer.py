@@ -17,7 +17,7 @@ from packages.contracts.vision import (
 )
 from services.stream.frame_source import CapturedFrame
 from services.vision.frame_policy import PreparedAnalysisFrame, VisionFramePolicy
-from services.vision.realtime_models import RealtimeModelSignals
+from services.vision.realtime_models import RealtimeModelError, RealtimeModelSignals
 
 
 NOW = datetime(2026, 8, 6, 12, 0, tzinfo=UTC)
@@ -57,6 +57,17 @@ class RecordingBackend:
     def infer(self, bgr: np.ndarray) -> RealtimeModelSignals:
         self.frames.append(bgr.copy())
         return self.signals
+
+
+class RecoveringBackend:
+    def __init__(self) -> None:
+        self.calls = 0
+
+    def infer(self, bgr: np.ndarray) -> RealtimeModelSignals:
+        self.calls += 1
+        if self.calls == 1:
+            raise RealtimeModelError("realtime_inference_failed")
+        return RealtimeModelSignals(pose_centers=((0.5, 0.5),))
 
 
 def analyzer_module():
@@ -160,6 +171,30 @@ def test_model_signals_map_to_bounded_semantic_tracks() -> None:
     assert observation.bed_subject_track is BedSubjectTrack.INSIDE
     assert observation.adult_track is AdultTrack.INTERSECTING_BED
     assert observation.head_face_state is HeadFaceState.VISIBLE
+
+
+def test_model_degradation_transition_is_emitted_once() -> None:
+    module = analyzer_module()
+    analyzer = module.RealtimeVisualAnalyzer()
+
+    analyzer.analyze(frame(textured()), monotonic_now=0.0)
+
+    assert analyzer.model_state == "degraded"
+    assert analyzer.pop_health_transition() == "realtime_model_degraded"
+    assert analyzer.pop_health_transition() is None
+
+
+def test_model_failure_and_recovery_each_emit_one_transition() -> None:
+    module = analyzer_module()
+    analyzer = module.RealtimeVisualAnalyzer(model_backend=RecoveringBackend())
+
+    analyzer.analyze(frame(textured()), monotonic_now=0.0)
+    assert analyzer.pop_health_transition() == "realtime_model_degraded"
+    assert analyzer.pop_health_transition() is None
+
+    analyzer.analyze(frame(textured()), monotonic_now=0.2)
+    assert analyzer.pop_health_transition() == "realtime_model_recovered"
+    assert analyzer.pop_health_transition() is None
 
 
 def test_privacy_mask_is_applied_before_model_backend() -> None:
