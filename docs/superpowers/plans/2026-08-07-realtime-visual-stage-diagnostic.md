@@ -58,4 +58,5 @@
 - [x] Run `bash -n tools/run_realtime_visual_diagnostic.sh`.
 - [x] Run Python compilation, ASCII/LF checks, and `make -n alpha-visual-diagnostic`.
 - [x] Review `git diff --check`, file scope, privacy terms, and repository status.
-- [x] Commit the focused implementation and push only `codex/xiaomi-alpha-visual-risk-core`; do not merge or modify `main`.
+- [x] Commit the focused implementation on `codex/xiaomi-alpha-visual-risk-core`; do not merge or modify `main`.
+- [ ] Push the committed diagnostic changes only after explicit remote authorization.
