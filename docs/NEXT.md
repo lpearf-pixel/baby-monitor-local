@@ -38,8 +38,12 @@ The repository baseline and environment implementation are complete. Do not rest
    review the preserved i9 runtime YAML before adding `analysis_realtime`, enable the
    private setting, then measure 5/3/1 FPS, candidate latency and the seven required
    household scenarios. Software tests do not establish household accuracy.
-6. After the R3/R3.5 real-device gate, add R4 event screenshot/video evidence, real-time text alerts and authenticated
-   parent feedback without making the model a prerequisite for live viewing.
+6. Source-health ntfy open/recovery delivery has passed one controlled i9 outage.
+   Complete the remaining outage-side check that gauge sampling and real-time metrics
+   stay independently observable; do not repeat a Baby posture or face-risk event.
+7. After the R3/R3.5 real-device gate, add R4 risk-event screenshot/video evidence,
+   real-time risk text alerts and authenticated parent feedback without making the
+   model a prerequisite for live viewing.
 
 ## P3 — Release gate
 

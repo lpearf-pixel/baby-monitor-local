@@ -38,6 +38,12 @@
   ring sampling, and immediate urgent review scheduling are implemented locally.
   Missing models preserve motion, scene health and regular Qwen review while semantic
   tracks remain unavailable; the fast path cannot open or recover a risk alert.
+- Visual frame-health alerts: the restart-safe SQLite incident pipeline and
+  privacy-safe ntfy delivery are deployed on the Intel i9. A fresh controlled
+  `source_offline` event delivered one open alert, recovered after the fixed
+  changing-frame window, delivered one recovery alert, and persisted both delivery
+  markers. Gauge and real-time-metrics continuity during an outage still needs an
+  explicit side-service check.
 - Fresh R3 software gate on 2026-08-06: 451 Python tests and 70 Node browser tests
   passed; Python compilation, shell syntax, `git diff --check`, tracked runtime/media
   boundaries, GitHub-token candidates and private-key markers passed. This remains a
@@ -69,8 +75,9 @@
 - Installed i9-to-M2 SSH bridge, private bed-zone configuration, and end-to-end
   household validation of face-obstruction, prone-position, bed-exit, or
   adult-intervention candidates.
-- Production visual worker/launchd deployment, authenticated parent feedback, event
-  screenshot/video export, and cry/audio candidate detection.
+- Authenticated parent feedback, risk-event screenshot/video export, risk-event ntfy,
+  and cry/audio candidate detection. Deterministic source-health ntfy is already
+  deployed and independently verified.
 - Verified Tailscale external access, real PTZ control, or the 72-hour release gate.
 
 ## Safety gates
