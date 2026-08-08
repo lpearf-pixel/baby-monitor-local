@@ -32,7 +32,7 @@
 - Consumes: `FrameHealthTransition`, an aware `clock() -> datetime`, and optional `VisualHealthNotifier.notify(VisualHealthIncident, transition_kind)`.
 - Produces: `StoredVisualHealthIncident`, `VisualHealthStore.migrate()`, `load_open()`, `save()`, and `VisualFrameHealthPipeline.restore(...).handle(transition)`.
 
-- [ ] **Step 1: Write failing store and pipeline tests**
+- [x] **Step 1: Write failing store and pipeline tests**
 
 ```python
 opened = FrameHealthTransition(
@@ -49,13 +49,13 @@ assert notifier.calls == [("source_offline", "opened")]
 
 Cover migration/integrity, one open incident, restart restoration, no duplicate open, recovery of the same incident, successful-delivery markers, failed-delivery retry, and rejection of naive/decreasing wall-clock values.
 
-- [ ] **Step 2: Run tests to verify RED**
+- [x] **Step 2: Run tests to verify RED**
 
 Run: `.venv-alpha/bin/python -m pytest -q tests/storage/test_visual_health_store.py tests/vision/test_frame_health_pipeline.py`
 
 Expected: collection fails because the new modules do not exist.
 
-- [ ] **Step 3: Implement the minimal store and sink**
+- [x] **Step 3: Implement the minimal store and sink**
 
 ```python
 class VisualFrameHealthPipeline:
@@ -71,13 +71,13 @@ class VisualFrameHealthPipeline:
 
 Use a dedicated `visual_health_incidents` table with fixed code/state checks, aware ISO timestamps, duration, and `opened_notified`/`recovered_notified` flags. One transaction must make each incident update durable before notification is attempted.
 
-- [ ] **Step 4: Run focused tests to verify GREEN**
+- [x] **Step 4: Run focused tests to verify GREEN**
 
 Run: `.venv-alpha/bin/python -m pytest -q tests/storage/test_visual_health_store.py tests/vision/test_frame_health_pipeline.py tests/vision/test_frame_health.py`
 
 Expected: all tests pass.
 
-- [ ] **Step 5: Commit the persistence slice**
+- [x] **Step 5: Commit the persistence slice**
 
 ```bash
 git add services/storage/visual_health.py services/vision/frame_health_pipeline.py tests/storage/test_visual_health_store.py tests/vision/test_frame_health_pipeline.py
