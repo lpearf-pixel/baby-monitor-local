@@ -45,6 +45,12 @@ class VisualFrameHealthPipeline:
             open_incident.updated_at if open_incident is not None else None
         )
 
+    @property
+    def open_code(self) -> FrameHealthCode | None:
+        if self._open_incident is None:
+            return None
+        return FrameHealthCode(self._open_incident.code)
+
     @classmethod
     def restore(
         cls,

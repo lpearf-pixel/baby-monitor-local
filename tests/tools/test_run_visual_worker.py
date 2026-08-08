@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import json
 from pathlib import Path
+import sqlite3
 from types import SimpleNamespace
 
 from services.vision.realtime_status import (
@@ -50,7 +51,10 @@ def test_main_wires_real_status_writer_into_visual_runtime(
 
     resources = RecordingResources()
     captured: dict[str, object] = {}
-    settings = SimpleNamespace(visual=SimpleNamespace(enabled=True))
+    settings = SimpleNamespace(
+        visual=SimpleNamespace(enabled=True),
+        app=SimpleNamespace(data_dir=Path("runtime-data")),
+    )
 
     monkeypatch.setattr(run_visual_worker, "ROOT", tmp_path)
     monkeypatch.setattr(
@@ -65,6 +69,11 @@ def test_main_wires_real_status_writer_into_visual_runtime(
         return resources
 
     monkeypatch.setattr(run_visual_worker, "build_visual_runtime", build)
+    monkeypatch.setattr(
+        run_visual_worker,
+        "build_visual_health_notifier",
+        lambda _settings, _environ: None,
+    )
 
     exit_code = run_visual_worker.main(
         ["--settings", str(tmp_path / "settings.yaml")]
@@ -79,6 +88,17 @@ def test_main_wires_real_status_writer_into_visual_runtime(
     payload = json.loads(status_path.read_text(encoding="utf-8"))
     assert payload["realtime_fps"] == 3
     assert payload["sample_count"] == 7
+    database = tmp_path / "runtime-data/visual-health.sqlite3"
+    with sqlite3.connect(database) as connection:
+        table = connection.execute(
+            """
+            SELECT name FROM sqlite_master
+            WHERE type = 'table' AND name = 'visual_health_incidents'
+            """
+        ).fetchone()
+    assert table == ("visual_health_incidents",)
+    assert callable(captured["on_frame_health"])
+    assert captured["initial_frame_health_code"] is None
 
 
 def test_main_flushes_final_status_when_resource_cleanup_fails(
@@ -89,7 +109,10 @@ def test_main_flushes_final_status_when_resource_cleanup_fails(
     from tools import run_visual_worker
 
     resources = RecordingResources(fail_close=True)
-    settings = SimpleNamespace(visual=SimpleNamespace(enabled=True))
+    settings = SimpleNamespace(
+        visual=SimpleNamespace(enabled=True),
+        app=SimpleNamespace(data_dir=Path("runtime-data")),
+    )
     monkeypatch.setattr(run_visual_worker, "ROOT", tmp_path)
     monkeypatch.setattr(
         run_visual_worker.AppSettings,
@@ -102,6 +125,11 @@ def test_main_flushes_final_status_when_resource_cleanup_fails(
         return resources
 
     monkeypatch.setattr(run_visual_worker, "build_visual_runtime", build)
+    monkeypatch.setattr(
+        run_visual_worker,
+        "build_visual_health_notifier",
+        lambda _settings, _environ: None,
+    )
 
     exit_code = run_visual_worker.main(
         ["--settings", str(tmp_path / "settings.yaml")]

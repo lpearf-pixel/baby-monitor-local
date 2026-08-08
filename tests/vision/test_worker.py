@@ -77,8 +77,14 @@ class RecordingRing:
 
 
 class RecordingHealth:
-    def __init__(self, *, request_reconnect: bool = False) -> None:
+    def __init__(
+        self,
+        *,
+        request_reconnect: bool = False,
+        observed_transition: FrameHealthTransition | None = None,
+    ) -> None:
         self.request_reconnect = request_reconnect
+        self.observed_transition = observed_transition
         self.observe_calls: list[PreparedAnalysisFrame] = []
         self.confirm_calls: list[PreparedAnalysisFrame] = []
         self.failure_times: list[float] = []
@@ -97,7 +103,9 @@ class RecordingHealth:
                 code=FrameHealthCode.RECONNECT_REQUIRED,
                 duration_seconds=60.0,
             )
-        return None
+        transition = self.observed_transition
+        self.observed_transition = None
+        return transition
 
     def confirm_reconnect(
         self,
@@ -294,6 +302,7 @@ def build_worker(
     stream_factory: object | None = None,
     monotonic: object | None = None,
     transitions: list[FrameHealthTransition] | None = None,
+    frame_health_callback: object | None = None,
     realtime_analyzer: object | None = None,
     candidate_machine: object | None = None,
     load_controller: object | None = None,
@@ -315,7 +324,7 @@ def build_worker(
         frame_health=health or RecordingHealth(),
         review_scheduler=scheduler or RecordingScheduler(),
         monotonic=monotonic or (lambda: 0.0),
-        on_frame_health=transition_sink.append,
+        on_frame_health=frame_health_callback or transition_sink.append,
         realtime_analyzer=realtime_analyzer,
         candidate_machine=candidate_machine,
         load_controller=load_controller,
@@ -563,6 +572,33 @@ def test_policy_failure_degrades_without_leaking_exception() -> None:
     assert health.state == "degraded"
     assert health.code == "frame_policy_failed"
     assert "/private" not in repr(health)
+
+
+def test_frame_health_callback_failure_does_not_interrupt_capture_state() -> None:
+    offline = FrameHealthTransition(
+        state=FrameHealthState.DEGRADED,
+        code=FrameHealthCode.SOURCE_OFFLINE,
+        duration_seconds=60.0,
+    )
+    health = RecordingHealth(observed_transition=offline)
+    ring = RecordingRing()
+
+    def fail_callback(_transition: FrameHealthTransition) -> None:
+        raise RuntimeError("secret at /private/household/visual-health.sqlite3")
+
+    worker = build_worker(
+        health=health,
+        ring=ring,
+        frame_health_callback=fail_callback,
+    )
+
+    prepared = worker.run_frame(captured(0), monotonic_now=0.0)
+
+    assert prepared is not None
+    assert len(ring.frames) == 1
+    assert worker.health().state == "degraded"
+    assert worker.health().code == "source_offline"
+    assert "/private" not in repr(worker.health())
 
 
 def test_run_reconnects_after_failure_with_bounded_backoff() -> None:

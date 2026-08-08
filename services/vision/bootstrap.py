@@ -6,7 +6,11 @@ from dataclasses import dataclass, field
 
 from packages.contracts.settings import AppSettings
 from services.stream.frame_source import Go2RtcAnalysisFrameSource
-from services.vision.frame_health import VisualFrameHealthMonitor
+from services.vision.frame_health import (
+    FrameHealthCode,
+    FrameHealthTransition,
+    VisualFrameHealthMonitor,
+)
 from services.vision.frame_policy import VisionFramePolicy
 from services.vision.frame_ring import AnalysisFrameRing
 from services.vision.ollama_client import OllamaVisualReviewer
@@ -49,6 +53,8 @@ class VisualRuntimeResources:
 def build_visual_runtime(
     settings: AppSettings,
     *,
+    initial_frame_health_code: FrameHealthCode | None = None,
+    on_frame_health: Callable[[FrameHealthTransition], None] | None = None,
     on_realtime_status: Callable[[RealtimeVisualMetricsSnapshot], None]
     | None = None,
 ) -> VisualRuntimeResources:
@@ -70,7 +76,9 @@ def build_visual_runtime(
         privacy_masks=settings.visual.privacy_masks,
     )
     ring = AnalysisFrameRing()
-    frame_health = VisualFrameHealthMonitor()
+    frame_health = VisualFrameHealthMonitor(
+        open_code=initial_frame_health_code,
+    )
     reviewer = OllamaVisualReviewer(base_url=settings.visual.ollama_base_url)
     executor = ThreadPoolExecutor(
         max_workers=1,
@@ -100,6 +108,7 @@ def build_visual_runtime(
         frame_ring=ring,
         frame_health=frame_health,
         review_scheduler=scheduler,
+        on_frame_health=on_frame_health,
         on_review_completion=runtime.handle,
         realtime_analyzer=realtime_analyzer,
         candidate_machine=candidate_machine,

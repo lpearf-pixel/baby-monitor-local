@@ -124,3 +124,33 @@ def test_bootstrap_delivers_realtime_status_callback_to_worker() -> None:
         assert received == [marker]
     finally:
         resources.close()
+
+
+def test_bootstrap_delivers_frame_health_callback_to_worker() -> None:
+    from services.vision.bootstrap import build_visual_runtime
+
+    received: list[object] = []
+    resources = build_visual_runtime(
+        settings(),
+        on_frame_health=received.append,
+    )
+    marker = object()
+    try:
+        resources.worker._on_frame_health(marker)
+        assert received == [marker]
+    finally:
+        resources.close()
+
+
+def test_bootstrap_restores_open_frame_health_code() -> None:
+    from services.vision.bootstrap import build_visual_runtime
+    from services.vision.frame_health import FrameHealthCode
+
+    resources = build_visual_runtime(
+        settings(),
+        initial_frame_health_code=FrameHealthCode.SOURCE_OFFLINE,
+    )
+    try:
+        assert resources.frame_health.open_code is FrameHealthCode.SOURCE_OFFLINE
+    finally:
+        resources.close()

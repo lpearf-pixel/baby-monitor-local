@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import argparse
+import os
 import signal
 import sys
 import threading
@@ -13,7 +14,11 @@ if str(ROOT) not in sys.path:
 
 from packages.contracts.settings import AppSettings
 from services.environment.local_env import load_local_env_file
+from services.storage.visual_health import VisualHealthStore
 from services.vision.bootstrap import build_visual_runtime
+from services.vision.frame_health import FrameHealthTransition
+from services.vision.frame_health_pipeline import VisualFrameHealthPipeline
+from services.vision.notification_config import build_visual_health_notifier
 from services.vision.realtime_status import (
     RealtimeVisualStatusPublisher,
     RealtimeVisualStatusWriter,
@@ -47,6 +52,33 @@ def main(argv: list[str] | None = None) -> int:
         settings = AppSettings.load(args.settings)
         if not settings.visual.enabled:
             return 0
+        data_dir = settings.app.data_dir
+        if not data_dir.is_absolute():
+            data_dir = ROOT / data_dir
+        visual_health_store = VisualHealthStore(
+            data_dir / "visual-health.sqlite3"
+        )
+        visual_health_store.migrate()
+        try:
+            visual_health_notifier = build_visual_health_notifier(
+                settings,
+                os.environ,
+            )
+        except ValueError:
+            visual_health_notifier = None
+            print("visual_health_notification_disabled", file=sys.stderr)
+        visual_health_pipeline = VisualFrameHealthPipeline.restore(
+            store=visual_health_store,
+            notifier=visual_health_notifier,
+        )
+
+        def handle_frame_health(transition: FrameHealthTransition) -> None:
+            try:
+                visual_health_pipeline.handle(transition)
+            except Exception:
+                print("visual_health_pipeline_failed", file=sys.stderr)
+                raise
+
         status_publisher = RealtimeVisualStatusPublisher(
             RealtimeVisualStatusWriter(
                 ROOT / "runtime/status/realtime-visual.json"
@@ -58,6 +90,8 @@ def main(argv: list[str] | None = None) -> int:
         )
         resources = build_visual_runtime(
             settings,
+            initial_frame_health_code=visual_health_pipeline.open_code,
+            on_frame_health=handle_frame_health,
             on_realtime_status=status_publisher,
         )
     except Exception:

@@ -505,7 +505,14 @@ class VisualWorker:
     ) -> None:
         if transition is None:
             return
-        self._on_frame_health(transition)
+        try:
+            self._on_frame_health(transition)
+        except Exception:
+            self._health = replace(
+                self._health,
+                state="degraded",
+                code="frame_health_callback_failed",
+            )
         if transition.code is FrameHealthCode.RECONNECT_REQUIRED:
             self._reconnect_requested = True
             self._health = replace(

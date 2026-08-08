@@ -149,6 +149,24 @@ def test_open_failure_recovers_only_after_changed_frames_span_twenty_seconds() -
     assert monitor.open_code is None
 
 
+def test_restored_open_failure_requires_fresh_twenty_second_recovery() -> None:
+    module = health_module()
+    monitor = module.VisualFrameHealthMonitor(
+        open_code=module.FrameHealthCode.SOURCE_OFFLINE
+    )
+
+    assert monitor.observe(textured(seconds=0), monotonic_now=0.0) is None
+    assert (
+        monitor.observe(textured(seconds=10, inverted=True), monotonic_now=10.0)
+        is None
+    )
+    recovered = monitor.observe(textured(seconds=20), monotonic_now=20.0)
+
+    assert recovered.code is module.FrameHealthCode.RECOVERED
+    assert recovered.duration_seconds == 20.0
+    assert monitor.open_code is None
+
+
 def test_health_monitor_rejects_naive_or_decreasing_time_before_mutation() -> None:
     module = health_module()
     monitor = module.VisualFrameHealthMonitor()

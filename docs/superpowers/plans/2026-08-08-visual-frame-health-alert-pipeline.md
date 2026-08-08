@@ -157,7 +157,7 @@ git commit -m "feat: notify visual frame health incidents"
 - Consumes: `on_frame_health: Callable[[FrameHealthTransition], None]` passed through `build_visual_runtime` and the pipeline built from `settings.app.data_dir / "visual-health.sqlite3"`.
 - Produces: a production worker that stores/notifies frame-health transitions and continues running if the callback raises.
 
-- [ ] **Step 1: Write failing wiring and isolation tests**
+- [x] **Step 1: Write failing wiring and isolation tests**
 
 ```python
 worker = build_worker(on_frame_health=lambda _transition: (_ for _ in ()).throw(RuntimeError()))
@@ -167,13 +167,13 @@ assert worker.health().code == "source_offline"
 
 Also prove bootstrap forwards the callback, the CLI migrates/restores the visual health store before running, relative `data_dir` resolves beneath repository root, and startup retries a pending notification without inventing a second incident.
 
-- [ ] **Step 2: Run tests to verify RED**
+- [x] **Step 2: Run tests to verify RED**
 
 Run: `.venv-alpha/bin/python -m pytest -q tests/vision/test_bootstrap.py tests/vision/test_worker.py tests/tools/test_run_visual_worker.py`
 
 Expected: at least the callback-isolation and production-wiring assertions fail.
 
-- [ ] **Step 3: Implement minimal production wiring**
+- [x] **Step 3: Implement minimal production wiring**
 
 ```python
 try:
@@ -185,7 +185,7 @@ except Exception:
 
 Build the store, notifier, and restored pipeline in `run_visual_worker.main`; pass `pipeline.handle` through `build_visual_runtime(on_frame_health=...)`. Emit only fixed stderr status codes when persistence or notification setup fails.
 
-- [ ] **Step 4: Run the complete focused gate**
+- [x] **Step 4: Run the complete focused gate**
 
 Run: `.venv-alpha/bin/python -m pytest -q tests/storage/test_visual_health_store.py tests/vision/test_frame_health_pipeline.py tests/notifications/test_visual_ntfy.py tests/vision/test_notification_config.py tests/vision/test_frame_health.py tests/vision/test_bootstrap.py tests/vision/test_worker.py tests/tools/test_run_visual_worker.py tests/notifications/test_ntfy.py`
 
@@ -195,7 +195,7 @@ Run: `bash -n tools/start_alpha.sh tools/install_alpha_macos.sh && git diff --ch
 
 Expected: exit 0.
 
-- [ ] **Step 5: Commit the production wiring**
+- [x] **Step 5: Commit the production wiring**
 
 ```bash
 git add services/vision/bootstrap.py services/vision/worker.py tools/run_visual_worker.py tests/vision/test_bootstrap.py tests/vision/test_worker.py tests/tools/test_run_visual_worker.py

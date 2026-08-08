@@ -55,14 +55,24 @@ class _FrameFingerprint:
 
 
 class VisualFrameHealthMonitor:
-    def __init__(self) -> None:
+    def __init__(
+        self,
+        *,
+        open_code: FrameHealthCode | None = None,
+    ) -> None:
+        if open_code not in {
+            None,
+            FrameHealthCode.SOURCE_OFFLINE,
+            FrameHealthCode.FRAME_FROZEN,
+        }:
+            raise ValueError("open_code must identify an open frame incident")
         self._last_monotonic: float | None = None
         self._last_fingerprint: _FrameFingerprint | None = None
         self._identical_since: float | None = None
         self._reconnect_fingerprint: _FrameFingerprint | None = None
         self._reconnect_duration = 0.0
         self._failure_since: float | None = None
-        self._open_code: FrameHealthCode | None = None
+        self._open_code = open_code
         self._recovery_since: float | None = None
         self._recovery_first: _FrameFingerprint | None = None
         self._recovery_changed = False

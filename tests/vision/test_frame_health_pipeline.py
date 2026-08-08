@@ -65,12 +65,14 @@ def test_open_survives_restart_without_duplicate_incident_or_notification(
     opened = transition(FrameHealthCode.SOURCE_OFFLINE, 60.0)
 
     first.handle(opened)
+    assert first.open_code is FrameHealthCode.SOURCE_OFFLINE
     restored = VisualFrameHealthPipeline.restore(
         store=store,
         notifier=notifier,
         clock=clock(NOW + timedelta(seconds=120)),
     )
     restored.handle(opened)
+    assert restored.open_code is FrameHealthCode.SOURCE_OFFLINE
 
     incidents = store.incidents()
     assert len(incidents) == 1
@@ -121,6 +123,7 @@ def test_recovery_updates_and_notifies_the_existing_incident_once(
 
     pipeline.handle(transition(FrameHealthCode.SOURCE_OFFLINE, 60.0))
     pipeline.handle(transition(FrameHealthCode.RECOVERED, 20.0))
+    assert pipeline.open_code is None
     pipeline.handle(transition(FrameHealthCode.RECOVERED, 30.0))
 
     incidents = store.incidents()
