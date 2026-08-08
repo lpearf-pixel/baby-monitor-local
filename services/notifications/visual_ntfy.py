@@ -127,4 +127,3 @@ class NtfyVisualHealthNotifier:
                 else ["warning", "camera"]
             ),
         }
-

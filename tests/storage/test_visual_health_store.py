@@ -70,4 +70,3 @@ def test_incident_contract_rejects_invalid_recovery_and_naive_time() -> None:
         incident(state="recovered")
     with pytest.raises(ValidationError, match="timezone-aware"):
         incident(opened_at=datetime(2026, 8, 8, 18, 0))
-

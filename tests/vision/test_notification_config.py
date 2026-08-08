@@ -45,4 +45,3 @@ def test_builder_uses_runtime_topic_and_referenced_token_without_dashboard_url()
 def test_builder_fails_closed_for_public_example_topic() -> None:
     with pytest.raises(ValueError, match="private ntfy topic"):
         build_visual_health_notifier(settings(), {})
-

@@ -18,4 +18,3 @@ def build_visual_health_notifier(
         topic=topic,
         token=environ.get(token_name) or None,
     )
-

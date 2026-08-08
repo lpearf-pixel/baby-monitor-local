@@ -131,4 +131,3 @@ def test_invalid_transition_kind_is_rejected_without_network() -> None:
 
     assert result.code == "payload_rejected"
     assert opener.requests == []
-
