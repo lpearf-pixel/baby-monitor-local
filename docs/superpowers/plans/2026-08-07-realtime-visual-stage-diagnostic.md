@@ -28,10 +28,10 @@
 - Produces: `format_stage(name: str, values: Sequence[float]) -> str`
 - Produces: `main(argv: list[str] | None = None) -> int`
 
-- [ ] Write tests with literal timing samples proving median, nearest-rank P95, maximum, fixed stage ordering, and a redacted stable failure code.
-- [ ] Run `./.venv/bin/pytest tests/tools/test_realtime_visual_diagnostic.py -q` and confirm failure because the module is absent.
-- [ ] Implement the minimal timing helpers and one-frame diagnostic pipeline described by the spec.
-- [ ] Rerun the focused test and confirm PASS.
+- [x] Write tests with literal timing samples proving median, nearest-rank P95, maximum, fixed stage ordering, and a redacted stable failure code.
+- [x] Run `./.venv-alpha/bin/python -m pytest tests/tools/test_realtime_visual_diagnostic.py -q` and confirm failure because the module is absent.
+- [x] Implement the minimal timing helpers and one-frame diagnostic pipeline described by the spec.
+- [x] Rerun the focused test and confirm PASS.
 
 ### Task 2: macOS lifecycle wrapper and Make target
 
@@ -44,18 +44,18 @@
 - Consumes: `tools/realtime_visual_diagnostic.py --settings runtime/settings.yaml`
 - Produces: `make alpha-visual-diagnostic`
 
-- [ ] Write subprocess tests with fake `launchctl`, fake Python, and a fake plist proving bootout before diagnostic and restoration after both exit 0 and nonzero.
-- [ ] Run the deploy test and confirm failure because the wrapper and Make target are absent.
-- [ ] Implement an EXIT-trapped ASCII Bash 3.2 wrapper and add the PHONY/help/target entries.
-- [ ] Rerun the deploy test and confirm PASS.
+- [x] Write subprocess tests with fake `launchctl`, fake Python, and a fake plist proving bootout before diagnostic and restoration after both exit 0 and nonzero.
+- [x] Run the deploy test and confirm failure because the wrapper and Make target are absent.
+- [x] Implement an EXIT-trapped ASCII Bash 3.2 wrapper and add the PHONY/help/target entries.
+- [x] Rerun the deploy test and confirm PASS.
 
 ### Task 3: Focused verification and delivery
 
 **Files:**
 - Modify only the task files above if verification exposes a defect.
 
-- [ ] Run focused pytest for both new test files and related visual deployment tests.
-- [ ] Run `bash -n tools/run_realtime_visual_diagnostic.sh`.
-- [ ] Run Python compilation, ASCII/LF checks, and `make -n alpha-visual-diagnostic`.
-- [ ] Review `git diff --check`, file scope, privacy terms, and repository status.
-- [ ] Commit the focused implementation and push only `codex/xiaomi-alpha-visual-risk-core`; do not merge or modify `main`.
+- [x] Run focused pytest for both new test files and related visual deployment tests.
+- [x] Run `bash -n tools/run_realtime_visual_diagnostic.sh`.
+- [x] Run Python compilation, ASCII/LF checks, and `make -n alpha-visual-diagnostic`.
+- [x] Review `git diff --check`, file scope, privacy terms, and repository status.
+- [x] Commit the focused implementation and push only `codex/xiaomi-alpha-visual-risk-core`; do not merge or modify `main`.
