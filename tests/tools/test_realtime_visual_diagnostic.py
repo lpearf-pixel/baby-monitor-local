@@ -56,6 +56,66 @@ def test_main_redacts_unexpected_live_diagnostic_failure(
     assert "192.168" not in captured.out
 
 
+def test_main_reports_stable_stage_failure_without_exception_details(
+    capsys: pytest.CaptureFixture[str],
+) -> None:
+    from tools.realtime_visual_diagnostic import DiagnosticStageError, main
+
+    def fail(_settings: Path) -> dict[str, tuple[float, ...]]:
+        raise DiagnosticStageError(
+            "pose_inference_failed",
+            RuntimeError("/Users/private/nursery.jpg at 192.168.2.6"),
+        )
+
+    exit_code = main(
+        ["--settings", "runtime/settings.yaml"],
+        run=fail,
+    )
+
+    captured = capsys.readouterr()
+    assert exit_code == 2
+    assert captured.out == "diagnostic=FAIL reason=pose_inference_failed\n"
+    assert captured.err == ""
+    assert "private" not in captured.out
+    assert "192.168" not in captured.out
+
+
+def test_run_stage_converts_dependency_failure_to_stable_reason() -> None:
+    from tools.realtime_visual_diagnostic import (
+        DiagnosticStageError,
+        _run_stage,
+    )
+
+    def fail() -> None:
+        raise RuntimeError("private dependency detail")
+
+    with pytest.raises(DiagnosticStageError) as captured:
+        _run_stage("frame_capture_failed", fail)
+
+    assert captured.value.reason == "frame_capture_failed"
+    assert str(captured.value) == "frame_capture_failed"
+
+
+def test_run_stage_preserves_existing_stage_failure() -> None:
+    from tools.realtime_visual_diagnostic import (
+        DiagnosticStageError,
+        _run_stage,
+    )
+
+    existing = DiagnosticStageError(
+        "model_backend_unavailable",
+        RuntimeError("private dependency detail"),
+    )
+
+    with pytest.raises(DiagnosticStageError) as captured:
+        _run_stage(
+            "semantic_backend_failed",
+            lambda: (_ for _ in ()).throw(existing),
+        )
+
+    assert captured.value is existing
+
+
 def test_main_prints_complete_report_from_injected_live_runner(
     capsys: pytest.CaptureFixture[str],
 ) -> None:

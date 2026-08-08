@@ -43,6 +43,22 @@ DiagnosticSamples = Mapping[str, Sequence[float]]
 LiveRunner = Callable[[Path], DiagnosticSamples]
 
 
+class DiagnosticStageError(RuntimeError):
+    def __init__(self, reason: str, cause: Exception) -> None:
+        super().__init__(reason)
+        self.reason = reason
+        self.__cause__ = cause
+
+
+def _run_stage(reason: str, action: Callable[[], Any]) -> Any:
+    try:
+        return action()
+    except DiagnosticStageError:
+        raise
+    except Exception as exc:
+        raise DiagnosticStageError(reason, exc) from exc
+
+
 def nearest_rank_percentile(values: Sequence[float], percentile: float) -> float:
     if not values or not 0 < percentile <= 1:
         raise ValueError("diagnostic_samples_invalid")
@@ -100,9 +116,15 @@ def _pose_maps(outputs: Mapping[Any, Any]) -> tuple[np.ndarray, np.ndarray]:
 
 
 def run_live_diagnostic(settings_path: Path) -> DiagnosticSamples:
-    settings = AppSettings.load(settings_path)
+    settings = _run_stage(
+        "settings_load_failed",
+        lambda: AppSettings.load(settings_path),
+    )
     if not settings.visual.enabled or not settings.visual.realtime.enabled:
-        raise ValueError("diagnostic_unavailable")
+        raise DiagnosticStageError(
+            "diagnostic_unavailable",
+            ValueError("visual realtime disabled"),
+        )
 
     source = Go2RtcAnalysisFrameSource(
         base_url=(
@@ -113,60 +135,105 @@ def run_live_diagnostic(settings_path: Path) -> DiagnosticSamples:
     )
     frames = source.iter_frames(timeout_seconds=8)
     try:
-        captured = next(frames)
+        captured = _run_stage("frame_capture_failed", lambda: next(frames))
     finally:
         frames.close()
 
-    policy = VisionFramePolicy(
-        bed_zone=settings.visual.bed_zone,
-        privacy_masks=settings.visual.privacy_masks,
+    policy = _run_stage(
+        "frame_policy_failed",
+        lambda: VisionFramePolicy(
+            bed_zone=settings.visual.bed_zone,
+            privacy_masks=settings.visual.privacy_masks,
+        ),
     )
-    policy_times = _measure(lambda: policy.prepare(captured), 8)
-    prepared = policy.prepare(captured)
+    policy_times = _run_stage(
+        "frame_policy_failed",
+        lambda: _measure(lambda: policy.prepare(captured), 8),
+    )
+    prepared = _run_stage(
+        "frame_policy_failed",
+        lambda: policy.prepare(captured),
+    )
 
     encoded = np.frombuffer(prepared.jpeg, dtype=np.uint8)
     decode = lambda: cv2.imdecode(encoded, cv2.IMREAD_COLOR)
-    decode_times = _measure(decode, 20)
-    bgr = decode()
+    decode_times = _run_stage(
+        "jpeg_decode_failed",
+        lambda: _measure(decode, 20),
+    )
+    bgr = _run_stage("jpeg_decode_failed", decode)
     if bgr is None:
-        raise ValueError("diagnostic_frame_invalid")
+        raise DiagnosticStageError(
+            "jpeg_decode_failed",
+            ValueError("diagnostic frame invalid"),
+        )
 
     model_root = settings.app.data_dir
     if not model_root.is_absolute():
         model_root = ROOT / model_root
-    backend = build_realtime_model_backend(
-        model_root / "models/openvino-2025.4.1"
+    backend = _run_stage(
+        "model_backend_unavailable",
+        lambda: build_realtime_model_backend(
+            model_root / "models/openvino-2025.4.1"
+        ),
     )
     if not isinstance(backend, OpenVinoYuNetBackend):
-        raise ValueError("model_backend_unavailable")
+        raise DiagnosticStageError(
+            "model_backend_unavailable",
+            ValueError("model backend unavailable"),
+        )
 
     face_detector = backend._face_detector
-    face_detector.setInputSize((bgr.shape[1], bgr.shape[0]))
-    for _ in range(3):
-        face_detector.detect(bgr)
-    face_times = _measure(lambda: face_detector.detect(bgr), 20)
+    def measure_face() -> tuple[float, ...]:
+        face_detector.setInputSize((bgr.shape[1], bgr.shape[0]))
+        for _ in range(3):
+            face_detector.detect(bgr)
+        return _measure(lambda: face_detector.detect(bgr), 20)
 
-    preprocess_times = _measure(lambda: _pose_tensor(bgr), 20)
-    tensor = _pose_tensor(bgr)
+    face_times = _run_stage("yunet_face_failed", measure_face)
+
+    preprocess_times = _run_stage(
+        "pose_preprocess_failed",
+        lambda: _measure(lambda: _pose_tensor(bgr), 20),
+    )
+    tensor = _run_stage("pose_preprocess_failed", lambda: _pose_tensor(bgr))
     pose_model = backend._pose_model
-    for _ in range(3):
-        pose_model([tensor])
-    inference_times = _measure(lambda: pose_model([tensor]), 20)
+    def measure_pose_inference() -> tuple[float, ...]:
+        for _ in range(3):
+            pose_model([tensor])
+        return _measure(lambda: pose_model([tensor]), 20)
 
-    pafs, heatmaps = _pose_maps(pose_model([tensor]))
-    decode_pose_times = _measure(lambda: decode_pose_maps(pafs, heatmaps), 20)
+    inference_times = _run_stage(
+        "pose_inference_failed",
+        measure_pose_inference,
+    )
 
-    for _ in range(3):
-        backend.infer(bgr)
-    backend_times = _measure(lambda: backend.infer(bgr), 12)
+    pafs, heatmaps = _run_stage(
+        "pose_decode_failed",
+        lambda: _pose_maps(pose_model([tensor])),
+    )
+    decode_pose_times = _run_stage(
+        "pose_decode_failed",
+        lambda: _measure(lambda: decode_pose_maps(pafs, heatmaps), 20),
+    )
+
+    def measure_backend() -> tuple[float, ...]:
+        for _ in range(3):
+            backend.infer(bgr)
+        return _measure(lambda: backend.infer(bgr), 12)
+
+    backend_times = _run_stage("semantic_backend_failed", measure_backend)
 
     analyzer = RealtimeVisualAnalyzer(model_backend=backend)
-    analyzer_times = _measure(
-        lambda: analyzer.analyze(
-            prepared,
-            monotonic_now=time.monotonic(),
+    analyzer_times = _run_stage(
+        "production_analyzer_failed",
+        lambda: _measure(
+            lambda: analyzer.analyze(
+                prepared,
+                monotonic_now=time.monotonic(),
+            ),
+            12,
         ),
-        12,
     )
 
     return {
@@ -197,6 +264,9 @@ def main(
     args = parse_args(argv)
     try:
         print(render_report(run(args.settings)))
+    except DiagnosticStageError as exc:
+        print(f"diagnostic=FAIL reason={exc.reason}")
+        return 2
     except Exception:
         print("diagnostic=FAIL reason=diagnostic_failed")
         return 2
