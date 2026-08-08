@@ -3,6 +3,7 @@ from __future__ import annotations
 import json
 import time
 from collections.abc import Callable
+from urllib.error import HTTPError
 from urllib.request import Request
 
 from services.notifications.ntfy import (
@@ -82,6 +83,8 @@ class NtfyVisualHealthNotifier:
             try:
                 with self._opener(request, self._timeout_seconds) as response:
                     status = int(getattr(response, "status", 0))
+            except HTTPError as error:
+                status = error.code
             except Exception:
                 status = 0
             if 200 <= status < 300:
@@ -120,7 +123,7 @@ class NtfyVisualHealthNotifier:
             "topic": self._topic,
             "title": "Baby Monitor Local 摄像头提醒",
             "message": message,
-            "priority": "default" if recovered else "max",
+            "priority": 3 if recovered else 5,
             "tags": (
                 ["white_check_mark", "camera"]
                 if recovered

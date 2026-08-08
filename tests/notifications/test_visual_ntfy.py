@@ -4,6 +4,7 @@ from contextlib import AbstractContextManager
 from datetime import datetime, timedelta, timezone
 import json
 from typing import BinaryIO
+from urllib.error import HTTPError
 
 from services.notifications.visual_ntfy import NtfyVisualHealthNotifier
 from services.storage.visual_health import StoredVisualHealthIncident
@@ -72,7 +73,7 @@ def test_open_payload_contains_only_fixed_privacy_safe_fields() -> None:
     payload = json.loads(request.data.decode())
     assert set(payload) == {"topic", "title", "message", "priority", "tags"}
     assert payload["topic"] == "private-topic-name"
-    assert payload["priority"] == "max"
+    assert payload["priority"] == 5
     assert payload["tags"] == ["warning", "camera"]
     assert "source_offline" in payload["message"]
     assert "opened" in payload["message"]
@@ -97,7 +98,7 @@ def test_recovery_payload_uses_recovery_state_and_lower_priority() -> None:
 
     payload = json.loads(opener.requests[0].data.decode())
     assert result.delivered is True
-    assert payload["priority"] == "default"
+    assert payload["priority"] == 3
     assert payload["tags"] == ["white_check_mark", "camera"]
     assert "recovered" in payload["message"]
     assert "20" in payload["message"]
@@ -115,7 +116,18 @@ def test_network_and_server_failures_retry_with_bounded_delays() -> None:
 
 
 def test_client_rejection_does_not_retry() -> None:
-    opener = RecordingOpener([403, 200])
+    opener = RecordingOpener(
+        [
+            HTTPError(
+                url="https://ntfy.example.test",
+                code=400,
+                msg="Bad Request",
+                hdrs=None,
+                fp=None,
+            ),
+            200,
+        ]
+    )
 
     result = notifier(opener).notify(incident(), "opened")
 
