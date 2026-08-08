@@ -96,7 +96,7 @@ git commit -m "feat: persist visual frame health incidents"
 - Consumes: `StoredVisualHealthIncident`, transition kind `opened|recovered`, `NTFY_BASE_URL`, configured private topic, and token referenced by `settings.notifications.ntfy_token_env`.
 - Produces: `NtfyVisualHealthNotifier.notify(...) -> NotificationResult` and `build_visual_health_notifier(settings, environ)`.
 
-- [ ] **Step 1: Write failing notification tests**
+- [x] **Step 1: Write failing notification tests**
 
 ```python
 result = notifier.notify(incident, "opened")
@@ -109,13 +109,13 @@ assert "192.168." not in json.dumps(payload)
 
 Cover open/recovered wording, fixed tags and priorities, optional bearer token, 2xx success, bounded retry for transport/5xx, no retry for non-429 4xx, invalid code rejection, private-topic placeholder rejection, and operation without a remote Dashboard URL.
 
-- [ ] **Step 2: Run tests to verify RED**
+- [x] **Step 2: Run tests to verify RED**
 
 Run: `.venv-alpha/bin/python -m pytest -q tests/notifications/test_visual_ntfy.py tests/vision/test_notification_config.py`
 
 Expected: collection fails because the new modules do not exist.
 
-- [ ] **Step 3: Implement the adapter and configuration builder**
+- [x] **Step 3: Implement the adapter and configuration builder**
 
 ```python
 def build_visual_health_notifier(settings, environ):
@@ -130,13 +130,13 @@ def build_visual_health_notifier(settings, environ):
 
 Reuse `NotificationResult` and the existing credential-free HTTPS validator. Do not require or add a Dashboard click URL in this slice.
 
-- [ ] **Step 4: Run focused notification tests**
+- [x] **Step 4: Run focused notification tests**
 
 Run: `.venv-alpha/bin/python -m pytest -q tests/notifications/test_visual_ntfy.py tests/vision/test_notification_config.py tests/notifications/test_ntfy.py`
 
 Expected: all tests pass.
 
-- [ ] **Step 5: Commit the notification slice**
+- [x] **Step 5: Commit the notification slice**
 
 ```bash
 git add services/notifications/visual_ntfy.py services/vision/notification_config.py tests/notifications/test_visual_ntfy.py tests/vision/test_notification_config.py
