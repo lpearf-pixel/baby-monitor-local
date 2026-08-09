@@ -42,8 +42,10 @@
   privacy-safe ntfy delivery are deployed on the Intel i9. A fresh controlled
   `source_offline` event delivered one open alert, recovered after the fixed
   changing-frame window, delivered one recovery alert, and persisted both delivery
-  markers. Gauge and real-time-metrics continuity during an outage still needs an
-  explicit side-service check.
+  markers. The outage window also contained five gauge records; the gauge,
+  environment-watchdog, and visual launchd units stayed in their first run without
+  exiting, real-time metrics remained available, and the Alpha health endpoint was
+  healthy after recovery without a full-stack restart.
 - Fresh R3 software gate on 2026-08-06: 451 Python tests and 70 Node browser tests
   passed; Python compilation, shell syntax, `git diff --check`, tracked runtime/media
   boundaries, GitHub-token candidates and private-key markers passed. This remains a

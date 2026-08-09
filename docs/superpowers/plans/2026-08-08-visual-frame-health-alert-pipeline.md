@@ -202,15 +202,16 @@ git add services/vision/bootstrap.py services/vision/worker.py tools/run_visual_
 git commit -m "feat: activate visual frame health alerts"
 ```
 
-- [ ] **Step 6: Record the Mac acceptance boundary**
+- [x] **Step 6: Record the Mac acceptance boundary**
 
 On the i9 Mac, verify one controlled source outage lasts at least 60 seconds, produces one ntfy alert, reconnects without restarting the full Alpha stack, and produces one recovery notification only after 20 seconds of changing valid frames. Keep Dashboard video, gauge sampling, and real-time metrics visible during the test. Do not simulate a Baby posture or face-risk event in this slice.
 
-2026-08-08 partial i9 evidence: a fresh controlled outage opened one
+2026-08-08 i9 evidence: a fresh controlled outage opened one
 `source_offline` incident, delivered exactly one open notification, recovered after
 valid changing frames, and delivered exactly one recovery notification. The persisted
 record ended in `recovered` with both delivery markers set. This closes the visual
 health notification path, including the corrected numeric ntfy priority mapping. The
-same run did not capture explicit continuity evidence for gauge sampling and real-time
-metrics, so this step remains open until those independent services are checked during
-a controlled outage. No posture or face-risk event was simulated.
+same outage window contained five gauge records. After recovery, the gauge,
+environment-watchdog, and visual launchd units each reported one run and no exit;
+real-time metrics remained available and the Alpha health endpoint was healthy. The
+full Alpha stack was not restarted. No posture or face-risk event was simulated.
