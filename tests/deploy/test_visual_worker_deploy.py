@@ -30,7 +30,7 @@ def test_visual_launch_agent_is_independent_and_redacted() -> None:
     assert payload["Label"] == "com.babymonitor.visual"
     assert payload["KeepAlive"] == {"SuccessfulExit": False}
     assert payload["RunAtLoad"] is True
-    assert payload["ProcessType"] == "Background"
+    assert payload["ProcessType"] == "Interactive"
     arguments = payload["ProgramArguments"]
     assert any(str(value).endswith("tools/run_visual_worker.py") for value in arguments)
     assert "--settings" in arguments

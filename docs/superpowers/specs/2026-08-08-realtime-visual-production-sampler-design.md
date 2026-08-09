@@ -2,7 +2,7 @@
 
 **日期：** 2026-08-08
 
-**状态：** 已实现，待 i9 实机 10 分钟验收
+**状态：** 已实现；已定位 launchd 调度瓶颈，待 i9 应用修复并复验
 
 **阶段：** R3/R3.5 i9 实机性能门
 
@@ -93,3 +93,29 @@ Make 入口不暴露缩短生产门的快捷参数。
 focused 门禁包括采样器单元测试、部署命令测试、Python 编译、`make -n`、
 `git diff --check` 和敏感信息扫描。首次真实 10 分钟运行只在 i9 上执行；本地自动化
 通过仍不能宣称实机性能门或家庭场景门通过。
+
+## 7. i9 生产失败、根因对照与调度修复
+
+2026-08-09，i9 的完整 600 秒生产采样得到 60 个有效样本，全部处于 1 FPS；窗口
+P50 为 `398.432ms`，最差滚动 P95 和最大值均为 `488.741ms`，模型状态始终为
+`available`，最终以 `one_fps_observed` 失败。隔离分阶段诊断的 analyzer 总耗时
+P95 为 `88.657ms`，整机同时保有大量空闲 CPU 且没有 swap，因此没有通过放宽门限、
+屏蔽模型或降低分析质量处理该失败。
+
+保留同一代码、配置、模型、连续真实帧和指标口径，仅把 worker 从已注册的
+`ProcessType=Background` launchd job 改为当前终端前台运行。该单变量对照达到
+5 FPS，且 P95 不超过 `180ms`；恢复正式 `Background` job 后又稳定降至 1 FPS、
+P50 约 400ms。该证据把生产瓶颈定位到 visual worker 的 launchd 后台调度，而不是
+analyzer、模型可用性或连续帧本身。
+
+正式修复把且只把 `com.babymonitor.visual` 的 `ProcessType` 改为 `Interactive`。
+`make alpha-visual-launchd-update` 在替换前渲染并校验 plist，要求旧 job 已注册，保留
+`com.babymonitor.visual.plist.r3-background.bak` 且不覆盖既有备份，随后按
+`bootout → 原子替换 → bootstrap → kickstart → print` 更新单个 job。任一停止后的
+步骤失败时，脚本恢复更新前 plist 并重新注册旧 job；固定输出不包含路径、launchd
+错误、运行配置或家庭数据。gauge、environment watchdog、Ollama tunnel、Dashboard、
+分析器、负载控制器和性能门限均不变。
+
+软件回归和模拟 launchd 故障只能证明更新/回滚契约，不能证明 i9 已安装配置。
+i9 应用修复后先连续观察 3 分钟，确认 5 FPS 且 P95≤`180ms`；服务恢复和短窗指标
+稳定后，才重新运行完整 10 分钟 `make alpha-visual-performance` 关闭本性能门。

@@ -38,6 +38,12 @@
   ring sampling, and immediate urgent review scheduling are implemented locally.
   Missing models preserve motion, scene health and regular Qwen review while semantic
   tracks remain unavailable; the fast path cannot open or recover a risk alert.
+- Realtime visual scheduling: the i9 production gate failed with 60/60 samples at
+  1 FPS while the same worker run in the foreground reached 5 FPS within the 180 ms
+  P95 budget. The visual launchd template now uses `Interactive`, and a dedicated
+  update command validates, backs up, atomically replaces, verifies, and rolls back
+  only `com.babymonitor.visual`. The i9 installed job still requires the short
+  post-update observation and full 10-minute performance gate.
 - Visual frame-health alerts: the restart-safe SQLite incident pipeline and
   privacy-safe ntfy delivery are deployed on the Intel i9. A fresh controlled
   `source_offline` event delivered one open alert, recovered after the fixed
@@ -56,11 +62,11 @@
   grouping rather than heatmap-peak counting; model/load health transitions,
   every-frame source health checks and blurred-camera watches have regression
   coverage. This remains synthetic software evidence, not an i9 household gate.
-- Next visual gate: explicitly install the pinned R3.5 models, add the reviewed
-  `analysis_realtime` profile to the preserved i9 runtime YAML, enable the private
-  realtime setting, install the restricted i9-to-M2 SSH bridge, configure the private
-  bed zone on i9, verify the real four-frame Qwen contract and P95 latency, and record
-  daylight/night/occlusion/adult/empty-bed candidates before R4 evidence and alerts.
+- Next visual gate: apply `make alpha-visual-launchd-update` on i9, observe the
+  redacted production metrics for 3 minutes, and rerun the full 10-minute performance
+  sampler. Then finish the restricted i9-to-M2 SSH bridge, private bed zone, real
+  four-frame Qwen contract and P95 latency, and record daylight/night/occlusion/adult/
+  empty-bed candidates before R4 evidence and alerts.
   The i9 environment calibration and 24-hour gate remain independent and unfinished.
 
 ## Pull request checkpoint

@@ -34,10 +34,13 @@ The repository baseline and environment implementation are complete. Do not rest
    parsing, timeout, degraded/recovery behavior, production worker composition and
    independent launchd lifecycle. Next install the restricted tunnel and private bed
    zone, then verify real response schema, P95 latency and household candidate scenes.
-5. R3.5 software complete locally: explicitly install and verify pinned local models,
-   review the preserved i9 runtime YAML before adding `analysis_realtime`, enable the
-   private setting, then measure 5/3/1 FPS, candidate latency and the seven required
-   household scenarios. Software tests do not establish household accuracy.
+5. R3.5 software complete locally. The first i9 10-minute gate failed at 1 FPS, while
+   the controlled foreground run reached 5 FPS within the 180 ms P95 budget and
+   isolated launchd `Background` scheduling as the bottleneck. Apply
+   `make alpha-visual-launchd-update`, observe redacted metrics for 3 minutes, then
+   rerun the complete 10-minute sampler before measuring candidate latency and the
+   seven required household scenarios. Software tests do not establish installed-i9
+   performance or household accuracy.
 6. Source-health ntfy open/recovery delivery and independent gauge/real-time service
    continuity passed one controlled i9 outage. Do not repeat a Baby posture or
    face-risk event for this completed gate.

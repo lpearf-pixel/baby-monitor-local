@@ -177,3 +177,22 @@ schema 解析、Shell 语法、Make dry-run、`git diff --check`、跟踪 runtim
 并验证四帧真实响应、冷/热加载、P95≤8秒、白天/黑暗/蚊帐/成人/空床/模拟遮挡、
 断开 M2 降级与恢复。R3 不保存事件媒体、不发送风险 ntfy、不提供 Dashboard
 反馈；这些属于 R4。本阶段不能宣称医疗监护、无人照护或家庭准确率已经通过。
+
+## Realtime visual launchd scheduling checkpoint
+
+2026-08-09，i9 完整生产采样连续 60 个快照全部为 1 FPS，P50 为 `398.432ms`、
+最差滚动 P95 为 `488.741ms`，模型始终 available。隔离分阶段 analyzer P95 为
+`88.657ms`，而保留同一 worker 参数、配置、模型、连续真实帧和指标口径的前台
+单变量实验达到 5 FPS 且 P95≤`180ms`；恢复 `ProcessType=Background` 后重新稳定
+在 1 FPS、P50 约 400ms。因此性能差异定位到 visual worker 的 launchd 后台调度。
+
+仓库把 visual job 单独改为 `Interactive`，没有修改 Ollama tunnel、gauge、watchdog、
+模型、分析器或 5/3/1 FPS 门限。新增 `make alpha-visual-launchd-update`：只在旧 visual
+job 已注册时执行，先校验新 plist、保留且不覆盖 `.r3-background.bak`，再替换并验证
+单个 job；激活失败会恢复更新前 plist 并重新注册旧 job。模拟 launchd 成功与失败
+路径已有 focused 回归，但 i9 尚需实际应用本提交，连续观察 3 分钟后再运行完整
+10 分钟性能门。本检查点不能替代家庭场景准确率或无人照护安全验收。
+
+本轮 focused 交付门禁为 `60 passed`；Python 编译、相关 Shell 语法、Make dry-run、
+plist 解析、ASCII/LF、`git diff --check` 和本轮新增敏感内容扫描均通过。该结果只
+证明软件配置与更新/回滚契约，不代表 i9 已部署或 10 分钟性能门已通过。
