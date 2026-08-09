@@ -3,7 +3,7 @@ PYTHON := ./.venv-alpha/bin/python
 BASH ?= /bin/bash
 .DEFAULT_GOAL := help
 
-.PHONY: help alpha-update alpha-install alpha-start alpha-stop alpha-restart alpha-status alpha-visual-status alpha-visual-diagnostic alpha-logs alpha-quality-hd alpha-quality-info alpha-quality-rollback alpha-source-check alpha-subtype-probe alpha-subtype-apply alpha-go2rtc-info alpha-go2rtc-rebuild alpha-go2rtc-rollback alpha-realtime-models-check alpha-realtime-models-install
+.PHONY: help alpha-update alpha-install alpha-start alpha-stop alpha-restart alpha-status alpha-visual-status alpha-visual-performance alpha-visual-diagnostic alpha-logs alpha-quality-hd alpha-quality-info alpha-quality-rollback alpha-source-check alpha-subtype-probe alpha-subtype-apply alpha-go2rtc-info alpha-go2rtc-rebuild alpha-go2rtc-rollback alpha-realtime-models-check alpha-realtime-models-install
 
 help:
 	@echo "Baby Monitor Local Alpha commands:"
@@ -14,6 +14,7 @@ help:
 	@echo "  make alpha-restart           Restart Alpha services"
 	@echo "  make alpha-status            Show branch, listeners and health"
 	@echo "  make alpha-visual-status     Show redacted visual worker and M2 bridge health"
+	@echo "  make alpha-visual-performance Run the 10-minute redacted performance gate"
 	@echo "  make alpha-visual-diagnostic Measure redacted realtime stage timings"
 	@echo "  make alpha-logs              Tail recent service logs"
 	@echo "  make alpha-quality-hd        Enable 720p MJPEG plus on-demand VideoToolbox HD"
@@ -165,6 +166,9 @@ alpha-visual-status:
 		echo "unreachable"; \
 	fi; \
 	exit "$$metrics_status"
+
+alpha-visual-performance:
+	@$(PYTHON) tools/realtime_visual_performance.py
 
 alpha-visual-diagnostic:
 	@$(BASH) tools/run_realtime_visual_diagnostic.sh
