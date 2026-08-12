@@ -486,3 +486,42 @@ def test_notification_delivery_and_rejection_are_terminal(tmp_path: Path) -> Non
     assert rejected.state == "rejected"
     assert rejected.result_code == "ntfy_rejected"
     assert rejected.dispatch_count == 1
+
+
+def test_later_stage_waits_for_earlier_pending_stage_of_same_event(
+    tmp_path: Path,
+) -> None:
+    store = VisualRiskEventStore(tmp_path / "events.sqlite3")
+    store.migrate()
+    open_face_event(store)
+    opened = store.queue_notification(
+        notification_id="notification-open",
+        event_id="event-face",
+        stage="risk_opened",
+        queued_at=NOW,
+    )
+    store.record_notification_result(
+        notification_id=opened.notification_id,
+        attempted_at=NOW,
+        result_code="ntfy_unavailable",
+        retry_at=NOW + timedelta(seconds=5),
+    )
+    store.queue_notification(
+        notification_id="notification-recovered",
+        event_id="event-face",
+        stage="risk_recovered",
+        queued_at=NOW + timedelta(seconds=1),
+    )
+
+    assert store.next_pending_notification(NOW + timedelta(seconds=1)) is None
+    assert store.next_pending_notification(
+        NOW + timedelta(seconds=5)
+    ).notification_id == "notification-open"
+    store.record_notification_result(
+        notification_id=opened.notification_id,
+        attempted_at=NOW + timedelta(seconds=5),
+        result_code="ok",
+    )
+    assert store.next_pending_notification(
+        NOW + timedelta(seconds=5)
+    ).notification_id == "notification-recovered"

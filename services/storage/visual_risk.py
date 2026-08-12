@@ -725,9 +725,27 @@ class VisualRiskEventStore:
         with self._connect() as connection:
             row = connection.execute(
                 """
-                SELECT * FROM visual_risk_notifications
-                WHERE state = 'pending' AND next_attempt_at <= ?
-                ORDER BY next_attempt_at, queued_at, notification_id
+                SELECT candidate.* FROM visual_risk_notifications AS candidate
+                WHERE candidate.state = 'pending'
+                    AND julianday(candidate.next_attempt_at) <= julianday(?)
+                    AND NOT EXISTS (
+                        SELECT 1
+                        FROM visual_risk_notifications AS earlier
+                        WHERE earlier.event_id = candidate.event_id
+                            AND earlier.state = 'pending'
+                            AND (
+                                julianday(earlier.queued_at)
+                                    < julianday(candidate.queued_at)
+                                OR (
+                                    julianday(earlier.queued_at)
+                                        = julianday(candidate.queued_at)
+                                    AND earlier.notification_id
+                                        < candidate.notification_id
+                                )
+                            )
+                    )
+                ORDER BY julianday(candidate.next_attempt_at),
+                    julianday(candidate.queued_at), candidate.notification_id
                 LIMIT 1
                 """,
                 (now.isoformat(),),
