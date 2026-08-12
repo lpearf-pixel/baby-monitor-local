@@ -95,12 +95,13 @@ class VisualRiskEventPipeline:
             snapshot_at=snapshot_at,
             open_risks=frozenset(event.risk_kind for event in open_events),
         )
-        self._log.emit(
-            "guardian.restore_completed",
-            observed_at=snapshot_at,
-            result="restored",
-            linked_event_count=len(snapshot.open_risks),
-        )
+        if snapshot.open_risks:
+            self._log.emit(
+                "guardian.restore_completed",
+                observed_at=snapshot_at,
+                result="restored",
+                linked_event_count=len(snapshot.open_risks),
+            )
         return snapshot
 
     def handle(self, transition: RiskTransition) -> None:

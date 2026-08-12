@@ -9,6 +9,8 @@ from services.vision.realtime_status import (
     RealtimeVisualMetricsSnapshot,
     RealtimeVisualStatusPublisher,
 )
+from packages.contracts.vision import VisualRiskKind
+from services.storage.visual_risk import VisualRiskEventStore
 
 
 class RecordingWorker:
@@ -99,6 +101,65 @@ def test_main_wires_real_status_writer_into_visual_runtime(
     assert table == ("visual_health_incidents",)
     assert callable(captured["on_frame_health"])
     assert captured["initial_frame_health_code"] is None
+    assert callable(captured["on_risk_transition"])
+    assert captured["initial_risk_snapshot"].open_risks == frozenset()
+    guardian_database = tmp_path / "runtime-data/events.sqlite3"
+    with sqlite3.connect(guardian_database) as connection:
+        table = connection.execute(
+            """
+            SELECT name FROM sqlite_master
+            WHERE type = 'table' AND name = 'visual_risk_events'
+            """
+        ).fetchone()
+    assert table == ("visual_risk_events",)
+
+
+def test_main_restores_open_guardian_event_into_visual_runtime(
+    tmp_path: Path,
+    monkeypatch,
+) -> None:
+    from datetime import UTC, datetime
+    from tools import run_visual_worker
+
+    data_dir = tmp_path / "runtime-data"
+    store = VisualRiskEventStore(data_dir / "events.sqlite3")
+    store.migrate()
+    store.open_event(
+        event_id="event-face",
+        risk_kind=VisualRiskKind.FACE_NOT_VISIBLE,
+        opened_at=datetime(2026, 8, 11, 12, 0, tzinfo=UTC),
+        confidence=0.82,
+        rule_version="visual-risk-v1",
+    )
+    resources = RecordingResources()
+    captured: dict[str, object] = {}
+    settings = SimpleNamespace(
+        visual=SimpleNamespace(enabled=True),
+        app=SimpleNamespace(data_dir=Path("runtime-data")),
+    )
+    monkeypatch.setattr(run_visual_worker, "ROOT", tmp_path)
+    monkeypatch.setattr(
+        run_visual_worker.AppSettings,
+        "load",
+        lambda _path: settings,
+    )
+
+    def build(_settings: object, **kwargs: object) -> RecordingResources:
+        captured.update(kwargs)
+        resources.worker.status_callback = kwargs["on_realtime_status"]
+        return resources
+
+    monkeypatch.setattr(run_visual_worker, "build_visual_runtime", build)
+    monkeypatch.setattr(
+        run_visual_worker,
+        "build_visual_health_notifier",
+        lambda _settings, _environ: None,
+    )
+
+    assert run_visual_worker.main(["--settings", str(tmp_path / "settings.yaml")]) == 0
+    assert captured["initial_risk_snapshot"].open_risks == frozenset(
+        {VisualRiskKind.FACE_NOT_VISIBLE}
+    )
 
 
 def test_main_flushes_final_status_when_resource_cleanup_fails(

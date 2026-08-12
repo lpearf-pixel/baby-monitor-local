@@ -5,6 +5,7 @@ import os
 import signal
 import sys
 import threading
+from datetime import datetime
 from pathlib import Path
 
 
@@ -15,10 +16,12 @@ if str(ROOT) not in sys.path:
 from packages.contracts.settings import AppSettings
 from services.environment.local_env import load_local_env_file
 from services.storage.visual_health import VisualHealthStore
+from services.storage.visual_risk import VisualRiskEventStore
 from services.vision.bootstrap import build_visual_runtime
 from services.vision.frame_health import FrameHealthTransition
 from services.vision.frame_health_pipeline import VisualFrameHealthPipeline
 from services.vision.notification_config import build_visual_health_notifier
+from services.vision.risk_event_pipeline import VisualRiskEventPipeline
 from services.vision.realtime_status import (
     RealtimeVisualStatusPublisher,
     RealtimeVisualStatusWriter,
@@ -71,6 +74,15 @@ def main(argv: list[str] | None = None) -> int:
             store=visual_health_store,
             notifier=visual_health_notifier,
         )
+        visual_risk_store = VisualRiskEventStore(data_dir / "events.sqlite3")
+        visual_risk_store.migrate()
+        visual_risk_pipeline = VisualRiskEventPipeline(
+            store=visual_risk_store,
+            stream=sys.stderr,
+        )
+        initial_risk_snapshot = visual_risk_pipeline.restore_snapshot(
+            datetime.now().astimezone()
+        )
 
         def handle_frame_health(transition: FrameHealthTransition) -> None:
             try:
@@ -91,7 +103,9 @@ def main(argv: list[str] | None = None) -> int:
         resources = build_visual_runtime(
             settings,
             initial_frame_health_code=visual_health_pipeline.open_code,
+            initial_risk_snapshot=initial_risk_snapshot,
             on_frame_health=handle_frame_health,
+            on_risk_transition=visual_risk_pipeline.handle,
             on_realtime_status=status_publisher,
         )
     except Exception:

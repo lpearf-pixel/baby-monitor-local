@@ -5,6 +5,7 @@ from concurrent.futures import ThreadPoolExecutor
 from dataclasses import dataclass, field
 
 from packages.contracts.settings import AppSettings
+from packages.contracts.vision import RiskSnapshot, RiskTransition
 from services.stream.frame_source import Go2RtcAnalysisFrameSource
 from services.vision.frame_health import (
     FrameHealthCode,
@@ -54,7 +55,9 @@ def build_visual_runtime(
     settings: AppSettings,
     *,
     initial_frame_health_code: FrameHealthCode | None = None,
+    initial_risk_snapshot: RiskSnapshot | None = None,
     on_frame_health: Callable[[FrameHealthTransition], None] | None = None,
+    on_risk_transition: Callable[[RiskTransition], None] | None = None,
     on_realtime_status: Callable[[RealtimeVisualMetricsSnapshot], None]
     | None = None,
 ) -> VisualRuntimeResources:
@@ -88,8 +91,15 @@ def build_visual_runtime(
         reviewer=reviewer.review,
         executor=executor,
     )
-    risk_machine = VisualRiskStateMachine()
-    runtime = VisualReviewRuntime(risk_machine=risk_machine)
+    risk_machine = (
+        VisualRiskStateMachine.from_snapshot(initial_risk_snapshot)
+        if initial_risk_snapshot is not None
+        else VisualRiskStateMachine()
+    )
+    runtime = VisualReviewRuntime(
+        risk_machine=risk_machine,
+        on_risk_transition=on_risk_transition,
+    )
     realtime_analyzer: RealtimeVisualAnalyzer | None = None
     candidate_machine: RealtimeCandidateStateMachine | None = None
     load_controller: RealtimeLoadController | None = None

@@ -8,7 +8,15 @@ from packages.contracts.settings import (
     RealtimeVisualSettings,
     VisualSettings,
 )
-from packages.contracts.vision import NormalizedPoint, NormalizedPolygon
+from datetime import UTC, datetime
+
+from packages.contracts.vision import (
+    NormalizedPoint,
+    NormalizedPolygon,
+    RiskSnapshot,
+    VisualRiskKind,
+    VisualRiskState,
+)
 from services.stream.frame_source import Go2RtcAnalysisFrameSource
 from services.vision.frame_health import VisualFrameHealthMonitor
 from services.vision.frame_policy import VisionFramePolicy
@@ -152,5 +160,31 @@ def test_bootstrap_restores_open_frame_health_code() -> None:
     )
     try:
         assert resources.frame_health.open_code is FrameHealthCode.SOURCE_OFFLINE
+    finally:
+        resources.close()
+
+
+def test_bootstrap_restores_open_guardian_risks_and_injects_callback() -> None:
+    from services.vision.bootstrap import build_visual_runtime
+
+    received: list[object] = []
+    snapshot = RiskSnapshot(
+        snapshot_at=datetime(2026, 8, 11, 12, 0, tzinfo=UTC),
+        open_risks=frozenset({VisualRiskKind.FACE_NOT_VISIBLE}),
+    )
+
+    resources = build_visual_runtime(
+        settings(),
+        initial_risk_snapshot=snapshot,
+        on_risk_transition=received.append,
+    )
+    marker = object()
+    try:
+        assert (
+            resources.risk_machine.state_for(VisualRiskKind.FACE_NOT_VISIBLE)
+            is VisualRiskState.ALERT
+        )
+        resources.runtime._on_risk_transition(marker)
+        assert received == [marker]
     finally:
         resources.close()
