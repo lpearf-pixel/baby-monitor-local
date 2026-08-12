@@ -34,19 +34,32 @@ The repository baseline and environment implementation are complete. Do not rest
    parsing, timeout, degraded/recovery behavior, production worker composition and
    independent launchd lifecycle. Next install the restricted tunnel and private bed
    zone, then verify real response schema, P95 latency and household candidate scenes.
-5. R3.5 software complete locally. The first i9 10-minute gate failed at 1 FPS, while
-   the controlled foreground run reached 5 FPS within the 180 ms P95 budget and
-   isolated launchd `Background` scheduling as the bottleneck. Apply
-   `make alpha-visual-launchd-update`, observe redacted metrics for 3 minutes, then
-   rerun the complete 10-minute sampler before measuring candidate latency and the
-   seven required household scenarios. Software tests do not establish installed-i9
-   performance or household accuracy.
+5. R3.5 software complete locally. The performance recheck is intentionally deferred:
+   retain the launchd update and 3/10-minute samplers, but do not let them block the
+   guardian feature loop. Software tests do not establish installed-i9 performance or
+   household accuracy.
 6. Source-health ntfy open/recovery delivery and independent gauge/real-time service
    continuity passed one controlled i9 outage. Do not repeat a Baby posture or
    face-risk event for this completed gate.
-7. After the R3/R3.5 real-device gate, add R4 risk-event screenshot/video evidence,
-   real-time risk text alerts and authenticated parent feedback without making the
-   model a prerequisite for live viewing.
+7. R4 event core complete locally: deterministic risk transitions persist with stable
+   IDs, restart restoration, adult-intervention audit and redacted JSON-line logs.
+8. R4 safe evidence complete locally: a new risk event receives a privacy-processed
+   screenshot and a bounded pre-10/post-30-second animated WebP; restart and shutdown
+   mark incomplete captures explicitly instead of fabricating complete clips.
+9. R4 risk text ntfy software complete locally: open, recovery and linked adult
+   intervention use a persistent idempotent outbox and an off-thread bounded
+   dispatcher; payloads are text-only and omit media, paths, private addresses,
+   credentials and unauthenticated links. Physical delivery to both Android phones
+   remains pending.
+10. Option A startup and automatic acceptance are complete locally. On the i9 run
+    `make alpha-guardian-start` followed by `make alpha-guardian-test`; preserve the
+    fixed PASS/FAIL output as the environment acceptance result. This command does
+    not send a real ntfy test message or simulate a Baby risk.
+11. Next add authenticated event queries, two-parent acknowledgement and
+    false-positive feedback. Keep real two-phone notification delivery and safe live
+    rehearsal in a separate explicit acceptance command. Live viewing must remain
+    independent of AI. Upgrade to the FFmpeg ring-buffer option only after the
+    functional guardian loop is complete.
 
 ## P3 — Release gate
 

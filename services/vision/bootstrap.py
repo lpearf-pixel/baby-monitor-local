@@ -5,13 +5,14 @@ from concurrent.futures import ThreadPoolExecutor
 from dataclasses import dataclass, field
 
 from packages.contracts.settings import AppSettings
+from packages.contracts.vision import RiskSnapshot, RiskTransition
 from services.stream.frame_source import Go2RtcAnalysisFrameSource
 from services.vision.frame_health import (
     FrameHealthCode,
     FrameHealthTransition,
     VisualFrameHealthMonitor,
 )
-from services.vision.frame_policy import VisionFramePolicy
+from services.vision.frame_policy import PreparedAnalysisFrame, VisionFramePolicy
 from services.vision.frame_ring import AnalysisFrameRing
 from services.vision.ollama_client import OllamaVisualReviewer
 from services.vision.review_runtime import VisualReviewRuntime
@@ -54,7 +55,10 @@ def build_visual_runtime(
     settings: AppSettings,
     *,
     initial_frame_health_code: FrameHealthCode | None = None,
+    initial_risk_snapshot: RiskSnapshot | None = None,
     on_frame_health: Callable[[FrameHealthTransition], None] | None = None,
+    on_safe_frame: Callable[[PreparedAnalysisFrame], None] | None = None,
+    on_risk_transition: Callable[[RiskTransition], None] | None = None,
     on_realtime_status: Callable[[RealtimeVisualMetricsSnapshot], None]
     | None = None,
 ) -> VisualRuntimeResources:
@@ -88,8 +92,15 @@ def build_visual_runtime(
         reviewer=reviewer.review,
         executor=executor,
     )
-    risk_machine = VisualRiskStateMachine()
-    runtime = VisualReviewRuntime(risk_machine=risk_machine)
+    risk_machine = (
+        VisualRiskStateMachine.from_snapshot(initial_risk_snapshot)
+        if initial_risk_snapshot is not None
+        else VisualRiskStateMachine()
+    )
+    runtime = VisualReviewRuntime(
+        risk_machine=risk_machine,
+        on_risk_transition=on_risk_transition,
+    )
     realtime_analyzer: RealtimeVisualAnalyzer | None = None
     candidate_machine: RealtimeCandidateStateMachine | None = None
     load_controller: RealtimeLoadController | None = None
@@ -109,6 +120,7 @@ def build_visual_runtime(
         frame_health=frame_health,
         review_scheduler=scheduler,
         on_frame_health=on_frame_health,
+        on_safe_frame=on_safe_frame,
         on_review_completion=runtime.handle,
         realtime_analyzer=realtime_analyzer,
         candidate_machine=candidate_machine,

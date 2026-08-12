@@ -84,6 +84,54 @@ def test_ring_rejects_decreasing_frame_time_without_mutation() -> None:
     assert len(ring) == 1
 
 
+def test_snapshot_window_selects_inclusive_chronological_frames() -> None:
+    ring = AnalysisFrameRing()
+    for seconds in [0, 2, 4, 6, 8, 10, 12]:
+        ring.add(frame(seconds))
+
+    selected = ring.snapshot_window(
+        start_at=NOW + timedelta(seconds=2),
+        end_at=NOW + timedelta(seconds=10),
+    )
+
+    assert [item.jpeg for item in selected] == [
+        b"frame-2",
+        b"frame-4",
+        b"frame-6",
+        b"frame-8",
+        b"frame-10",
+    ]
+    assert len(ring) == 7
+
+
+def test_snapshot_window_returns_empty_outside_retained_history() -> None:
+    ring = AnalysisFrameRing()
+    ring.add(frame(10))
+
+    assert ring.snapshot_window(
+        start_at=NOW,
+        end_at=NOW + timedelta(seconds=8),
+    ) == ()
+
+
+@pytest.mark.parametrize(
+    ("start_at", "end_at"),
+    [
+        (NOW.replace(tzinfo=None), NOW),
+        (NOW, NOW.replace(tzinfo=None)),
+        (NOW + timedelta(seconds=1), NOW),
+    ],
+)
+def test_snapshot_window_rejects_invalid_time_bounds(
+    start_at: datetime,
+    end_at: datetime,
+) -> None:
+    ring = AnalysisFrameRing()
+
+    with pytest.raises(ValueError):
+        ring.snapshot_window(start_at=start_at, end_at=end_at)
+
+
 @pytest.mark.parametrize(
     ("count", "spacing_seconds"),
     [(0, 2), (4, 0), (22, 2), (4, 41)],

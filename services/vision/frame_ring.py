@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from collections import deque
-from datetime import timedelta
+from datetime import datetime, timedelta
 
 from services.vision.frame_policy import PreparedAnalysisFrame
 
@@ -73,3 +73,20 @@ class AnalysisFrameRing:
         ):
             return ()
         return selected
+
+    def snapshot_window(
+        self,
+        *,
+        start_at: datetime,
+        end_at: datetime,
+    ) -> tuple[PreparedAnalysisFrame, ...]:
+        for value in (start_at, end_at):
+            if value.tzinfo is None or value.utcoffset() is None:
+                raise ValueError("window bounds must be timezone-aware")
+        if end_at < start_at:
+            raise ValueError("end_at cannot precede start_at")
+        return tuple(
+            frame
+            for frame in self._frames
+            if start_at <= frame.captured_at <= end_at
+        )

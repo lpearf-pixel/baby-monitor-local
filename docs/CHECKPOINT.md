@@ -196,3 +196,81 @@ job 已注册时执行，先校验新 plist、保留且不覆盖 `.r3-background
 本轮 focused 交付门禁为 `60 passed`；Python 编译、相关 Shell 语法、Make dry-run、
 plist 解析、ASCII/LF、`git diff --check` 和本轮新增敏感内容扫描均通过。该结果只
 证明软件配置与更新/回滚契约，不代表 i9 已部署或 10 分钟性能门已通过。
+
+## Baby guardian R4 event core checkpoint
+
+2026-08-11，在 `stable/xiaomi-alpha` 合并提交 `0df20ae` 上建立
+`codex/baby-guardian-event-loop`，完成 Baby 守护事件核心。现有确定性状态机产生的
+`alert_opened` 会为遮脸、趴睡或离床风险创建一个稳定 `event_id`；同类重复回调
+返回已有打开事件，`recovered` 只关闭对应风险。成人介入即使没有打开风险也独立
+留存，有打开风险时幂等关联到当时所有事件。
+
+worker 启动时迁移本地 `events.sqlite3` 并恢复所有打开风险，但不恢复重启前的候选
+或恢复计数。关键转换以单行 JSON 写入现有 launchd stderr 日志，只允许固定事件码、
+时间、规则版本、状态、风险种类和事件/介入 ID；不记录模型原文、reason codes、
+画面、路径、URL、地址、凭据或异常文本。SQLite 或日志输出失败不会终止视觉 worker。
+
+本检查点只完成事件身份、生命周期、重启和诊断面。截图、前后短片、风险 ntfy、
+Dashboard 事件查询、两位家长确认、误报反馈和统一 macOS 验收脚本尚未实现；声音
+与实时性能门继续后排。focused 门禁与静态门禁结果以本分支最终提交记录为准。
+
+## Baby guardian R4 safe evidence checkpoint
+
+2026-08-11，在同一 Baby 守护功能分支完成方案 A 的安全事件证据。只有完成床区
+裁剪、隐私遮罩、固定 `960×540` 处理和大小限制的 `PreparedAnalysisFrame` 可以
+进入证据链。新风险事件立即保存最近安全帧为截图，锁定打开前 10 秒安全帧，并在
+后续安全帧覆盖 30 秒后生成低帧率动画 WebP；风险提前恢复也不会截掉恢复过程。
+
+每个活动事件最多保留 21 帧，三个风险不会建立无界队列。事件 ID 只用于生成
+SHA-256 目录摘要，不直接进入文件名；证据目录为 `0700`、文件为 `0600`，同目录
+临时写入、`fsync` 后原子替换。SQLite 只保存严格相对证据键和
+`collecting/ready/failed/interrupted` 状态。worker 重启或正常停止时，未完成短片
+会明确标记为中断，不能伪装成完整证据。
+
+截图、WebP、SQLite 或日志失败不会回滚风险事件或终止视觉 worker；结构化日志只
+输出固定状态、结果、事件 ID 和帧数，不包含文件路径、证据键、摘要、图片、异常
+文本或网络信息。所有媒体测试均使用程序生成的彩色 JPEG，不含家庭画面。
+
+本检查点没有发送风险 ntfy，也没有新增 Dashboard 查询、家长确认、误报反馈、
+30 天/30GB 清理任务或方案 B 的 FFmpeg 原始视频缓存。新鲜 focused 与静态门禁
+结果以本分支最终提交记录为准。
+
+## Baby guardian R4 risk ntfy checkpoint
+
+2026-08-11，在同一 Baby 守护功能分支完成风险文字 ntfy 软件链。新风险打开、风险
+恢复以及关联到打开风险的成人介入先以稳定幂等 ID 写入 `events.sqlite3` outbox；
+watch、重复打开和没有关联风险的成人介入不创建通知。视觉分析回调不执行网络请求，
+独立 daemon dispatcher 每次只处理一条待发记录。
+
+两台 Android 复用同一个私有 topic。负载只含事件 ID、白名单风险中文名、状态、
+严重度、时间和证据状态，不包含截图、WebP、证据键、文件路径、私网地址、摄像头
+URI、模型原文、异常文本、token 或未鉴权链接。当前 Dashboard 尚无经过鉴权的风险
+事件查询，因此本阶段不发送 `click`；后续查询接口完成后再加入。
+
+单次 HTTP 投递复用现有最多三次的短重试；一轮仍不可用时，本地 outbox 分别等待
+5 秒、30 秒后重试，第三轮失败终止为 `retry_exhausted`。成功和永久拒绝均为不可变
+终态，worker 重启不会重发；配置、网络、SQLite、notifier 线程或日志失败不会终止
+视觉 worker，也不会回滚已保存的风险或证据。
+
+本检查点只证明软件契约和合成测试，不证明两台 Android 已真实收到通知。真实 topic、
+token、两机订阅、通知显示和断网恢复将放入统一 macOS 验收脚本。Dashboard 事件查询、
+两位家长确认、误报反馈、30 天/30GB 清理、方案 B、声音和性能门仍待后续切片。
+
+## Baby guardian option A startup and automatic test checkpoint
+
+2026-08-12，在同一 Baby 守护功能分支完成方案 A 的统一启动和自动验收入口。
+`make alpha-guardian-start` 继续复用既有幂等 Alpha 启动路径，随后有界检查
+go2rtc、Dashboard、visual worker、environment watchdog、gauge worker、固定实时
+模型、当前视觉指标，以及在语义复核启用时的 Ollama bridge。任一必需组件失败均
+返回非零，输出只含固定组件名和状态码，不显示配置、地址、路径、异常或日志内容。
+
+`make alpha-guardian-test` 按 repository、software、installation、service、media、
+isolation 六阶段运行完整自动门禁。它聚合全部仍可安全执行的结果，不发送 ntfy
+测试消息，不创建模拟风险，不写真实事件、证据或媒体数据库。安装、服务或摄像头
+缺失在用户执行的 i9 验收中是 FAIL，不会静默伪装为 PASS。
+
+本检查点的新鲜软件门禁为 Python focused `177 passed`、Node `70 passed`；Python
+编译、三份新增 Shell 的 Bash 语法与 ASCII/LF、Make dry-run、`git diff --check`、
+跟踪 runtime/媒体/SQLite 和敏感字面量检查均通过。当前开发容器没有替代 Intel i9
+运行这两个命令，因此真实画面、已安装 launchd 服务和两台 Android 收件仍未由本
+检查点证明；真实通知属于后续方案 C/实机验收，不包含在方案 A 中。

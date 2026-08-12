@@ -9,7 +9,11 @@ from packages.contracts.settings import (
     SecuritySettings,
 )
 from services.notifications.visual_ntfy import NtfyVisualHealthNotifier
-from services.vision.notification_config import build_visual_health_notifier
+from services.notifications.guardian_ntfy import NtfyGuardianNotifier
+from services.vision.notification_config import (
+    build_guardian_notifier,
+    build_visual_health_notifier,
+)
 
 
 def settings() -> AppSettings:
@@ -45,3 +49,17 @@ def test_builder_uses_runtime_topic_and_referenced_token_without_dashboard_url()
 def test_builder_fails_closed_for_public_example_topic() -> None:
     with pytest.raises(ValueError, match="private ntfy topic"):
         build_visual_health_notifier(settings(), {})
+
+
+def test_guardian_builder_reuses_private_topic_and_token_reference() -> None:
+    built = build_guardian_notifier(
+        settings(),
+        {
+            "NTFY_TOPIC": "baby-monitor-random-private-topic",
+            "VISUAL_NTFY_TOKEN": "runtime-secret",
+        },
+    )
+
+    assert isinstance(built, NtfyGuardianNotifier)
+    assert built._topic == "baby-monitor-random-private-topic"
+    assert built._token == "runtime-secret"
