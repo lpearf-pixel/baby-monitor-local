@@ -332,6 +332,41 @@ def test_new_event_callback_runs_once_after_persistence(tmp_path: Path) -> None:
     assert received[0][1] == opened
 
 
+def test_new_event_initializes_evidence_before_notification_becomes_pending(
+    tmp_path: Path,
+) -> None:
+    store = VisualRiskEventStore(tmp_path / "events.sqlite3")
+    store.migrate()
+    real_queue = store.queue_notification
+
+    def start_evidence(event: object, _transition: RiskTransition) -> None:
+        store.begin_evidence(
+            event_id=event.event_id,
+            started_at=NOW,
+            capture_deadline=NOW + timedelta(seconds=30),
+            snapshot_key=None,
+            frame_count=0,
+        )
+
+    def require_evidence_before_queue(**kwargs: object):
+        assert store.get_evidence(str(kwargs["event_id"])) is not None
+        return real_queue(**kwargs)
+
+    store.queue_notification = require_evidence_before_queue  # type: ignore[method-assign]
+    pipeline = VisualRiskEventPipeline(
+        store=store,
+        stream=io.StringIO(),
+        event_id_factory=lambda: "event-face",
+        on_event_opened=start_evidence,
+    )
+
+    pipeline.handle(transition(RiskTransitionKind.ALERT_OPENED))
+
+    pending = store.next_pending_notification(NOW)
+    assert pending is not None
+    assert pending.event_id == "event-face"
+
+
 def test_new_event_callback_failure_is_redacted_and_does_not_rollback(
     tmp_path: Path,
 ) -> None:

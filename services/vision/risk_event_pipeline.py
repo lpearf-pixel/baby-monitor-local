@@ -172,12 +172,6 @@ class VisualRiskEventPipeline:
                 result="existing" if existing is not None else "created",
             )
             if existing is None:
-                self._queue_notification(
-                    event=event,
-                    stage="risk_opened",
-                    queued_at=transition.observed_at,
-                    transition=transition,
-                )
                 try:
                     self._on_event_opened(event, transition)
                 except Exception:
@@ -189,6 +183,12 @@ class VisualRiskEventPipeline:
                         state="failed",
                         result="callback_failed",
                     )
+                self._queue_notification(
+                    event=event,
+                    stage="risk_opened",
+                    queued_at=transition.observed_at,
+                    transition=transition,
+                )
             return
         if transition.transition_kind is RiskTransitionKind.RECOVERED:
             if transition.risk_kind is None or transition.confidence is None:
