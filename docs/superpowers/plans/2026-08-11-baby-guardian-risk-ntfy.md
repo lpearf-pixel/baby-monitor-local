@@ -105,7 +105,6 @@
 **Files:**
 - Modify: `docs/CHECKPOINT.md`
 - Modify: `docs/NEXT.md`
-- Modify: `docs/TASKS.md`
 
 **Interfaces:**
 - Consumes: fresh verification evidence.
@@ -115,4 +114,3 @@
 - [ ] **Step 2: Run the full focused set**, Python compile, `git diff --check`, tracked runtime/media scan, and changed-file secret/private-data scan.
 - [ ] **Step 3: Review the complete diff** against this specification and ensure no model, threshold, FPS, Dashboard, or remote changes entered the slice.
 - [ ] **Step 4: Commit** only planned status files with `docs: record guardian risk ntfy checkpoint`.
-

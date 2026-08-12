@@ -42,6 +42,10 @@ retry time. A permanent payload or 4xx rejection terminates as `rejected`.
 Successful delivery terminates as `delivered`. Delivered and rejected rows are
 immutable.
 
+Within one event, a later pending stage cannot overtake an earlier pending
+stage, even while the earlier stage waits for retry. Other events remain
+independently dispatchable.
+
 The dispatcher processes one row at a time, uses the existing notifier's
 three-attempt bounded HTTP policy, and applies local retry delays of 5, 30, and
 300 seconds after successive unavailable dispatches. After three dispatcher
@@ -91,4 +95,3 @@ startup code; event and evidence persistence continue.
 - Payload and logs pass tests that inject private addresses, paths, tokens,
   response bodies, and exception text.
 - Existing source-health ntfy behavior remains unchanged.
-
