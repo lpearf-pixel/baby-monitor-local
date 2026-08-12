@@ -5,6 +5,12 @@ ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 ENV_FILE="$ROOT/runtime/alpha.env"
 PYTHON="$ROOT/.venv-alpha/bin/python"
 FAIL_COUNT=0
+REPORT_PHASE="${BABY_MONITOR_GUARDIAN_REPORT_PHASE:-start}"
+
+case "$REPORT_PHASE" in
+  start|service) ;;
+  *) REPORT_PHASE="start" ;;
+esac
 
 if [[ -f "$ENV_FILE" ]]; then
   set -a
@@ -34,9 +40,9 @@ report_probe() {
   local name="$1"
   shift
   if run_probe "$name" "$@"; then
-    echo "PASS start $name"
+    echo "PASS $REPORT_PHASE $name"
   else
-    echo "FAIL start $name unavailable"
+    echo "FAIL $REPORT_PHASE $name unavailable"
     FAIL_COUNT=$((FAIL_COUNT + 1))
   fi
 }
@@ -114,10 +120,13 @@ report_probe "gauge_worker" probe_gauge_worker
 report_probe "realtime_models" probe_realtime_models
 report_probe "visual_metrics" probe_visual_metrics
 
-if run_probe "semantic_review_required" semantic_review_required; then
+if [[ "${BABY_MONITOR_GUARDIAN_TEST_MODE:-0}" == "1" ]] && \
+  [[ ! -x "${BABY_MONITOR_GUARDIAN_HOOK_DIR:-}/semantic_review_required" ]]; then
+  report_probe "ollama_bridge" probe_ollama_bridge
+elif run_probe "semantic_review_required" semantic_review_required; then
   report_probe "ollama_bridge" probe_ollama_bridge
 else
-  echo "PASS start ollama_bridge"
+  echo "PASS $REPORT_PHASE ollama_bridge"
 fi
 
 if [[ "$FAIL_COUNT" -eq 0 ]]; then
