@@ -16,6 +16,7 @@ if str(ROOT) not in sys.path:
 from packages.contracts.settings import AppSettings
 from packages.contracts.vision import RiskTransition
 from services.environment.local_env import load_local_env_file
+from services.notifications.guardian_dispatcher import GuardianNotificationDispatcher
 from services.storage.visual_health import VisualHealthStore
 from services.storage.visual_risk import StoredVisualRiskEvent, VisualRiskEventStore
 from services.vision.bootstrap import build_visual_runtime
@@ -24,7 +25,10 @@ from services.vision.evidence_recorder import GuardianEvidenceRecorder
 from services.vision.frame_health import FrameHealthTransition
 from services.vision.frame_health_pipeline import VisualFrameHealthPipeline
 from services.vision.frame_policy import PreparedAnalysisFrame
-from services.vision.notification_config import build_visual_health_notifier
+from services.vision.notification_config import (
+    build_guardian_notifier,
+    build_visual_health_notifier,
+)
 from services.vision.risk_event_pipeline import VisualRiskEventPipeline
 from services.vision.realtime_status import (
     RealtimeVisualStatusPublisher,
@@ -54,6 +58,7 @@ def main(argv: list[str] | None = None) -> int:
     args = parse_args(argv)
     status_publisher: RealtimeVisualStatusPublisher | None = None
     evidence_recorder: GuardianEvidenceRecorder | None = None
+    guardian_dispatcher: GuardianNotificationDispatcher | None = None
     try:
         if args.env_file is not None:
             load_local_env_file(args.env_file)
@@ -81,6 +86,18 @@ def main(argv: list[str] | None = None) -> int:
         )
         visual_risk_store = VisualRiskEventStore(data_dir / "events.sqlite3")
         visual_risk_store.migrate()
+        try:
+            guardian_notifier = build_guardian_notifier(settings, os.environ)
+        except ValueError:
+            guardian_notifier = None
+            print("guardian_notification_disabled", file=sys.stderr)
+        if guardian_notifier is not None:
+            guardian_dispatcher = GuardianNotificationDispatcher(
+                store=visual_risk_store,
+                notifier=guardian_notifier,
+                stream=sys.stderr,
+            )
+
         def handle_event_opened(
             event: StoredVisualRiskEvent,
             transition: RiskTransition,
@@ -141,18 +158,41 @@ def main(argv: list[str] | None = None) -> int:
         return 2
 
     stop_event = threading.Event()
+    guardian_thread: threading.Thread | None = None
 
     def stop(_signum: int, _frame: object) -> None:
         stop_event.set()
 
     signal.signal(signal.SIGTERM, stop)
     signal.signal(signal.SIGINT, stop)
+    if guardian_dispatcher is not None:
+        def run_guardian_dispatcher() -> None:
+            try:
+                guardian_dispatcher.run(stop_event)
+            except Exception:
+                print("guardian_notification_dispatcher_failed", file=sys.stderr)
+
+        try:
+            guardian_thread = threading.Thread(
+                target=run_guardian_dispatcher,
+                name="guardian-notification-dispatcher",
+                daemon=True,
+            )
+            guardian_thread.start()
+        except Exception:
+            guardian_thread = None
+            print("guardian_notification_disabled", file=sys.stderr)
     runtime_failed = False
     try:
         resources.worker.run(stop_event)
     except Exception:
         runtime_failed = True
     finally:
+        stop_event.set()
+        if guardian_thread is not None:
+            guardian_thread.join(timeout=20)
+            if guardian_thread.is_alive():
+                print("guardian_notification_stop_timeout", file=sys.stderr)
         try:
             if evidence_recorder is not None:
                 evidence_recorder.close(datetime.now().astimezone())

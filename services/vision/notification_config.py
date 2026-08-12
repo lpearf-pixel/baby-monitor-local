@@ -4,6 +4,7 @@ from collections.abc import Mapping
 
 from packages.contracts.settings import AppSettings
 from services.environment.notification_config import resolve_notification_topic
+from services.notifications.guardian_ntfy import NtfyGuardianNotifier
 from services.notifications.visual_ntfy import NtfyVisualHealthNotifier
 
 
@@ -14,6 +15,19 @@ def build_visual_health_notifier(
     topic = resolve_notification_topic(settings, environ)
     token_name = settings.notifications.ntfy_token_env
     return NtfyVisualHealthNotifier(
+        ntfy_base_url=environ.get("NTFY_BASE_URL", "https://ntfy.sh"),
+        topic=topic,
+        token=environ.get(token_name) or None,
+    )
+
+
+def build_guardian_notifier(
+    settings: AppSettings,
+    environ: Mapping[str, str],
+) -> NtfyGuardianNotifier:
+    topic = resolve_notification_topic(settings, environ)
+    token_name = settings.notifications.ntfy_token_env
+    return NtfyGuardianNotifier(
         ntfy_base_url=environ.get("NTFY_BASE_URL", "https://ntfy.sh"),
         topic=topic,
         token=environ.get(token_name) or None,
