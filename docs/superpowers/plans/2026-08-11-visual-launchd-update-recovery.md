@@ -30,25 +30,25 @@
 - Consumes: `tools/update_visual_launchd.sh` and a fake `launchctl` state file.
 - Produces: observable tests for delayed unregistration and transient bootstrap failure.
 
-- [ ] **Step 1: Extend the launchd fixture**
+- [x] **Step 1: Extend the launchd fixture**
 
 Represent `loaded`, `removing:N`, and `unloaded` states. Make `print` decrement
 `removing:N` while still returning success, make `bootstrap` fail until the
 state is `unloaded`, and provide a fake `sleep` that records calls without
 waiting.
 
-- [ ] **Step 2: Write the delayed-unregistration test**
+- [x] **Step 2: Write the delayed-unregistration test**
 
 Run the real updater with two removal observations. Assert exit 0, the
 Interactive plist, one loaded service, two recorded sleeps before the first
 bootstrap, and the stable PASS output.
 
-- [ ] **Step 3: Write the transient-bootstrap test**
+- [x] **Step 3: Write the transient-bootstrap test**
 
 Configure candidate bootstrap to fail twice after unregistration. Assert the
 third bootstrap succeeds, the job is loaded once, and the update exits 0.
 
-- [ ] **Step 4: Verify RED**
+- [x] **Step 4: Verify RED**
 
 Run:
 
@@ -75,32 +75,32 @@ activation.
   `activate_installed_job` Bash functions returning status without emitting
   unredacted output.
 
-- [ ] **Step 1: Implement the minimal unregistration wait**
+- [x] **Step 1: Implement the minimal unregistration wait**
 
 Poll `launchctl print "$SERVICE"` once per second for at most 30 observations.
 Return success on the first absent result and failure after the bound.
 
-- [ ] **Step 2: Implement bounded bootstrap retry**
+- [x] **Step 2: Implement bounded bootstrap retry**
 
 Attempt `launchctl bootstrap "$DOMAIN" "$PLIST"` at most 30 times. Accept
 either a successful command or a registered job observed by `launchctl print`;
 otherwise sleep one second between attempts and return failure at the bound.
 
-- [ ] **Step 3: Implement verified activation**
+- [x] **Step 3: Implement verified activation**
 
 After registration, require `launchctl kickstart -k "$SERVICE"` and a final
 successful `launchctl print "$SERVICE"`. Return distinct function statuses so
 the caller can select `*_bootstrap_timeout`, `*_kickstart_failed`, or
 `*_verify_failed`.
 
-- [ ] **Step 4: Use helpers for candidate activation and rollback**
+- [x] **Step 4: Use helpers for candidate activation and rollback**
 
 After successful `bootout`, require bounded unregistration before installing
 the candidate. Use the shared activation helper in the main path and EXIT
 rollback, while preserving exit 2 for a successfully rolled-back candidate
 failure and exit 3 for a rollback-stage failure.
 
-- [ ] **Step 5: Verify GREEN for Task 1**
+- [x] **Step 5: Verify GREEN for Task 1**
 
 Run the Task 1 command. Expected: both regression tests pass with no stderr.
 
@@ -115,34 +115,34 @@ Run the Task 1 command. Expected: both regression tests pass with no stderr.
   failure counters.
 - Produces: recovery behavior and stable `rollback_bootstrap_timeout` failure.
 
-- [ ] **Step 1: Write a rollback-retry test**
+- [x] **Step 1: Write a rollback-retry test**
 
 Make every Interactive bootstrap fail, then make the restored Background job
 fail twice before succeeding. Assert exit 2, exact restoration of the original
 plist, preserved persistent backup, one loaded job, and
 `reason=activation_bootstrap_timeout`.
 
-- [ ] **Step 2: Verify RED**
+- [x] **Step 2: Verify RED**
 
 Run only the rollback-retry test. Expected: failure because the existing EXIT
 trap performs one immediate rollback bootstrap.
 
-- [ ] **Step 3: Write the rollback-timeout test**
+- [x] **Step 3: Write the rollback-timeout test**
 
 Make Interactive and Background bootstraps fail through the retry bound.
 Assert exit 3, restored plist bytes, absent service, empty stderr, and
 `reason=rollback_bootstrap_timeout`.
 
-- [ ] **Step 4: Verify RED**
+- [x] **Step 4: Verify RED**
 
 Run only the rollback-timeout test. Expected: failure because the current
 script reports `rollback_failed`.
 
-- [ ] **Step 5: Verify GREEN**
+- [x] **Step 5: Verify GREEN**
 
 Run all `tests/deploy/test_visual_launchd_update.py` tests. Expected: all pass.
 
-- [ ] **Step 6: Correct the performance evidence**
+- [x] **Step 6: Correct the performance evidence**
 
 Record that the unchanged Background job briefly reached 5 FPS after restart,
 then the same PID selected 3 FPS after P95 `256.935ms` and maximum
@@ -159,7 +159,7 @@ Interactive as an unaccepted same-host experiment.
 - Produces: fresh verification evidence and one local implementation commit
   after the separately committed design and plan.
 
-- [ ] **Step 1: Run focused tests**
+- [x] **Step 1: Run focused tests**
 
 ```bash
 ./.venv-alpha/bin/python -m pytest -q \
@@ -170,7 +170,7 @@ Interactive as an unaccepted same-host experiment.
   tests/vision/test_realtime_load.py
 ```
 
-- [ ] **Step 2: Run static checks**
+- [x] **Step 2: Run static checks**
 
 ```bash
 ./.venv-alpha/bin/python -m py_compile tests/deploy/test_visual_launchd_update.py
@@ -184,13 +184,13 @@ when available, verify the changed shell file is ASCII with LF endings, and
 scan the exact changed/tracked-new file set for secrets, private keys, private
 addresses, runtime media, and database artifacts.
 
-- [ ] **Step 3: Review scope and acceptance**
+- [x] **Step 3: Review scope and acceptance**
 
 Compare the staged diff with this plan and the design. Confirm there are no
 unrelated files, no weakened/deleted tests, no remote operations, and no claim
 that software tests prove i9 performance.
 
-- [ ] **Step 4: Commit locally**
+- [x] **Step 4: Commit locally**
 
 ```bash
 git add \

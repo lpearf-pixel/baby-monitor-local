@@ -103,19 +103,39 @@ P95 为 `88.657ms`，整机同时保有大量空闲 CPU 且没有 swap，因此�
 屏蔽模型或降低分析质量处理该失败。
 
 保留同一代码、配置、模型、连续真实帧和指标口径，仅把 worker 从已注册的
-`ProcessType=Background` launchd job 改为当前终端前台运行。该单变量对照达到
-5 FPS，且 P95 不超过 `180ms`；恢复正式 `Background` job 后又稳定降至 1 FPS、
-P50 约 400ms。该证据把生产瓶颈定位到 visual worker 的 launchd 后台调度，而不是
-analyzer、模型可用性或连续帧本身。
+`ProcessType=Background` launchd job 改为当前终端前台运行。该对照达到 5 FPS，
+且 P95 不超过 `180ms`；当时恢复正式 `Background` job 后又降至 1 FPS、P50 约
+400ms。这份证据说明 launchd 调度与退化高度相关，并排除了 analyzer 持续慢、
+模型不可用和连续帧缺失作为当次唯一解释，但尚不能证明 `Background` 是单独且
+确定性的根因。
+
+随后 i9 在仍安装 `ProcessType=Background` 的条件下重启同一 worker，并短时达到
+5 FPS、P95 `153.117ms`；保持同一 PID `92126` 运行后，控制器目标档位降至
+3 FPS，窗口 P95 达 `256.935ms`、最大值达 `325.313ms`。这里
+`realtime_fps=3` 是负载控制器选择的目标档位，不是摄像头输入吞吐；超过
+`180ms` 的长尾会触发降档并清零连续 60 秒的升档恢复计时。因此当前准确结论是：
+Background 调度仍是候选因素，但重启热态、系统调度、取帧/循环计时之外的长尾也
+必须通过同机实验继续区分。
 
 正式修复把且只把 `com.babymonitor.visual` 的 `ProcessType` 改为 `Interactive`。
-`make alpha-visual-launchd-update` 在替换前渲染并校验 plist，要求旧 job 已注册，保留
-`com.babymonitor.visual.plist.r3-background.bak` 且不覆盖既有备份，随后按
-`bootout → 原子替换 → bootstrap → kickstart → print` 更新单个 job。任一停止后的
-步骤失败时，脚本恢复更新前 plist 并重新注册旧 job；固定输出不包含路径、launchd
-错误、运行配置或家庭数据。gauge、environment watchdog、Ollama tunnel、Dashboard、
-分析器、负载控制器和性能门限均不变。
+`make alpha-visual-launchd-update` 在替换前渲染并校验 plist，要求旧 job 已注册，
+保留 `com.babymonitor.visual.plist.r3-background.bak` 且不覆盖既有备份。首次 i9
+执行暴露出 `bootout` 返回后 launchd 仍处于 `inactive → removing` 的状态转换
+竞态：候选立即 bootstrap 失败，文件回滚成功，但旧 job 的立即 bootstrap 也失败，
+最终报告 `rollback_failed` 并离线；稍后手工 bootstrap 成功。
+
+修复后的单 job 更新按
+`bootout → 有界等待未注册 → 原子替换 → 有界 bootstrap → kickstart → print`
+执行。等待和注册均以一秒间隔、最多 30 次观察为界；候选失败后的回滚复用相同状态
+原语。固定输出不包含路径、launchd 原始错误、运行配置或家庭数据，并区分
+`stop_timeout`、`activation_bootstrap_timeout`、
+`activation_kickstart_failed`、`activation_verify_failed` 以及对应 rollback
+阶段。gauge、environment watchdog、Ollama tunnel、Dashboard、分析器、负载
+控制器和性能门限均不变。
 
 软件回归和模拟 launchd 故障只能证明更新/回滚契约，不能证明 i9 已安装配置。
-i9 应用修复后先连续观察 3 分钟，确认 5 FPS 且 P95≤`180ms`；服务恢复和短窗指标
-稳定后，才重新运行完整 10 分钟 `make alpha-visual-performance` 关闭本性能门。
+i9 应用修复后先确认 plist 确为 `Interactive` 且 visual job 已注册，再以同一 PID
+连续观察 3 分钟，确认 5 FPS 且 P95≤`180ms`；服务恢复和短窗指标稳定后，才重新
+运行完整 10 分钟 `make alpha-visual-performance` 关闭本性能门。若 Interactive
+仍出现相同 5→3 FPS 退化，则否定“ProcessType 足以修复”的假设，转查取帧等待、
+循环节拍和主机调度的同步证据。

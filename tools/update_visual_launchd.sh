@@ -14,6 +14,8 @@ ROLLBACK=""
 WORKER_STOPPED=0
 UPDATE_FINISHED=0
 FAIL_REASON="update_failed"
+ACTIVATION_FAILURE=""
+LAUNCHD_ATTEMPTS=30
 
 remove_temporary_files() {
   if [[ -n "$CANDIDATE" ]]; then
@@ -42,8 +44,61 @@ atomic_copy() {
   fi
 }
 
+wait_until_unregistered() {
+  local attempt=1
+
+  while [[ "$attempt" -le "$LAUNCHD_ATTEMPTS" ]]; do
+    if ! launchctl print "$SERVICE" >/dev/null 2>&1; then
+      return 0
+    fi
+    if [[ "$attempt" -lt "$LAUNCHD_ATTEMPTS" ]]; then
+      sleep 1
+    fi
+    attempt=$((attempt + 1))
+  done
+  return 1
+}
+
+bootstrap_with_retry() {
+  local attempt=1
+
+  while [[ "$attempt" -le "$LAUNCHD_ATTEMPTS" ]]; do
+    if launchctl bootstrap "$DOMAIN" "$PLIST" >/dev/null 2>&1; then
+      return 0
+    fi
+    if launchctl print "$SERVICE" >/dev/null 2>&1; then
+      return 0
+    fi
+    if [[ "$attempt" -lt "$LAUNCHD_ATTEMPTS" ]]; then
+      sleep 1
+    fi
+    attempt=$((attempt + 1))
+  done
+  return 1
+}
+
+activate_installed_job() {
+  local prefix="$1"
+
+  ACTIVATION_FAILURE=""
+  if ! bootstrap_with_retry; then
+    ACTIVATION_FAILURE="${prefix}_bootstrap_timeout"
+    return 1
+  fi
+  if ! launchctl kickstart -k "$SERVICE" >/dev/null 2>&1; then
+    ACTIVATION_FAILURE="${prefix}_kickstart_failed"
+    return 1
+  fi
+  if ! launchctl print "$SERVICE" >/dev/null 2>&1; then
+    ACTIVATION_FAILURE="${prefix}_verify_failed"
+    return 1
+  fi
+  return 0
+}
+
 finish_or_restore() {
   local status=$?
+  local rollback_failure=""
 
   trap - EXIT HUP INT TERM
   if [[ "$UPDATE_FINISHED" -eq 1 ]]; then
@@ -53,18 +108,27 @@ finish_or_restore() {
 
   if [[ "$WORKER_STOPPED" -eq 1 && -n "$ROLLBACK" ]]; then
     if launchctl print "$SERVICE" >/dev/null 2>&1; then
-      launchctl bootout "$SERVICE" >/dev/null 2>&1 || true
+      if ! launchctl bootout "$SERVICE" >/dev/null 2>&1; then
+        rollback_failure="rollback_stop_failed"
+      elif ! wait_until_unregistered; then
+        rollback_failure="rollback_stop_timeout"
+      fi
     fi
-    if atomic_copy "$ROLLBACK" "$PLIST" \
-      && launchctl bootstrap "$DOMAIN" "$PLIST" >/dev/null 2>&1 \
-      && launchctl kickstart -k "$SERVICE" >/dev/null 2>&1 \
-      && launchctl print "$SERVICE" >/dev/null 2>&1; then
+    if [[ -z "$rollback_failure" ]] \
+      && ! atomic_copy "$ROLLBACK" "$PLIST"; then
+      rollback_failure="rollback_install_failed"
+    fi
+    if [[ -z "$rollback_failure" ]] \
+      && ! activate_installed_job "rollback"; then
+      rollback_failure="$ACTIVATION_FAILURE"
+    fi
+    if [[ -z "$rollback_failure" ]]; then
       remove_temporary_files
       printf '%s\n' "visual_launchd_update=FAIL reason=$FAIL_REASON"
       exit 2
     fi
     remove_temporary_files
-    printf '%s\n' "visual_launchd_update=FAIL reason=rollback_failed"
+    printf '%s\n' "visual_launchd_update=FAIL reason=$rollback_failure"
     exit 3
   fi
 
@@ -120,15 +184,17 @@ if ! launchctl bootout "$SERVICE" >/dev/null 2>&1; then
   exit 2
 fi
 WORKER_STOPPED=1
+if ! wait_until_unregistered; then
+  FAIL_REASON="stop_timeout"
+  exit 2
+fi
 
 if ! atomic_copy "$CANDIDATE" "$PLIST"; then
   FAIL_REASON="install_failed"
   exit 2
 fi
-if ! launchctl bootstrap "$DOMAIN" "$PLIST" >/dev/null 2>&1 \
-  || ! launchctl kickstart -k "$SERVICE" >/dev/null 2>&1 \
-  || ! launchctl print "$SERVICE" >/dev/null 2>&1; then
-  FAIL_REASON="activation_failed"
+if ! activate_installed_job "activation"; then
+  FAIL_REASON="$ACTIVATION_FAILURE"
   exit 2
 fi
 if ! atomic_copy "$CANDIDATE" "$RUNTIME_PLIST"; then

@@ -57,6 +57,12 @@ Failures are separated by lifecycle stage:
 - `activation_verify_failed`: registration was absent after kickstart.
 - `rollback_bootstrap_timeout`: the exact previous plist was restored, but
   the old job could not be registered.
+- `rollback_stop_failed`: a partially activated candidate could not be
+  booted out before restoration.
+- `rollback_stop_timeout`: the candidate remained registered after the
+  bounded bootout wait.
+- `rollback_install_failed`: the exact previous plist could not be restored
+  atomically.
 - `rollback_kickstart_failed`: the restored old job could not be started.
 - `rollback_verify_failed`: the restored old job was absent after kickstart.
 
