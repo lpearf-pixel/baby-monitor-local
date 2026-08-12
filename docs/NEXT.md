@@ -43,10 +43,14 @@ The repository baseline and environment implementation are complete. Do not rest
    face-risk event for this completed gate.
 7. R4 event core complete locally: deterministic risk transitions persist with stable
    IDs, restart restoration, adult-intervention audit and redacted JSON-line logs.
-8. Next add R4 privacy-processed screenshots and bounded pre/post event clips, then
-   risk text ntfy, authenticated event queries, two-parent acknowledgement and false-
-   positive feedback. Finish with one repository-owned macOS acceptance script that
-   packages redacted logs for diagnosis. Live viewing must remain independent of AI.
+8. R4 safe evidence complete locally: a new risk event receives a privacy-processed
+   screenshot and a bounded pre-10/post-30-second animated WebP; restart and shutdown
+   mark incomplete captures explicitly instead of fabricating complete clips.
+9. Next add risk text ntfy, then authenticated event queries, two-parent
+   acknowledgement and false-positive feedback. Finish with one repository-owned
+   macOS acceptance script that packages redacted logs for diagnosis. Live viewing
+   must remain independent of AI. Upgrade to the FFmpeg ring-buffer option only after
+   the functional guardian loop is complete.
 
 ## P3 — Release gate
 
