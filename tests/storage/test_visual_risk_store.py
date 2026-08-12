@@ -11,6 +11,7 @@ from packages.contracts.vision import VisualRiskKind
 from services.storage.visual_risk import (
     StoredVisualRiskEvent,
     StoredVisualRiskEvidence,
+    StoredVisualRiskNotification,
     VisualRiskEventStore,
 )
 
@@ -348,3 +349,140 @@ def test_restart_interrupts_only_collecting_evidence(tmp_path: Path) -> None:
     assert store.interrupt_collecting_evidence(
         interrupted_at=NOW + timedelta(seconds=9)
     ) == ()
+
+
+def test_notification_contract_rejects_naive_time_and_incoherent_retry() -> None:
+    base = {
+        "notification_id": "notification-open",
+        "event_id": "event-face",
+        "stage": "risk_opened",
+        "state": "pending",
+        "queued_at": NOW,
+        "updated_at": NOW,
+        "next_attempt_at": NOW,
+        "dispatch_count": 0,
+    }
+
+    with pytest.raises(ValidationError, match="timezone-aware"):
+        StoredVisualRiskNotification(
+            **{**base, "queued_at": datetime(2026, 8, 11, 12, 0)}
+        )
+    with pytest.raises(ValidationError, match="terminal notification"):
+        StoredVisualRiskNotification(
+            **{**base, "state": "delivered", "result_code": None}
+        )
+
+
+def test_notification_queue_is_idempotent_by_event_stage_and_intervention(
+    tmp_path: Path,
+) -> None:
+    store = VisualRiskEventStore(tmp_path / "events.sqlite3")
+    store.migrate()
+    open_face_event(store)
+
+    opened = store.queue_notification(
+        notification_id="notification-open",
+        event_id="event-face",
+        stage="risk_opened",
+        queued_at=NOW,
+    )
+    duplicate = store.queue_notification(
+        notification_id="notification-duplicate",
+        event_id="event-face",
+        stage="risk_opened",
+        queued_at=NOW + timedelta(seconds=1),
+    )
+    intervention = store.queue_notification(
+        notification_id="notification-intervention",
+        event_id="event-face",
+        stage="adult_intervention",
+        queued_at=NOW + timedelta(seconds=2),
+        intervention_id="intervention-1",
+    )
+
+    assert duplicate == opened
+    assert intervention.notification_id == "notification-intervention"
+    assert store.next_pending_notification(NOW) == opened
+    assert store.next_pending_notification(NOW + timedelta(seconds=2)) == opened
+
+
+def test_notification_results_are_bounded_and_terminal_rows_are_immutable(
+    tmp_path: Path,
+) -> None:
+    store = VisualRiskEventStore(tmp_path / "events.sqlite3")
+    store.migrate()
+    open_face_event(store)
+    pending = store.queue_notification(
+        notification_id="notification-open",
+        event_id="event-face",
+        stage="risk_opened",
+        queued_at=NOW,
+    )
+
+    first_retry = store.record_notification_result(
+        notification_id=pending.notification_id,
+        attempted_at=NOW,
+        result_code="ntfy_unavailable",
+        retry_at=NOW + timedelta(seconds=5),
+    )
+    second_retry = store.record_notification_result(
+        notification_id=pending.notification_id,
+        attempted_at=NOW + timedelta(seconds=5),
+        result_code="ntfy_unavailable",
+        retry_at=NOW + timedelta(seconds=35),
+    )
+    exhausted = store.record_notification_result(
+        notification_id=pending.notification_id,
+        attempted_at=NOW + timedelta(seconds=35),
+        result_code="ntfy_unavailable",
+        retry_at=NOW + timedelta(seconds=335),
+    )
+    repeated = store.record_notification_result(
+        notification_id=pending.notification_id,
+        attempted_at=NOW + timedelta(seconds=40),
+        result_code="ok",
+    )
+
+    assert first_retry.state == "pending"
+    assert first_retry.dispatch_count == 1
+    assert second_retry.dispatch_count == 2
+    assert exhausted.state == "rejected"
+    assert exhausted.dispatch_count == 3
+    assert exhausted.result_code == "retry_exhausted"
+    assert repeated == exhausted
+    assert store.next_pending_notification(NOW + timedelta(days=1)) is None
+
+
+def test_notification_delivery_and_rejection_are_terminal(tmp_path: Path) -> None:
+    store = VisualRiskEventStore(tmp_path / "events.sqlite3")
+    store.migrate()
+    open_face_event(store)
+    delivered = store.queue_notification(
+        notification_id="notification-open",
+        event_id="event-face",
+        stage="risk_opened",
+        queued_at=NOW,
+    )
+    rejected = store.queue_notification(
+        notification_id="notification-recovered",
+        event_id="event-face",
+        stage="risk_recovered",
+        queued_at=NOW + timedelta(seconds=1),
+    )
+
+    delivered = store.record_notification_result(
+        notification_id=delivered.notification_id,
+        attempted_at=NOW + timedelta(seconds=2),
+        result_code="ok",
+    )
+    rejected = store.record_notification_result(
+        notification_id=rejected.notification_id,
+        attempted_at=NOW + timedelta(seconds=3),
+        result_code="ntfy_rejected",
+    )
+
+    assert delivered.state == "delivered"
+    assert delivered.result_code == "ok"
+    assert rejected.state == "rejected"
+    assert rejected.result_code == "ntfy_rejected"
+    assert rejected.dispatch_count == 1

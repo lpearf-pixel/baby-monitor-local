@@ -125,6 +125,72 @@ class StoredVisualRiskEvidence(BaseModel):
         return self
 
 
+NotificationStage = Literal[
+    "risk_opened",
+    "risk_recovered",
+    "adult_intervention",
+]
+NotificationState = Literal["pending", "delivered", "rejected"]
+NotificationResultCode = Literal[
+    "ok",
+    "payload_rejected",
+    "ntfy_rejected",
+    "ntfy_unavailable",
+    "retry_exhausted",
+]
+
+
+class StoredVisualRiskNotification(BaseModel):
+    model_config = ConfigDict(extra="forbid", frozen=True)
+
+    notification_id: str = Field(min_length=1, max_length=128)
+    event_id: str = Field(min_length=1, max_length=128)
+    stage: NotificationStage
+    intervention_id: str | None = Field(default=None, max_length=128)
+    state: NotificationState
+    queued_at: datetime
+    updated_at: datetime
+    next_attempt_at: datetime | None
+    dispatch_count: int = Field(ge=0, le=3)
+    result_code: NotificationResultCode | None = None
+
+    _aware_queued_at = field_validator("queued_at")(_aware)
+    _aware_updated_at = field_validator("updated_at")(_aware)
+
+    @field_validator("next_attempt_at")
+    @classmethod
+    def require_aware_next_attempt_at(
+        cls,
+        value: datetime | None,
+    ) -> datetime | None:
+        return _aware(value) if value is not None else None
+
+    @model_validator(mode="after")
+    def require_coherent_notification(self) -> Self:
+        if self.updated_at < self.queued_at:
+            raise ValueError("updated_at cannot precede queued_at")
+        if self.stage == "adult_intervention":
+            if not self.intervention_id:
+                raise ValueError("adult intervention requires intervention_id")
+        elif self.intervention_id is not None:
+            raise ValueError("risk notification cannot have intervention_id")
+        if self.state == "pending":
+            if self.next_attempt_at is None:
+                raise ValueError("pending notification requires next_attempt_at")
+            if self.next_attempt_at < self.queued_at:
+                raise ValueError("next_attempt_at cannot precede queued_at")
+            if self.result_code not in {None, "ntfy_unavailable"}:
+                raise ValueError("pending notification has invalid result_code")
+        else:
+            if self.next_attempt_at is not None or self.result_code is None:
+                raise ValueError("terminal notification requires a result")
+            if self.state == "delivered" and self.result_code != "ok":
+                raise ValueError("delivered notification requires ok")
+            if self.state == "rejected" and self.result_code == "ok":
+                raise ValueError("rejected notification cannot be ok")
+        return self
+
+
 class VisualRiskEventStore:
     def __init__(self, path: Path) -> None:
         self._path = Path(path)
@@ -217,6 +283,45 @@ class VisualRiskEventStore:
 
                 CREATE INDEX IF NOT EXISTS idx_visual_risk_evidence_state
                     ON visual_risk_evidence(state, updated_at DESC);
+
+                CREATE TABLE IF NOT EXISTS visual_risk_notifications (
+                    notification_id TEXT PRIMARY KEY,
+                    event_id TEXT NOT NULL,
+                    stage TEXT NOT NULL CHECK (
+                        stage IN (
+                            'risk_opened',
+                            'risk_recovered',
+                            'adult_intervention'
+                        )
+                    ),
+                    intervention_id TEXT NOT NULL DEFAULT '',
+                    state TEXT NOT NULL CHECK (
+                        state IN ('pending', 'delivered', 'rejected')
+                    ),
+                    queued_at TEXT NOT NULL,
+                    updated_at TEXT NOT NULL,
+                    next_attempt_at TEXT,
+                    dispatch_count INTEGER NOT NULL CHECK (
+                        dispatch_count >= 0 AND dispatch_count <= 3
+                    ),
+                    result_code TEXT CHECK (
+                        result_code IS NULL OR result_code IN (
+                            'ok',
+                            'payload_rejected',
+                            'ntfy_rejected',
+                            'ntfy_unavailable',
+                            'retry_exhausted'
+                        )
+                    ),
+                    UNIQUE (event_id, stage, intervention_id),
+                    FOREIGN KEY (event_id)
+                        REFERENCES visual_risk_events(event_id) ON DELETE CASCADE
+                );
+
+                CREATE INDEX IF NOT EXISTS idx_visual_risk_notification_pending
+                    ON visual_risk_notifications(
+                        state, next_attempt_at, queued_at, notification_id
+                    );
                 """
             )
 
@@ -549,6 +654,157 @@ class VisualRiskEventStore:
             ).fetchone()
         return self._evidence_from_row(row) if row is not None else None
 
+    def queue_notification(
+        self,
+        *,
+        notification_id: str,
+        event_id: str,
+        stage: NotificationStage,
+        queued_at: datetime,
+        intervention_id: str | None = None,
+    ) -> StoredVisualRiskNotification:
+        proposed = StoredVisualRiskNotification(
+            notification_id=notification_id,
+            event_id=event_id,
+            stage=stage,
+            intervention_id=intervention_id,
+            state="pending",
+            queued_at=queued_at,
+            updated_at=queued_at,
+            next_attempt_at=queued_at,
+            dispatch_count=0,
+        )
+        intervention_key = intervention_id or ""
+        with self._connect() as connection:
+            connection.execute("BEGIN IMMEDIATE")
+            row = connection.execute(
+                """
+                SELECT * FROM visual_risk_notifications
+                WHERE event_id = ? AND stage = ? AND intervention_id = ?
+                """,
+                (event_id, stage, intervention_key),
+            ).fetchone()
+            if row is not None:
+                return self._notification_from_row(row)
+            connection.execute(
+                """
+                INSERT INTO visual_risk_notifications (
+                    notification_id, event_id, stage, intervention_id, state,
+                    queued_at, updated_at, next_attempt_at, dispatch_count,
+                    result_code
+                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                """,
+                (
+                    proposed.notification_id,
+                    proposed.event_id,
+                    proposed.stage,
+                    intervention_key,
+                    proposed.state,
+                    proposed.queued_at.isoformat(),
+                    proposed.updated_at.isoformat(),
+                    proposed.next_attempt_at.isoformat(),
+                    proposed.dispatch_count,
+                    proposed.result_code,
+                ),
+            )
+        return proposed
+
+    def next_pending_notification(
+        self,
+        now: datetime,
+    ) -> StoredVisualRiskNotification | None:
+        _aware(now)
+        with self._connect() as connection:
+            row = connection.execute(
+                """
+                SELECT * FROM visual_risk_notifications
+                WHERE state = 'pending' AND next_attempt_at <= ?
+                ORDER BY next_attempt_at, queued_at, notification_id
+                LIMIT 1
+                """,
+                (now.isoformat(),),
+            ).fetchone()
+        return self._notification_from_row(row) if row is not None else None
+
+    def record_notification_result(
+        self,
+        *,
+        notification_id: str,
+        attempted_at: datetime,
+        result_code: Literal[
+            "ok", "payload_rejected", "ntfy_rejected", "ntfy_unavailable"
+        ],
+        retry_at: datetime | None = None,
+    ) -> StoredVisualRiskNotification:
+        _aware(attempted_at)
+        with self._connect() as connection:
+            connection.execute("BEGIN IMMEDIATE")
+            row = connection.execute(
+                """
+                SELECT * FROM visual_risk_notifications
+                WHERE notification_id = ?
+                """,
+                (notification_id,),
+            ).fetchone()
+            if row is None:
+                raise ValueError("notification does not exist")
+            current = self._notification_from_row(row)
+            if current.state != "pending":
+                return current
+            dispatch_count = current.dispatch_count + 1
+            if result_code == "ok":
+                state: NotificationState = "delivered"
+                stored_result: NotificationResultCode = "ok"
+                next_attempt_at = None
+            elif result_code in {"payload_rejected", "ntfy_rejected"}:
+                state = "rejected"
+                stored_result = result_code
+                next_attempt_at = None
+            elif dispatch_count >= 3:
+                state = "rejected"
+                stored_result = "retry_exhausted"
+                next_attempt_at = None
+            else:
+                if retry_at is None:
+                    raise ValueError("unavailable notification requires retry_at")
+                _aware(retry_at)
+                if retry_at <= attempted_at:
+                    raise ValueError("retry_at must follow attempted_at")
+                state = "pending"
+                stored_result = "ntfy_unavailable"
+                next_attempt_at = retry_at
+            updated = StoredVisualRiskNotification(
+                **{
+                    **current.model_dump(),
+                    "state": state,
+                    "updated_at": attempted_at,
+                    "next_attempt_at": next_attempt_at,
+                    "dispatch_count": dispatch_count,
+                    "result_code": stored_result,
+                }
+            )
+            connection.execute(
+                """
+                UPDATE visual_risk_notifications
+                SET state = ?, updated_at = ?, next_attempt_at = ?,
+                    dispatch_count = ?, result_code = ?
+                WHERE notification_id = ? AND state = 'pending'
+                """,
+                (
+                    updated.state,
+                    updated.updated_at.isoformat(),
+                    (
+                        updated.next_attempt_at.isoformat()
+                        if updated.next_attempt_at is not None
+                        else None
+                    ),
+                    updated.dispatch_count,
+                    updated.result_code,
+                    updated.notification_id,
+                ),
+            )
+        return updated
+
     def _finish_evidence(
         self,
         *,
@@ -668,4 +924,25 @@ class VisualRiskEventStore:
             clip_key=row["clip_key"],
             frame_count=int(row["frame_count"]),
             failure_code=row["failure_code"],
+        )
+
+    @staticmethod
+    def _notification_from_row(
+        row: sqlite3.Row,
+    ) -> StoredVisualRiskNotification:
+        return StoredVisualRiskNotification(
+            notification_id=row["notification_id"],
+            event_id=row["event_id"],
+            stage=row["stage"],
+            intervention_id=row["intervention_id"] or None,
+            state=row["state"],
+            queued_at=datetime.fromisoformat(row["queued_at"]),
+            updated_at=datetime.fromisoformat(row["updated_at"]),
+            next_attempt_at=(
+                datetime.fromisoformat(row["next_attempt_at"])
+                if row["next_attempt_at"] is not None
+                else None
+            ),
+            dispatch_count=int(row["dispatch_count"]),
+            result_code=row["result_code"],
         )
