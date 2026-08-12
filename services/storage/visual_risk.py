@@ -516,6 +516,14 @@ class VisualRiskEventStore:
             ).fetchall()
         return tuple(self._event_from_row(row) for row in rows)
 
+    def get_event(self, event_id: str) -> StoredVisualRiskEvent | None:
+        with self._connect() as connection:
+            row = connection.execute(
+                "SELECT * FROM visual_risk_events WHERE event_id = ?",
+                (event_id,),
+            ).fetchone()
+        return self._event_from_row(row) if row is not None else None
+
     def intervention_event_ids(self, intervention_id: str) -> tuple[str, ...]:
         with self._connect() as connection:
             rows = connection.execute(
@@ -723,6 +731,20 @@ class VisualRiskEventStore:
                 LIMIT 1
                 """,
                 (now.isoformat(),),
+            ).fetchone()
+        return self._notification_from_row(row) if row is not None else None
+
+    def get_notification(
+        self,
+        notification_id: str,
+    ) -> StoredVisualRiskNotification | None:
+        with self._connect() as connection:
+            row = connection.execute(
+                """
+                SELECT * FROM visual_risk_notifications
+                WHERE notification_id = ?
+                """,
+                (notification_id,),
             ).fetchone()
         return self._notification_from_row(row) if row is not None else None
 
