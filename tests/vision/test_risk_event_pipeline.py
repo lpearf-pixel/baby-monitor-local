@@ -96,13 +96,29 @@ def test_alert_open_and_recovery_share_one_persisted_event_id(
     assert [line["code"] for line in decoded_lines(stream)] == [
         "guardian.transition_observed",
         "guardian.event_opened",
+        "guardian.notification_queued",
         "guardian.transition_observed",
         "guardian.event_opened",
         "guardian.transition_observed",
         "guardian.event_recovered",
+        "guardian.notification_queued",
     ]
     assert decoded_lines(stream)[1]["result"] == "created"
-    assert decoded_lines(stream)[3]["result"] == "existing"
+    assert decoded_lines(stream)[4]["result"] == "existing"
+    opened_notification = store.next_pending_notification(NOW)
+    assert opened_notification is not None
+    assert opened_notification.event_id == "event-face"
+    assert opened_notification.stage == "risk_opened"
+    store.record_notification_result(
+        notification_id=opened_notification.notification_id,
+        attempted_at=NOW + timedelta(seconds=11),
+        result_code="ok",
+    )
+    recovered_notification = store.next_pending_notification(
+        NOW + timedelta(seconds=11)
+    )
+    assert recovered_notification is not None
+    assert recovered_notification.stage == "risk_recovered"
 
 
 def test_watch_transitions_are_logged_without_creating_long_term_events(
@@ -176,6 +192,45 @@ def test_adult_intervention_is_idempotent_and_retained_without_open_risk(
         "intervention_id"
     ]
     assert intervention_lines[0]["linked_event_count"] == 0
+    assert store.next_pending_notification(NOW) is None
+
+
+def test_linked_adult_intervention_queues_once_per_event(tmp_path: Path) -> None:
+    store = VisualRiskEventStore(tmp_path / "events.sqlite3")
+    store.migrate()
+    pipeline = VisualRiskEventPipeline(
+        store=store,
+        stream=io.StringIO(),
+        event_id_factory=lambda: "event-face",
+    )
+    pipeline.handle(transition(RiskTransitionKind.ALERT_OPENED))
+    opened = store.next_pending_notification(NOW)
+    assert opened is not None
+    store.record_notification_result(
+        notification_id=opened.notification_id,
+        attempted_at=NOW,
+        result_code="ok",
+    )
+    adult = transition(
+        RiskTransitionKind.ADULT_INTERVENTION,
+        risk_kind=None,
+        observed_at=NOW + timedelta(seconds=5),
+    )
+
+    pipeline.handle(adult)
+    pipeline.handle(adult)
+
+    pending = store.next_pending_notification(NOW + timedelta(seconds=5))
+    assert pending is not None
+    assert pending.event_id == "event-face"
+    assert pending.stage == "adult_intervention"
+    assert pending.intervention_id is not None
+    store.record_notification_result(
+        notification_id=pending.notification_id,
+        attempted_at=NOW + timedelta(seconds=6),
+        result_code="ok",
+    )
+    assert store.next_pending_notification(NOW + timedelta(seconds=6)) is None
 
 
 def test_restore_snapshot_contains_only_currently_open_risks(tmp_path: Path) -> None:
@@ -300,5 +355,32 @@ def test_new_event_callback_failure_is_redacted_and_does_not_rollback(
     serialized = stream.getvalue()
     assert "guardian.evidence_failed" in serialized
     assert "callback_failed" in serialized
+    assert "token" not in serialized
+    assert "/private" not in serialized
+
+
+def test_notification_queue_failure_is_redacted_and_does_not_rollback(
+    tmp_path: Path,
+) -> None:
+    store = VisualRiskEventStore(tmp_path / "events.sqlite3")
+    store.migrate()
+    stream = io.StringIO()
+
+    def fail(**_kwargs: object) -> None:
+        raise RuntimeError("token at /private/family/outbox")
+
+    store.queue_notification = fail  # type: ignore[method-assign]
+    pipeline = VisualRiskEventPipeline(
+        store=store,
+        stream=stream,
+        event_id_factory=lambda: "event-face",
+    )
+
+    pipeline.handle(transition(RiskTransitionKind.ALERT_OPENED))
+
+    assert store.load_open()[0].event_id == "event-face"
+    serialized = stream.getvalue()
+    assert "guardian.notification_queue_failed" in serialized
+    assert "queue_failed" in serialized
     assert "token" not in serialized
     assert "/private" not in serialized

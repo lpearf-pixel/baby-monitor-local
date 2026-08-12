@@ -13,7 +13,11 @@ from packages.contracts.vision import (
     RiskTransition,
     RiskTransitionKind,
 )
-from services.storage.visual_risk import StoredVisualRiskEvent, VisualRiskEventStore
+from services.storage.visual_risk import (
+    NotificationStage,
+    StoredVisualRiskEvent,
+    VisualRiskEventStore,
+)
 
 
 class _GuardianJsonLog:
@@ -31,6 +35,8 @@ class _GuardianJsonLog:
         state: str | None = None,
         result: str | None = None,
         linked_event_count: int | None = None,
+        notification_id: str | None = None,
+        notification_stage: str | None = None,
     ) -> None:
         payload: dict[str, object] = {
             "schema_version": 1,
@@ -53,6 +59,10 @@ class _GuardianJsonLog:
             payload["result"] = result
         if linked_event_count is not None:
             payload["linked_event_count"] = linked_event_count
+        if notification_id is not None:
+            payload["notification_id"] = notification_id
+        if notification_stage is not None:
+            payload["notification_stage"] = notification_stage
         try:
             self._stream.write(
                 json.dumps(
@@ -162,6 +172,12 @@ class VisualRiskEventPipeline:
                 result="existing" if existing is not None else "created",
             )
             if existing is None:
+                self._queue_notification(
+                    event=event,
+                    stage="risk_opened",
+                    queued_at=transition.observed_at,
+                    transition=transition,
+                )
                 try:
                     self._on_event_opened(event, transition)
                 except Exception:
@@ -199,6 +215,12 @@ class VisualRiskEventPipeline:
                 state=event.state,
                 result="recovered",
             )
+            self._queue_notification(
+                event=event,
+                stage="risk_recovered",
+                queued_at=transition.observed_at,
+                transition=transition,
+            )
             return
         if transition.transition_kind is RiskTransitionKind.ADULT_INTERVENTION:
             if transition.confidence is None:
@@ -221,6 +243,74 @@ class VisualRiskEventPipeline:
                 result="recorded",
                 linked_event_count=len(linked_event_ids),
             )
+            open_events = {
+                event.event_id: event for event in self._store.load_open()
+            }
+            for event_id in linked_event_ids:
+                event = open_events.get(event_id)
+                if event is not None:
+                    self._queue_notification(
+                        event=event,
+                        stage="adult_intervention",
+                        queued_at=transition.observed_at,
+                        transition=transition,
+                        intervention_id=intervention.intervention_id,
+                    )
+
+    def _queue_notification(
+        self,
+        *,
+        event: StoredVisualRiskEvent,
+        stage: NotificationStage,
+        queued_at: datetime,
+        transition: RiskTransition,
+        intervention_id: str | None = None,
+    ) -> None:
+        notification_id = self._notification_id(
+            event.event_id,
+            stage,
+            intervention_id,
+        )
+        try:
+            notification = self._store.queue_notification(
+                notification_id=notification_id,
+                event_id=event.event_id,
+                stage=stage,
+                queued_at=queued_at,
+                intervention_id=intervention_id,
+            )
+        except Exception:
+            self._log.emit(
+                "guardian.notification_queue_failed",
+                observed_at=queued_at,
+                transition=transition,
+                event_id=event.event_id,
+                notification_id=notification_id,
+                notification_stage=stage,
+                result="queue_failed",
+            )
+            return
+        self._log.emit(
+            "guardian.notification_queued",
+            observed_at=queued_at,
+            transition=transition,
+            event_id=event.event_id,
+            notification_id=notification.notification_id,
+            notification_stage=notification.stage,
+            state=notification.state,
+            result="queued",
+        )
+
+    @staticmethod
+    def _notification_id(
+        event_id: str,
+        stage: NotificationStage,
+        intervention_id: str | None,
+    ) -> str:
+        material = "|".join(
+            (event_id, stage, intervention_id or "")
+        ).encode("utf-8")
+        return f"notification-{hashlib.sha256(material).hexdigest()}"
 
     @staticmethod
     def _intervention_id(transition: RiskTransition) -> str:
