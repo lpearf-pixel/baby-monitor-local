@@ -13,7 +13,7 @@ from packages.contracts.vision import (
     RiskTransition,
     RiskTransitionKind,
 )
-from services.storage.visual_risk import VisualRiskEventStore
+from services.storage.visual_risk import StoredVisualRiskEvent, VisualRiskEventStore
 
 
 class _GuardianJsonLog:
@@ -75,10 +75,17 @@ class VisualRiskEventPipeline:
         store: VisualRiskEventStore,
         stream: TextIO = sys.stderr,
         event_id_factory: Callable[[], str] | None = None,
+        on_event_opened: Callable[
+            [StoredVisualRiskEvent, RiskTransition], None
+        ]
+        | None = None,
     ) -> None:
         self._store = store
         self._log = _GuardianJsonLog(stream)
         self._event_id_factory = event_id_factory or (lambda: str(uuid4()))
+        self._on_event_opened = on_event_opened or (
+            lambda _event, _transition: None
+        )
 
     def restore_snapshot(self, snapshot_at: datetime) -> RiskSnapshot:
         empty = RiskSnapshot(snapshot_at=snapshot_at)
@@ -154,6 +161,18 @@ class VisualRiskEventPipeline:
                 state=event.state,
                 result="existing" if existing is not None else "created",
             )
+            if existing is None:
+                try:
+                    self._on_event_opened(event, transition)
+                except Exception:
+                    self._log.emit(
+                        "guardian.evidence_failed",
+                        observed_at=transition.observed_at,
+                        transition=transition,
+                        event_id=event.event_id,
+                        state="failed",
+                        result="callback_failed",
+                    )
             return
         if transition.transition_kind is RiskTransitionKind.RECOVERED:
             if transition.risk_kind is None or transition.confidence is None:

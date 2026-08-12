@@ -12,7 +12,7 @@ from services.vision.frame_health import (
     FrameHealthTransition,
     VisualFrameHealthMonitor,
 )
-from services.vision.frame_policy import VisionFramePolicy
+from services.vision.frame_policy import PreparedAnalysisFrame, VisionFramePolicy
 from services.vision.frame_ring import AnalysisFrameRing
 from services.vision.ollama_client import OllamaVisualReviewer
 from services.vision.review_runtime import VisualReviewRuntime
@@ -57,6 +57,7 @@ def build_visual_runtime(
     initial_frame_health_code: FrameHealthCode | None = None,
     initial_risk_snapshot: RiskSnapshot | None = None,
     on_frame_health: Callable[[FrameHealthTransition], None] | None = None,
+    on_safe_frame: Callable[[PreparedAnalysisFrame], None] | None = None,
     on_risk_transition: Callable[[RiskTransition], None] | None = None,
     on_realtime_status: Callable[[RealtimeVisualMetricsSnapshot], None]
     | None = None,
@@ -119,6 +120,7 @@ def build_visual_runtime(
         frame_health=frame_health,
         review_scheduler=scheduler,
         on_frame_health=on_frame_health,
+        on_safe_frame=on_safe_frame,
         on_review_completion=runtime.handle,
         realtime_analyzer=realtime_analyzer,
         candidate_machine=candidate_machine,

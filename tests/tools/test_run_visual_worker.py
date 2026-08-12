@@ -13,6 +13,11 @@ from packages.contracts.vision import VisualRiskKind
 from services.storage.visual_risk import VisualRiskEventStore
 
 
+class RecordingRing:
+    def snapshot_window(self, **_kwargs: object) -> tuple[object, ...]:
+        return ()
+
+
 class RecordingWorker:
     def __init__(self) -> None:
         self.ran = False
@@ -36,6 +41,7 @@ class RecordingWorker:
 class RecordingResources:
     def __init__(self, *, fail_close: bool = False) -> None:
         self.worker = RecordingWorker()
+        self.ring = RecordingRing()
         self.closed = False
         self.fail_close = fail_close
 
@@ -102,6 +108,7 @@ def test_main_wires_real_status_writer_into_visual_runtime(
     assert callable(captured["on_frame_health"])
     assert captured["initial_frame_health_code"] is None
     assert callable(captured["on_risk_transition"])
+    assert callable(captured["on_safe_frame"])
     assert captured["initial_risk_snapshot"].open_risks == frozenset()
     guardian_database = tmp_path / "runtime-data/events.sqlite3"
     with sqlite3.connect(guardian_database) as connection:
@@ -112,6 +119,14 @@ def test_main_wires_real_status_writer_into_visual_runtime(
             """
         ).fetchone()
     assert table == ("visual_risk_events",)
+    with sqlite3.connect(guardian_database) as connection:
+        evidence_table = connection.execute(
+            """
+            SELECT name FROM sqlite_master
+            WHERE type = 'table' AND name = 'visual_risk_evidence'
+            """
+        ).fetchone()
+    assert evidence_table == ("visual_risk_evidence",)
 
 
 def test_main_restores_open_guardian_event_into_visual_runtime(
@@ -130,6 +145,13 @@ def test_main_restores_open_guardian_event_into_visual_runtime(
         opened_at=datetime(2026, 8, 11, 12, 0, tzinfo=UTC),
         confidence=0.82,
         rule_version="visual-risk-v1",
+    )
+    store.begin_evidence(
+        event_id="event-face",
+        started_at=datetime(2026, 8, 11, 12, 0, tzinfo=UTC),
+        capture_deadline=datetime(2026, 8, 11, 12, 0, 30, tzinfo=UTC),
+        snapshot_key=None,
+        frame_count=0,
     )
     resources = RecordingResources()
     captured: dict[str, object] = {}
@@ -160,6 +182,10 @@ def test_main_restores_open_guardian_event_into_visual_runtime(
     assert captured["initial_risk_snapshot"].open_risks == frozenset(
         {VisualRiskKind.FACE_NOT_VISIBLE}
     )
+    evidence = store.get_evidence("event-face")
+    assert evidence is not None
+    assert evidence.state == "interrupted"
+    assert evidence.failure_code == "worker_restarted"
 
 
 def test_main_flushes_final_status_when_resource_cleanup_fails(

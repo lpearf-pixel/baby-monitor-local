@@ -150,6 +150,22 @@ def test_bootstrap_delivers_frame_health_callback_to_worker() -> None:
         resources.close()
 
 
+def test_bootstrap_delivers_safe_frame_callback_to_worker() -> None:
+    from services.vision.bootstrap import build_visual_runtime
+
+    received: list[object] = []
+    resources = build_visual_runtime(
+        settings(),
+        on_safe_frame=received.append,
+    )
+    marker = object()
+    try:
+        resources.worker._on_safe_frame(marker)
+        assert received == [marker]
+    finally:
+        resources.close()
+
+
 def test_bootstrap_restores_open_frame_health_code() -> None:
     from services.vision.bootstrap import build_visual_runtime
     from services.vision.frame_health import FrameHealthCode

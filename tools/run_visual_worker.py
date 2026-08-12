@@ -14,12 +14,16 @@ if str(ROOT) not in sys.path:
     sys.path.insert(0, str(ROOT))
 
 from packages.contracts.settings import AppSettings
+from packages.contracts.vision import RiskTransition
 from services.environment.local_env import load_local_env_file
 from services.storage.visual_health import VisualHealthStore
-from services.storage.visual_risk import VisualRiskEventStore
+from services.storage.visual_risk import StoredVisualRiskEvent, VisualRiskEventStore
 from services.vision.bootstrap import build_visual_runtime
+from services.vision.evidence_files import GuardianEvidenceFiles
+from services.vision.evidence_recorder import GuardianEvidenceRecorder
 from services.vision.frame_health import FrameHealthTransition
 from services.vision.frame_health_pipeline import VisualFrameHealthPipeline
+from services.vision.frame_policy import PreparedAnalysisFrame
 from services.vision.notification_config import build_visual_health_notifier
 from services.vision.risk_event_pipeline import VisualRiskEventPipeline
 from services.vision.realtime_status import (
@@ -49,6 +53,7 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
 def main(argv: list[str] | None = None) -> int:
     args = parse_args(argv)
     status_publisher: RealtimeVisualStatusPublisher | None = None
+    evidence_recorder: GuardianEvidenceRecorder | None = None
     try:
         if args.env_file is not None:
             load_local_env_file(args.env_file)
@@ -76,9 +81,17 @@ def main(argv: list[str] | None = None) -> int:
         )
         visual_risk_store = VisualRiskEventStore(data_dir / "events.sqlite3")
         visual_risk_store.migrate()
+        def handle_event_opened(
+            event: StoredVisualRiskEvent,
+            transition: RiskTransition,
+        ) -> None:
+            if evidence_recorder is not None:
+                evidence_recorder.start(event, transition)
+
         visual_risk_pipeline = VisualRiskEventPipeline(
             store=visual_risk_store,
             stream=sys.stderr,
+            on_event_opened=handle_event_opened,
         )
         initial_risk_snapshot = visual_risk_pipeline.restore_snapshot(
             datetime.now().astimezone()
@@ -100,14 +113,27 @@ def main(argv: list[str] | None = None) -> int:
                 file=sys.stderr,
             ),
         )
+
+        def handle_safe_frame(frame: PreparedAnalysisFrame) -> None:
+            if evidence_recorder is not None:
+                evidence_recorder.observe(frame)
+
         resources = build_visual_runtime(
             settings,
             initial_frame_health_code=visual_health_pipeline.open_code,
             initial_risk_snapshot=initial_risk_snapshot,
             on_frame_health=handle_frame_health,
+            on_safe_frame=handle_safe_frame,
             on_risk_transition=visual_risk_pipeline.handle,
             on_realtime_status=status_publisher,
         )
+        evidence_recorder = GuardianEvidenceRecorder(
+            store=visual_risk_store,
+            files=GuardianEvidenceFiles(data_dir / "guardian-evidence"),
+            frame_window=resources.ring.snapshot_window,
+            stream=sys.stderr,
+        )
+        evidence_recorder.recover_interrupted(datetime.now().astimezone())
     except Exception:
         if status_publisher is not None:
             status_publisher.close()
@@ -127,6 +153,11 @@ def main(argv: list[str] | None = None) -> int:
     except Exception:
         runtime_failed = True
     finally:
+        try:
+            if evidence_recorder is not None:
+                evidence_recorder.close(datetime.now().astimezone())
+        except Exception:
+            pass
         try:
             resources.close()
         except Exception:

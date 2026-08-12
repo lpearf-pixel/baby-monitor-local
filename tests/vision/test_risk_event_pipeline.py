@@ -255,3 +255,50 @@ def test_broken_log_stream_never_changes_persistence_result(tmp_path: Path) -> N
     pipeline.handle(transition(RiskTransitionKind.ALERT_OPENED))
 
     assert store.load_open()[0].event_id == "event-face"
+
+
+def test_new_event_callback_runs_once_after_persistence(tmp_path: Path) -> None:
+    store = VisualRiskEventStore(tmp_path / "events.sqlite3")
+    store.migrate()
+    received: list[tuple[object, RiskTransition]] = []
+    pipeline = VisualRiskEventPipeline(
+        store=store,
+        stream=io.StringIO(),
+        event_id_factory=lambda: "event-face",
+        on_event_opened=lambda event, item: received.append((event, item)),
+    )
+    opened = transition(RiskTransitionKind.ALERT_OPENED)
+
+    pipeline.handle(opened)
+    pipeline.handle(opened)
+
+    assert len(received) == 1
+    assert received[0][0].event_id == "event-face"
+    assert received[0][1] == opened
+
+
+def test_new_event_callback_failure_is_redacted_and_does_not_rollback(
+    tmp_path: Path,
+) -> None:
+    store = VisualRiskEventStore(tmp_path / "events.sqlite3")
+    store.migrate()
+    stream = io.StringIO()
+
+    def fail(_event: object, _transition: RiskTransition) -> None:
+        raise RuntimeError("token at /private/family/evidence")
+
+    pipeline = VisualRiskEventPipeline(
+        store=store,
+        stream=stream,
+        event_id_factory=lambda: "event-face",
+        on_event_opened=fail,
+    )
+
+    pipeline.handle(transition(RiskTransitionKind.ALERT_OPENED))
+
+    assert store.load_open()[0].event_id == "event-face"
+    serialized = stream.getvalue()
+    assert "guardian.evidence_failed" in serialized
+    assert "callback_failed" in serialized
+    assert "token" not in serialized
+    assert "/private" not in serialized

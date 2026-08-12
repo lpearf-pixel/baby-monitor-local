@@ -151,6 +151,7 @@ class VisualWorker:
         review_scheduler: ReviewSchedulerLike | VisualReviewScheduler,
         monotonic: Callable[[], float] = time.monotonic,
         on_frame_health: Callable[[FrameHealthTransition], None] | None = None,
+        on_safe_frame: Callable[[PreparedAnalysisFrame], None] | None = None,
         on_review_completion: Callable[[ReviewCompletion], None] | None = None,
         realtime_analyzer: RealtimeAnalyzerLike | None = None,
         candidate_machine: CandidateMachineLike | None = None,
@@ -168,6 +169,7 @@ class VisualWorker:
         self._review_scheduler = review_scheduler
         self._monotonic = monotonic
         self._on_frame_health = on_frame_health or (lambda _transition: None)
+        self._on_safe_frame = on_safe_frame or (lambda _frame: None)
         self._on_review_completion = (
             on_review_completion or (lambda _completion: None)
         )
@@ -274,6 +276,16 @@ class VisualWorker:
         )
         if not self._frame_incident_open and not self._reconnect_requested:
             self._health = replace(self._health, state="healthy", code="ok")
+        if ring_added:
+            try:
+                self._on_safe_frame(prepared)
+            except Exception:
+                if not self._frame_incident_open and not self._reconnect_requested:
+                    self._health = replace(
+                        self._health,
+                        state="degraded",
+                        code="safe_frame_callback_failed",
+                    )
 
         analysis_due = (
             self._realtime_enabled

@@ -309,6 +309,7 @@ def build_worker(
     candidate_transitions: list[RealtimeCandidateTransition] | None = None,
     realtime_health: list[str] | None = None,
     realtime_status: object | None = None,
+    safe_frame_callback: object | None = None,
 ):
     module = worker_module()
     transition_sink = transitions if transitions is not None else []
@@ -325,6 +326,7 @@ def build_worker(
         review_scheduler=scheduler or RecordingScheduler(),
         monotonic=monotonic or (lambda: 0.0),
         on_frame_health=frame_health_callback or transition_sink.append,
+        on_safe_frame=safe_frame_callback,
         realtime_analyzer=realtime_analyzer,
         candidate_machine=candidate_machine,
         load_controller=load_controller,
@@ -548,6 +550,38 @@ def test_only_prepared_frames_enter_ring_and_scheduler() -> None:
     assert all(item.jpeg.startswith(b"prepared-") for item in ring.frames)
     assert all(item.jpeg.startswith(b"prepared-") for item in scheduler.calls[0][0])
     assert all(item.jpeg != f"private-{item.captured_at.second}".encode() for item in ring.frames)
+
+
+def test_safe_frame_callback_runs_only_after_prepared_frame_enters_ring() -> None:
+    ring = RecordingRing()
+    received: list[tuple[PreparedAnalysisFrame, int]] = []
+
+    def record(frame: PreparedAnalysisFrame) -> None:
+        received.append((frame, len(ring.frames)))
+
+    worker = build_worker(ring=ring, safe_frame_callback=record)
+
+    prepared = worker.run_frame(captured(0), monotonic_now=0.0)
+
+    assert prepared is not None
+    assert received == [(prepared, 1)]
+
+
+def test_safe_frame_callback_failure_does_not_remove_frame_or_escape() -> None:
+    ring = RecordingRing()
+
+    def fail(_frame: PreparedAnalysisFrame) -> None:
+        raise RuntimeError("token at /private/family/evidence")
+
+    worker = build_worker(ring=ring, safe_frame_callback=fail)
+
+    prepared = worker.run_frame(captured(0), monotonic_now=0.0)
+
+    assert prepared is not None
+    assert ring.frames == [prepared]
+    assert worker.health().state == "degraded"
+    assert worker.health().code == "safe_frame_callback_failed"
+    assert "/private" not in repr(worker.health())
 
 
 def test_busy_reviews_do_not_block_capture_or_create_extra_attempts() -> None:
