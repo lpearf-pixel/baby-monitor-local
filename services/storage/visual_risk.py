@@ -3,6 +3,7 @@ from __future__ import annotations
 import sqlite3
 from datetime import datetime
 from pathlib import Path
+import re
 from typing import Literal, Self
 
 from pydantic import BaseModel, ConfigDict, Field, field_validator, model_validator
@@ -64,6 +65,64 @@ class StoredVisualIntervention(BaseModel):
     rule_version: str = Field(min_length=1, max_length=128)
 
     _aware_observed_at = field_validator("observed_at")(_aware)
+
+
+EvidenceState = Literal["collecting", "ready", "failed", "interrupted"]
+EvidenceFailureCode = Literal[
+    "snapshot_unavailable",
+    "media_write_failed",
+    "worker_restarted",
+    "worker_stopped",
+]
+_EVIDENCE_KEY = re.compile(
+    r"\Avisual-risk/[0-9a-f]{64}/(?:snapshot\.jpg|clip\.webp)\Z"
+)
+
+
+class StoredVisualRiskEvidence(BaseModel):
+    model_config = ConfigDict(extra="forbid", frozen=True)
+
+    event_id: str = Field(min_length=1, max_length=128)
+    state: EvidenceState
+    started_at: datetime
+    updated_at: datetime
+    capture_deadline: datetime
+    snapshot_key: str | None = None
+    clip_key: str | None = None
+    frame_count: int = Field(ge=0, le=21)
+    failure_code: EvidenceFailureCode | None = None
+
+    _aware_started_at = field_validator("started_at")(_aware)
+    _aware_updated_at = field_validator("updated_at")(_aware)
+    _aware_capture_deadline = field_validator("capture_deadline")(_aware)
+
+    @field_validator("snapshot_key", "clip_key")
+    @classmethod
+    def require_safe_relative_key(cls, value: str | None) -> str | None:
+        if value is not None and _EVIDENCE_KEY.fullmatch(value) is None:
+            raise ValueError("invalid evidence key")
+        return value
+
+    @model_validator(mode="after")
+    def require_coherent_evidence(self) -> Self:
+        if self.capture_deadline < self.started_at:
+            raise ValueError("capture_deadline cannot precede started_at")
+        if self.updated_at < self.started_at:
+            raise ValueError("updated_at cannot precede started_at")
+        if self.state == "collecting":
+            if self.clip_key is not None or self.failure_code is not None:
+                raise ValueError("collecting evidence cannot be terminal")
+        elif self.state == "ready":
+            if self.snapshot_key is None or self.clip_key is None:
+                raise ValueError("ready evidence requires snapshot and clip")
+            if self.failure_code is not None:
+                raise ValueError("ready evidence cannot have failure_code")
+            if self.updated_at < self.capture_deadline:
+                raise ValueError("ready evidence cannot precede deadline")
+        else:
+            if self.clip_key is not None or self.failure_code is None:
+                raise ValueError("incomplete evidence requires failure_code")
+        return self
 
 
 class VisualRiskEventStore:
@@ -130,6 +189,34 @@ class VisualRiskEventStore:
                         REFERENCES visual_interventions(intervention_id)
                         ON DELETE CASCADE
                 );
+
+                CREATE TABLE IF NOT EXISTS visual_risk_evidence (
+                    event_id TEXT PRIMARY KEY,
+                    state TEXT NOT NULL CHECK (
+                        state IN ('collecting', 'ready', 'failed', 'interrupted')
+                    ),
+                    started_at TEXT NOT NULL,
+                    updated_at TEXT NOT NULL,
+                    capture_deadline TEXT NOT NULL,
+                    snapshot_key TEXT,
+                    clip_key TEXT,
+                    frame_count INTEGER NOT NULL CHECK (
+                        frame_count >= 0 AND frame_count <= 21
+                    ),
+                    failure_code TEXT CHECK (
+                        failure_code IS NULL OR failure_code IN (
+                            'snapshot_unavailable',
+                            'media_write_failed',
+                            'worker_restarted',
+                            'worker_stopped'
+                        )
+                    ),
+                    FOREIGN KEY (event_id)
+                        REFERENCES visual_risk_events(event_id) ON DELETE CASCADE
+                );
+
+                CREATE INDEX IF NOT EXISTS idx_visual_risk_evidence_state
+                    ON visual_risk_evidence(state, updated_at DESC);
                 """
             )
 
@@ -336,6 +423,182 @@ class VisualRiskEventStore:
             ).fetchall()
         return tuple(str(row["event_id"]) for row in rows)
 
+    def begin_evidence(
+        self,
+        *,
+        event_id: str,
+        started_at: datetime,
+        capture_deadline: datetime,
+        snapshot_key: str | None,
+        frame_count: int,
+    ) -> StoredVisualRiskEvidence:
+        proposed = StoredVisualRiskEvidence(
+            event_id=event_id,
+            state="collecting",
+            started_at=started_at,
+            updated_at=started_at,
+            capture_deadline=capture_deadline,
+            snapshot_key=snapshot_key,
+            frame_count=frame_count,
+        )
+        with self._connect() as connection:
+            connection.execute("BEGIN IMMEDIATE")
+            row = connection.execute(
+                "SELECT * FROM visual_risk_evidence WHERE event_id = ?",
+                (event_id,),
+            ).fetchone()
+            if row is not None:
+                return self._evidence_from_row(row)
+            connection.execute(
+                """
+                INSERT INTO visual_risk_evidence (
+                    event_id, state, started_at, updated_at, capture_deadline,
+                    snapshot_key, clip_key, frame_count, failure_code
+                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+                """,
+                self._evidence_values(proposed),
+            )
+        return proposed
+
+    def complete_evidence(
+        self,
+        *,
+        event_id: str,
+        completed_at: datetime,
+        clip_key: str,
+        frame_count: int,
+    ) -> StoredVisualRiskEvidence:
+        return self._finish_evidence(
+            event_id=event_id,
+            updated_at=completed_at,
+            state="ready",
+            clip_key=clip_key,
+            frame_count=frame_count,
+            failure_code=None,
+        )
+
+    def fail_evidence(
+        self,
+        *,
+        event_id: str,
+        failed_at: datetime,
+        failure_code: EvidenceFailureCode,
+        frame_count: int,
+    ) -> StoredVisualRiskEvidence:
+        if failure_code not in {"snapshot_unavailable", "media_write_failed"}:
+            raise ValueError("invalid evidence failure code")
+        return self._finish_evidence(
+            event_id=event_id,
+            updated_at=failed_at,
+            state="failed",
+            clip_key=None,
+            frame_count=frame_count,
+            failure_code=failure_code,
+        )
+
+    def interrupt_collecting_evidence(
+        self,
+        *,
+        interrupted_at: datetime,
+        failure_code: Literal["worker_restarted", "worker_stopped"] = (
+            "worker_restarted"
+        ),
+    ) -> tuple[StoredVisualRiskEvidence, ...]:
+        _aware(interrupted_at)
+        with self._connect() as connection:
+            connection.execute("BEGIN IMMEDIATE")
+            rows = connection.execute(
+                """
+                SELECT * FROM visual_risk_evidence
+                WHERE state = 'collecting'
+                ORDER BY event_id
+                """
+            ).fetchall()
+            interrupted = tuple(
+                StoredVisualRiskEvidence.model_validate(
+                    {
+                        **dict(row),
+                        "state": "interrupted",
+                        "updated_at": interrupted_at,
+                        "failure_code": failure_code,
+                    }
+                )
+                for row in rows
+            )
+            for evidence in interrupted:
+                connection.execute(
+                    """
+                    UPDATE visual_risk_evidence
+                    SET state = ?, updated_at = ?, failure_code = ?
+                    WHERE event_id = ? AND state = 'collecting'
+                    """,
+                    (
+                        evidence.state,
+                        evidence.updated_at.isoformat(),
+                        evidence.failure_code,
+                        evidence.event_id,
+                    ),
+                )
+        return interrupted
+
+    def get_evidence(self, event_id: str) -> StoredVisualRiskEvidence | None:
+        with self._connect() as connection:
+            row = connection.execute(
+                "SELECT * FROM visual_risk_evidence WHERE event_id = ?",
+                (event_id,),
+            ).fetchone()
+        return self._evidence_from_row(row) if row is not None else None
+
+    def _finish_evidence(
+        self,
+        *,
+        event_id: str,
+        updated_at: datetime,
+        state: Literal["ready", "failed"],
+        clip_key: str | None,
+        frame_count: int,
+        failure_code: EvidenceFailureCode | None,
+    ) -> StoredVisualRiskEvidence:
+        _aware(updated_at)
+        with self._connect() as connection:
+            connection.execute("BEGIN IMMEDIATE")
+            row = connection.execute(
+                "SELECT * FROM visual_risk_evidence WHERE event_id = ?",
+                (event_id,),
+            ).fetchone()
+            if row is None:
+                raise ValueError("evidence does not exist")
+            current = self._evidence_from_row(row)
+            if current.state != "collecting":
+                raise ValueError("evidence is not collecting")
+            finished = StoredVisualRiskEvidence(
+                **{
+                    **current.model_dump(),
+                    "state": state,
+                    "updated_at": updated_at,
+                    "clip_key": clip_key,
+                    "frame_count": frame_count,
+                    "failure_code": failure_code,
+                }
+            )
+            connection.execute(
+                """
+                UPDATE visual_risk_evidence
+                SET state = ?, updated_at = ?, clip_key = ?, frame_count = ?,
+                    failure_code = ?
+                WHERE event_id = ? AND state = 'collecting'
+                """,
+                (
+                    finished.state,
+                    finished.updated_at.isoformat(),
+                    finished.clip_key,
+                    finished.frame_count,
+                    finished.failure_code,
+                    finished.event_id,
+                ),
+            )
+        return finished
+
     @staticmethod
     def _event_values(event: StoredVisualRiskEvent) -> tuple[object, ...]:
         return (
@@ -377,4 +640,32 @@ class VisualRiskEventStore:
             observed_at=datetime.fromisoformat(row["observed_at"]),
             confidence=float(row["confidence"]),
             rule_version=row["rule_version"],
+        )
+
+    @staticmethod
+    def _evidence_values(evidence: StoredVisualRiskEvidence) -> tuple[object, ...]:
+        return (
+            evidence.event_id,
+            evidence.state,
+            evidence.started_at.isoformat(),
+            evidence.updated_at.isoformat(),
+            evidence.capture_deadline.isoformat(),
+            evidence.snapshot_key,
+            evidence.clip_key,
+            evidence.frame_count,
+            evidence.failure_code,
+        )
+
+    @staticmethod
+    def _evidence_from_row(row: sqlite3.Row) -> StoredVisualRiskEvidence:
+        return StoredVisualRiskEvidence(
+            event_id=row["event_id"],
+            state=row["state"],
+            started_at=datetime.fromisoformat(row["started_at"]),
+            updated_at=datetime.fromisoformat(row["updated_at"]),
+            capture_deadline=datetime.fromisoformat(row["capture_deadline"]),
+            snapshot_key=row["snapshot_key"],
+            clip_key=row["clip_key"],
+            frame_count=int(row["frame_count"]),
+            failure_code=row["failure_code"],
         )

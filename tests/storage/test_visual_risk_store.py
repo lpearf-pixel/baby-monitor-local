@@ -10,11 +10,15 @@ from pydantic import ValidationError
 from packages.contracts.vision import VisualRiskKind
 from services.storage.visual_risk import (
     StoredVisualRiskEvent,
+    StoredVisualRiskEvidence,
     VisualRiskEventStore,
 )
 
 
 NOW = datetime(2026, 8, 11, 12, 0, tzinfo=UTC)
+DIGEST = "a" * 64
+SNAPSHOT_KEY = f"visual-risk/{DIGEST}/snapshot.jpg"
+CLIP_KEY = f"visual-risk/{DIGEST}/clip.webp"
 
 
 def test_event_contract_rejects_naive_or_incoherent_recovery() -> None:
@@ -218,3 +222,129 @@ def test_intervention_without_open_risk_is_still_retained(tmp_path: Path) -> Non
 
     assert intervention.intervention_id == "intervention-standalone"
     assert store.intervention_event_ids(intervention.intervention_id) == ()
+
+
+def open_face_event(store: VisualRiskEventStore) -> None:
+    store.open_event(
+        event_id="event-face",
+        risk_kind=VisualRiskKind.FACE_NOT_VISIBLE,
+        opened_at=NOW,
+        confidence=0.82,
+        rule_version="visual-risk-v1",
+    )
+
+
+def test_evidence_contract_rejects_unsafe_keys_and_oversized_frame_count() -> None:
+    base = {
+        "event_id": "event-face",
+        "state": "ready",
+        "started_at": NOW,
+        "updated_at": NOW + timedelta(seconds=30),
+        "capture_deadline": NOW + timedelta(seconds=30),
+        "snapshot_key": SNAPSHOT_KEY,
+        "clip_key": CLIP_KEY,
+        "frame_count": 16,
+    }
+
+    with pytest.raises(ValidationError):
+        StoredVisualRiskEvidence(**{**base, "clip_key": "../clip.webp"})
+    with pytest.raises(ValidationError):
+        StoredVisualRiskEvidence(**{**base, "frame_count": 22})
+
+
+def test_evidence_lifecycle_is_idempotent_and_ready_is_terminal(
+    tmp_path: Path,
+) -> None:
+    store = VisualRiskEventStore(tmp_path / "events.sqlite3")
+    store.migrate()
+    store.migrate()
+    open_face_event(store)
+
+    started = store.begin_evidence(
+        event_id="event-face",
+        started_at=NOW,
+        capture_deadline=NOW + timedelta(seconds=30),
+        snapshot_key=SNAPSHOT_KEY,
+        frame_count=6,
+    )
+    repeated = store.begin_evidence(
+        event_id="event-face",
+        started_at=NOW + timedelta(seconds=1),
+        capture_deadline=NOW + timedelta(seconds=31),
+        snapshot_key=f"visual-risk/{'b' * 64}/snapshot.jpg",
+        frame_count=1,
+    )
+    ready = store.complete_evidence(
+        event_id="event-face",
+        completed_at=NOW + timedelta(seconds=30),
+        clip_key=CLIP_KEY,
+        frame_count=21,
+    )
+
+    assert repeated == started
+    assert ready.state == "ready"
+    assert ready.frame_count == 21
+    assert store.get_evidence("event-face") == ready
+    with pytest.raises(ValueError, match="collecting"):
+        store.fail_evidence(
+            event_id="event-face",
+            failed_at=NOW + timedelta(seconds=31),
+            failure_code="media_write_failed",
+            frame_count=21,
+        )
+
+
+def test_evidence_requires_existing_event_and_fixed_failure_code(
+    tmp_path: Path,
+) -> None:
+    store = VisualRiskEventStore(tmp_path / "events.sqlite3")
+    store.migrate()
+
+    with pytest.raises(sqlite3.IntegrityError):
+        store.begin_evidence(
+            event_id="missing-event",
+            started_at=NOW,
+            capture_deadline=NOW + timedelta(seconds=30),
+            snapshot_key=None,
+            frame_count=0,
+        )
+
+    open_face_event(store)
+    store.begin_evidence(
+        event_id="event-face",
+        started_at=NOW,
+        capture_deadline=NOW + timedelta(seconds=30),
+        snapshot_key=None,
+        frame_count=0,
+    )
+    with pytest.raises(ValueError):
+        store.fail_evidence(
+            event_id="event-face",
+            failed_at=NOW,
+            failure_code="/private/family/error",
+            frame_count=0,
+        )
+
+
+def test_restart_interrupts_only_collecting_evidence(tmp_path: Path) -> None:
+    store = VisualRiskEventStore(tmp_path / "events.sqlite3")
+    store.migrate()
+    open_face_event(store)
+    store.begin_evidence(
+        event_id="event-face",
+        started_at=NOW,
+        capture_deadline=NOW + timedelta(seconds=30),
+        snapshot_key=SNAPSHOT_KEY,
+        frame_count=5,
+    )
+
+    interrupted = store.interrupt_collecting_evidence(
+        interrupted_at=NOW + timedelta(seconds=8)
+    )
+
+    assert len(interrupted) == 1
+    assert interrupted[0].state == "interrupted"
+    assert interrupted[0].failure_code == "worker_restarted"
+    assert store.interrupt_collecting_evidence(
+        interrupted_at=NOW + timedelta(seconds=9)
+    ) == ()
