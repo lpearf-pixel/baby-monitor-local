@@ -231,3 +231,27 @@ def test_guardian_sensitive_scan_does_not_match_its_own_rules(tmp_path: Path) ->
     assert result.returncode == 0
     assert "PASS repository sensitive_literals" in result.stdout
     assert result.stdout.splitlines()[-1] == "guardian_test=PASS"
+
+
+def test_makefile_exposes_guardian_commands_without_starting_services() -> None:
+    start = subprocess.run(
+        ["make", "-n", "alpha-guardian-start"],
+        cwd=ROOT,
+        check=False,
+        capture_output=True,
+        text=True,
+    )
+    automatic = subprocess.run(
+        ["make", "-n", "alpha-guardian-test"],
+        cwd=ROOT,
+        check=False,
+        capture_output=True,
+        text=True,
+    )
+
+    assert start.returncode == 0
+    assert start.stdout.splitlines() == ["/bin/bash tools/start_guardian.sh"]
+    assert automatic.returncode == 0
+    assert automatic.stdout.splitlines() == ["/bin/bash tools/test_guardian.sh"]
+    assert start.stderr == ""
+    assert automatic.stderr == ""

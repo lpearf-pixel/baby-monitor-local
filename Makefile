@@ -3,7 +3,7 @@ PYTHON := ./.venv-alpha/bin/python
 BASH ?= /bin/bash
 .DEFAULT_GOAL := help
 
-.PHONY: help alpha-update alpha-install alpha-start alpha-stop alpha-restart alpha-status alpha-visual-status alpha-visual-performance alpha-visual-diagnostic alpha-visual-launchd-update alpha-logs alpha-quality-hd alpha-quality-info alpha-quality-rollback alpha-source-check alpha-subtype-probe alpha-subtype-apply alpha-go2rtc-info alpha-go2rtc-rebuild alpha-go2rtc-rollback alpha-realtime-models-check alpha-realtime-models-install
+.PHONY: help alpha-update alpha-install alpha-start alpha-stop alpha-restart alpha-status alpha-guardian-start alpha-guardian-test alpha-visual-status alpha-visual-performance alpha-visual-diagnostic alpha-visual-launchd-update alpha-logs alpha-quality-hd alpha-quality-info alpha-quality-rollback alpha-source-check alpha-subtype-probe alpha-subtype-apply alpha-go2rtc-info alpha-go2rtc-rebuild alpha-go2rtc-rollback alpha-realtime-models-check alpha-realtime-models-install
 
 help:
 	@echo "Baby Monitor Local Alpha commands:"
@@ -13,6 +13,8 @@ help:
 	@echo "  make alpha-stop              Stop Alpha services"
 	@echo "  make alpha-restart           Restart Alpha services"
 	@echo "  make alpha-status            Show branch, listeners and health"
+	@echo "  make alpha-guardian-start    Start and verify the complete guardian chain"
+	@echo "  make alpha-guardian-test     Run complete automatic guardian acceptance"
 	@echo "  make alpha-visual-status     Show redacted visual worker and M2 bridge health"
 	@echo "  make alpha-visual-performance Run the 10-minute redacted performance gate"
 	@echo "  make alpha-visual-diagnostic Measure redacted realtime stage timings"
@@ -62,6 +64,12 @@ alpha-stop:
 	@bash tools/stop_alpha.sh
 
 alpha-restart: alpha-stop alpha-start
+
+alpha-guardian-start:
+	@$(BASH) tools/start_guardian.sh
+
+alpha-guardian-test:
+	@$(BASH) tools/test_guardian.sh
 
 alpha-status:
 	@if git rev-parse --is-inside-work-tree >/dev/null 2>&1; then \
