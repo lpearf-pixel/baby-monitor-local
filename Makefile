@@ -1,8 +1,9 @@
 SHELL := /bin/bash
 PYTHON := ./.venv-alpha/bin/python
+BASH ?= /bin/bash
 .DEFAULT_GOAL := help
 
-.PHONY: help alpha-update alpha-install alpha-start alpha-stop alpha-restart alpha-status alpha-logs alpha-quality-hd alpha-quality-info alpha-quality-rollback alpha-source-check alpha-subtype-probe alpha-subtype-apply alpha-go2rtc-info alpha-go2rtc-rebuild alpha-go2rtc-rollback
+.PHONY: help alpha-update alpha-install alpha-start alpha-stop alpha-restart alpha-status alpha-visual-status alpha-visual-performance alpha-visual-diagnostic alpha-visual-launchd-update alpha-logs alpha-quality-hd alpha-quality-info alpha-quality-rollback alpha-source-check alpha-subtype-probe alpha-subtype-apply alpha-go2rtc-info alpha-go2rtc-rebuild alpha-go2rtc-rollback alpha-realtime-models-check alpha-realtime-models-install
 
 help:
 	@echo "Baby Monitor Local Alpha commands:"
@@ -12,6 +13,10 @@ help:
 	@echo "  make alpha-stop              Stop Alpha services"
 	@echo "  make alpha-restart           Restart Alpha services"
 	@echo "  make alpha-status            Show branch, listeners and health"
+	@echo "  make alpha-visual-status     Show redacted visual worker and M2 bridge health"
+	@echo "  make alpha-visual-performance Run the 10-minute redacted performance gate"
+	@echo "  make alpha-visual-diagnostic Measure redacted realtime stage timings"
+	@echo "  make alpha-visual-launchd-update Safely apply interactive visual scheduling"
 	@echo "  make alpha-logs              Tail recent service logs"
 	@echo "  make alpha-quality-hd        Enable 720p MJPEG plus on-demand VideoToolbox HD"
 	@echo "  make alpha-quality-info      Show non-sensitive preview quality settings"
@@ -22,6 +27,8 @@ help:
 	@echo "  make alpha-go2rtc-info       Show non-sensitive pinned build metadata"
 	@echo "  make alpha-go2rtc-rebuild    Rebuild the pinned patched go2rtc binary"
 	@echo "  make alpha-go2rtc-rollback   Restore the newest valid go2rtc backup"
+	@echo "  make alpha-realtime-models-check    Verify pinned realtime visual models"
+	@echo "  make alpha-realtime-models-install  Explicitly install pinned models"
 
 alpha-update:
 	@git config core.fileMode false
@@ -41,6 +48,12 @@ alpha-go2rtc-rebuild:
 
 alpha-go2rtc-rollback:
 	@$(PYTHON) tools/go2rtc_build.py rollback
+
+alpha-realtime-models-check:
+	@$(PYTHON) tools/realtime_models.py check
+
+alpha-realtime-models-install:
+	@$(PYTHON) tools/realtime_models.py install
 
 alpha-start:
 	@bash tools/start_alpha.sh
@@ -124,3 +137,42 @@ alpha-subtype-apply:
 		--minimum-width 1920 \
 		--minimum-height 1080 \
 		--restart-command "make --no-print-directory alpha-restart"
+
+alpha-visual-status:
+	@metrics_status=0; \
+	visual_running=0; \
+	echo "Visual worker:"; \
+	if [[ "$$(uname -s)" == "Darwin" ]] && launchctl print "gui/$$(id -u)/com.babymonitor.visual" >/dev/null 2>&1; then \
+		echo "running (launchd)"; \
+		visual_running=1; \
+	elif [[ -f runtime/pids/visual.pid ]] && kill -0 "$$(cat runtime/pids/visual.pid)" 2>/dev/null; then \
+		echo "running (pid)"; \
+		visual_running=1; \
+	else \
+		echo "offline"; \
+	fi; \
+	if [[ "$$visual_running" -eq 1 ]]; then \
+		$(PYTHON) tools/realtime_visual_status.py || metrics_status=$$?; \
+	fi; \
+	echo "Ollama tunnel:"; \
+	if [[ "$$(uname -s)" == "Darwin" ]] && launchctl print "gui/$$(id -u)/com.babymonitor.ollama-tunnel" >/dev/null 2>&1; then \
+		echo "running (launchd)"; \
+	else \
+		echo "offline"; \
+	fi; \
+	echo "Ollama bridge:"; \
+	if curl -fsS --noproxy '*' --max-time 2 http://127.0.0.1:11435/api/version >/dev/null 2>&1; then \
+		echo "reachable"; \
+	else \
+		echo "unreachable"; \
+	fi; \
+	exit "$$metrics_status"
+
+alpha-visual-performance:
+	@$(PYTHON) tools/realtime_visual_performance.py
+
+alpha-visual-diagnostic:
+	@$(BASH) tools/run_realtime_visual_diagnostic.sh
+
+alpha-visual-launchd-update:
+	@$(BASH) tools/update_visual_launchd.sh

@@ -1,0 +1,137 @@
+from __future__ import annotations
+
+from collections.abc import Callable
+from concurrent.futures import ThreadPoolExecutor
+from dataclasses import dataclass, field
+
+from packages.contracts.settings import AppSettings
+from services.stream.frame_source import Go2RtcAnalysisFrameSource
+from services.vision.frame_health import (
+    FrameHealthCode,
+    FrameHealthTransition,
+    VisualFrameHealthMonitor,
+)
+from services.vision.frame_policy import VisionFramePolicy
+from services.vision.frame_ring import AnalysisFrameRing
+from services.vision.ollama_client import OllamaVisualReviewer
+from services.vision.review_runtime import VisualReviewRuntime
+from services.vision.review_scheduler import VisualReviewScheduler
+from services.vision.realtime_analyzer import RealtimeVisualAnalyzer
+from services.vision.realtime_candidates import RealtimeCandidateStateMachine
+from services.vision.realtime_load import RealtimeLoadController
+from services.vision.realtime_models import build_realtime_model_backend
+from services.vision.realtime_status import RealtimeVisualMetricsSnapshot
+from services.vision.risk_state import VisualRiskStateMachine
+from services.vision.worker import VisualWorker
+
+
+@dataclass
+class VisualRuntimeResources:
+    worker: VisualWorker
+    runtime: VisualReviewRuntime
+    source: Go2RtcAnalysisFrameSource
+    policy: VisionFramePolicy
+    ring: AnalysisFrameRing
+    frame_health: VisualFrameHealthMonitor
+    reviewer: OllamaVisualReviewer
+    scheduler: VisualReviewScheduler
+    risk_machine: VisualRiskStateMachine
+    executor: ThreadPoolExecutor
+    realtime_analyzer: RealtimeVisualAnalyzer | None = None
+    candidate_machine: RealtimeCandidateStateMachine | None = None
+    load_controller: RealtimeLoadController | None = None
+    _closed: bool = field(default=False, init=False, repr=False)
+
+    def close(self) -> None:
+        if self._closed:
+            return
+        self._closed = True
+        self.scheduler.close()
+        self.executor.shutdown(wait=False, cancel_futures=True)
+
+
+def build_visual_runtime(
+    settings: AppSettings,
+    *,
+    initial_frame_health_code: FrameHealthCode | None = None,
+    on_frame_health: Callable[[FrameHealthTransition], None] | None = None,
+    on_realtime_status: Callable[[RealtimeVisualMetricsSnapshot], None]
+    | None = None,
+) -> VisualRuntimeResources:
+    if not settings.visual.enabled:
+        raise ValueError("visual_review_disabled")
+    if settings.visual.bed_zone is None:
+        raise ValueError("VISUAL_BED_ZONE_REQUIRED")
+
+    realtime_enabled = settings.visual.realtime.enabled
+    source = Go2RtcAnalysisFrameSource(
+        base_url=_go2rtc_base_url(
+            settings.stream.go2rtc_api_host,
+            settings.stream.go2rtc_api_port,
+        ),
+        stream_name=("analysis_realtime" if realtime_enabled else "analysis"),
+    )
+    policy = VisionFramePolicy(
+        bed_zone=settings.visual.bed_zone,
+        privacy_masks=settings.visual.privacy_masks,
+    )
+    ring = AnalysisFrameRing()
+    frame_health = VisualFrameHealthMonitor(
+        open_code=initial_frame_health_code,
+    )
+    reviewer = OllamaVisualReviewer(base_url=settings.visual.ollama_base_url)
+    executor = ThreadPoolExecutor(
+        max_workers=1,
+        thread_name_prefix="visual-review",
+    )
+    scheduler = VisualReviewScheduler(
+        reviewer=reviewer.review,
+        executor=executor,
+    )
+    risk_machine = VisualRiskStateMachine()
+    runtime = VisualReviewRuntime(risk_machine=risk_machine)
+    realtime_analyzer: RealtimeVisualAnalyzer | None = None
+    candidate_machine: RealtimeCandidateStateMachine | None = None
+    load_controller: RealtimeLoadController | None = None
+    if realtime_enabled:
+        model_root = (
+            settings.app.data_dir / "models" / "openvino-2025.4.1"
+        )
+        realtime_analyzer = RealtimeVisualAnalyzer(
+            model_backend=build_realtime_model_backend(model_root)
+        )
+        candidate_machine = RealtimeCandidateStateMachine()
+        load_controller = RealtimeLoadController()
+    worker = VisualWorker(
+        stream_factory=lambda: source.iter_frames(timeout_seconds=8),
+        frame_policy=policy,
+        frame_ring=ring,
+        frame_health=frame_health,
+        review_scheduler=scheduler,
+        on_frame_health=on_frame_health,
+        on_review_completion=runtime.handle,
+        realtime_analyzer=realtime_analyzer,
+        candidate_machine=candidate_machine,
+        load_controller=load_controller,
+        on_realtime_status=on_realtime_status,
+    )
+    return VisualRuntimeResources(
+        worker=worker,
+        runtime=runtime,
+        source=source,
+        policy=policy,
+        ring=ring,
+        frame_health=frame_health,
+        reviewer=reviewer,
+        scheduler=scheduler,
+        risk_machine=risk_machine,
+        executor=executor,
+        realtime_analyzer=realtime_analyzer,
+        candidate_machine=candidate_machine,
+        load_controller=load_controller,
+    )
+
+
+def _go2rtc_base_url(host: str, port: int) -> str:
+    formatted_host = f"[{host}]" if ":" in host else host
+    return f"http://{formatted_host}:{port}"

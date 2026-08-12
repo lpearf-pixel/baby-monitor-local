@@ -8,6 +8,10 @@ rtsp:
 webrtc:
   listen: "127.0.0.1:8555"
 streams:
+  # Private low-rate stream for the future continuous visual worker.
+  analysis: ffmpeg:source#video=mjpeg#width=960#height=540#raw=-r 1
+  # Opt-in private stream consumed only by the realtime visual worker.
+  analysis_realtime: ffmpeg:source#video=mjpeg#width=960#height=540#raw=-r 5
   # Stable HD browser preview generated only while somebody is watching.
   live: ffmpeg:source#video=mjpeg#width=1280#height=720#raw=-r 10
   # Hardware-only 1440p compatibility stream, started only for an HD consumer.

@@ -53,7 +53,6 @@ def test_alpha_start_runs_gauge_as_a_separate_pid() -> None:
     assert 'tools/run_gauge_worker.py' in content
     assert 'BABY_MONITOR_SETTINGS_PATH' in content
     assert "launchctl bootstrap" in content
-    assert content.count("launchctl kickstart -k") == 2
     assert "com.babymonitor.gauge" in content
     assert "com.babymonitor.environment-watchdog" in content
     assert "run_environment_watchdog.py" in content

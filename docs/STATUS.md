@@ -5,7 +5,8 @@
 - Repository: initialized and public.
 - Design: approved.
 - Environment monitoring design and implementation plan: approved on 2026-08-05.
-- Active development branch: `codex/basic-usable-alpha`.
+- Stable Xiaomi Alpha commit: `125fb44` on `stable/xiaomi-alpha`.
+- Active local development branch: `codex/xiaomi-alpha-visual-risk-core`.
 - Xiaomi-first delivery scope: fixed to MJSXJ17CM for the first usable release;
   the proposed UVC USB source remains deferred behind the existing frame-source
   adapter boundary.
@@ -15,13 +16,58 @@
 - Environment implementation: contracts, schema v2 Dashboard calibration, controlled
   frame bursts, day/night reader, independent worker, SQLite history, deterministic
   incidents, redacted ntfy payloads and authenticated Dashboard are implemented.
-- Local branch HEAD before this status refresh: `08963d6`; the branch is 29 commits
-  ahead of `origin/codex/basic-usable-alpha` and the working tree was clean.
-- Fresh software gate on 2026-08-05: 316 Python tests and 70 Node browser tests passed;
-  `git diff --check` and the tracked runtime/media boundary check passed.
-- Next gate: install this fixed Xiaomi Alpha on the Intel i9, reconnect the real
-  camera, and run source/HD/browser/notification/environment calibration checks.
-  Software-only tests do not satisfy that hardware gate.
+- Visual risk R1 core: strict schema-v1 model observations, independent face-obstruction,
+  prone-position and out-of-bed tracks, two-review/10-second confirmation and recovery,
+  low-confidence downgrade, adult-intervention audit, deduplication and restart snapshots
+  are implemented as pure deterministic code.
+- Visual frame R2a: explicit normalized bed/privacy polygons, 15%-expanded bed crop,
+  privacy masking before resize/encode, fixed 960×540 quality-80 JPEG output, and a
+  40-second/21-frame in-memory ring are implemented with generated-image tests.
+- Visual capture R2b: the fixed private `analysis` profile, one continuous loopback
+  MJPEG consumer, two-second privacy-safe sampling, conservative 60-second
+  disconnect/freeze evidence with reconnect confirmation, bounded reconnect backoff,
+  and ten-second single-flight review scheduling are implemented as local components.
+- Visual runtime R3 software: strict disabled-by-default settings, the fixed
+  `qwen3-vl:8b-instruct-q4_K_M` loopback-only Ollama client, four-frame/4 MiB
+  request bounds, proxy-free 20-second calls, strict schema parsing, deterministic
+  three-failure/60-second degradation and two-success recovery, real worker
+  composition, and independent visual/tunnel launchd units are implemented locally.
+- Realtime visual R3.5 software: an opt-in `analysis_realtime` 960×540/5 FPS path,
+  privacy-safe OpenCV analysis, pinned YuNet/OpenVINO model verification, deterministic
+  watch-only candidate tracks, 5/3/1 FPS load degradation, independent two-second Qwen
+  ring sampling, and immediate urgent review scheduling are implemented locally.
+  Missing models preserve motion, scene health and regular Qwen review while semantic
+  tracks remain unavailable; the fast path cannot open or recover a risk alert.
+- Realtime visual scheduling: the i9 production gate failed with 60/60 samples at
+  1 FPS while the same worker run in the foreground reached 5 FPS within the 180 ms
+  P95 budget. The visual launchd template now uses `Interactive`, and a dedicated
+  update command validates, backs up, atomically replaces, verifies, and rolls back
+  only `com.babymonitor.visual`. The i9 installed job still requires the short
+  post-update observation and full 10-minute performance gate.
+- Visual frame-health alerts: the restart-safe SQLite incident pipeline and
+  privacy-safe ntfy delivery are deployed on the Intel i9. A fresh controlled
+  `source_offline` event delivered one open alert, recovered after the fixed
+  changing-frame window, delivered one recovery alert, and persisted both delivery
+  markers. The outage window also contained five gauge records; the gauge,
+  environment-watchdog, and visual launchd units stayed in their first run without
+  exiting, real-time metrics remained available, and the Alpha health endpoint was
+  healthy after recovery without a full-stack restart.
+- Fresh R3 software gate on 2026-08-06: 451 Python tests and 70 Node browser tests
+  passed; Python compilation, shell syntax, `git diff --check`, tracked runtime/media
+  boundaries, GitHub-token candidates and private-key markers passed. This remains a
+  software-only result and does not represent real-camera or M2 accuracy.
+- Fresh R3.5 software gate on 2026-08-07: 510 Python tests and 70 Node browser
+  tests passed; Python compilation, shell syntax, schema parsing and
+  `git diff --check` passed. The OpenPose output now uses PAF-connected person
+  grouping rather than heatmap-peak counting; model/load health transitions,
+  every-frame source health checks and blurred-camera watches have regression
+  coverage. This remains synthetic software evidence, not an i9 household gate.
+- Next visual gate: apply `make alpha-visual-launchd-update` on i9, observe the
+  redacted production metrics for 3 minutes, and rerun the full 10-minute performance
+  sampler. Then finish the restricted i9-to-M2 SSH bridge, private bed zone, real
+  four-frame Qwen contract and P95 latency, and record daylight/night/occlusion/adult/
+  empty-bed candidates before R4 evidence and alerts.
+  The i9 environment calibration and 24-hour gate remain independent and unfinished.
 
 ## Pull request checkpoint
 
@@ -34,9 +80,12 @@
 
 ## Not yet in the usable Alpha
 
-- JoyAI/Qwen visual risk review and the M2 model bridge.
-- Automatic face-obstruction, prone-position, bed-exit, or adult-intervention alerts.
-- Event video ring/export and cry/audio candidate detection.
+- Installed i9-to-M2 SSH bridge, private bed-zone configuration, and end-to-end
+  household validation of face-obstruction, prone-position, bed-exit, or
+  adult-intervention candidates.
+- Authenticated parent feedback, risk-event screenshot/video export, risk-event ntfy,
+  and cry/audio candidate detection. Deterministic source-health ntfy is already
+  deployed and independently verified.
 - Verified Tailscale external access, real PTZ control, or the 72-hour release gate.
 
 ## Safety gates
@@ -45,3 +94,6 @@
 - `main` contains reviewed documentation and stable code only.
 - All implementation work proceeds through feature branches and pull requests.
 - Environment monitoring is read-only: no actuator API or automatic device control.
+- Visual model output is observation evidence only; the deterministic i9 state machine
+  owns decisions, and every result remains an auxiliary candidate rather than medical
+  or unattended-care assurance.

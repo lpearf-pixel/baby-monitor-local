@@ -42,6 +42,18 @@ environment:
   policy:
     mode: monitor_only
     required_independent_sources_for_control: 2
+visual:
+  enabled: false
+  model: qwen3-vl:8b-instruct-q4_K_M
+  ollama_base_url: http://127.0.0.1:11435
+  bed_zone: null
+  privacy_masks: []
+  request_timeout_seconds: 20
+  model_degraded_seconds: 60
+  model_failure_threshold: 3
+  model_recovery_successes: 2
+  realtime:
+    enabled: false
 notifications:
   ntfy_topic: replace-with-private-topic
   ntfy_token_env: NTFY_TOKEN

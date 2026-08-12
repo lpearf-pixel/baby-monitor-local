@@ -1,0 +1,50 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+  <key>Label</key>
+  <string>com.babymonitor.ollama-tunnel</string>
+  <key>ProgramArguments</key>
+  <array>
+    <string>/usr/bin/ssh</string>
+    <string>-N</string>
+    <string>-T</string>
+    <string>-o</string>
+    <string>BatchMode=yes</string>
+    <string>-o</string>
+    <string>ExitOnForwardFailure=yes</string>
+    <string>-o</string>
+    <string>IdentitiesOnly=yes</string>
+    <string>-o</string>
+    <string>StrictHostKeyChecking=yes</string>
+    <string>-o</string>
+    <string>GatewayPorts=no</string>
+    <string>-o</string>
+    <string>ServerAliveInterval=15</string>
+    <string>-o</string>
+    <string>ServerAliveCountMax=3</string>
+    <string>-i</string>
+    <string>__M2_SSH_IDENTITY__</string>
+    <string>-L</string>
+    <string>127.0.0.1:11435:127.0.0.1:11434</string>
+    <string>__M2_SSH_TARGET__</string>
+  </array>
+  <key>WorkingDirectory</key>
+  <string>__PROJECT_ROOT__</string>
+  <key>RunAtLoad</key>
+  <true/>
+  <key>KeepAlive</key>
+  <dict>
+    <key>SuccessfulExit</key>
+    <false/>
+  </dict>
+  <key>ThrottleInterval</key>
+  <integer>10</integer>
+  <key>ProcessType</key>
+  <string>Background</string>
+  <key>StandardOutPath</key>
+  <string>__PROJECT_ROOT__/runtime/logs/ollama-tunnel.log</string>
+  <key>StandardErrorPath</key>
+  <string>__PROJECT_ROOT__/runtime/logs/ollama-tunnel.log</string>
+</dict>
+</plist>

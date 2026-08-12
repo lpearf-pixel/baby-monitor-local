@@ -82,6 +82,105 @@ def test_loads_valid_settings(tmp_path: Path) -> None:
     assert settings.retention.event_quota_gb == 30
     assert settings.environment.interval_seconds == 60
     assert settings.environment.policy.mode == "monitor_only"
+    assert settings.visual.enabled is False
+    assert settings.visual.bed_zone is None
+
+
+def visual_yaml(*, enabled: bool = True) -> str:
+    return valid_yaml() + f"""
+visual:
+  enabled: {str(enabled).lower()}
+  model: qwen3-vl:8b-instruct-q4_K_M
+  ollama_base_url: http://127.0.0.1:11435
+  bed_zone:
+    points:
+      - {{x: 0.2, y: 0.2}}
+      - {{x: 0.8, y: 0.2}}
+      - {{x: 0.8, y: 0.8}}
+      - {{x: 0.2, y: 0.8}}
+  privacy_masks: []
+  request_timeout_seconds: 20
+  model_degraded_seconds: 60
+  model_failure_threshold: 3
+  model_recovery_successes: 2
+"""
+
+
+def test_visual_review_can_enable_only_with_a_normalized_bed_zone(
+    tmp_path: Path,
+) -> None:
+    settings = AppSettings.load(write_settings(tmp_path, visual_yaml()))
+
+    assert settings.visual.enabled is True
+    assert settings.visual.model == "qwen3-vl:8b-instruct-q4_K_M"
+    assert settings.visual.ollama_base_url == "http://127.0.0.1:11435"
+    assert settings.visual.bed_zone is not None
+    assert len(settings.visual.bed_zone.points) == 4
+    assert settings.visual.realtime.enabled is False
+
+
+def test_realtime_visual_layer_is_explicitly_opt_in(tmp_path: Path) -> None:
+    content = visual_yaml().replace(
+        "  model_recovery_successes: 2\n",
+        "  model_recovery_successes: 2\n"
+        "  realtime:\n"
+        "    enabled: true\n",
+    )
+
+    settings = AppSettings.load(write_settings(tmp_path, content))
+
+    assert settings.visual.enabled is True
+    assert settings.visual.realtime.enabled is True
+
+
+def test_visual_review_rejects_enabled_without_bed_zone(tmp_path: Path) -> None:
+    path = write_settings(
+        tmp_path,
+        visual_yaml().replace(
+            "  bed_zone:\n"
+            "    points:\n"
+            "      - {x: 0.2, y: 0.2}\n"
+            "      - {x: 0.8, y: 0.2}\n"
+            "      - {x: 0.8, y: 0.8}\n"
+            "      - {x: 0.2, y: 0.8}\n",
+            "  bed_zone: null\n",
+        ),
+    )
+
+    with pytest.raises(ValidationError, match="VISUAL_BED_ZONE_REQUIRED"):
+        AppSettings.load(path)
+
+
+@pytest.mark.parametrize(
+    ("old", "new", "field"),
+    [
+        (
+            "qwen3-vl:8b-instruct-q4_K_M",
+            "qwen3-vl:8b",
+            "model",
+        ),
+        (
+            "http://127.0.0.1:11435",
+            "http://0.0.0.0:11435",
+            "ollama_base_url",
+        ),
+        (
+            "http://127.0.0.1:11435",
+            "https://models.example.test",
+            "ollama_base_url",
+        ),
+    ],
+)
+def test_visual_runtime_model_and_gateway_are_fixed(
+    tmp_path: Path,
+    old: str,
+    new: str,
+    field: str,
+) -> None:
+    path = write_settings(tmp_path, visual_yaml().replace(old, new))
+
+    with pytest.raises(ValidationError, match=field):
+        AppSettings.load(path)
 
 
 def test_rejects_missing_camera_identifier(tmp_path: Path) -> None:
@@ -239,3 +338,22 @@ def test_checked_in_schema_contains_strict_environment_contract() -> None:
     thresholds = schema["$defs"]["ThresholdSettings"]["properties"]
     assert thresholds["temperature_critical_low_c"]["default"] == 15
     assert thresholds["humidity_critical_high_rh"]["default"] == 75
+
+
+def test_checked_in_schema_contains_strict_visual_runtime_contract() -> None:
+    schema = json.loads(
+        Path("config/settings.schema.json").read_text(encoding="utf-8")
+    )
+
+    assert schema["properties"]["visual"]["$ref"] == "#/$defs/VisualSettings"
+    visual = schema["$defs"]["VisualSettings"]
+    assert visual["additionalProperties"] is False
+    properties = visual["properties"]
+    assert properties["enabled"]["default"] is False
+    assert properties["model"]["const"] == "qwen3-vl:8b-instruct-q4_K_M"
+    assert properties["ollama_base_url"]["const"] == "http://127.0.0.1:11435"
+    assert properties["request_timeout_seconds"]["const"] == 20
+    assert properties["realtime"]["$ref"] == "#/$defs/RealtimeVisualSettings"
+    realtime = schema["$defs"]["RealtimeVisualSettings"]
+    assert realtime["additionalProperties"] is False
+    assert realtime["properties"]["enabled"]["default"] is False

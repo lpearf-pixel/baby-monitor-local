@@ -1,7 +1,8 @@
 from __future__ import annotations
 
-import subprocess
+import os
 import shutil
+import subprocess
 from pathlib import Path
 
 import pytest
@@ -9,6 +10,117 @@ import yaml
 
 
 ROOT = Path(__file__).resolve().parents[2]
+
+
+def _write_executable(path: Path, content: str) -> None:
+    path.write_text(content, encoding="ascii")
+    path.chmod(0o755)
+
+
+def test_alpha_start_does_not_kickstart_freshly_bootstrapped_agents(
+    tmp_path: Path,
+) -> None:
+    project = tmp_path / "project"
+    shutil.copytree(ROOT / "tools", project / "tools")
+    (project / "runtime/pids").mkdir(parents=True)
+    (project / "runtime/logs").mkdir(parents=True)
+    (project / "runtime/settings.yaml").write_text("environment: {}\n", encoding="ascii")
+    (project / "runtime/alpha.env").write_text(
+        f"BABY_MONITOR_SETTINGS_PATH={project}/runtime/settings.yaml\n",
+        encoding="ascii",
+    )
+    (project / ".local/bin").mkdir(parents=True)
+    (project / ".venv-alpha/bin").mkdir(parents=True)
+    _write_executable(project / ".local/bin/go2rtc", "#!/bin/sh\nexit 0\n")
+    _write_executable(project / ".venv-alpha/bin/uvicorn", "#!/bin/sh\nexit 0\n")
+
+    home = tmp_path / "home"
+    agents = home / "Library/LaunchAgents"
+    agents.mkdir(parents=True)
+    labels = (
+        "com.babymonitor.ollama-tunnel",
+        "com.babymonitor.visual",
+        "com.babymonitor.environment-watchdog",
+        "com.babymonitor.gauge",
+    )
+    for label in labels:
+        (agents / f"{label}.plist").write_text("synthetic plist\n", encoding="ascii")
+
+    fake_bin = tmp_path / "bin"
+    fake_bin.mkdir()
+    state_dir = tmp_path / "launchctl-state"
+    state_dir.mkdir()
+    _write_executable(fake_bin / "uname", "#!/bin/sh\necho Darwin\n")
+    _write_executable(fake_bin / "id", "#!/bin/sh\necho 501\n")
+    _write_executable(fake_bin / "curl", "#!/bin/sh\nexit 0\n")
+    _write_executable(fake_bin / "route", "#!/bin/sh\nexit 0\n")
+    _write_executable(
+        fake_bin / "launchctl",
+        """#!/bin/sh
+set -eu
+command=$1
+target=$2
+label=${target##*/}
+state=$FAKE_LAUNCHCTL_STATE_DIR/$label
+case $command in
+  print)
+    printf 'print %s\n' "$label" >> "$FAKE_LAUNCHCTL_STATE_DIR/calls"
+    test -f "$state"
+    ;;
+  bootstrap)
+    plist=$3
+    label=${plist##*/}
+    label=${label%.plist}
+    printf 'bootstrap %s\n' "$label" >> "$FAKE_LAUNCHCTL_STATE_DIR/calls"
+    : > "$FAKE_LAUNCHCTL_STATE_DIR/$label"
+    ;;
+  kickstart)
+    printf 'kickstart\n' >> "$FAKE_LAUNCHCTL_STATE_DIR/calls"
+    echo "Operation not permitted" >&2
+    exit 1
+    ;;
+  *)
+    exit 2
+    ;;
+esac
+""",
+    )
+
+    env = os.environ.copy()
+    env.update(
+        {
+            "HOME": str(home),
+            "PATH": f"{fake_bin}:{env['PATH']}",
+            "FAKE_LAUNCHCTL_STATE_DIR": str(state_dir),
+        }
+    )
+    result = subprocess.run(
+        ["bash", "tools/start_alpha.sh"],
+        cwd=project,
+        env=env,
+        check=False,
+        capture_output=True,
+        text=True,
+    )
+
+    assert result.returncode == 0, result.stderr
+    assert all((state_dir / label).exists() for label in labels)
+    assert (project / "runtime/pids/api.pid").exists()
+
+    second_result = subprocess.run(
+        ["bash", "tools/start_alpha.sh"],
+        cwd=project,
+        env=env,
+        check=False,
+        capture_output=True,
+        text=True,
+    )
+
+    assert second_result.returncode == 0, second_result.stderr
+    launchctl_calls = (state_dir / "calls").read_text(encoding="ascii").splitlines()
+    assert "kickstart" not in launchctl_calls
+    for label in labels:
+        assert launchctl_calls.count(f"bootstrap {label}") == 1
 
 
 def test_alpha_status_is_clean_in_downloaded_archive(tmp_path: Path) -> None:
@@ -134,6 +246,44 @@ def test_default_config_has_fixed_on_demand_videotoolbox_profile() -> None:
         "ffmpeg:source#video=h264#hardware=videotoolbox"
         "#width=2560#height=1440#bitrate=6M"
     )
+
+
+def test_default_config_has_separate_one_and_five_fps_analysis_profiles() -> None:
+    config = yaml.safe_load(
+        (ROOT / "config/go2rtc.alpha.yaml").read_text(encoding="utf-8")
+    )
+
+    assert config["streams"]["analysis"] == (
+        "ffmpeg:source#video=mjpeg#width=960#height=540#raw=-r 1"
+    )
+    assert config["streams"]["analysis_realtime"] == (
+        "ffmpeg:source#video=mjpeg#width=960#height=540#raw=-r 5"
+    )
+    assert "audio" not in config["streams"]["analysis_realtime"]
+
+
+def test_realtime_model_commands_are_explicit_and_not_part_of_startup() -> None:
+    check = subprocess.run(
+        ["make", "-n", "alpha-realtime-models-check"],
+        cwd=ROOT,
+        check=False,
+        capture_output=True,
+        text=True,
+    )
+    install = subprocess.run(
+        ["make", "-n", "alpha-realtime-models-install"],
+        cwd=ROOT,
+        check=False,
+        capture_output=True,
+        text=True,
+    )
+    startup = (ROOT / "tools/start_alpha.sh").read_text(encoding="utf-8")
+
+    assert check.returncode == 0
+    assert "tools/realtime_models.py check" in check.stdout
+    assert install.returncode == 0
+    assert "tools/realtime_models.py install" in install.stdout
+    assert "realtime_models.py install" not in startup
 
 
 def test_installer_preserves_existing_runtime_config() -> None:

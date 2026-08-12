@@ -23,11 +23,29 @@ The repository baseline and environment implementation are complete. Do not rest
 
 ## P2 — Add the local visual alert loop
 
-1. Revise and approve the visual-review spec for the selected M2 backend
-   (JoyAI/MLX interaction layer or the existing Qwen/Ollama baseline).
-2. Implement bed-zone/privacy-mask setup, deterministic camera freeze checks,
-   bounded frame memory, model review, and risk state machine.
-3. Add event screenshot/video evidence and real-time text alerts without making the
+1. R1 complete locally: strict Qwen observation contracts and the pure deterministic
+   risk state machine are implemented and tested.
+2. R2a complete locally: bed-zone crop, privacy masking, bounded JPEG preparation and
+   the 40-second in-memory frame ring are implemented and tested with generated images.
+3. R2b complete locally: a fixed private analysis stream, one continuous loopback
+   consumer, deterministic disconnect/freeze checks, bounded reconnect and
+   single-flight scheduling are implemented without a disk-backed normal-frame queue.
+4. R3 software complete locally: fixed loopback Qwen/Ollama endpoint, strict client
+   parsing, timeout, degraded/recovery behavior, production worker composition and
+   independent launchd lifecycle. Next install the restricted tunnel and private bed
+   zone, then verify real response schema, P95 latency and household candidate scenes.
+5. R3.5 software complete locally. The first i9 10-minute gate failed at 1 FPS, while
+   the controlled foreground run reached 5 FPS within the 180 ms P95 budget and
+   isolated launchd `Background` scheduling as the bottleneck. Apply
+   `make alpha-visual-launchd-update`, observe redacted metrics for 3 minutes, then
+   rerun the complete 10-minute sampler before measuring candidate latency and the
+   seven required household scenarios. Software tests do not establish installed-i9
+   performance or household accuracy.
+6. Source-health ntfy open/recovery delivery and independent gauge/real-time service
+   continuity passed one controlled i9 outage. Do not repeat a Baby posture or
+   face-risk event for this completed gate.
+7. After the R3/R3.5 real-device gate, add R4 risk-event screenshot/video evidence,
+   real-time risk text alerts and authenticated parent feedback without making the
    model a prerequisite for live viewing.
 
 ## P3 — Release gate

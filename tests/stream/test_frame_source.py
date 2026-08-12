@@ -174,3 +174,115 @@ def test_transport_details_are_replaced_by_stable_error_code() -> None:
     assert str(failure.value) == "frame_source_unavailable"
     assert failure.value.__cause__ is not None
     assert "/private" not in str(failure.value)
+
+
+def test_analysis_stream_uses_one_continuous_loopback_response() -> None:
+    module = frame_source_module()
+    response = FakeResponse(
+        mjpeg_payload([jpeg_frame("red"), jpeg_frame("green"), jpeg_frame("blue")])
+    )
+    opener = RecordingOpener(response)
+    times = iter(
+        [
+            datetime(2026, 8, 5, 12, 0, second, tzinfo=UTC)
+            for second in range(3)
+        ]
+    )
+    source = module.Go2RtcAnalysisFrameSource(
+        opener=opener,
+        now=lambda: next(times),
+    )
+
+    iterator = source.iter_frames(timeout_seconds=8)
+    frames = [next(iterator) for _ in range(3)]
+    iterator.close()
+
+    assert opener.requests == [
+        ("http://127.0.0.1:1984/api/stream.mjpeg?src=analysis", 8)
+    ]
+    assert response.enter_count == 1
+    assert response.exit_count == 1
+    assert [frame.captured_at.second for frame in frames] == [0, 1, 2]
+    assert {(frame.width, frame.height) for frame in frames} == {(64, 48)}
+
+
+def test_realtime_analysis_stream_uses_only_the_fixed_realtime_name() -> None:
+    module = frame_source_module()
+    response = FakeResponse(mjpeg_payload([jpeg_frame("red")]))
+    opener = RecordingOpener(response)
+    source = module.Go2RtcAnalysisFrameSource(
+        stream_name="analysis_realtime",
+        opener=opener,
+    )
+
+    iterator = source.iter_frames(timeout_seconds=8)
+    next(iterator)
+    iterator.close()
+
+    assert opener.requests == [
+        ("http://127.0.0.1:1984/api/stream.mjpeg?src=analysis_realtime", 8)
+    ]
+
+
+def test_analysis_stream_rejects_unknown_stream_name() -> None:
+    module = frame_source_module()
+
+    with pytest.raises(ValueError, match="analysis stream name"):
+        module.Go2RtcAnalysisFrameSource(stream_name="private-camera")
+
+
+def test_analysis_stream_rejects_non_loopback_base_url() -> None:
+    module = frame_source_module()
+
+    with pytest.raises(ValueError, match="loopback go2rtc"):
+        module.Go2RtcAnalysisFrameSource(base_url="http://192.168.1.8:1984")
+
+
+def test_analysis_stream_rejects_invalid_timeout() -> None:
+    module = frame_source_module()
+    source = module.Go2RtcAnalysisFrameSource(
+        opener=RecordingOpener(FakeResponse(b""))
+    )
+
+    with pytest.raises(ValueError, match="timeout_seconds"):
+        next(source.iter_frames(timeout_seconds=0))
+    with pytest.raises(ValueError, match="timeout_seconds"):
+        next(source.iter_frames(timeout_seconds=9))
+
+
+def test_analysis_stream_fails_closed_on_eof() -> None:
+    module = frame_source_module()
+    response = FakeResponse(mjpeg_payload([jpeg_frame("red")]))
+    source = module.Go2RtcAnalysisFrameSource(opener=RecordingOpener(response))
+    iterator = source.iter_frames()
+
+    assert next(iterator).width == 64
+    with pytest.raises(module.FrameSourceUnavailable, match="malformed_mjpeg"):
+        next(iterator)
+
+
+def test_analysis_stream_rejects_naive_capture_time() -> None:
+    module = frame_source_module()
+    response = FakeResponse(mjpeg_payload([jpeg_frame()]))
+    source = module.Go2RtcAnalysisFrameSource(
+        opener=RecordingOpener(response),
+        now=lambda: datetime(2026, 8, 5, 12, 0),
+    )
+
+    with pytest.raises(module.FrameSourceUnavailable, match="frame_invalid"):
+        next(source.iter_frames())
+
+
+def test_analysis_transport_error_is_redacted() -> None:
+    module = frame_source_module()
+
+    def failing_opener(request: object, timeout: float) -> FakeResponse:
+        raise OSError("credential at /private/family/camera")
+
+    source = module.Go2RtcAnalysisFrameSource(opener=failing_opener)
+
+    with pytest.raises(module.FrameSourceUnavailable) as failure:
+        next(source.iter_frames())
+
+    assert str(failure.value) == "frame_source_unavailable"
+    assert "/private" not in str(failure.value)
