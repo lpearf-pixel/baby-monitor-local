@@ -255,3 +255,22 @@ URI、模型原文、异常文本、token 或未鉴权链接。当前 Dashboard 
 本检查点只证明软件契约和合成测试，不证明两台 Android 已真实收到通知。真实 topic、
 token、两机订阅、通知显示和断网恢复将放入统一 macOS 验收脚本。Dashboard 事件查询、
 两位家长确认、误报反馈、30 天/30GB 清理、方案 B、声音和性能门仍待后续切片。
+
+## Baby guardian option A startup and automatic test checkpoint
+
+2026-08-12，在同一 Baby 守护功能分支完成方案 A 的统一启动和自动验收入口。
+`make alpha-guardian-start` 继续复用既有幂等 Alpha 启动路径，随后有界检查
+go2rtc、Dashboard、visual worker、environment watchdog、gauge worker、固定实时
+模型、当前视觉指标，以及在语义复核启用时的 Ollama bridge。任一必需组件失败均
+返回非零，输出只含固定组件名和状态码，不显示配置、地址、路径、异常或日志内容。
+
+`make alpha-guardian-test` 按 repository、software、installation、service、media、
+isolation 六阶段运行完整自动门禁。它聚合全部仍可安全执行的结果，不发送 ntfy
+测试消息，不创建模拟风险，不写真实事件、证据或媒体数据库。安装、服务或摄像头
+缺失在用户执行的 i9 验收中是 FAIL，不会静默伪装为 PASS。
+
+本检查点的新鲜软件门禁为 Python focused `177 passed`、Node `70 passed`；Python
+编译、三份新增 Shell 的 Bash 语法与 ASCII/LF、Make dry-run、`git diff --check`、
+跟踪 runtime/媒体/SQLite 和敏感字面量检查均通过。当前开发容器没有替代 Intel i9
+运行这两个命令，因此真实画面、已安装 launchd 服务和两台 Android 收件仍未由本
+检查点证明；真实通知属于后续方案 C/实机验收，不包含在方案 A 中。

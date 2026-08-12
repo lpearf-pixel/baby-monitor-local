@@ -51,11 +51,15 @@ The repository baseline and environment implementation are complete. Do not rest
    dispatcher; payloads are text-only and omit media, paths, private addresses,
    credentials and unauthenticated links. Physical delivery to both Android phones
    remains pending.
-10. Next add authenticated event queries, two-parent acknowledgement and
-   false-positive feedback. Finish with one repository-owned macOS acceptance script
-   that packages redacted logs for diagnosis. Live viewing must remain independent of
-   AI. Upgrade to the FFmpeg ring-buffer option only after the functional guardian
-   loop is complete.
+10. Option A startup and automatic acceptance are complete locally. On the i9 run
+    `make alpha-guardian-start` followed by `make alpha-guardian-test`; preserve the
+    fixed PASS/FAIL output as the environment acceptance result. This command does
+    not send a real ntfy test message or simulate a Baby risk.
+11. Next add authenticated event queries, two-parent acknowledgement and
+    false-positive feedback. Keep real two-phone notification delivery and safe live
+    rehearsal in a separate explicit acceptance command. Live viewing must remain
+    independent of AI. Upgrade to the FFmpeg ring-buffer option only after the
+    functional guardian loop is complete.
 
 ## P3 — Release gate
 

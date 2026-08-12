@@ -32,7 +32,7 @@
 - Consumes: `tools/start_alpha.sh`, `.venv-alpha/bin/python`, `tools/realtime_models.py check`, `tools/realtime_visual_status.py`, launchd labels or portable pid files.
 - Produces: `bash tools/start_guardian.sh` with fixed `PASS start <check>` / `FAIL start <check> <reason>` lines and final `guardian_start=PASS|FAIL`.
 
-- [ ] **Step 1: Write failing startup behavior tests**
+- [x] **Step 1: Write failing startup behavior tests**
 
 ```python
 def test_guardian_start_delegates_once_then_reports_all_readiness_checks(tmp_path):
@@ -53,13 +53,13 @@ def test_guardian_start_aggregates_fixed_failures_without_leaking_raw_output(tmp
     assert "synthetic-secret" not in result.stdout + result.stderr
 ```
 
-- [ ] **Step 2: Run the startup tests and verify RED**
+- [x] **Step 2: Run the startup tests and verify RED**
 
 Run: `/tmp/baby-guardian-venv/bin/pytest -q tests/deploy/test_guardian_commands.py -k guardian_start`
 
 Expected: FAIL because `tools/start_guardian.sh` and `tools/guardian_readiness.sh` do not exist.
 
-- [ ] **Step 3: Implement the minimum bounded readiness and wrapper scripts**
+- [x] **Step 3: Implement the minimum bounded readiness and wrapper scripts**
 
 ```bash
 #!/usr/bin/env bash
@@ -82,13 +82,13 @@ exit 1
 
 `guardian_readiness.sh` must execute fixed, output-suppressed probes for go2rtc, Dashboard, visual worker, environment watchdog, gauge worker, pinned realtime models, current visual metrics, and the Ollama bridge only when semantic review is enabled. It must continue after a failed probe, count failures, and return one only after all safe checks have run. `BABY_MONITOR_GUARDIAN_HOOK_DIR` is accepted only when `BABY_MONITOR_GUARDIAN_TEST_MODE=1`, giving tests a deterministic executable per check without exposing an acceptance bypass during normal use.
 
-- [ ] **Step 4: Run startup and adjacent deployment tests and verify GREEN**
+- [x] **Step 4: Run startup and adjacent deployment tests and verify GREEN**
 
 Run: `/tmp/baby-guardian-venv/bin/pytest -q tests/deploy/test_guardian_commands.py tests/deploy/test_alpha_commands.py tests/deploy/test_gauge_worker_deploy.py tests/deploy/test_visual_worker_deploy.py`
 
 Expected: all selected tests pass.
 
-- [ ] **Step 5: Verify shell policy and commit Task 1**
+- [x] **Step 5: Verify shell policy and commit Task 1**
 
 Run: `bash -n tools/guardian_readiness.sh tools/start_guardian.sh && LC_ALL=C grep -n '[^ -~\t]' tools/guardian_readiness.sh tools/start_guardian.sh; test $? -eq 1`
 
@@ -104,7 +104,7 @@ Commit: `feat: add bounded guardian startup readiness`
 - Consumes: `.venv-alpha/bin/python`, git tracked-file metadata, `tools/guardian_readiness.sh`, `make alpha-source-check`, and focused pytest test paths.
 - Produces: `bash tools/test_guardian.sh` with ordered repository/software/installation/service/media/isolation checks, final counts, `guardian_test=PASS|FAIL`, and zero only when every required check passes.
 
-- [ ] **Step 1: Write failing automatic acceptance tests**
+- [x] **Step 1: Write failing automatic acceptance tests**
 
 ```python
 def test_guardian_test_runs_every_phase_and_reports_pass(tmp_path):
@@ -127,13 +127,13 @@ def test_guardian_test_collects_later_safe_results_after_failure(tmp_path):
 
 Also cover: test hooks ignored unless explicit test mode is set, malformed hook directories fail closed, output has only the accepted line grammar, no notification command is invoked, and no event/evidence path is written.
 
-- [ ] **Step 2: Run automatic acceptance tests and verify RED**
+- [x] **Step 2: Run automatic acceptance tests and verify RED**
 
 Run: `/tmp/baby-guardian-venv/bin/pytest -q tests/deploy/test_guardian_commands.py -k guardian_test`
 
 Expected: FAIL because `tools/test_guardian.sh` does not exist.
 
-- [ ] **Step 3: Implement the minimum ordered aggregator**
+- [x] **Step 3: Implement the minimum ordered aggregator**
 
 ```bash
 run_check() {
@@ -152,13 +152,13 @@ run_check() {
 
 The concrete checks are: repository `shell_policy`, `make_wiring`, `tracked_runtime`, `sensitive_literals`; software `python_regression`; installation `required_binaries`, `runtime_config`, `launchd_definitions`, `realtime_models`; service readiness delegated as individually reported checks; media `source_check`; isolation `guardian_focused`. Commands run with stdout/stderr suppressed. The Python regression and guardian-focused lists are explicit and do not call ntfy endpoints or production CLIs that write event data.
 
-- [ ] **Step 4: Run automatic acceptance and adjacent guardian tests and verify GREEN**
+- [x] **Step 4: Run automatic acceptance and adjacent guardian tests and verify GREEN**
 
 Run: `/tmp/baby-guardian-venv/bin/pytest -q tests/deploy/test_guardian_commands.py tests/notifications/test_guardian_dispatcher.py tests/notifications/test_guardian_ntfy.py tests/storage/test_visual_risk_store.py tests/vision/test_evidence_files.py tests/vision/test_evidence_recorder.py tests/vision/test_risk_event_pipeline.py tests/tools/test_run_visual_worker.py`
 
 Expected: all selected tests pass.
 
-- [ ] **Step 5: Verify shell policy and commit Task 2**
+- [x] **Step 5: Verify shell policy and commit Task 2**
 
 Run: `bash -n tools/test_guardian.sh && LC_ALL=C grep -n '[^ -~\t]' tools/test_guardian.sh; test $? -eq 1`
 
@@ -169,15 +169,16 @@ Commit: `feat: add guardian automatic acceptance script`
 **Files:**
 - Modify: `Makefile`
 - Modify: `tests/deploy/test_guardian_commands.py`
-- Modify: `CHECKPOINT.md`
-- Modify: `NEXT.md`
+- Modify: `docs/CHECKPOINT.md`
+- Modify: `docs/NEXT.md`
+- Modify: `docs/STATUS.md`
 - Modify: `docs/superpowers/plans/2026-08-12-baby-guardian-start-and-automatic-test.md`
 
 **Interfaces:**
 - Consumes: `tools/start_guardian.sh` and `tools/test_guardian.sh`.
 - Produces: `make alpha-guardian-start` and `make alpha-guardian-test` plus current status documentation.
 
-- [ ] **Step 1: Write failing Make target tests**
+- [x] **Step 1: Write failing Make target tests**
 
 ```python
 def test_makefile_exposes_guardian_commands_without_side_effects():
@@ -189,13 +190,13 @@ def test_makefile_exposes_guardian_commands_without_side_effects():
     assert "bash tools/test_guardian.sh" in test.stdout
 ```
 
-- [ ] **Step 2: Run Make target tests and verify RED**
+- [x] **Step 2: Run Make target tests and verify RED**
 
 Run: `/tmp/baby-guardian-venv/bin/pytest -q tests/deploy/test_guardian_commands.py -k makefile`
 
 Expected: FAIL because the targets do not exist.
 
-- [ ] **Step 3: Add thin targets and help text**
+- [x] **Step 3: Add thin targets and help text**
 
 ```make
 alpha-guardian-start:
@@ -207,7 +208,7 @@ alpha-guardian-test:
 
 Add both targets to `.PHONY` and the existing help output. Do not alter existing targets.
 
-- [ ] **Step 4: Run the fresh focused completion gate**
+- [x] **Step 4: Run the fresh focused completion gate**
 
 Run:
 
@@ -220,10 +221,10 @@ git diff --check
 
 Additionally verify every changed shell file is ASCII/LF, no runtime/media/database file is tracked, and changed production files contain no credential/private-key/private-address literal.
 
-- [ ] **Step 5: Update status documents and mark plan checkboxes**
+- [x] **Step 5: Update status documents and mark plan checkboxes**
 
 Record that option A is software-complete, list both commands, preserve real Android delivery and live risk rehearsal as deferred, and retain the i9 run as the remaining environment acceptance.
 
-- [ ] **Step 6: Commit verified wiring and documentation**
+- [x] **Step 6: Commit verified wiring and documentation**
 
 Commit implementation wiring with `feat: expose guardian start and automatic test`, then commit status-only changes with `docs: record guardian automatic test checkpoint`.

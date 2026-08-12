@@ -64,6 +64,18 @@
   digest-only directories, private modes and atomic replacement; SQLite records
   collecting/ready/failed/interrupted status. Restart, shutdown, media, database and
   log failures cannot fabricate a ready clip or stop the visual worker.
+- Baby guardian R4 risk notification: risk open, linked adult intervention and
+  recovery now use a persistent idempotent SQLite outbox and a bounded off-thread
+  ntfy dispatcher. Payloads are text-only and exclude media, local paths, private
+  addresses, credentials, model text and unauthenticated links. Two-phone physical
+  delivery remains an i9/Android acceptance item.
+- Baby guardian option A operations: `make alpha-guardian-start` performs the existing
+  idempotent Alpha startup followed by bounded readiness checks, and
+  `make alpha-guardian-test` runs repository, software, installation, service, media
+  and isolated guardian gates with fixed redacted PASS/FAIL output. The automatic
+  command never sends a real ntfy test, synthesizes a risk, or writes production
+  event/evidence data. It still must be run on the installed i9 to establish real
+  camera and launchd readiness.
 - Fresh R3 software gate on 2026-08-06: 451 Python tests and 70 Node browser tests
   passed; Python compilation, shell syntax, `git diff --check`, tracked runtime/media
   boundaries, GitHub-token candidates and private-key markers passed. This remains a
@@ -74,8 +86,9 @@
   grouping rather than heatmap-peak counting; model/load health transitions,
   every-frame source health checks and blurred-camera watches have regression
   coverage. This remains synthetic software evidence, not an i9 household gate.
-- Next visual feature slice: add risk ntfy using the guardian `event_id` and evidence
-  state, then authenticated parent feedback. The i9 launchd update, 3-minute
+- Next visual feature slice: add authenticated event queries, two-parent
+  acknowledgement and false-positive feedback, then a separate explicit two-phone
+  live acceptance command. The i9 launchd update, 3-minute
   observation and 10-minute performance
   sampler are intentionally deferred and do not block this feature sequence.
   The i9 environment calibration and 24-hour gate remain independent and unfinished.
@@ -94,10 +107,11 @@
 - Installed i9-to-M2 SSH bridge, private bed-zone configuration, and end-to-end
   household validation of face-obstruction, prone-position, bed-exit, or
   adult-intervention candidates.
-- Authenticated parent feedback, risk-event ntfy, evidence retention cleanup, the
+- Authenticated parent feedback, risk-event query UI, evidence retention cleanup, the
   later FFmpeg clip upgrade, and cry/audio candidate detection. Guardian risk
   lifecycle persistence and safe-frame evidence export are complete locally;
-  deterministic source-health ntfy is already deployed and independently verified.
+  risk text ntfy and safe-frame evidence export are complete locally; deterministic
+  source-health ntfy is already deployed and independently verified.
 - Verified Tailscale external access, real PTZ control, or the 72-hour release gate.
 
 ## Safety gates
