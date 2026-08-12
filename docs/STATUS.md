@@ -5,8 +5,8 @@
 - Repository: initialized and public.
 - Design: approved.
 - Environment monitoring design and implementation plan: approved on 2026-08-05.
-- Stable Xiaomi Alpha commit: `125fb44` on `stable/xiaomi-alpha`.
-- Active local development branch: `codex/xiaomi-alpha-visual-risk-core`.
+- Stable Xiaomi Alpha commit: `0df20ae` on `stable/xiaomi-alpha`.
+- Active local development branch: `codex/baby-guardian-event-loop`.
 - Xiaomi-first delivery scope: fixed to MJSXJ17CM for the first usable release;
   the proposed UVC USB source remains deferred behind the existing frame-source
   adapter boundary.
@@ -52,6 +52,12 @@
   environment-watchdog, and visual launchd units stayed in their first run without
   exiting, real-time metrics remained available, and the Alpha health endpoint was
   healthy after recovery without a full-stack restart.
+- Baby guardian R4 event core: deterministic alert/recovery transitions now have
+  idempotent SQLite lifecycle records, stable event IDs, restart restoration,
+  standalone/adjoined adult-intervention audit records, and privacy-safe JSON-line
+  diagnostics. Persistence and log failures are isolated from the visual worker.
+  Media evidence, risk ntfy, Dashboard queries, parent acknowledgement and false-
+  positive feedback remain later R4 slices.
 - Fresh R3 software gate on 2026-08-06: 451 Python tests and 70 Node browser tests
   passed; Python compilation, shell syntax, `git diff --check`, tracked runtime/media
   boundaries, GitHub-token candidates and private-key markers passed. This remains a
@@ -62,11 +68,10 @@
   grouping rather than heatmap-peak counting; model/load health transitions,
   every-frame source health checks and blurred-camera watches have regression
   coverage. This remains synthetic software evidence, not an i9 household gate.
-- Next visual gate: apply `make alpha-visual-launchd-update` on i9, observe the
-  redacted production metrics for 3 minutes, and rerun the full 10-minute performance
-  sampler. Then finish the restricted i9-to-M2 SSH bridge, private bed zone, real
-  four-frame Qwen contract and P95 latency, and record daylight/night/occlusion/adult/
-  empty-bed candidates before R4 evidence and alerts.
+- Next visual feature slice: attach privacy-processed screenshots and bounded event
+  clips to the new guardian `event_id`, then add risk ntfy and authenticated parent
+  feedback. The i9 launchd update, 3-minute observation and 10-minute performance
+  sampler are intentionally deferred and do not block this feature sequence.
   The i9 environment calibration and 24-hour gate remain independent and unfinished.
 
 ## Pull request checkpoint
@@ -84,8 +89,8 @@
   household validation of face-obstruction, prone-position, bed-exit, or
   adult-intervention candidates.
 - Authenticated parent feedback, risk-event screenshot/video export, risk-event ntfy,
-  and cry/audio candidate detection. Deterministic source-health ntfy is already
-  deployed and independently verified.
+  and cry/audio candidate detection. Guardian risk lifecycle persistence is complete;
+  deterministic source-health ntfy is already deployed and independently verified.
 - Verified Tailscale external access, real PTZ control, or the 72-hour release gate.
 
 ## Safety gates

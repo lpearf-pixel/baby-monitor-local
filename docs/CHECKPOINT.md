@@ -196,3 +196,20 @@ job 已注册时执行，先校验新 plist、保留且不覆盖 `.r3-background
 本轮 focused 交付门禁为 `60 passed`；Python 编译、相关 Shell 语法、Make dry-run、
 plist 解析、ASCII/LF、`git diff --check` 和本轮新增敏感内容扫描均通过。该结果只
 证明软件配置与更新/回滚契约，不代表 i9 已部署或 10 分钟性能门已通过。
+
+## Baby guardian R4 event core checkpoint
+
+2026-08-11，在 `stable/xiaomi-alpha` 合并提交 `0df20ae` 上建立
+`codex/baby-guardian-event-loop`，完成 Baby 守护事件核心。现有确定性状态机产生的
+`alert_opened` 会为遮脸、趴睡或离床风险创建一个稳定 `event_id`；同类重复回调
+返回已有打开事件，`recovered` 只关闭对应风险。成人介入即使没有打开风险也独立
+留存，有打开风险时幂等关联到当时所有事件。
+
+worker 启动时迁移本地 `events.sqlite3` 并恢复所有打开风险，但不恢复重启前的候选
+或恢复计数。关键转换以单行 JSON 写入现有 launchd stderr 日志，只允许固定事件码、
+时间、规则版本、状态、风险种类和事件/介入 ID；不记录模型原文、reason codes、
+画面、路径、URL、地址、凭据或异常文本。SQLite 或日志输出失败不会终止视觉 worker。
+
+本检查点只完成事件身份、生命周期、重启和诊断面。截图、前后短片、风险 ntfy、
+Dashboard 事件查询、两位家长确认、误报反馈和统一 macOS 验收脚本尚未实现；声音
+与实时性能门继续后排。focused 门禁与静态门禁结果以本分支最终提交记录为准。

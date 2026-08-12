@@ -34,19 +34,19 @@ The repository baseline and environment implementation are complete. Do not rest
    parsing, timeout, degraded/recovery behavior, production worker composition and
    independent launchd lifecycle. Next install the restricted tunnel and private bed
    zone, then verify real response schema, P95 latency and household candidate scenes.
-5. R3.5 software complete locally. The first i9 10-minute gate failed at 1 FPS, while
-   the controlled foreground run reached 5 FPS within the 180 ms P95 budget and
-   isolated launchd `Background` scheduling as the bottleneck. Apply
-   `make alpha-visual-launchd-update`, observe redacted metrics for 3 minutes, then
-   rerun the complete 10-minute sampler before measuring candidate latency and the
-   seven required household scenarios. Software tests do not establish installed-i9
-   performance or household accuracy.
+5. R3.5 software complete locally. The performance recheck is intentionally deferred:
+   retain the launchd update and 3/10-minute samplers, but do not let them block the
+   guardian feature loop. Software tests do not establish installed-i9 performance or
+   household accuracy.
 6. Source-health ntfy open/recovery delivery and independent gauge/real-time service
    continuity passed one controlled i9 outage. Do not repeat a Baby posture or
    face-risk event for this completed gate.
-7. After the R3/R3.5 real-device gate, add R4 risk-event screenshot/video evidence,
-   real-time risk text alerts and authenticated parent feedback without making the
-   model a prerequisite for live viewing.
+7. R4 event core complete locally: deterministic risk transitions persist with stable
+   IDs, restart restoration, adult-intervention audit and redacted JSON-line logs.
+8. Next add R4 privacy-processed screenshots and bounded pre/post event clips, then
+   risk text ntfy, authenticated event queries, two-parent acknowledgement and false-
+   positive feedback. Finish with one repository-owned macOS acceptance script that
+   packages redacted logs for diagnosis. Live viewing must remain independent of AI.
 
 ## P3 — Release gate
 
