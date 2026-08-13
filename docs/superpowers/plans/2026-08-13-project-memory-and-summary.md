@@ -28,7 +28,7 @@
 - Consumes: current repository rules, `README.md`, `SECURITY.md`, `docs/STATUS.md`, `docs/CHECKPOINT.md`, `docs/NEXT.md`, and verified Make targets.
 - Produces: stable instructions automatically loaded by future coding agents.
 
-- [ ] **Step 1: Capture the current rulebook and repository facts**
+- [x] **Step 1: Capture the current rulebook and repository facts**
 
 Run:
 
@@ -41,7 +41,7 @@ rg -n '^alpha-(guardian-start|guardian-test|visual-status|visual-performance):' 
 
 Expected: current branch and HEAD are visible, `uv.lock` is the only unrelated untracked file, and all referenced Make targets exist.
 
-- [ ] **Step 2: Write the stable instruction layer**
+- [x] **Step 2: Write the stable instruction layer**
 
 Expand `AGENTS.md` with these exact responsibility groups:
 
@@ -60,7 +60,7 @@ Authoritative Documentation
 
 Keep transient commit hashes, PIDs, measured performance samples and chronological milestone details out of `AGENTS.md`.
 
-- [ ] **Step 3: Verify the rulebook**
+- [x] **Step 3: Verify the rulebook**
 
 Run:
 
@@ -80,7 +80,7 @@ Expected: zero diff errors and every durable responsibility group is present.
 - Consumes: the verified repository state and detailed project records.
 - Produces: a dated current-state handoff for new Work sessions.
 
-- [ ] **Step 1: Write the current snapshot**
+- [x] **Step 1: Write the current snapshot**
 
 Create `SUMMARY.md` with these exact sections:
 
@@ -101,7 +101,7 @@ Takeover Checklist
 
 Record local `fb3eee3` as the preserved development history and remote `27274d8` as the content-equivalent squash snapshot. State that both point to tree `adf3672`, and that the remote feature branch has not been merged into `stable/xiaomi-alpha` or `main`.
 
-- [ ] **Step 2: Check repository references**
+- [x] **Step 2: Check repository references**
 
 Run:
 
@@ -116,20 +116,22 @@ rg -n '^alpha-guardian-(start|test):' Makefile
 
 Expected: every referenced file and operating command exists.
 
-- [ ] **Step 3: Verify safety, scope and formatting**
+- [x] **Step 3: Verify safety, scope and formatting**
 
 Run:
 
 ```bash
 git diff --check -- AGENTS.md SUMMARY.md
-! rg -n 'github_pat_|ghp_|BEGIN (RSA |OPENSSH |EC )?PRIVATE KEY|192\.168\.|10\.[0-9]+\.|172\.(1[6-9]|2[0-9]|3[01])\.' AGENTS.md SUMMARY.md
+sensitive_pattern='github_''pat_|gh''p_|BEGIN (RSA |OPENSSH |EC )?PRIVATE ''KEY|192\.168\.|10\.[0-9]+\.|172\.(1[6-9]|2[0-9]|3[01])\.'
+sensitive_matches=$(rg -n "$sensitive_pattern" AGENTS.md SUMMARY.md || true)
+test -z "$sensitive_matches"
 git status --short
 git diff --stat
 ```
 
 Expected: no formatting or sensitive-literal matches; only the approved documentation files plus the preserved untracked `uv.lock` appear.
 
-- [ ] **Step 4: Commit the handoff documents**
+- [x] **Step 4: Commit the handoff documents**
 
 Run:
 
@@ -139,4 +141,3 @@ git commit -m "docs: add durable project handoff"
 ```
 
 Expected: one local documentation commit; no push, PR, merge or protected-branch modification.
-
