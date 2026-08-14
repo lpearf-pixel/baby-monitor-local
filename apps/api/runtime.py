@@ -16,6 +16,7 @@ from apps.api.hd_stream import HdStreamService
 from apps.api.ptz import DisabledPtzAdapter, StepPtzController
 from packages.contracts.settings import AppSettings
 from services.environment.bootstrap import build_dashboard_service
+from services.events.guardian_query import GuardianEventQueryService
 
 
 MAX_SNAPSHOT_BYTES = 16 * 1024 * 1024
@@ -171,10 +172,15 @@ def runtime_from_env(environ: dict[str, str] | None = None) -> AlphaRuntime:
         ntfy_token=env.get("NTFY_TOKEN") or None,
     )
     environment = None
+    guardian_events = None
     settings_path_value = env.get("BABY_MONITOR_SETTINGS_PATH", "").strip()
     if settings_path_value:
         settings_path = Path(settings_path_value)
         settings = AppSettings.load(settings_path)
+        data_dir = settings.app.data_dir
+        if not data_dir.is_absolute():
+            data_dir = Path.cwd() / data_dir
+        guardian_events = GuardianEventQueryService(data_dir / "events.sqlite3")
         if settings.environment.enabled:
             environment = build_dashboard_service(settings, Path.cwd())
     return AlphaRuntime(
@@ -189,4 +195,5 @@ def runtime_from_env(environ: dict[str, str] | None = None) -> AlphaRuntime:
             compat_stream_name="source_compat",
         ),
         environment=environment,
+        guardian_events=guardian_events,
     )

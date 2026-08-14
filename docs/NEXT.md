@@ -55,11 +55,11 @@ The repository baseline and environment implementation are complete. Do not rest
     `make alpha-guardian-start` followed by `make alpha-guardian-test`; preserve the
     fixed PASS/FAIL output as the environment acceptance result. This command does
     not send a real ntfy test message or simulate a Baby risk.
-11. Next add authenticated event queries, two-parent acknowledgement and
-    false-positive feedback. Keep real two-phone notification delivery and safe live
-    rehearsal in a separate explicit acceptance command. Live viewing must remain
-    independent of AI. Upgrade to the FFmpeg ring-buffer option only after the
-    functional guardian loop is complete.
+11. Authenticated event queries and the media-free Dashboard list are complete locally.
+    Next add two-parent acknowledgement and false-positive feedback. Keep real
+    two-phone notification delivery and safe live rehearsal in a separate explicit
+    acceptance command. Live viewing must remain independent of AI. Upgrade to the
+    FFmpeg ring-buffer option only after the functional guardian loop is complete.
 
 ## P3 — Release gate
 

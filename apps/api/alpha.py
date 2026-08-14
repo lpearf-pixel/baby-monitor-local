@@ -37,6 +37,10 @@ from apps.api.ptz import (
     StepPtzController,
 )
 from services.events.environment_state import EnvironmentIncident, EnvironmentSnapshot
+from services.events.guardian_query import (
+    GuardianEventList,
+    GuardianEventQueryUnavailable,
+)
 from services.gauge.calibration import (
     GaugeFace,
     GaugeQuadrilateral,
@@ -76,6 +80,10 @@ class AlphaEnvironment(Protocol):
         reference_jpeg: bytes,
         now: datetime,
     ) -> dict[str, object]: ...
+
+
+class AlphaGuardianEvents(Protocol):
+    def recent_events(self) -> GuardianEventList: ...
 
 
 class StarletteHdSocket:
@@ -144,6 +152,7 @@ class AlphaRuntime:
     )
     hd_stream: AlphaHdStream = field(default_factory=HdStreamService)
     environment: AlphaEnvironment | None = None
+    guardian_events: AlphaGuardianEvents | None = None
 
 
 class SnapshotViewport(BaseModel):
@@ -185,6 +194,7 @@ _VIEWER_SCRIPT = Path(__file__).with_name("dashboard_viewer.js")
 _HD_PLAYER_SCRIPT = Path(__file__).with_name("hd_player.js")
 _ENVIRONMENT_SCRIPT = Path(__file__).with_name("environment_dashboard.js")
 _GAUGE_CALIBRATION_SCRIPT = Path(__file__).with_name("gauge_calibration.js")
+_GUARDIAN_EVENTS_SCRIPT = Path(__file__).with_name("guardian_events.js")
 _INCIDENT_ID = re.compile(r"^[A-Za-z0-9][A-Za-z0-9._-]{0,127}$")
 
 
@@ -225,6 +235,10 @@ _DASHBOARD = """<!doctype html>
     .row { display: flex; flex-wrap: wrap; gap: 10px; align-items: center; }
     button, a.button { border: 0; border-radius: 12px; padding: 12px 16px; font-weight: 650; background: #e8e8e8; color: #111; text-decoration: none; }
     .muted { color: #aeb4bf; }
+    .guardian-events { list-style: none; margin: 0; padding: 0; display: grid; gap: 10px; }
+    .guardian-event { border: 1px solid #ffffff22; border-radius: 12px; padding: 12px; background: #15171d; }
+    .guardian-event.is-open { border-color: #ff7675; background: #3a2022; box-shadow: inset 4px 0 #ff7675; }
+    .stale-warning { color: #ffd166; font-weight: 650; }
     pre { white-space: pre-wrap; overflow-wrap: anywhere; }
   </style>
 </head>
@@ -266,6 +280,12 @@ _DASHBOARD = """<!doctype html>
     <strong>系统状态</strong>
     <pre id="status">正在读取…</pre>
   </section>
+  <section class="card" aria-labelledby="guardian-events-title">
+    <div class="row"><h2 id="guardian-events-title">Guardian 事件</h2><span class="muted">最近 20 条</span></div>
+    <p id="guardian-events-stale" class="stale-warning" role="status" hidden></p>
+    <ol id="guardian-events" class="guardian-events" aria-live="polite"><li>正在读取…</li></ol>
+    <p class="muted">本页面仅显示事件与证据状态，不提供图片或视频访问。</p>
+  </section>
   <section class="card" aria-labelledby="environment-title">
     <h2 id="environment-title">环境监测</h2>
     <p id="environment-current" aria-live="polite">正在读取…</p>
@@ -299,6 +319,7 @@ setInterval(refreshStatus, 15000);
 <script defer src="/assets/dashboard-viewer.js"></script>
 <script defer src="/assets/environment-dashboard.js"></script>
 <script defer src="/assets/gauge-calibration.js"></script>
+<script defer src="/assets/guardian-events.js"></script>
 </body>
 </html>
 """
@@ -380,6 +401,16 @@ def create_app(runtime: AlphaRuntime) -> FastAPI:
             headers={"Cache-Control": "no-store"},
         )
 
+    @app.get("/assets/guardian-events.js")
+    def guardian_events_script(
+        _parent: str = Depends(require_parent),
+    ) -> Response:
+        return Response(
+            content=_GUARDIAN_EVENTS_SCRIPT.read_text(encoding="utf-8"),
+            media_type="text/javascript",
+            headers={"Cache-Control": "no-store"},
+        )
+
     def environment_service() -> AlphaEnvironment:
         if runtime.environment is None:
             raise HTTPException(
@@ -387,6 +418,30 @@ def create_app(runtime: AlphaRuntime) -> FastAPI:
                 detail="ENVIRONMENT_DISABLED",
             )
         return runtime.environment
+
+    def guardian_event_service() -> AlphaGuardianEvents:
+        if runtime.guardian_events is None:
+            raise HTTPException(
+                status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+                detail="GUARDIAN_EVENTS_UNAVAILABLE",
+            )
+        return runtime.guardian_events
+
+    @app.get("/api/guardian/events")
+    def guardian_events(
+        _parent: str = Depends(require_parent),
+    ) -> JSONResponse:
+        try:
+            result = guardian_event_service().recent_events()
+        except GuardianEventQueryUnavailable:
+            raise HTTPException(
+                status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+                detail="GUARDIAN_EVENTS_UNAVAILABLE",
+            ) from None
+        return JSONResponse(
+            content=jsonable_encoder(result),
+            headers={"Cache-Control": "no-store"},
+        )
 
     @app.get("/incidents/{incident_id}")
     def open_environment_incident(

@@ -56,8 +56,7 @@
   idempotent SQLite lifecycle records, stable event IDs, restart restoration,
   standalone/adjoined adult-intervention audit records, and privacy-safe JSON-line
   diagnostics. Persistence and log failures are isolated from the visual worker.
-  Risk ntfy, Dashboard queries, parent acknowledgement and false-positive feedback
-  remain later R4 slices.
+  Parent acknowledgement and false-positive feedback remain later R4 slices.
 - Baby guardian R4 safe evidence: each newly created risk event now receives an
   immediate privacy-processed JPEG snapshot and a bounded pre-10/post-30-second
   animated WebP assembled only from the existing safe-frame ring. Evidence files use
@@ -76,6 +75,12 @@
   command never sends a real ntfy test, synthesizes a risk, or writes production
   event/evidence data. It still must be run on the installed i9 to establish real
   camera and launchd readiness.
+- Baby guardian authenticated event Dashboard: a standalone read-only query service
+  opens the existing SQLite database in query-only mode, joins event/evidence state and
+  returns a strict media-free projection. The authenticated Dashboard loads the newest
+  20 events immediately, pins unresolved events within that set, highlights them and
+  refreshes every 15 seconds. Refresh failure retains the old list and shows a stale
+  warning; no screenshot, clip, evidence key or media route was added.
 - Fresh R3 software gate on 2026-08-06: 451 Python tests and 70 Node browser tests
   passed; Python compilation, shell syntax, `git diff --check`, tracked runtime/media
   boundaries, GitHub-token candidates and private-key markers passed. This remains a
@@ -86,8 +91,8 @@
   grouping rather than heatmap-peak counting; model/load health transitions,
   every-frame source health checks and blurred-camera watches have regression
   coverage. This remains synthetic software evidence, not an i9 household gate.
-- Next visual feature slice: add authenticated event queries, two-parent
-  acknowledgement and false-positive feedback, then a separate explicit two-phone
+- Next visual feature slice: add two-parent acknowledgement and false-positive
+  feedback, then a separate explicit two-phone
   live acceptance command. The i9 launchd update, 3-minute
   observation and 10-minute performance
   sampler are intentionally deferred and do not block this feature sequence.
@@ -107,7 +112,7 @@
 - Installed i9-to-M2 SSH bridge, private bed-zone configuration, and end-to-end
   household validation of face-obstruction, prone-position, bed-exit, or
   adult-intervention candidates.
-- Authenticated parent feedback, risk-event query UI, evidence retention cleanup, the
+- Authenticated parent feedback, evidence retention cleanup, the
   later FFmpeg clip upgrade, and cry/audio candidate detection. Guardian risk
   lifecycle persistence and safe-frame evidence export are complete locally;
   risk text ntfy and safe-frame evidence export are complete locally; deterministic

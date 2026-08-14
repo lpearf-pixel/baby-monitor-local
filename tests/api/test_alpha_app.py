@@ -19,6 +19,11 @@ from packages.contracts.events import (
     ReadingFailureReason,
 )
 from services.events.environment_state import EnvironmentSnapshot
+from services.events.guardian_query import (
+    GuardianEventList,
+    GuardianEventQueryUnavailable,
+    GuardianEventSummary,
+)
 from services.storage.environment import EnvironmentTrend, TrendWindow
 from tests.gauge.synthetic_dial import calibration as synthetic_calibration
 
@@ -155,6 +160,33 @@ class FakeEnvironmentService:
         return {"state": "available", "schema_version": 2, "calibration_id": "server-id"}
 
 
+@dataclass
+class FakeGuardianEventService:
+    unavailable: bool = False
+    calls: int = 0
+
+    def recent_events(self) -> GuardianEventList:
+        self.calls += 1
+        if self.unavailable:
+            raise GuardianEventQueryUnavailable
+        return GuardianEventList(
+            generated_at=NOW,
+            events=(
+                GuardianEventSummary(
+                    event_id="event-safe",
+                    risk_kind="face_not_visible",
+                    state="open",
+                    severity="high",
+                    opened_at=NOW - timedelta(minutes=2),
+                    updated_at=NOW - timedelta(minutes=1),
+                    recovered_at=None,
+                    adult_intervention_count=1,
+                    evidence_state="collecting",
+                ),
+            ),
+        )
+
+
 def calibration_draft() -> dict[str, object]:
     payload = synthetic_calibration().model_dump(mode="json")
     for server_field in ("schema_version", "calibration_id", "created_at", "reference_version"):
@@ -168,6 +200,7 @@ def client(
     ptz: StepPtzController | None = None,
     hd_stream: FakeHdStream | None = None,
     environment: FakeEnvironmentService | None = None,
+    guardian_events: FakeGuardianEventService | None = None,
 ) -> tuple[TestClient, FakeGateway]:
     fake = gateway or FakeGateway()
     runtime_kwargs: dict[str, object] = dict(
@@ -182,8 +215,62 @@ def client(
         runtime_kwargs["hd_stream"] = hd_stream
     if environment is not None:
         runtime_kwargs["environment"] = environment
+    if guardian_events is not None:
+        runtime_kwargs["guardian_events"] = guardian_events
     runtime = AlphaRuntime(**runtime_kwargs)
     return TestClient(create_app(runtime)), fake
+
+
+def test_guardian_events_require_authentication_before_service_access() -> None:
+    guardian_events = FakeGuardianEventService()
+    app, _ = client(guardian_events=guardian_events)
+
+    response = app.get("/api/guardian/events")
+
+    assert response.status_code == 401
+    assert guardian_events.calls == 0
+
+
+def test_authenticated_guardian_events_return_only_validated_safe_fields() -> None:
+    guardian_events = FakeGuardianEventService()
+    app, _ = client(guardian_events=guardian_events)
+
+    response = app.get("/api/guardian/events", headers=auth())
+
+    assert response.status_code == 200
+    assert response.headers["cache-control"] == "no-store"
+    assert guardian_events.calls == 1
+    assert set(response.json()) == {"generated_at", "events"}
+    assert set(response.json()["events"][0]) == {
+        "event_id",
+        "risk_kind",
+        "state",
+        "severity",
+        "opened_at",
+        "updated_at",
+        "recovered_at",
+        "adult_intervention_count",
+        "evidence_state",
+    }
+    assert "snapshot" not in response.text.lower()
+    assert "clip" not in response.text.lower()
+    assert "path" not in response.text.lower()
+
+
+@pytest.mark.parametrize(
+    "guardian_events",
+    [None, FakeGuardianEventService(unavailable=True)],
+)
+def test_guardian_event_query_failure_is_a_stable_redacted_503(
+    guardian_events: FakeGuardianEventService | None,
+) -> None:
+    app, _ = client(guardian_events=guardian_events)
+
+    response = app.get("/api/guardian/events", headers=auth())
+
+    assert response.status_code == 503
+    assert response.json() == {"detail": "GUARDIAN_EVENTS_UNAVAILABLE"}
+    assert "sqlite" not in response.text.lower()
 
 
 def test_dashboard_requires_basic_authentication() -> None:
@@ -204,6 +291,19 @@ def test_dashboard_loads_after_authentication() -> None:
     assert 'id="environment-current"' in response.text
     assert 'src="/assets/environment-dashboard.js"' in response.text
     assert 'src="/assets/gauge-calibration.js"' in response.text
+
+
+def test_dashboard_exposes_guardian_event_list_without_media_access() -> None:
+    app, _ = client()
+
+    response = app.get("/", headers=auth())
+
+    assert response.status_code == 200
+    assert 'id="guardian-events"' in response.text
+    assert 'id="guardian-events-stale"' in response.text
+    assert 'src="/assets/guardian-events.js"' in response.text
+    assert ".guardian-event.is-open" in response.text
+    assert "不提供图片或视频访问" in response.text
 
 
 def test_dashboard_exposes_accessible_viewer_controls() -> None:
@@ -296,6 +396,18 @@ def test_environment_assets_require_authentication_and_disable_cache(
     response = app.get(f"/assets/{asset}", headers=auth())
     assert response.status_code == 200
     assert response.headers["cache-control"] == "no-store"
+
+
+def test_guardian_event_asset_requires_authentication_and_disables_cache() -> None:
+    app, _ = client()
+
+    assert app.get("/assets/guardian-events.js").status_code == 401
+    response = app.get("/assets/guardian-events.js", headers=auth())
+
+    assert response.status_code == 200
+    assert response.headers["content-type"].startswith("text/javascript")
+    assert response.headers["cache-control"] == "no-store"
+    assert "mountGuardianEvents" in response.text
 
 
 def test_environment_current_requires_auth_before_service_access() -> None:

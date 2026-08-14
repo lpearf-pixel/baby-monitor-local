@@ -274,3 +274,20 @@ isolation 六阶段运行完整自动门禁。它聚合全部仍可安全执行�
 跟踪 runtime/媒体/SQLite 和敏感字面量检查均通过。当前开发容器没有替代 Intel i9
 运行这两个命令，因此真实画面、已安装 launchd 服务和两台 Android 收件仍未由本
 检查点证明；真实通知属于后续方案 C/实机验收，不包含在方案 A 中。
+
+## Baby guardian R4 authenticated event Dashboard checkpoint
+
+2026-08-13，在公开检查点 `08dbc90` 上建立独立功能分支
+`codex/baby-guardian-event-dashboard`。新增只读 `GuardianEventQueryService`，使用
+centralized `data_dir` 定位 `events.sqlite3`，以 SQLite read-only URI 和
+`query_only` 模式联查事件与证据状态。查询先固定选择最新 20 条，再只在该集合内将
+未恢复事件置顶。API 严格排除证据键、路径、媒体、模型内容和内部异常。
+
+Dashboard 和脚本继续使用现有 Basic Auth 与 `no-store`。页面立即读取并每 15 秒
+刷新；失败保留原列表并显示“数据可能已过期”。五种证据状态均有固定中文显示，
+未恢复事件有语义和视觉突出。本切片没有新增图片、视频或证据访问能力，也没有加入
+家长确认、误报反馈或 Baby Care 写入。
+
+功能提交为 `96513aa`。新鲜软件门禁为 Python `692 passed`、Node `73 passed`；
+Python 编译与 `git diff --check` 通过，仅保留既有 Starlette/httpx 弃用警告。
+实机 i9、家庭场景准确率、两台 Android 收件和 72 小时发布门仍须单独验收。

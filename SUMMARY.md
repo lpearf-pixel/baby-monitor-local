@@ -6,19 +6,20 @@ Updated: 2026-08-13
 
 - Repository: `lpearf-pixel/baby-monitor-local` (public).
 - Stable Xiaomi line: `stable/xiaomi-alpha` at `0df20ae`.
-- Active feature line: `codex/baby-guardian-event-loop`.
-- Local guardian implementation history reached `fb3eee3` before this documentation
-  slice. GitHub contains the content-equivalent squash commit `27274d8` on the same
-  feature branch; both implementation snapshots have tree `adf3672`.
+- Active feature line: `codex/baby-guardian-event-dashboard`.
+- The authenticated Guardian event Dashboard is implemented on the new feature line
+  `codex/baby-guardian-event-dashboard`, based on the published pre-Dashboard
+  checkpoint `08dbc90`.
+- Remote branch `codex/baby-guardian-event-loop` remains at its earlier squash snapshot
+  `27274d8`; it is not rewritten or force-pushed.
 - The feature branch has not been merged into `stable/xiaomi-alpha` or `main`. No PR
   was created for the squash publication.
 - The current priority is the functional guardian event loop. The installed i9
   performance recheck remains intentionally deferred and must not block that work.
-- `uv.lock` is an existing untracked file in the Work checkout and is outside the
-  approved guardian/documentation scope.
+- The earlier untracked `uv.lock` was never staged or published; the recovered checkout
+  does not recreate or claim ownership of it.
 
-Always run fresh Git checks before relying on the commit references above. The current
-local HEAD may include documentation commits created after `fb3eee3`.
+Always run fresh Git checks before relying on the commit references above.
 
 ## Product Scope
 
@@ -114,6 +115,13 @@ Important ownership boundaries:
   duplicate successful sends.
 - Evidence initialization before outbox visibility, preventing a notification/evidence
   race.
+- Read-only authenticated queries join the existing event and evidence state in SQLite,
+  validate a closed response schema and never expose evidence keys, filesystem paths,
+  model details or media.
+- The Dashboard shows the newest 20 events, pins unresolved events within that fixed
+  set, highlights them, and displays collecting, ready, failed, interrupted or no
+  evidence. It loads immediately and refreshes every 15 seconds; a failed refresh keeps
+  the old list and marks it as potentially stale.
 
 ### Operations
 
@@ -127,10 +135,10 @@ Important ownership boundaries:
 
 ## Verification Evidence
 
-The latest complete software gate recorded before this documentation update was:
+The latest complete software gate recorded for the Dashboard implementation was:
 
-- Python repository suite: `682 passed`;
-- Dashboard Node suite: `70 passed`;
+- Python repository suite: `692 passed`;
+- Dashboard Node suite: `73 passed`;
 - Python compilation: passed;
 - new shell syntax, ASCII and LF checks: passed;
 - Make dry-run and `git diff --check`: passed;
@@ -150,18 +158,16 @@ deliveries, sustained performance or safe unattended care.
 |---|---|
 | Protected default branch | `main`; unchanged by guardian work |
 | Stable Xiaomi branch | `stable/xiaomi-alpha` at `0df20ae` |
-| Active feature branch | `codex/baby-guardian-event-loop` |
-| Local implementation snapshot | `fb3eee3` |
-| Remote squash snapshot | `27274d8` |
-| Shared implementation tree | `adf3672` |
+| Active feature branch | `codex/baby-guardian-event-dashboard` |
+| Guardian Dashboard implementation | `96513aa` |
+| Published pre-Dashboard checkpoint | `checkpoint/guardian-r4-pre-dashboard-20260813` → `08dbc90` |
+| Preserved legacy remote branch | `codex/baby-guardian-event-loop` at `27274d8` |
 | PR/merge | No guardian PR; not merged |
-| Preserved unrelated file | untracked `uv.lock` |
+| Protected branches | `main` and `stable/xiaomi-alpha`; unchanged |
 
-The local and remote feature histories are intentionally different because GitHub App
-publication created a squash snapshot. Their implementation file trees were verified
-identical at publication. Do not reset, rebase, force-push or blindly merge one history
-into the other. Inspect the current checkout and reconcile by content before selecting
-a future branch strategy.
+The new Dashboard branch starts from the published pre-Dashboard checkpoint. This
+avoids rewriting or blindly reconciling the older squash history. Do not force-push or
+merge the legacy branch into this line without a separate integration decision.
 
 ## Pending Real-Device Acceptance
 
@@ -182,7 +188,6 @@ a future branch strategy.
 
 ## Known Limitations
 
-- Authenticated risk-event queries and the Dashboard event list are not implemented.
 - Two parents cannot yet acknowledge an event independently.
 - False-positive feedback is not implemented.
 - Evidence retention cleanup for the planned time/space limits is not implemented.
@@ -195,14 +200,13 @@ a future branch strategy.
 
 ## Next Priorities
 
-1. Add authenticated risk-event queries and a Dashboard event list.
-2. Add separate acknowledgement state for both parents.
-3. Add bounded false-positive feedback without training directly on household media.
-4. Add a separate explicit two-phone notification and safe live-rehearsal acceptance
+1. Add separate acknowledgement state for both parents.
+2. Add bounded false-positive feedback without training directly on household media.
+3. Add a separate explicit two-phone notification and safe live-rehearsal acceptance
    command; do not add side effects to `alpha-guardian-test`.
-5. Add evidence retention cleanup, then consider the FFmpeg ring-buffer upgrade.
-6. Return to the deferred i9 scheduling/performance and environment acceptance gates.
-7. Add audio/cry candidates only after the visual guardian loop is functionally closed.
+4. Add evidence retention cleanup, then consider the FFmpeg ring-buffer upgrade.
+5. Return to the deferred i9 scheduling/performance and environment acceptance gates.
+6. Add audio/cry candidates only after the visual guardian loop is functionally closed.
 
 ## Operating Commands
 
@@ -251,8 +255,8 @@ only the bounded log window needed to identify the first actionable failure.
 3. Verify repository root, remote, branch, HEAD, upstream, dirty state and recent log.
 4. Preserve `uv.lock` and any other user changes; do not reset or clean.
 5. Reconcile local and remote feature histories before any push or branch integration.
-6. Continue with authenticated event queries unless fresh repository evidence shows a
-   newer approved priority.
+6. Continue with separate two-parent acknowledgement unless fresh repository evidence
+   shows a newer approved priority.
 7. Use focused tests for the slice and the full gate only at the next milestone or
    stable-branch integration.
 8. Do not push, create a PR, merge, tag or modify `main` without explicit approval.
