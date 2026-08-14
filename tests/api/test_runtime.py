@@ -20,6 +20,58 @@ def _environment(**overrides: str) -> dict[str, str]:
     return values
 
 
+class _AcceptedResponse:
+    status = 202
+
+    def __enter__(self) -> "_AcceptedResponse":
+        return self
+
+    def __exit__(self, *args: object) -> None:
+        return None
+
+
+def test_gateway_test_notification_is_clearly_non_risk_and_text_only(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    opened: list[tuple[object, float]] = []
+
+    def recording_urlopen(request: object, timeout: float) -> _AcceptedResponse:
+        opened.append((request, timeout))
+        return _AcceptedResponse()
+
+    monkeypatch.setattr(runtime_module, "urlopen", recording_urlopen)
+    gateway = runtime_module.Go2RTCAlphaGateway(
+        base_url="http://127.0.0.1:1984",
+        stream_name="live",
+        ntfy_base_url="https://ntfy.example.test",
+        ntfy_topic="private-topic",
+        ntfy_token="private-token",
+        timeout_seconds=3.5,
+    )
+
+    gateway.send_test_notification()
+
+    assert len(opened) == 1
+    request, timeout = opened[0]
+    body = request.data.decode("utf-8")
+    assert timeout == 3.5
+    assert "验收测试" in body
+    assert "不是宝宝风险告警" in body
+    assert "Acceptance Test" in request.headers["Title"]
+    request.headers["Title"].encode("ascii")
+    assert request.headers["Authorization"] == "Bearer private-token"
+    assert request.headers["Tags"] == "test_tube,white_check_mark"
+    for forbidden in (
+        "private-token",
+        "private-topic",
+        "ntfy.example.test",
+        "127.0.0.1",
+        "http://",
+        "https://",
+    ):
+        assert forbidden not in body
+
+
 def test_runtime_wires_hd_service_to_fixed_profiles_on_configured_loopback(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:

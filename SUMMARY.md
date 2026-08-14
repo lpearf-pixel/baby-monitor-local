@@ -1,15 +1,14 @@
 # Baby Monitor Local Project Summary
 
-Updated: 2026-08-13
+Updated: 2026-08-14
 
 ## Snapshot
 
 - Repository: `lpearf-pixel/baby-monitor-local` (public).
 - Stable Xiaomi line: `stable/xiaomi-alpha` at `0df20ae`.
-- Active feature line: `codex/baby-guardian-event-dashboard`.
-- The authenticated Guardian event Dashboard is implemented on the new feature line
-  `codex/baby-guardian-event-dashboard`, based on the published pre-Dashboard
-  checkpoint `08dbc90`.
+- Active feature line: `codex/guardian-evidence-retention`.
+- The evidence-retention line is based on the published Dashboard snapshot `69e2d5b`;
+  the Dashboard remains complete and its published branch is not rewritten.
 - Remote branch `codex/baby-guardian-event-loop` remains at its earlier squash snapshot
   `27274d8`; it is not rewritten or force-pushed.
 - The feature branch has not been merged into `stable/xiaomi-alpha` or `main`. No PR
@@ -122,6 +121,14 @@ Important ownership boundaries:
   set, highlights them, and displays collecting, ready, failed, interrupted or no
   evidence. It loads immediately and refreshes every 15 seconds; a failed refresh keeps
   the old list and marks it as potentially stale.
+- Guardian evidence cleanup now runs immediately with the visual runtime and then once
+  per day. It applies the centralized 30-day/30-GiB defaults, protects open events,
+  collecting evidence, notification-pending evidence and records whose recovery notice
+  is not terminal, deletes only controlled media plus the eligible evidence row, and
+  leaves the risk event/audit history queryable. Directory-descriptor traversal rejects
+  symlinked ancestors, while exact eligibility is rechecked under one SQLite writer
+  lock. Cleanup, logging or scheduler failures are redacted and isolated from visual
+  analysis.
 
 ### Operations
 
@@ -132,21 +139,27 @@ Important ownership boundaries:
   and isolation stages with fixed redacted PASS/FAIL output.
 - The automatic test command does not send a real ntfy notification, synthesize a Baby
   risk or write production event/evidence data.
+- `make alpha-guardian-test-live` is a separate supervised acceptance command. It
+  requires an interactive terminal, two safety confirmations, readiness, one clearly
+  labeled text-only non-risk notification, confirmations from both phones, and checks
+  of the authenticated live view and event list. Its hook-only software mode can emit
+  only `SIMULATED`, never a physical PASS.
 
 ## Verification Evidence
 
-The latest complete software gate recorded for the Dashboard implementation was:
+The latest complete software gate, including Guardian live-acceptance coverage, was:
 
-- Python repository suite: `692 passed`;
+- Python repository suite: `739 passed`;
 - Dashboard Node suite: `73 passed`;
 - Python compilation: passed;
-- new shell syntax, ASCII and LF checks: passed;
+- all tracked shell syntax, ASCII and LF checks: passed;
 - Make dry-run and `git diff --check`: passed;
 - tracked runtime/media/SQLite and sensitive-literal checks: passed;
 - one existing Starlette/httpx deprecation warning remained.
 
-The Option A startup/test slice also recorded focused Python `177 passed` and Node
-`70 passed` before the final complete software gate.
+The live-acceptance focused review recorded `38 passed`; the wider Guardian-focused
+gate recorded `126 passed`. The functional commits are `d862f2a` for the narrow,
+redacted notification helper and `67db75d` for the supervised command.
 
 These results prove software behavior against synthetic fixtures. They do not prove
 the installed i9 services, real Xiaomi stream, household scene accuracy, two Android
@@ -158,16 +171,20 @@ deliveries, sustained performance or safe unattended care.
 |---|---|
 | Protected default branch | `main`; unchanged by guardian work |
 | Stable Xiaomi branch | `stable/xiaomi-alpha` at `0df20ae` |
-| Active feature branch | `codex/baby-guardian-event-dashboard` |
-| Guardian Dashboard implementation | `96513aa` |
+| Active feature branch | `codex/guardian-evidence-retention` |
+| Guardian evidence-retention runtime implementation | `718af9a` |
+| Guardian evidence-retention safety closure | `e3cd69c` |
+| Guardian live-notification helper | `d862f2a` |
+| Guardian supervised live acceptance | `67db75d` |
+| Published Dashboard base | `69e2d5b` |
 | Published pre-Dashboard checkpoint | `checkpoint/guardian-r4-pre-dashboard-20260813` → `08dbc90` |
 | Preserved legacy remote branch | `codex/baby-guardian-event-loop` at `27274d8` |
 | PR/merge | No guardian PR; not merged |
 | Protected branches | `main` and `stable/xiaomi-alpha`; unchanged |
 
-The new Dashboard branch starts from the published pre-Dashboard checkpoint. This
-avoids rewriting or blindly reconciling the older squash history. Do not force-push or
-merge the legacy branch into this line without a separate integration decision.
+The retention branch starts from the published Dashboard snapshot. This avoids
+rewriting either the Dashboard or legacy squash history. Do not force-push or merge the
+legacy branch into this line without a separate integration decision.
 
 ## Pending Real-Device Acceptance
 
@@ -176,8 +193,10 @@ merge the legacy branch into this line without a separate integration decision.
 - Complete private bed-zone configuration and the restricted i9-to-M2 semantic bridge.
 - Validate real semantic response shape, cold/hot latency and daylight, darkness,
   mosquito-net, adult, empty-bed and safe simulated-obstruction scenes.
-- Confirm real notification display and offline recovery on both Android phones using
-  a later explicit acceptance command. Option A does not send these messages.
+- Run `make alpha-guardian-test-live` on the installed i9 with no real infant present,
+  an adult supervising, and both Android phones available. This is the pending physical
+  proof for one harmless acceptance message, authenticated live view and event list;
+  software simulation does not establish delivery.
 - Complete WS2021 real calibration, 30 daylight comparisons, night/glare/occlusion
   rejection and the independent 24-hour environment gate.
 - Apply the visual launchd scheduling update on i9, observe for 3 minutes and run the
@@ -190,7 +209,6 @@ merge the legacy branch into this line without a separate integration decision.
 
 - Two parents cannot yet acknowledge an event independently.
 - False-positive feedback is not implemented.
-- Evidence retention cleanup for the planned time/space limits is not implemented.
 - The later FFmpeg original-video ring upgrade is deferred; current evidence uses the
   privacy-safe animated WebP design.
 - Real Baby posture, face obstruction and bed-exit accuracy remain unaccepted.
@@ -200,13 +218,15 @@ merge the legacy branch into this line without a separate integration decision.
 
 ## Next Priorities
 
-1. Add separate acknowledgement state for both parents.
-2. Add bounded false-positive feedback without training directly on household media.
-3. Add a separate explicit two-phone notification and safe live-rehearsal acceptance
-   command; do not add side effects to `alpha-guardian-test`.
-4. Add evidence retention cleanup, then consider the FFmpeg ring-buffer upgrade.
-5. Return to the deferred i9 scheduling/performance and environment acceptance gates.
-6. Add audio/cry candidates only after the visual guardian loop is functionally closed.
+1. Run `make alpha-guardian-start`, `make alpha-guardian-test`, and then the separate
+   supervised `make alpha-guardian-test-live` on the installed i9 with two phones.
+2. Complete household synthetic candidate-scene validation and the
+   deferred scheduling/performance acceptance.
+3. Define per-parent acknowledgement and false-positive feedback only through a future
+   contract where Baby Care consumes Guardian's read-only feed and owns identity/write
+   state; do not create a second identity model inside Guardian.
+4. Consider the FFmpeg ring-buffer upgrade after the functional and real-device gates.
+5. Add audio/cry candidates only after the visual guardian loop is functionally closed.
 
 ## Operating Commands
 
@@ -215,6 +235,7 @@ Primary guardian entry points:
 ```bash
 make alpha-guardian-start
 make alpha-guardian-test
+make alpha-guardian-test-live
 ```
 
 Common service operations:

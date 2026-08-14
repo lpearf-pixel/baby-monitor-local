@@ -1,9 +1,10 @@
 from __future__ import annotations
 
-import sqlite3
+from collections.abc import Callable
 from datetime import datetime
 from pathlib import Path
 import re
+import sqlite3
 from typing import Literal, Self
 
 from pydantic import BaseModel, ConfigDict, Field, field_validator, model_validator
@@ -123,6 +124,17 @@ class StoredVisualRiskEvidence(BaseModel):
             if self.clip_key is not None or self.failure_code is None:
                 raise ValueError("incomplete evidence requires failure_code")
         return self
+
+
+class StoredEvidenceRetentionEntry(BaseModel):
+    model_config = ConfigDict(extra="forbid", frozen=True)
+
+    event_id: str = Field(min_length=1, max_length=128)
+    state: EvidenceState
+    retention_at: datetime
+    deletable: bool
+
+    _aware_retention_at = field_validator("retention_at")(_aware)
 
 
 NotificationStage = Literal[
@@ -661,6 +673,144 @@ class VisualRiskEventStore:
                 (event_id,),
             ).fetchone()
         return self._evidence_from_row(row) if row is not None else None
+
+    def list_evidence_retention_entries(
+        self,
+    ) -> tuple[StoredEvidenceRetentionEntry, ...]:
+        with self._connect() as connection:
+            rows = connection.execute(
+                """
+                SELECT
+                    evidence.event_id,
+                    evidence.state,
+                    event.updated_at AS event_updated_at,
+                    evidence.updated_at AS evidence_updated_at,
+                    CASE
+                        WHEN event.state = 'recovered'
+                            AND evidence.state IN (
+                                'ready', 'failed', 'interrupted'
+                            )
+                            AND NOT EXISTS (
+                                SELECT 1
+                                FROM visual_risk_notifications AS notification
+                                WHERE notification.event_id = evidence.event_id
+                                    AND notification.state = 'pending'
+                            )
+                            AND EXISTS (
+                                SELECT 1
+                                FROM visual_risk_notifications AS recovery
+                                WHERE recovery.event_id = evidence.event_id
+                                    AND recovery.stage = 'risk_recovered'
+                                    AND recovery.state IN ('delivered', 'rejected')
+                            )
+                        THEN 1
+                        ELSE 0
+                    END AS deletable
+                FROM visual_risk_evidence AS evidence
+                JOIN visual_risk_events AS event
+                    ON event.event_id = evidence.event_id
+                """
+            ).fetchall()
+        entries = tuple(
+            StoredEvidenceRetentionEntry(
+                event_id=row["event_id"],
+                state=row["state"],
+                retention_at=max(
+                    datetime.fromisoformat(row["event_updated_at"]),
+                    datetime.fromisoformat(row["evidence_updated_at"]),
+                ),
+                deletable=bool(row["deletable"]),
+            )
+            for row in rows
+        )
+        return tuple(
+            sorted(entries, key=lambda entry: (entry.retention_at, entry.event_id))
+        )
+
+    def delete_evidence_if_eligible(
+        self,
+        entry: StoredEvidenceRetentionEntry,
+        delete_files: Callable[[], int],
+    ) -> int | None:
+        with self._connect() as connection:
+            connection.execute("BEGIN IMMEDIATE")
+            row = connection.execute(
+                """
+                SELECT
+                    evidence.state,
+                    evidence.updated_at AS evidence_updated_at,
+                    event.state AS event_state,
+                    event.updated_at AS event_updated_at,
+                    EXISTS (
+                        SELECT 1
+                        FROM visual_risk_notifications AS notification
+                        WHERE notification.event_id = evidence.event_id
+                            AND notification.state = 'pending'
+                    ) AS has_pending_notification,
+                    EXISTS (
+                        SELECT 1
+                        FROM visual_risk_notifications AS recovery
+                        WHERE recovery.event_id = evidence.event_id
+                            AND recovery.stage = 'risk_recovered'
+                            AND recovery.state IN ('delivered', 'rejected')
+                    ) AS has_terminal_recovery_notification
+                FROM visual_risk_evidence AS evidence
+                JOIN visual_risk_events AS event
+                    ON event.event_id = evidence.event_id
+                WHERE evidence.event_id = ?
+                """,
+                (entry.event_id,),
+            ).fetchone()
+            if row is None:
+                return None
+            retention_at = max(
+                datetime.fromisoformat(row["event_updated_at"]),
+                datetime.fromisoformat(row["evidence_updated_at"]),
+            )
+            if (
+                row["state"] != entry.state
+                or retention_at != entry.retention_at
+                or row["event_state"] != "recovered"
+                or row["state"] not in {"ready", "failed", "interrupted"}
+                or bool(row["has_pending_notification"])
+                or not bool(row["has_terminal_recovery_notification"])
+            ):
+                return None
+            reclaimed_bytes = delete_files()
+            cursor = connection.execute(
+                """
+                DELETE FROM visual_risk_evidence
+                WHERE event_id = ? AND state = ? AND updated_at = ?
+                    AND EXISTS (
+                        SELECT 1 FROM visual_risk_events AS event
+                        WHERE event.event_id = visual_risk_evidence.event_id
+                            AND event.state = 'recovered'
+                            AND event.updated_at = ?
+                    )
+                    AND NOT EXISTS (
+                        SELECT 1
+                        FROM visual_risk_notifications AS notification
+                        WHERE notification.event_id = visual_risk_evidence.event_id
+                            AND notification.state = 'pending'
+                    )
+                    AND EXISTS (
+                        SELECT 1
+                        FROM visual_risk_notifications AS recovery
+                        WHERE recovery.event_id = visual_risk_evidence.event_id
+                            AND recovery.stage = 'risk_recovered'
+                            AND recovery.state IN ('delivered', 'rejected')
+                    )
+                """,
+                (
+                    entry.event_id,
+                    entry.state,
+                    row["evidence_updated_at"],
+                    row["event_updated_at"],
+                ),
+            )
+            if cursor.rowcount != 1:
+                raise RuntimeError("evidence retention state changed")
+        return reclaimed_bytes
 
     def queue_notification(
         self,

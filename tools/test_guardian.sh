@@ -56,7 +56,8 @@ EOF
 }
 
 check_make_wiring() {
-  make -C "$ROOT" -n alpha-guardian-start alpha-guardian-test
+  make -C "$ROOT" -n \
+    alpha-guardian-start alpha-guardian-test alpha-guardian-test-live
 }
 
 check_tracked_runtime() {
@@ -142,6 +143,8 @@ check_source() {
 
 check_guardian_focused() {
   "$PYTHON" -m pytest -q \
+    tests/api/test_runtime.py \
+    tests/deploy/test_guardian_commands.py \
     tests/notifications/test_guardian_dispatcher.py \
     tests/notifications/test_guardian_ntfy.py \
     tests/storage/test_visual_risk_store.py \
@@ -150,6 +153,7 @@ check_guardian_focused() {
     tests/vision/test_frame_ring.py \
     tests/vision/test_notification_config.py \
     tests/vision/test_risk_event_pipeline.py \
+    tests/tools/test_send_guardian_live_notification.py \
     tests/tools/test_run_visual_worker.py
 }
 

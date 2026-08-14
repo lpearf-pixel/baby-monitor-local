@@ -51,15 +51,25 @@ The repository baseline and environment implementation are complete. Do not rest
    dispatcher; payloads are text-only and omit media, paths, private addresses,
    credentials and unauthenticated links. Physical delivery to both Android phones
    remains pending.
-10. Option A startup and automatic acceptance are complete locally. On the i9 run
-    `make alpha-guardian-start` followed by `make alpha-guardian-test`; preserve the
-    fixed PASS/FAIL output as the environment acceptance result. This command does
-    not send a real ntfy test message or simulate a Baby risk.
+10. Option A startup, automatic acceptance and the separate supervised live acceptance
+    are complete in software. On the installed i9 first run
+    `make alpha-guardian-start`, then `make alpha-guardian-test`, and finally—with no
+    real infant present, an adult supervising and both phones available—run
+    `make alpha-guardian-test-live`. Preserve the fixed PASS/FAIL output. The automatic
+    command remains notification-free; only the explicit live command sends one clearly
+    labeled harmless text notification. Software `SIMULATED` is not physical proof.
 11. Authenticated event queries and the media-free Dashboard list are complete locally.
-    Next add two-parent acknowledgement and false-positive feedback. Keep real
-    two-phone notification delivery and safe live rehearsal in a separate explicit
-    acceptance command. Live viewing must remain independent of AI. Upgrade to the
-    FFmpeg ring-buffer option only after the functional guardian loop is complete.
+    Evidence retention is also complete: cleanup uses the centralized 30-day/30-GiB
+    limits while protecting open, collecting, notification-pending and
+    recovery-notice-nonterminal records. Next complete the installed-i9/two-phone live
+    run, household synthetic-scene validation and the deferred launchd performance
+    gate. Per-parent
+    acknowledgement and actor-bound false-positive
+    feedback require a future contract where Baby Care consumes Guardian's read-only
+    feed and owns identity/write state; they must not create a competing Guardian
+    identity model. Live viewing must remain independent of AI.
+    Upgrade to the FFmpeg ring-buffer option only after the functional guardian loop is
+    complete.
 
 ## P3 — Release gate
 

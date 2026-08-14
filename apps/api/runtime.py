@@ -135,12 +135,14 @@ class Go2RTCAlphaGateway:
             raise RuntimeError("NTFY_TOPIC is not configured")
         request = Request(
             f"{self._ntfy_base_url}/{quote(self._ntfy_topic, safe='')}",
-            data="婴儿监控 Alpha 测试通知：Mac、网页和 ntfy 通道已连通。".encode("utf-8"),
+            data="Guardian 通知通道验收测试：这不是宝宝风险告警。".encode(
+                "utf-8"
+            ),
             method="POST",
             headers={
-                "Title": "Baby Monitor Local",
+                "Title": "Baby Monitor Local Acceptance Test",
                 "Priority": "high",
-                "Tags": "baby,white_check_mark",
+                "Tags": "test_tube,white_check_mark",
                 **(
                     {"Authorization": f"Bearer {self._ntfy_token}"}
                     if self._ntfy_token
@@ -151,6 +153,20 @@ class Go2RTCAlphaGateway:
         with urlopen(request, timeout=self._timeout_seconds) as response:
             if not 200 <= response.status < 300:
                 raise RuntimeError(f"ntfy returned HTTP {response.status}")
+
+
+def notification_gateway_from_env(
+    environ: dict[str, str] | None = None,
+) -> Go2RTCAlphaGateway:
+    env = os.environ if environ is None else environ
+    stream_name = env.get("BABY_MONITOR_STREAM", "live").strip() or "live"
+    return Go2RTCAlphaGateway(
+        base_url=env.get("GO2RTC_BASE_URL", "http://127.0.0.1:1984"),
+        stream_name=stream_name,
+        ntfy_base_url=env.get("NTFY_BASE_URL", "https://ntfy.sh"),
+        ntfy_topic=env.get("NTFY_TOPIC", ""),
+        ntfy_token=env.get("NTFY_TOKEN") or None,
+    )
 
 
 def runtime_from_env(environ: dict[str, str] | None = None) -> AlphaRuntime:
@@ -164,13 +180,7 @@ def runtime_from_env(environ: dict[str, str] | None = None) -> AlphaRuntime:
 
     stream_name = env.get("BABY_MONITOR_STREAM", "live").strip() or "live"
     go2rtc_base_url = env.get("GO2RTC_BASE_URL", "http://127.0.0.1:1984")
-    gateway = Go2RTCAlphaGateway(
-        base_url=go2rtc_base_url,
-        stream_name=stream_name,
-        ntfy_base_url=env.get("NTFY_BASE_URL", "https://ntfy.sh"),
-        ntfy_topic=env.get("NTFY_TOPIC", ""),
-        ntfy_token=env.get("NTFY_TOKEN") or None,
-    )
+    gateway = notification_gateway_from_env(env)
     environment = None
     guardian_events = None
     settings_path_value = env.get("BABY_MONITOR_SETTINGS_PATH", "").strip()

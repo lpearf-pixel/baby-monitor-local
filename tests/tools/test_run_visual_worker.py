@@ -54,6 +54,14 @@ class RecordingResources:
             raise RuntimeError("/private/household/scheduler-state")
 
 
+def enabled_settings(data_dir: Path = Path("runtime-data")) -> SimpleNamespace:
+    return SimpleNamespace(
+        visual=SimpleNamespace(enabled=True),
+        app=SimpleNamespace(data_dir=data_dir),
+        retention=SimpleNamespace(event_retention_days=30, event_quota_gb=30),
+    )
+
+
 @pytest.fixture(autouse=True)
 def disable_guardian_delivery(monkeypatch) -> None:
     from tools import run_visual_worker
@@ -73,10 +81,7 @@ def test_main_wires_real_status_writer_into_visual_runtime(
 
     resources = RecordingResources()
     captured: dict[str, object] = {}
-    settings = SimpleNamespace(
-        visual=SimpleNamespace(enabled=True),
-        app=SimpleNamespace(data_dir=Path("runtime-data")),
-    )
+    settings = enabled_settings()
 
     monkeypatch.setattr(run_visual_worker, "ROOT", tmp_path)
     monkeypatch.setattr(
@@ -169,10 +174,7 @@ def test_main_restores_open_guardian_event_into_visual_runtime(
     )
     resources = RecordingResources()
     captured: dict[str, object] = {}
-    settings = SimpleNamespace(
-        visual=SimpleNamespace(enabled=True),
-        app=SimpleNamespace(data_dir=Path("runtime-data")),
-    )
+    settings = enabled_settings()
     monkeypatch.setattr(run_visual_worker, "ROOT", tmp_path)
     monkeypatch.setattr(
         run_visual_worker.AppSettings,
@@ -210,10 +212,7 @@ def test_main_flushes_final_status_when_resource_cleanup_fails(
     from tools import run_visual_worker
 
     resources = RecordingResources(fail_close=True)
-    settings = SimpleNamespace(
-        visual=SimpleNamespace(enabled=True),
-        app=SimpleNamespace(data_dir=Path("runtime-data")),
-    )
+    settings = enabled_settings()
     monkeypatch.setattr(run_visual_worker, "ROOT", tmp_path)
     monkeypatch.setattr(
         run_visual_worker.AppSettings,
@@ -239,7 +238,11 @@ def test_main_flushes_final_status_when_resource_cleanup_fails(
 
     assert exit_code == 2
     assert captured.out == ""
-    assert captured.err == "visual_worker_runtime_failed\n"
+    stderr_lines = captured.err.splitlines()
+    assert stderr_lines[-1] == "visual_worker_runtime_failed"
+    retention_log = json.loads(stderr_lines[0])
+    assert retention_log["code"] == "guardian.evidence_retention_completed"
+    assert retention_log["result"] == "within_quota"
     assert resources.closed is True
     status_path = tmp_path / "runtime/status/realtime-visual.json"
     payload = json.loads(status_path.read_text(encoding="utf-8"))
@@ -268,10 +271,7 @@ def test_main_starts_and_stops_guardian_dispatcher_thread(
 
     resources = RecordingResources()
     resources.worker = WaitingWorker()
-    settings = SimpleNamespace(
-        visual=SimpleNamespace(enabled=True),
-        app=SimpleNamespace(data_dir=Path("runtime-data")),
-    )
+    settings = enabled_settings()
     monkeypatch.setattr(run_visual_worker, "ROOT", tmp_path)
     monkeypatch.setattr(
         run_visual_worker.AppSettings,
@@ -313,10 +313,7 @@ def test_invalid_guardian_notification_config_disables_only_dispatcher(
     from tools import run_visual_worker
 
     resources = RecordingResources()
-    settings = SimpleNamespace(
-        visual=SimpleNamespace(enabled=True),
-        app=SimpleNamespace(data_dir=Path("runtime-data")),
-    )
+    settings = enabled_settings()
     monkeypatch.setattr(run_visual_worker, "ROOT", tmp_path)
     monkeypatch.setattr(
         run_visual_worker.AppSettings,
@@ -343,5 +340,174 @@ def test_invalid_guardian_notification_config_disables_only_dispatcher(
     assert run_visual_worker.main(["--settings", str(tmp_path / "settings.yaml")]) == 0
     captured = capsys.readouterr()
     assert captured.out == ""
-    assert captured.err == "guardian_notification_disabled\n"
+    stderr_lines = captured.err.splitlines()
+    assert stderr_lines[0] == "guardian_notification_disabled"
+    retention_log = json.loads(stderr_lines[1])
+    assert retention_log["code"] == "guardian.evidence_retention_completed"
+    assert retention_log["result"] == "within_quota"
     assert resources.worker.ran is True
+
+
+def test_main_wires_central_retention_settings_and_stops_worker_thread(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    from tools import run_visual_worker
+
+    started = threading.Event()
+    stopped = threading.Event()
+    captured: dict[str, object] = {}
+    files_sentinel = SimpleNamespace()
+
+    class RecordingRetention:
+        def __init__(self, **kwargs: object) -> None:
+            captured.update(kwargs)
+
+        def cleanup(self, _now: object) -> None:
+            return None
+
+    class RecordingRetentionWorker:
+        def __init__(self, *, cleanup: object, stream: object) -> None:
+            captured["cleanup"] = cleanup
+            captured["stream"] = stream
+
+        def run(self, stop_event: object) -> None:
+            started.set()
+            stop_event.wait(1)
+            stopped.set()
+
+    class WaitingWorker(RecordingWorker):
+        def run(self, stop_event: object) -> None:
+            assert started.wait(1)
+            super().run(stop_event)
+
+    resources = RecordingResources()
+    resources.worker = WaitingWorker()
+    settings = enabled_settings()
+    settings.retention.event_retention_days = 17
+    settings.retention.event_quota_gb = 3
+    monkeypatch.setattr(run_visual_worker, "ROOT", tmp_path)
+    monkeypatch.setattr(run_visual_worker.AppSettings, "load", lambda _path: settings)
+
+    def build_evidence_files(root: Path) -> object:
+        captured["evidence_root"] = root
+        return files_sentinel
+
+    monkeypatch.setattr(
+        run_visual_worker,
+        "GuardianEvidenceFiles",
+        build_evidence_files,
+    )
+    monkeypatch.setattr(
+        run_visual_worker,
+        "GuardianEvidenceRetention",
+        RecordingRetention,
+        raising=False,
+    )
+    monkeypatch.setattr(
+        run_visual_worker,
+        "GuardianEvidenceRetentionWorker",
+        RecordingRetentionWorker,
+        raising=False,
+    )
+
+    def build(_settings: object, **kwargs: object) -> RecordingResources:
+        resources.worker.status_callback = kwargs["on_realtime_status"]
+        return resources
+
+    monkeypatch.setattr(run_visual_worker, "build_visual_runtime", build)
+    monkeypatch.setattr(
+        run_visual_worker,
+        "build_visual_health_notifier",
+        lambda _settings, _environ: None,
+    )
+
+    assert run_visual_worker.main(["--settings", str(tmp_path / "settings.yaml")]) == 0
+    assert started.is_set()
+    assert stopped.is_set()
+    assert captured["evidence_root"] == (
+        tmp_path / "runtime-data" / "guardian-evidence"
+    )
+    assert captured["store"].integrity_check() == "ok"
+    assert captured["files"] is files_sentinel
+    assert captured["retention_days"] == 17
+    assert captured["quota_bytes"] == 3 * 1024**3
+    assert callable(captured["cleanup"])
+
+
+def test_unexpected_retention_thread_failure_is_redacted_and_isolated(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+    capsys: pytest.CaptureFixture[str],
+) -> None:
+    from tools import run_visual_worker
+
+    started = threading.Event()
+
+    class FailingRetentionWorker:
+        def __init__(self, **kwargs: object) -> None:
+            self.stream = kwargs["stream"]
+
+        def run(self, _stop_event: object) -> None:
+            started.set()
+            raise RuntimeError("token at /private/guardian-evidence")
+
+        def report_unavailable(self) -> None:
+            self.stream.write(
+                json.dumps(
+                    {
+                        "code": "guardian.evidence_retention_failed",
+                        "component": "baby_guardian",
+                        "observed_at": "2026-08-13T12:00:00+00:00",
+                        "result": "retention_unavailable",
+                        "schema_version": 1,
+                    },
+                    sort_keys=True,
+                    separators=(",", ":"),
+                )
+                + "\n"
+            )
+
+    class WaitingWorker(RecordingWorker):
+        def run(self, stop_event: object) -> None:
+            assert started.wait(1)
+            super().run(stop_event)
+
+    resources = RecordingResources()
+    resources.worker = WaitingWorker()
+    settings = enabled_settings()
+    monkeypatch.setattr(run_visual_worker, "ROOT", tmp_path)
+    monkeypatch.setattr(run_visual_worker.AppSettings, "load", lambda _path: settings)
+    monkeypatch.setattr(
+        run_visual_worker,
+        "GuardianEvidenceRetention",
+        lambda **_kwargs: SimpleNamespace(cleanup=lambda _now: None),
+        raising=False,
+    )
+    monkeypatch.setattr(
+        run_visual_worker,
+        "GuardianEvidenceRetentionWorker",
+        FailingRetentionWorker,
+        raising=False,
+    )
+
+    def build(_settings: object, **kwargs: object) -> RecordingResources:
+        resources.worker.status_callback = kwargs["on_realtime_status"]
+        return resources
+
+    monkeypatch.setattr(run_visual_worker, "build_visual_runtime", build)
+    monkeypatch.setattr(
+        run_visual_worker,
+        "build_visual_health_notifier",
+        lambda _settings, _environ: None,
+    )
+
+    assert run_visual_worker.main(["--settings", str(tmp_path / "settings.yaml")]) == 0
+    output = capsys.readouterr()
+    assert output.out == ""
+    retention_log = json.loads(output.err)
+    assert retention_log["code"] == "guardian.evidence_retention_failed"
+    assert retention_log["result"] == "retention_unavailable"
+    assert resources.worker.ran is True
+    assert "token" not in output.err
+    assert "private" not in output.err

@@ -22,6 +22,10 @@ from services.storage.visual_risk import StoredVisualRiskEvent, VisualRiskEventS
 from services.vision.bootstrap import build_visual_runtime
 from services.vision.evidence_files import GuardianEvidenceFiles
 from services.vision.evidence_recorder import GuardianEvidenceRecorder
+from services.vision.evidence_retention import (
+    GuardianEvidenceRetention,
+    GuardianEvidenceRetentionWorker,
+)
 from services.vision.frame_health import FrameHealthTransition
 from services.vision.frame_health_pipeline import VisualFrameHealthPipeline
 from services.vision.frame_policy import PreparedAnalysisFrame
@@ -59,6 +63,7 @@ def main(argv: list[str] | None = None) -> int:
     status_publisher: RealtimeVisualStatusPublisher | None = None
     evidence_recorder: GuardianEvidenceRecorder | None = None
     guardian_dispatcher: GuardianNotificationDispatcher | None = None
+    evidence_retention_worker: GuardianEvidenceRetentionWorker | None = None
     try:
         if args.env_file is not None:
             load_local_env_file(args.env_file)
@@ -144,13 +149,24 @@ def main(argv: list[str] | None = None) -> int:
             on_risk_transition=visual_risk_pipeline.handle,
             on_realtime_status=status_publisher,
         )
+        evidence_files = GuardianEvidenceFiles(data_dir / "guardian-evidence")
         evidence_recorder = GuardianEvidenceRecorder(
             store=visual_risk_store,
-            files=GuardianEvidenceFiles(data_dir / "guardian-evidence"),
+            files=evidence_files,
             frame_window=resources.ring.snapshot_window,
             stream=sys.stderr,
         )
         evidence_recorder.recover_interrupted(datetime.now().astimezone())
+        evidence_retention = GuardianEvidenceRetention(
+            store=visual_risk_store,
+            files=evidence_files,
+            retention_days=settings.retention.event_retention_days,
+            quota_bytes=settings.retention.event_quota_gb * 1024**3,
+        )
+        evidence_retention_worker = GuardianEvidenceRetentionWorker(
+            cleanup=evidence_retention.cleanup,
+            stream=sys.stderr,
+        )
     except Exception:
         if status_publisher is not None:
             status_publisher.close()
@@ -159,6 +175,7 @@ def main(argv: list[str] | None = None) -> int:
 
     stop_event = threading.Event()
     guardian_thread: threading.Thread | None = None
+    retention_thread: threading.Thread | None = None
 
     def stop(_signum: int, _frame: object) -> None:
         stop_event.set()
@@ -182,6 +199,23 @@ def main(argv: list[str] | None = None) -> int:
         except Exception:
             guardian_thread = None
             print("guardian_notification_disabled", file=sys.stderr)
+    if evidence_retention_worker is not None:
+        def run_evidence_retention() -> None:
+            try:
+                evidence_retention_worker.run(stop_event)
+            except Exception:
+                evidence_retention_worker.report_unavailable()
+
+        try:
+            retention_thread = threading.Thread(
+                target=run_evidence_retention,
+                name="guardian-evidence-retention",
+                daemon=True,
+            )
+            retention_thread.start()
+        except Exception:
+            retention_thread = None
+            evidence_retention_worker.report_unavailable()
     runtime_failed = False
     try:
         resources.worker.run(stop_event)
@@ -193,6 +227,11 @@ def main(argv: list[str] | None = None) -> int:
             guardian_thread.join(timeout=20)
             if guardian_thread.is_alive():
                 print("guardian_notification_stop_timeout", file=sys.stderr)
+        if retention_thread is not None:
+            retention_thread.join(timeout=20)
+            if retention_thread.is_alive():
+                assert evidence_retention_worker is not None
+                evidence_retention_worker.report_unavailable()
         try:
             if evidence_recorder is not None:
                 evidence_recorder.close(datetime.now().astimezone())
