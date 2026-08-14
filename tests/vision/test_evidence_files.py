@@ -85,3 +85,102 @@ def test_empty_clip_is_rejected_without_creating_a_directory(tmp_path: Path) -> 
         files.write_clip("event-face", ())
 
     assert not (tmp_path / "guardian-evidence").exists()
+
+
+def test_usage_and_event_delete_are_exact_idempotent_and_isolated(
+    tmp_path: Path,
+) -> None:
+    root = tmp_path / "guardian-evidence"
+    files = GuardianEvidenceFiles(root)
+    frame = safe_frame(0, (1, 2, 3))
+    first_snapshot = files.write_snapshot("event-first", frame)
+    first_clip = files.write_clip("event-first", (frame,))
+    second_snapshot = files.write_snapshot("event-second", frame)
+    unmanaged = root / "unmanaged.bin"
+    unmanaged.write_bytes(b"unmanaged")
+
+    first_size = (
+        (root / first_snapshot).stat().st_size
+        + (root / first_clip).stat().st_size
+    )
+    total_size = (
+        first_size
+        + (root / second_snapshot).stat().st_size
+        + len(b"unmanaged")
+    )
+
+    assert files.event_bytes("event-first") == first_size
+    assert files.total_bytes() == total_size
+    assert files.delete_event("event-first") == first_size
+    assert files.event_bytes("event-first") == 0
+    assert files.delete_event("event-first") == 0
+    assert (root / second_snapshot).is_file()
+    assert unmanaged.read_bytes() == b"unmanaged"
+    assert files.total_bytes() == total_size - first_size
+
+
+def test_event_delete_rejects_unexpected_entry_without_partial_deletion(
+    tmp_path: Path,
+) -> None:
+    root = tmp_path / "guardian-evidence"
+    files = GuardianEvidenceFiles(root)
+    snapshot_key = files.write_snapshot("event-unsafe", safe_frame(0, (1, 2, 3)))
+    event_directory = (root / snapshot_key).parent
+    unexpected = event_directory / "notes.txt"
+    unexpected.write_text("private", encoding="utf-8")
+
+    with pytest.raises(ValueError, match="unsafe evidence entry"):
+        files.delete_event("event-unsafe")
+
+    assert (root / snapshot_key).is_file()
+    assert unexpected.is_file()
+
+
+def test_usage_and_delete_never_follow_symbolic_links(tmp_path: Path) -> None:
+    root = tmp_path / "guardian-evidence"
+    files = GuardianEvidenceFiles(root)
+    snapshot_key = files.write_snapshot("event-linked", safe_frame(0, (1, 2, 3)))
+    event_directory = (root / snapshot_key).parent
+    target = tmp_path / "outside-private.bin"
+    target.write_bytes(b"must-remain")
+    (event_directory / "clip.webp").symlink_to(target)
+
+    with pytest.raises(ValueError, match="unsafe evidence entry"):
+        files.event_bytes("event-linked")
+    with pytest.raises(ValueError, match="unsafe evidence entry"):
+        files.delete_event("event-linked")
+    with pytest.raises(ValueError, match="unsafe evidence entry"):
+        files.total_bytes()
+
+    assert target.read_bytes() == b"must-remain"
+    assert (root / snapshot_key).is_file()
+
+
+@pytest.mark.parametrize("symlink_level", ["root", "visual-risk"])
+def test_event_delete_rejects_symlinked_ancestor_without_external_deletion(
+    tmp_path: Path,
+    symlink_level: str,
+) -> None:
+    root = tmp_path / "guardian-evidence"
+    outside = tmp_path / "outside-evidence"
+    digest = hashlib.sha256(b"event-escape").hexdigest()
+    if symlink_level == "root":
+        event_directory = outside / "visual-risk" / digest
+        root.symlink_to(outside, target_is_directory=True)
+    else:
+        root.mkdir()
+        event_directory = outside / digest
+        (root / "visual-risk").symlink_to(outside, target_is_directory=True)
+    event_directory.mkdir(parents=True)
+    snapshot = event_directory / "snapshot.jpg"
+    clip = event_directory / "clip.webp"
+    snapshot.write_bytes(b"outside-snapshot")
+    clip.write_bytes(b"outside-clip")
+
+    files = GuardianEvidenceFiles(root)
+    with pytest.raises((OSError, ValueError)):
+        files.delete_event("event-escape")
+
+    assert snapshot.read_bytes() == b"outside-snapshot"
+    assert clip.read_bytes() == b"outside-clip"
+    assert event_directory.is_dir()

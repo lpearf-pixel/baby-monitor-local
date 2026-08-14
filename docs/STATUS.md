@@ -6,7 +6,7 @@
 - Design: approved.
 - Environment monitoring design and implementation plan: approved on 2026-08-05.
 - Stable Xiaomi Alpha commit: `0df20ae` on `stable/xiaomi-alpha`.
-- Active local development branch: `codex/baby-guardian-event-loop`.
+- Active local development branch: `codex/guardian-evidence-retention`.
 - Xiaomi-first delivery scope: fixed to MJSXJ17CM for the first usable release;
   the proposed UVC USB source remains deferred behind the existing frame-source
   adapter boundary.
@@ -81,6 +81,15 @@
   20 events immediately, pins unresolved events within that set, highlights them and
   refreshes every 15 seconds. Refresh failure retains the old list and shows a stale
   warning; no screenshot, clip, evidence key or media route was added.
+- Baby guardian evidence retention: the visual runtime now starts an independent daily
+  cleanup worker using centralized age/quota settings. Recovered terminal evidence is
+  removed age-first and then oldest-first for quota, while open events, collecting
+  evidence, notification-pending events and records without a terminal recovery notice
+  remain protected. Exact eligibility and file deletion share one SQLite writer lock;
+  descriptor-anchored `O_NOFOLLOW` traversal prevents symlink ancestors from redirecting
+  deletion. Only controlled media and the evidence row are removed; event/audit history
+  remains. Unsafe filesystem entries, database failures and scheduler failures fail
+  closed with aggregate redacted logs.
 - Fresh R3 software gate on 2026-08-06: 451 Python tests and 70 Node browser tests
   passed; Python compilation, shell syntax, `git diff --check`, tracked runtime/media
   boundaries, GitHub-token candidates and private-key markers passed. This remains a
@@ -91,9 +100,15 @@
   grouping rather than heatmap-peak counting; model/load health transitions,
   every-frame source health checks and blurred-camera watches have regression
   coverage. This remains synthetic software evidence, not an i9 household gate.
-- Next visual feature slice: add two-parent acknowledgement and false-positive
-  feedback, then a separate explicit two-phone
-  live acceptance command. The i9 launchd update, 3-minute
+- Fresh Guardian retention software gate on 2026-08-13: 714 Python tests and 73 Node
+  browser tests passed; Python compilation, tracked shell syntax, Make dry-runs,
+  `git diff --check` and repository artifact/sensitive-literal scans passed. This is
+  synthetic software evidence and does not establish installed-i9 storage behavior.
+- Next Guardian slice: add a separate explicit two-phone live acceptance command.
+  Per-parent acknowledgement and actor-bound false-positive feedback are deferred to a
+  future contract where Baby Care consumes Guardian's read-only feed and owns
+  identity/write state, so Guardian does not invent a second family identity model. The
+  i9 launchd update, 3-minute
   observation and 10-minute performance
   sampler are intentionally deferred and do not block this feature sequence.
   The i9 environment calibration and 24-hour gate remain independent and unfinished.
@@ -112,7 +127,7 @@
 - Installed i9-to-M2 SSH bridge, private bed-zone configuration, and end-to-end
   household validation of face-obstruction, prone-position, bed-exit, or
   adult-intervention candidates.
-- Authenticated parent feedback, evidence retention cleanup, the
+- Authenticated parent feedback through the future Baby Care identity integration, the
   later FFmpeg clip upgrade, and cry/audio candidate detection. Guardian risk
   lifecycle persistence and safe-frame evidence export are complete locally;
   risk text ntfy and safe-frame evidence export are complete locally; deterministic

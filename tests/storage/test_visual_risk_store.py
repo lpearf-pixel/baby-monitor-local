@@ -351,6 +351,287 @@ def test_restart_interrupts_only_collecting_evidence(tmp_path: Path) -> None:
     ) == ()
 
 
+def _open_ready_and_recover(
+    store: VisualRiskEventStore,
+    *,
+    event_id: str,
+    opened_at: datetime,
+    evidence_updated_at: datetime,
+    recovered_at: datetime,
+    recovery_notification_state: str = "delivered",
+) -> None:
+    store.open_event(
+        event_id=event_id,
+        risk_kind=VisualRiskKind.FACE_NOT_VISIBLE,
+        opened_at=opened_at,
+        confidence=0.82,
+        rule_version="visual-risk-v1",
+    )
+    store.begin_evidence(
+        event_id=event_id,
+        started_at=opened_at,
+        capture_deadline=opened_at + timedelta(seconds=30),
+        snapshot_key=SNAPSHOT_KEY,
+        frame_count=6,
+    )
+    store.complete_evidence(
+        event_id=event_id,
+        completed_at=evidence_updated_at,
+        clip_key=CLIP_KEY,
+        frame_count=21,
+    )
+    store.recover_event(
+        risk_kind=VisualRiskKind.FACE_NOT_VISIBLE,
+        recovered_at=recovered_at,
+        confidence=0.91,
+        rule_version="visual-risk-v1",
+    )
+    if recovery_notification_state != "missing":
+        notification = store.queue_notification(
+            notification_id=f"retention-{event_id}",
+            event_id=event_id,
+            stage="risk_recovered",
+            queued_at=recovered_at,
+        )
+        if recovery_notification_state == "delivered":
+            store.record_notification_result(
+                notification_id=notification.notification_id,
+                attempted_at=recovered_at + timedelta(microseconds=1),
+                result_code="ok",
+            )
+
+
+def test_retention_projection_uses_later_terminal_time_and_protects_pending(
+    tmp_path: Path,
+) -> None:
+    store = VisualRiskEventStore(tmp_path / "events.sqlite3")
+    store.migrate()
+    _open_ready_and_recover(
+        store,
+        event_id="old-by-recovery",
+        opened_at=NOW,
+        evidence_updated_at=NOW + timedelta(seconds=30),
+        recovered_at=NOW + timedelta(seconds=40),
+    )
+    _open_ready_and_recover(
+        store,
+        event_id="old-by-evidence",
+        opened_at=NOW + timedelta(minutes=1),
+        evidence_updated_at=NOW + timedelta(minutes=3),
+        recovered_at=NOW + timedelta(minutes=2),
+    )
+    _open_ready_and_recover(
+        store,
+        event_id="pending-notification",
+        opened_at=NOW + timedelta(minutes=4),
+        evidence_updated_at=NOW + timedelta(minutes=5),
+        recovered_at=NOW + timedelta(minutes=6),
+        recovery_notification_state="pending",
+    )
+    _open_ready_and_recover(
+        store,
+        event_id="missing-recovery-notification",
+        opened_at=NOW + timedelta(minutes=6, seconds=10),
+        evidence_updated_at=NOW + timedelta(minutes=6, seconds=40),
+        recovered_at=NOW + timedelta(minutes=6, seconds=50),
+        recovery_notification_state="missing",
+    )
+    store.open_event(
+        event_id="open-collecting",
+        risk_kind=VisualRiskKind.PRONE_CANDIDATE,
+        opened_at=NOW + timedelta(minutes=7),
+        confidence=0.83,
+        rule_version="visual-risk-v1",
+    )
+    store.begin_evidence(
+        event_id="open-collecting",
+        started_at=NOW + timedelta(minutes=7),
+        capture_deadline=NOW + timedelta(minutes=8),
+        snapshot_key=SNAPSHOT_KEY,
+        frame_count=4,
+    )
+
+    entries = store.list_evidence_retention_entries()
+
+    assert [entry.event_id for entry in entries] == [
+        "old-by-recovery",
+        "old-by-evidence",
+        "pending-notification",
+        "missing-recovery-notification",
+        "open-collecting",
+    ]
+    assert [entry.retention_at for entry in entries] == [
+        NOW + timedelta(seconds=40),
+        NOW + timedelta(minutes=3),
+        NOW + timedelta(minutes=6),
+        NOW + timedelta(minutes=6, seconds=50),
+        NOW + timedelta(minutes=7),
+    ]
+    assert [entry.deletable for entry in entries] == [
+        True,
+        True,
+        False,
+        False,
+        False,
+    ]
+
+
+def test_guarded_retention_delete_preserves_event_audit_and_notification(
+    tmp_path: Path,
+) -> None:
+    store = VisualRiskEventStore(tmp_path / "events.sqlite3")
+    store.migrate()
+    store.open_event(
+        event_id="retained-event",
+        risk_kind=VisualRiskKind.FACE_NOT_VISIBLE,
+        opened_at=NOW,
+        confidence=0.82,
+        rule_version="visual-risk-v1",
+    )
+    store.record_intervention(
+        intervention_id="retained-intervention",
+        observed_at=NOW + timedelta(seconds=5),
+        confidence=0.9,
+        rule_version="visual-risk-v1",
+    )
+    store.begin_evidence(
+        event_id="retained-event",
+        started_at=NOW,
+        capture_deadline=NOW + timedelta(seconds=30),
+        snapshot_key=SNAPSHOT_KEY,
+        frame_count=6,
+    )
+    store.complete_evidence(
+        event_id="retained-event",
+        completed_at=NOW + timedelta(seconds=30),
+        clip_key=CLIP_KEY,
+        frame_count=21,
+    )
+    store.recover_event(
+        risk_kind=VisualRiskKind.FACE_NOT_VISIBLE,
+        recovered_at=NOW + timedelta(seconds=40),
+        confidence=0.91,
+        rule_version="visual-risk-v1",
+    )
+    notification = store.queue_notification(
+        notification_id="retained-notification",
+        event_id="retained-event",
+        stage="risk_recovered",
+        queued_at=NOW + timedelta(seconds=40),
+    )
+    store.record_notification_result(
+        notification_id=notification.notification_id,
+        attempted_at=NOW + timedelta(seconds=41),
+        result_code="ok",
+    )
+
+    entry = next(
+        entry
+        for entry in store.list_evidence_retention_entries()
+        if entry.event_id == "retained-event"
+    )
+    file_deletes: list[str] = []
+    assert store.delete_evidence_if_eligible(
+        entry,
+        lambda: file_deletes.append(entry.event_id) or 123,
+    ) == 123
+
+    assert store.get_evidence("retained-event") is None
+    assert file_deletes == ["retained-event"]
+    assert store.get_event("retained-event") is not None
+    assert store.intervention_event_ids("retained-intervention") == (
+        "retained-event",
+    )
+    assert store.get_notification("retained-notification") is not None
+    assert store.delete_evidence_if_eligible(entry, lambda: 456) is None
+    assert store.integrity_check() == "ok"
+
+
+def test_guarded_retention_delete_refuses_pending_notification(
+    tmp_path: Path,
+) -> None:
+    store = VisualRiskEventStore(tmp_path / "events.sqlite3")
+    store.migrate()
+    _open_ready_and_recover(
+        store,
+        event_id="pending-event",
+        opened_at=NOW,
+        evidence_updated_at=NOW + timedelta(seconds=30),
+        recovered_at=NOW + timedelta(seconds=40),
+        recovery_notification_state="pending",
+    )
+    entry = next(
+        entry
+        for entry in store.list_evidence_retention_entries()
+        if entry.event_id == "pending-event"
+    )
+    callback_called = False
+
+    def delete_files() -> int:
+        nonlocal callback_called
+        callback_called = True
+        return 123
+
+    assert store.delete_evidence_if_eligible(entry, delete_files) is None
+    assert callback_called is False
+    assert store.get_evidence("pending-event") is not None
+
+
+def test_guarded_retention_delete_rechecks_exact_selected_record(
+    tmp_path: Path,
+) -> None:
+    store = VisualRiskEventStore(tmp_path / "events.sqlite3")
+    store.migrate()
+    _open_ready_and_recover(
+        store,
+        event_id="changed-selection",
+        opened_at=NOW,
+        evidence_updated_at=NOW + timedelta(seconds=30),
+        recovered_at=NOW + timedelta(seconds=40),
+    )
+    entry = store.list_evidence_retention_entries()[0]
+    stale_entry = entry.model_copy(
+        update={"retention_at": entry.retention_at - timedelta(microseconds=1)}
+    )
+    callback_called = False
+
+    def delete_files() -> int:
+        nonlocal callback_called
+        callback_called = True
+        return 123
+
+    assert store.delete_evidence_if_eligible(stale_entry, delete_files) is None
+    assert callback_called is False
+    assert store.get_evidence("changed-selection") is not None
+
+
+def test_guarded_retention_delete_holds_writer_lock_during_file_callback(
+    tmp_path: Path,
+) -> None:
+    database = tmp_path / "events.sqlite3"
+    store = VisualRiskEventStore(database)
+    store.migrate()
+    _open_ready_and_recover(
+        store,
+        event_id="locked-delete",
+        opened_at=NOW,
+        evidence_updated_at=NOW + timedelta(seconds=30),
+        recovered_at=NOW + timedelta(seconds=40),
+    )
+    entry = store.list_evidence_retention_entries()[0]
+
+    def delete_files() -> int:
+        with sqlite3.connect(database, timeout=0) as competing_writer:
+            with pytest.raises(sqlite3.OperationalError, match="locked"):
+                competing_writer.execute(
+                    "UPDATE visual_risk_events SET confidence = confidence"
+                )
+        return 123
+
+    assert store.delete_evidence_if_eligible(entry, delete_files) == 123
+    assert store.get_evidence("locked-delete") is None
+
+
 def test_notification_contract_rejects_naive_time_and_incoherent_retry() -> None:
     base = {
         "notification_id": "notification-open",

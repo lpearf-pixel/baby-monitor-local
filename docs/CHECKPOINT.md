@@ -291,3 +291,31 @@ Dashboard 和脚本继续使用现有 Basic Auth 与 `no-store`。页面立即�
 功能提交为 `96513aa`。新鲜软件门禁为 Python `692 passed`、Node `73 passed`；
 Python 编译与 `git diff --check` 通过，仅保留既有 Starlette/httpx 弃用警告。
 实机 i9、家庭场景准确率、两台 Android 收件和 72 小时发布门仍须单独验收。
+
+## Baby guardian R4 evidence retention checkpoint
+
+2026-08-13，在 Dashboard 发布快照 `69e2d5b` 上建立独立分支
+`codex/guardian-evidence-retention`。视觉 runtime 复用 centralized
+`event_retention_days` 与 `event_quota_gb`，启动时立即清理，之后每 24 小时运行一次。
+到期证据优先删除，超额时再按最旧顺序删除；打开事件、采集中证据和仍有待发送通知的
+证据始终受保护。清理只删除受控截图/动画和符合条件的 evidence row，风险事件、介入与
+通知历史继续保留，Dashboard 联查结果自然变为“无证据”。
+
+文件遍历不跟随符号链接，不使用数据库证据键拼接任意路径，并将不认识的目录内容作为
+失败处理。SQLite 在删除 evidence row 时重新验证资格。文件、数据库、日志、scheduler
+或线程故障不会停止视觉 worker；日志只包含结果、数量和字节数，不包含事件 ID、路径、
+摘要、异常或凭据。边界测试还发现并修复了 SQLite `julianday` 在一微秒年龄边界上的
+舍入问题，最终时间比较改为 Python timezone-aware `datetime`。
+
+独立审查随后复现了两个安全缺口：符号链接形式的 root/`visual-risk` 祖先可将旧版路径
+删除引向配置目录之外；恢复事务与 recovery outbox 事务之间存在 eligibility 窗口。
+`e3cd69c` 将遍历与删除改为 directory-fd + `O_NOFOLLOW`，并要求 recovery 通知已经
+终态，再在一个 `BEGIN IMMEDIATE` 写锁中复核精确记录、执行受控文件回调和删除 row。
+时钟、等待与 runtime thread 异常也统一为允许的结构化失败日志，不再产生额外裸码。
+
+实现提交依次为 `c9f434f`、`6291eb2`、`a915589`、`718af9a` 与安全闭环 `e3cd69c`。
+新鲜 focused 门禁为 `53 passed`；完整软件门禁为 Python `714 passed`、Node
+`73 passed`，仅保留既有 Starlette/httpx 弃用警告。该结果不证明 i9 实际磁盘占用、
+两台 Android 投递、真实家庭场景准确率或无人照护安全。两位家长确认与绑定操作者的
+误报反馈不在 Guardian 内另建身份模型，留待 Baby Care 读取 Guardian 只读事件并自行
+拥有身份/写状态的未来契约。

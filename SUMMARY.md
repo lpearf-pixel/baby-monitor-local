@@ -6,10 +6,9 @@ Updated: 2026-08-13
 
 - Repository: `lpearf-pixel/baby-monitor-local` (public).
 - Stable Xiaomi line: `stable/xiaomi-alpha` at `0df20ae`.
-- Active feature line: `codex/baby-guardian-event-dashboard`.
-- The authenticated Guardian event Dashboard is implemented on the new feature line
-  `codex/baby-guardian-event-dashboard`, based on the published pre-Dashboard
-  checkpoint `08dbc90`.
+- Active feature line: `codex/guardian-evidence-retention`.
+- The evidence-retention line is based on the published Dashboard snapshot `69e2d5b`;
+  the Dashboard remains complete and its published branch is not rewritten.
 - Remote branch `codex/baby-guardian-event-loop` remains at its earlier squash snapshot
   `27274d8`; it is not rewritten or force-pushed.
 - The feature branch has not been merged into `stable/xiaomi-alpha` or `main`. No PR
@@ -122,6 +121,14 @@ Important ownership boundaries:
   set, highlights them, and displays collecting, ready, failed, interrupted or no
   evidence. It loads immediately and refreshes every 15 seconds; a failed refresh keeps
   the old list and marks it as potentially stale.
+- Guardian evidence cleanup now runs immediately with the visual runtime and then once
+  per day. It applies the centralized 30-day/30-GiB defaults, protects open events,
+  collecting evidence, notification-pending evidence and records whose recovery notice
+  is not terminal, deletes only controlled media plus the eligible evidence row, and
+  leaves the risk event/audit history queryable. Directory-descriptor traversal rejects
+  symlinked ancestors, while exact eligibility is rechecked under one SQLite writer
+  lock. Cleanup, logging or scheduler failures are redacted and isolated from visual
+  analysis.
 
 ### Operations
 
@@ -135,9 +142,9 @@ Important ownership boundaries:
 
 ## Verification Evidence
 
-The latest complete software gate recorded for the Dashboard implementation was:
+The latest complete software gate recorded for evidence retention was:
 
-- Python repository suite: `692 passed`;
+- Python repository suite: `714 passed`;
 - Dashboard Node suite: `73 passed`;
 - Python compilation: passed;
 - new shell syntax, ASCII and LF checks: passed;
@@ -158,16 +165,18 @@ deliveries, sustained performance or safe unattended care.
 |---|---|
 | Protected default branch | `main`; unchanged by guardian work |
 | Stable Xiaomi branch | `stable/xiaomi-alpha` at `0df20ae` |
-| Active feature branch | `codex/baby-guardian-event-dashboard` |
-| Guardian Dashboard implementation | `96513aa` |
+| Active feature branch | `codex/guardian-evidence-retention` |
+| Guardian evidence-retention runtime implementation | `718af9a` |
+| Guardian evidence-retention safety closure | `e3cd69c` |
+| Published Dashboard base | `69e2d5b` |
 | Published pre-Dashboard checkpoint | `checkpoint/guardian-r4-pre-dashboard-20260813` → `08dbc90` |
 | Preserved legacy remote branch | `codex/baby-guardian-event-loop` at `27274d8` |
 | PR/merge | No guardian PR; not merged |
 | Protected branches | `main` and `stable/xiaomi-alpha`; unchanged |
 
-The new Dashboard branch starts from the published pre-Dashboard checkpoint. This
-avoids rewriting or blindly reconciling the older squash history. Do not force-push or
-merge the legacy branch into this line without a separate integration decision.
+The retention branch starts from the published Dashboard snapshot. This avoids
+rewriting either the Dashboard or legacy squash history. Do not force-push or merge the
+legacy branch into this line without a separate integration decision.
 
 ## Pending Real-Device Acceptance
 
@@ -190,7 +199,6 @@ merge the legacy branch into this line without a separate integration decision.
 
 - Two parents cannot yet acknowledge an event independently.
 - False-positive feedback is not implemented.
-- Evidence retention cleanup for the planned time/space limits is not implemented.
 - The later FFmpeg original-video ring upgrade is deferred; current evidence uses the
   privacy-safe animated WebP design.
 - Real Baby posture, face obstruction and bed-exit accuracy remain unaccepted.
@@ -200,13 +208,15 @@ merge the legacy branch into this line without a separate integration decision.
 
 ## Next Priorities
 
-1. Add separate acknowledgement state for both parents.
-2. Add bounded false-positive feedback without training directly on household media.
-3. Add a separate explicit two-phone notification and safe live-rehearsal acceptance
+1. Add a separate explicit two-phone notification and safe live-rehearsal acceptance
    command; do not add side effects to `alpha-guardian-test`.
-4. Add evidence retention cleanup, then consider the FFmpeg ring-buffer upgrade.
-5. Return to the deferred i9 scheduling/performance and environment acceptance gates.
-6. Add audio/cry candidates only after the visual guardian loop is functionally closed.
+2. Run the installed-i9 guardian gate, household candidate-scene validation and the
+   deferred scheduling/performance acceptance.
+3. Define per-parent acknowledgement and false-positive feedback only through a future
+   contract where Baby Care consumes Guardian's read-only feed and owns identity/write
+   state; do not create a second identity model inside Guardian.
+4. Consider the FFmpeg ring-buffer upgrade after the functional and real-device gates.
+5. Add audio/cry candidates only after the visual guardian loop is functionally closed.
 
 ## Operating Commands
 
