@@ -4,7 +4,7 @@
 
 **Goal:** Recover automatically when the recorded go2rtc PID is alive but its loopback API is unhealthy, without killing an unrelated process.
 
-**Architecture:** Add a go2rtc-specific startup guard around the existing generic PID helper. The guard treats the bounded loopback API probe as readiness, validates any live unhealthy PID against the exact repository executable and configuration arguments, reuses the existing bounded stop pattern only for a verified match, and then starts one replacement through `start_if_stopped`.
+**Architecture:** Add a go2rtc-specific startup guard around the existing generic PID helper. The guard accepts a bounded loopback API probe only when its PID file names a live process whose full BSD `ps -ww` command exactly matches the repository executable and configuration arguments and that same PID owns the API listener. It validates any live unhealthy PID by command identity before replacement, reuses the existing bounded stop pattern only for a verified match, and then starts one replacement through `start_if_stopped`.
 
 **Tech Stack:** macOS Bash 3.2, BSD `ps`, `curl`, pytest subprocess integration tests.
 
@@ -93,14 +93,17 @@
   go2rtc_pid_matches() {
     local pid="$1"
     local command
-    command="$(ps -p "$pid" -o command= 2>/dev/null || true)"
+    command="$(ps -ww -p "$pid" -o command= 2>/dev/null || true)"
     [[ "$command" == "$ROOT/.local/bin/go2rtc -config $ROOT/runtime/go2rtc.yaml" ]]
   }
   ```
 
   Add `ensure_go2rtc_started` so it:
 
-  - returns immediately when `go2rtc_api_ready` succeeds;
+  - returns immediately when `go2rtc_api_ready` succeeds only after a PID file,
+    live PID, exact full-command identity, and `lsof` confirmation that the same
+    PID owns the API listener verify; otherwise it emits the fixed identity
+    error without stopping anything;
   - removes a dead stale PID through existing `start_if_stopped` behavior;
   - reports `go2rtc pid identity mismatch` and returns nonzero when a live PID
     does not match;
@@ -121,7 +124,9 @@
   ```
 
   Expected: all tests pass, including replacement of the verified unhealthy
-  PID and preservation of the unrelated live PID.
+  PID, preservation of the unrelated live PID, rejection of a healthy
+  unrelated endpoint, an API listener not owned by the verified PID, and a
+  long-command BSD `ps -ww` identity case.
 
 - [ ] **Step 7: Run shell and repository verification**
 

@@ -65,13 +65,31 @@ go2rtc_api_ready() {
 go2rtc_pid_matches() {
   local pid="$1"
   local command
-  command="$(ps -p "$pid" -o command= 2>/dev/null || true)"
+  command="$(ps -ww -p "$pid" -o command= 2>/dev/null || true)"
   [[ "$command" == "$ROOT/.local/bin/go2rtc -config $ROOT/runtime/go2rtc.yaml" ]]
+}
+
+go2rtc_pid_owns_api_listener() {
+  local pid="$1"
+  lsof -nP -a -p "$pid" -iTCP:1984 -sTCP:LISTEN >/dev/null 2>&1
+}
+
+go2rtc_pid_is_verified() {
+  local pid
+  [[ -f "$GO2RTC_PID" ]] || return 1
+  pid="$(cat "$GO2RTC_PID")"
+  kill -0 "$pid" 2>/dev/null && \
+    go2rtc_pid_matches "$pid" && \
+    go2rtc_pid_owns_api_listener "$pid"
 }
 
 ensure_go2rtc_started() {
   if go2rtc_api_ready; then
-    return 0
+    if go2rtc_pid_is_verified; then
+      return 0
+    fi
+    echo "go2rtc pid identity mismatch" >&2
+    return 1
   fi
 
   if [[ -f "$GO2RTC_PID" ]]; then

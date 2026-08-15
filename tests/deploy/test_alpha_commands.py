@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-import atexit
 import os
 import shutil
 import subprocess
@@ -25,11 +24,13 @@ class _Go2rtcStartFixture:
         marker: Path,
         original: subprocess.Popen[str],
         environment: dict[str, str],
+        expected_command: str,
     ):
         self.project = project
         self.replacement_marker = marker
         self._original = original
         self._environment = environment
+        self.expected_command = expected_command
 
     def run_start(self) -> subprocess.CompletedProcess[str]:
         return subprocess.run(
@@ -39,16 +40,32 @@ class _Go2rtcStartFixture:
             check=False,
             capture_output=True,
             text=True,
+            timeout=20,
         )
 
     def original_pid_is_alive(self) -> bool:
         return self._original.poll() is None
 
+    def close(self) -> None:
+        if self._original.poll() is None:
+            self._original.terminate()
+        try:
+            self._original.wait(timeout=1)
+        except subprocess.TimeoutExpired:
+            self._original.kill()
+            self._original.wait()
+
 
 def _go2rtc_start_fixture(
-    tmp_path: Path, *, ps_identity: str
+    tmp_path: Path,
+    request: pytest.FixtureRequest,
+    *,
+    ps_identity: str,
+    api_ready: bool = False,
+    pid_state: str = "live",
+    listener_owned: bool = True,
 ) -> _Go2rtcStartFixture:
-    project = tmp_path / "project"
+    project = tmp_path / ("project-" + "x" * 120)
     (project / "tools").mkdir(parents=True)
     shutil.copy2(ROOT / "tools/start_alpha.sh", project / "tools/start_alpha.sh")
     (project / "runtime/pids").mkdir(parents=True)
@@ -75,19 +92,15 @@ def _go2rtc_start_fixture(
 
     original = subprocess.Popen([shutil.which("sleep") or "/bin/sleep", "60"])
 
-    def cleanup_original() -> None:
-        if original.poll() is None:
-            original.terminate()
-        try:
-            original.wait(timeout=1)
-        except subprocess.TimeoutExpired:
-            original.kill()
-            original.wait()
-
-    atexit.register(cleanup_original)
-    (project / "runtime/pids/go2rtc.pid").write_text(
-        f"{original.pid}\n", encoding="ascii"
-    )
+    pidfile = project / "runtime/pids/go2rtc.pid"
+    if pid_state == "live":
+        pidfile.write_text(f"{original.pid}\n", encoding="ascii")
+    elif pid_state == "dead":
+        original.terminate()
+        original.wait(timeout=1)
+        pidfile.write_text(f"{original.pid}\n", encoding="ascii")
+    else:
+        assert pid_state == "missing"
 
     home = tmp_path / "home"
     agents = home / "Library/LaunchAgents"
@@ -107,15 +120,25 @@ def _go2rtc_start_fixture(
     state_dir.mkdir()
     _write_executable(
         fake_bin / "curl",
-        "#!/bin/sh\ntest -f \"$GO2RTC_REPLACEMENT_MARKER\"\n",
+        "#!/bin/sh\n"
+        "test \"$FAKE_API_READY\" = 1 || "
+        "test -f \"$GO2RTC_REPLACEMENT_MARKER\"\n",
     )
     _write_executable(fake_bin / "id", "#!/bin/sh\necho 501\n")
+    _write_executable(
+        fake_bin / "lsof",
+        "#!/bin/sh\ntest \"$FAKE_LISTENER_OWNED\" = 1\n",
+    )
     _write_executable(fake_bin / "route", "#!/bin/sh\nexit 0\n")
     _write_executable(fake_bin / "sleep", "#!/bin/sh\n/bin/sleep 0.01\n")
     _write_executable(fake_bin / "uname", "#!/bin/sh\necho Darwin\n")
     _write_executable(
         fake_bin / "ps",
         """#!/bin/sh
+if [ "$1" != "-ww" ] || [ "$2" != "-p" ] || [ "$4" != "-o" ] || [ "$5" != "command=" ]; then
+  echo "/truncated/go2rtc-command"
+  exit 0
+fi
 if [ "$FAKE_PS_IDENTITY" = expected ]; then
   echo "$GO2RTC_EXPECTED_COMMAND"
 else
@@ -155,26 +178,102 @@ esac
             "PATH": f"{fake_bin}:{environment['PATH']}",
             "FAKE_LAUNCHCTL_STATE_DIR": str(state_dir),
             "FAKE_PS_IDENTITY": ps_identity,
+            "FAKE_API_READY": "1" if api_ready else "0",
+            "FAKE_LISTENER_OWNED": "1" if listener_owned else "0",
             "GO2RTC_EXPECTED_COMMAND": (
                 f"{project}/.local/bin/go2rtc -config {project}/runtime/go2rtc.yaml"
             ),
             "GO2RTC_REPLACEMENT_MARKER": str(marker),
         }
     )
-    return _Go2rtcStartFixture(project, marker, original, environment)
+    fixture = _Go2rtcStartFixture(
+        project,
+        marker,
+        original,
+        environment,
+        environment["GO2RTC_EXPECTED_COMMAND"],
+    )
+    request.addfinalizer(fixture.close)
+    return fixture
 
 
-def test_alpha_start_replaces_verified_live_but_unhealthy_go2rtc(tmp_path: Path) -> None:
-    fixture = _go2rtc_start_fixture(tmp_path, ps_identity="expected")
+def test_alpha_start_replaces_verified_live_but_unhealthy_go2rtc(
+    tmp_path: Path, request: pytest.FixtureRequest
+) -> None:
+    fixture = _go2rtc_start_fixture(tmp_path, request, ps_identity="expected")
     result = fixture.run_start()
 
     assert result.returncode == 0, result.stderr
+    assert len(fixture.expected_command) > 160
     assert fixture.replacement_marker.exists()
     assert not fixture.original_pid_is_alive()
 
 
-def test_alpha_start_does_not_stop_unrelated_live_pid(tmp_path: Path) -> None:
-    fixture = _go2rtc_start_fixture(tmp_path, ps_identity="unrelated")
+def test_alpha_start_does_not_stop_unrelated_live_pid(
+    tmp_path: Path, request: pytest.FixtureRequest
+) -> None:
+    fixture = _go2rtc_start_fixture(tmp_path, request, ps_identity="unrelated")
+    result = fixture.run_start()
+
+    assert result.returncode != 0
+    assert result.stderr.strip() == "go2rtc pid identity mismatch"
+    assert fixture.original_pid_is_alive()
+    assert not fixture.replacement_marker.exists()
+
+
+@pytest.mark.parametrize(
+    ("pid_state", "ps_identity"),
+    [
+        ("missing", "expected"),
+        ("dead", "expected"),
+        ("live", "unrelated"),
+    ],
+)
+def test_alpha_start_rejects_healthy_api_without_verified_go2rtc_pid(
+    tmp_path: Path,
+    request: pytest.FixtureRequest,
+    pid_state: str,
+    ps_identity: str,
+) -> None:
+    fixture = _go2rtc_start_fixture(
+        tmp_path,
+        request,
+        ps_identity=ps_identity,
+        api_ready=True,
+        pid_state=pid_state,
+    )
+    result = fixture.run_start()
+
+    assert result.returncode != 0
+    assert result.stderr.strip() == "go2rtc pid identity mismatch"
+    assert not fixture.replacement_marker.exists()
+    if pid_state == "live":
+        assert fixture.original_pid_is_alive()
+
+
+def test_alpha_start_preserves_verified_healthy_go2rtc(
+    tmp_path: Path, request: pytest.FixtureRequest
+) -> None:
+    fixture = _go2rtc_start_fixture(
+        tmp_path, request, ps_identity="expected", api_ready=True
+    )
+    result = fixture.run_start()
+
+    assert result.returncode == 0, result.stderr
+    assert fixture.original_pid_is_alive()
+    assert not fixture.replacement_marker.exists()
+
+
+def test_alpha_start_rejects_healthy_api_not_owned_by_verified_go2rtc(
+    tmp_path: Path, request: pytest.FixtureRequest
+) -> None:
+    fixture = _go2rtc_start_fixture(
+        tmp_path,
+        request,
+        ps_identity="expected",
+        api_ready=True,
+        listener_owned=False,
+    )
     result = fixture.run_start()
 
     assert result.returncode != 0
@@ -185,6 +284,7 @@ def test_alpha_start_does_not_stop_unrelated_live_pid(tmp_path: Path) -> None:
 
 def test_alpha_start_does_not_kickstart_freshly_bootstrapped_agents(
     tmp_path: Path,
+    request: pytest.FixtureRequest,
 ) -> None:
     project = tmp_path / "project"
     shutil.copytree(ROOT / "tools", project / "tools")
@@ -199,6 +299,21 @@ def test_alpha_start_does_not_kickstart_freshly_bootstrapped_agents(
     (project / ".venv-alpha/bin").mkdir(parents=True)
     _write_executable(project / ".local/bin/go2rtc", "#!/bin/sh\nexit 0\n")
     _write_executable(project / ".venv-alpha/bin/uvicorn", "#!/bin/sh\nexit 0\n")
+    go2rtc = subprocess.Popen([shutil.which("sleep") or "/bin/sleep", "60"])
+
+    def cleanup_go2rtc() -> None:
+        if go2rtc.poll() is None:
+            go2rtc.terminate()
+        try:
+            go2rtc.wait(timeout=1)
+        except subprocess.TimeoutExpired:
+            go2rtc.kill()
+            go2rtc.wait()
+
+    request.addfinalizer(cleanup_go2rtc)
+    (project / "runtime/pids/go2rtc.pid").write_text(
+        f"{go2rtc.pid}\n", encoding="ascii"
+    )
 
     home = tmp_path / "home"
     agents = home / "Library/LaunchAgents"
@@ -219,6 +334,14 @@ def test_alpha_start_does_not_kickstart_freshly_bootstrapped_agents(
     _write_executable(fake_bin / "uname", "#!/bin/sh\necho Darwin\n")
     _write_executable(fake_bin / "id", "#!/bin/sh\necho 501\n")
     _write_executable(fake_bin / "curl", "#!/bin/sh\nexit 0\n")
+    _write_executable(fake_bin / "lsof", "#!/bin/sh\nexit 0\n")
+    _write_executable(
+        fake_bin / "ps",
+        """#!/bin/sh
+test "$1" = "-ww" && test "$2" = "-p" && test "$4" = "-o" && test "$5" = "command="
+echo "$GO2RTC_EXPECTED_COMMAND"
+""",
+    )
     _write_executable(fake_bin / "route", "#!/bin/sh\nexit 0\n")
     _write_executable(
         fake_bin / "launchctl",
@@ -258,6 +381,9 @@ esac
             "HOME": str(home),
             "PATH": f"{fake_bin}:{env['PATH']}",
             "FAKE_LAUNCHCTL_STATE_DIR": str(state_dir),
+            "GO2RTC_EXPECTED_COMMAND": (
+                f"{project}/.local/bin/go2rtc -config {project}/runtime/go2rtc.yaml"
+            ),
         }
     )
     result = subprocess.run(
