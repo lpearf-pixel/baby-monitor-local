@@ -6,6 +6,7 @@ import signal
 import sys
 import threading
 from datetime import datetime
+from typing import TextIO
 from pathlib import Path
 
 
@@ -38,6 +39,22 @@ from services.vision.realtime_status import (
     RealtimeVisualStatusPublisher,
     RealtimeVisualStatusWriter,
 )
+from services.vision.realtime_analyzer import RealtimeStageTiming
+
+
+def _print_slow_analysis(
+    timing: RealtimeStageTiming,
+    *,
+    stream: TextIO,
+) -> None:
+    print(
+        "realtime_slow_analysis"
+        f" decode_ms={timing.decode_ms:.3f}"
+        f" features_ms={timing.features_ms:.3f}"
+        f" semantic_ms={timing.semantic_ms:.3f}"
+        f" total_ms={timing.total_ms:.3f}",
+        file=stream,
+    )
 
 
 def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
@@ -148,6 +165,10 @@ def main(argv: list[str] | None = None) -> int:
             on_safe_frame=handle_safe_frame,
             on_risk_transition=visual_risk_pipeline.handle,
             on_realtime_status=status_publisher,
+            on_realtime_slow_analysis=lambda timing: _print_slow_analysis(
+                timing,
+                stream=sys.stderr,
+            ),
         )
         evidence_files = GuardianEvidenceFiles(data_dir / "guardian-evidence")
         evidence_recorder = GuardianEvidenceRecorder(

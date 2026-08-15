@@ -91,6 +91,42 @@ def test_first_frame_has_no_motion_and_missing_models_remain_unknown() -> None:
     assert observation.head_face_state is HeadFaceState.UNCERTAIN
 
 
+def test_slow_analysis_reports_redacted_stage_timings_with_cooldown() -> None:
+    module = analyzer_module()
+    reports = []
+    ticks = iter(
+        (
+            0.000, 0.010, 0.030, 0.210,
+            1.000, 1.010, 1.030, 1.220,
+            11.000, 11.010, 11.030, 11.240,
+        )
+    )
+    analyzer = module.RealtimeVisualAnalyzer(
+        model_backend=RecordingBackend(RealtimeModelSignals()),
+        perf_counter=lambda: next(ticks),
+        on_slow_analysis=reports.append,
+    )
+
+    analyzer.analyze(frame(textured()), monotonic_now=0.0)
+    analyzer.analyze(frame(textured()), monotonic_now=1.0)
+    analyzer.analyze(frame(textured()), monotonic_now=11.0)
+
+    assert reports == [
+        module.RealtimeStageTiming(
+            decode_ms=10.0,
+            features_ms=20.0,
+            semantic_ms=180.0,
+            total_ms=210.0,
+        ),
+        module.RealtimeStageTiming(
+            decode_ms=10.0,
+            features_ms=20.0,
+            semantic_ms=210.0,
+            total_ms=240.0,
+        ),
+    ]
+
+
 def test_center_motion_is_measured_but_edge_only_motion_is_excluded() -> None:
     module = analyzer_module()
     base = textured()
