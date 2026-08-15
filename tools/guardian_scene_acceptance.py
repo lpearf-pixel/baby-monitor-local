@@ -55,9 +55,8 @@ def run_scene_acceptance(
                     emit("guardian_scene_test=INCOMPLETE")
                     return 2
                 if outcome not in OUTCOMES:
-                    emit("FAIL scene input invalid_outcome")
-                    emit("guardian_scene_test=FAIL")
-                    return 1
+                    emit("RETRY scene input invalid_outcome")
+                    continue
                 state = store.record(scene, outcome)
                 counts[scene] += 1
                 emit(

@@ -109,6 +109,18 @@ def test_negative_scene_false_positive_fails_gate(tmp_path: Path) -> None:
     assert lines[-1] == "guardian_scene_test=FAIL"
 
 
+def test_invalid_outcome_reprompts_without_recording_a_trial(tmp_path: Path) -> None:
+    values = full_answers()
+    values.insert(2, "")
+    lines: list[str] = []
+
+    code = run_scene_acceptance(tmp_path, iter(values), lines.append)
+
+    assert code == 0
+    assert "RETRY scene input invalid_outcome" in lines
+    assert len(GuardianSceneAcceptanceStore(tmp_path).load()["trials"]) == 70
+
+
 def test_output_contains_only_fixed_ascii_status_lines(tmp_path: Path) -> None:
     lines: list[str] = []
 
