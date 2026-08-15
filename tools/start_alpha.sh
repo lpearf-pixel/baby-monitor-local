@@ -58,6 +58,45 @@ start_if_stopped() {
   echo $! >"$pidfile"
 }
 
+go2rtc_api_ready() {
+  curl -fsS --max-time 2 http://127.0.0.1:1984/api >/dev/null 2>&1
+}
+
+go2rtc_pid_matches() {
+  local pid="$1"
+  local command
+  command="$(ps -p "$pid" -o command= 2>/dev/null || true)"
+  [[ "$command" == "$ROOT/.local/bin/go2rtc -config $ROOT/runtime/go2rtc.yaml" ]]
+}
+
+ensure_go2rtc_started() {
+  if go2rtc_api_ready; then
+    return 0
+  fi
+
+  if [[ -f "$GO2RTC_PID" ]]; then
+    local old_pid
+    old_pid="$(cat "$GO2RTC_PID")"
+    if kill -0 "$old_pid" 2>/dev/null; then
+      if ! go2rtc_pid_matches "$old_pid"; then
+        echo "go2rtc pid identity mismatch" >&2
+        return 1
+      fi
+      kill "$old_pid" 2>/dev/null || true
+      for _ in {1..20}; do
+        kill -0 "$old_pid" 2>/dev/null || break
+        sleep 0.25
+      done
+      kill -9 "$old_pid" 2>/dev/null || true
+    fi
+    rm -f "$GO2RTC_PID"
+  fi
+
+  start_if_stopped "$GO2RTC_PID" \
+    nohup "$ROOT/.local/bin/go2rtc" -config "$ROOT/runtime/go2rtc.yaml" \
+    >"$ROOT/runtime/logs/go2rtc.log" 2>&1
+}
+
 find_lan_ipv4() {
   local interface
   interface="$(route -n get default 2>/dev/null | awk '/interface:/{print $2; exit}')"
@@ -66,18 +105,16 @@ find_lan_ipv4() {
   fi
 }
 
-start_if_stopped "$GO2RTC_PID" \
-  nohup "$ROOT/.local/bin/go2rtc" -config "$ROOT/runtime/go2rtc.yaml" \
-  >"$ROOT/runtime/logs/go2rtc.log" 2>&1
+ensure_go2rtc_started
 
 for _ in {1..30}; do
-  if curl -fsS http://127.0.0.1:1984/api >/dev/null 2>&1; then
+  if go2rtc_api_ready; then
     break
   fi
   sleep 1
 done
 
-if ! curl -fsS http://127.0.0.1:1984/api >/dev/null 2>&1; then
+if ! go2rtc_api_ready; then
   echo "go2rtc did not become ready. Check runtime/logs/go2rtc.log" >&2
   exit 1
 fi
