@@ -154,6 +154,12 @@ def test_alpha_workflow_does_not_require_chmod() -> None:
     assert "./tools/stop_alpha.sh" not in combined
 
 
+def test_alpha_installer_includes_automatic_acceptance_dependencies() -> None:
+    content = (ROOT / "tools/install_alpha_macos.sh").read_text(encoding="utf-8")
+
+    assert 'pip install -e "$ROOT[dev]"' in content
+
+
 def test_makefile_exposes_stable_alpha_commands() -> None:
     content = (ROOT / "Makefile").read_text(encoding="utf-8")
 

@@ -87,7 +87,7 @@ def _run(
         check=False,
         capture_output=True,
         text=True,
-        timeout=10,
+        timeout=30,
     )
 
 

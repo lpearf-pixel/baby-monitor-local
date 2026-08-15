@@ -24,7 +24,7 @@ if [[ ! -x "$ROOT/.venv-alpha/bin/python" ]]; then
   "$PYTHON" -m venv "$ROOT/.venv-alpha"
 fi
 "$ROOT/.venv-alpha/bin/python" -m pip install --upgrade pip
-"$ROOT/.venv-alpha/bin/python" -m pip install -e "$ROOT"
+"$ROOT/.venv-alpha/bin/python" -m pip install -e "$ROOT[dev]"
 "$ROOT/.venv-alpha/bin/python" "$ROOT/tools/go2rtc_build.py" ensure
 
 if [[ ! -f "$ROOT/runtime/go2rtc.yaml" ]]; then
