@@ -62,6 +62,11 @@ class GuardianSceneAcceptanceStore:
         _validate_payload(payload)
         return payload
 
+    def load_or_start(self) -> dict[str, object]:
+        if self._path.exists() or self._path.is_symlink():
+            return self.load()
+        return self.start()
+
     def record(self, scene: str, outcome: str) -> dict[str, object]:
         if scene not in SCENES or outcome not in OUTCOMES:
             raise ValueError("invalid scene acceptance trial")

@@ -3,7 +3,7 @@ PYTHON := ./.venv-alpha/bin/python
 BASH ?= /bin/bash
 .DEFAULT_GOAL := help
 
-.PHONY: help alpha-update alpha-install alpha-start alpha-stop alpha-restart alpha-status alpha-guardian-start alpha-guardian-test alpha-guardian-test-live alpha-visual-status alpha-visual-performance alpha-visual-diagnostic alpha-visual-launchd-update alpha-logs alpha-quality-hd alpha-quality-info alpha-quality-rollback alpha-source-check alpha-subtype-probe alpha-subtype-apply alpha-go2rtc-info alpha-go2rtc-rebuild alpha-go2rtc-rollback alpha-realtime-models-check alpha-realtime-models-install
+.PHONY: help alpha-update alpha-install alpha-start alpha-stop alpha-restart alpha-status alpha-guardian-start alpha-guardian-test alpha-guardian-test-live alpha-guardian-scene-test alpha-visual-status alpha-visual-performance alpha-visual-diagnostic alpha-visual-launchd-update alpha-logs alpha-quality-hd alpha-quality-info alpha-quality-rollback alpha-source-check alpha-subtype-probe alpha-subtype-apply alpha-go2rtc-info alpha-go2rtc-rebuild alpha-go2rtc-rollback alpha-realtime-models-check alpha-realtime-models-install
 
 help:
 	@echo "Baby Monitor Local Alpha commands:"
@@ -16,6 +16,7 @@ help:
 	@echo "  make alpha-guardian-start    Start and verify the complete guardian chain"
 	@echo "  make alpha-guardian-test     Run complete automatic guardian acceptance"
 	@echo "  make alpha-guardian-test-live Run supervised two-phone live acceptance"
+	@echo "  make alpha-guardian-scene-test Run supervised household scene acceptance"
 	@echo "  make alpha-visual-status     Show redacted visual worker and M2 bridge health"
 	@echo "  make alpha-visual-performance Run the 10-minute redacted performance gate"
 	@echo "  make alpha-visual-diagnostic Measure redacted realtime stage timings"
@@ -74,6 +75,9 @@ alpha-guardian-test:
 
 alpha-guardian-test-live:
 	@$(BASH) tools/test_guardian_live.sh
+
+alpha-guardian-scene-test:
+	@$(PYTHON) tools/guardian_scene_acceptance.py
 
 alpha-status:
 	@if git rev-parse --is-inside-work-tree >/dev/null 2>&1; then \
