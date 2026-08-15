@@ -60,8 +60,9 @@ The repository baseline and environment implementation are complete. Do not rest
 11. Authenticated event queries and the media-free Dashboard list are complete locally.
     Evidence retention is also complete: cleanup uses the centralized 30-day/30-GiB
     limits while protecting open, collecting, notification-pending and
-    recovery-notice-nonterminal records. Next complete household synthetic-scene
-    validation and the deferred launchd performance
+    recovery-notice-nonterminal records. The supervised household scene command is
+    implemented in software; next complete its physical seven-scene run and the
+    deferred launchd performance
     gate. Per-parent
     acknowledgement and actor-bound false-positive
     feedback require a future contract where Baby Care consumes Guardian's read-only

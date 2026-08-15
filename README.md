@@ -33,6 +33,7 @@
 make alpha-update
 make alpha-install
 make alpha-start
+make alpha-guardian-scene-test
 make alpha-stop
 make alpha-status
 make alpha-logs

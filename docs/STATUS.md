@@ -121,6 +121,9 @@
   phone.
 - Next Guardian slice: complete household synthetic-scene validation, then the
   deferred launchd scheduling/performance acceptance.
+  The supervised `make alpha-guardian-scene-test` software workflow is implemented
+  with fixed seven-scene/ten-trial input, private resumable local state and no
+  notification or production event writes. Its physical scene run remains pending.
   Per-parent acknowledgement and actor-bound false-positive feedback are deferred to a
   future contract where Baby Care consumes Guardian's read-only feed and owns
   identity/write state, so Guardian does not invent a second family identity model. The

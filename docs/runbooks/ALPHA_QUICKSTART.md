@@ -91,6 +91,7 @@ make alpha-source-check
 make alpha-go2rtc-info
 make alpha-subtype-probe
 make alpha-subtype-apply
+make alpha-guardian-scene-test
 ```
 
 查看本地账号、密码和 ntfy 主题：
@@ -409,9 +410,9 @@ make alpha-visual-status
 确定性风险候选；当前仍没有事件截图/视频、ntfy 风险通知或 Dashboard 人工反馈，
 这些属于 R4。它也不是医疗监护，不能替代成人持续照护。
 
-## 11. Android 通知
+## 11. iPhone 通知
 
-两台 Android 安装 ntfy，并订阅：
+两台 iPhone 安装 ntfy，并订阅：
 
 ```bash
 grep '^NTFY_TOPIC=' runtime/alpha.env
@@ -422,7 +423,24 @@ grep '^NTFY_TOPIC=' runtime/alpha.env
 环境异常通知只发送文字、读数、采集时间、稳定原因码和鉴权链接，不上传宝宝
 画面、表盘截图、私网地址或本地路径。
 
-## 12. 后续外部访问
+## 12. Guardian 家庭合成场景验收
+
+只能在无真实婴儿参与危险或模拟风险姿势、且有成人全程监督时运行：
+
+```bash
+make alpha-guardian-scene-test
+```
+
+命令固定检查空床、玩偶或静态道具、成人入镜、红外夜视、安全模拟镜头遮挡、
+蚊帐摆动和安全正常翻身替代场景，每类需要 10 次。每次只输入
+`correct`、`false_positive`、`missed` 或 `unavailable`。中断后可以重新运行并
+继续未完成试次。
+
+结果只写入被 Git 忽略的本地 `runtime/` 状态，不保存画面、模型原文、地址、
+凭据或床区坐标，不发送 ntfy，也不写生产事件或证据数据库。该门禁仅证明本次
+固定场景表现，不是医疗准确率或无人照护证明。
+
+## 13. 后续外部访问
 
 外部访问由 Issue #5 跟踪。目标命令为：
 
@@ -439,7 +457,7 @@ tailscale funnel 8080
 
 也禁止路由器转发 `1984`、`8080`、`8554`、`8555`。
 
-## 13. 视频和功能边界
+## 14. 视频和功能边界
 
 1× 模式继续使用 1280×720、10 FPS MJPEG；2×/3× 会按需申请绑定 profile 的
 一次性票据，通过 Dashboard 的同源 WebSocket 中继连接仅限本机的 go2rtc。
@@ -553,7 +571,7 @@ microSD 回放继续使用米家 App。
 
 本系统不是呼吸、心率、血氧、窒息或医疗监护设备。
 
-## 14. 已验证故障案例
+## 15. 已验证故障案例
 
 Intel macOS 上遇到以下现象时：
 

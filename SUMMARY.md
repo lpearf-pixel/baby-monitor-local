@@ -234,6 +234,7 @@ Primary guardian entry points:
 make alpha-guardian-start
 make alpha-guardian-test
 make alpha-guardian-test-live
+make alpha-guardian-scene-test
 ```
 
 Common service operations:
