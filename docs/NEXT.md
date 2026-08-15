@@ -62,8 +62,9 @@ The repository baseline and environment implementation are complete. Do not rest
     limits while protecting open, collecting, notification-pending and
     recovery-notice-nonterminal records. The supervised household scene command is
     implemented in software, and its physical seven-scene run passed on 2026-08-15
-    with 70 operator-confirmed correct outcomes. Next complete the deferred launchd performance
-    gate. Per-parent
+    with 70 operator-confirmed correct outcomes. The installed-i9 launchd update and
+    10-minute production performance gate passed at 5 FPS for all 60 samples. Next
+    complete the independent 24-hour environment calibration/stability gate. Per-parent
     acknowledgement and actor-bound false-positive
     feedback require a future contract where Baby Care consumes Guardian's read-only
     feed and owns identity/write state; they must not create a competing Guardian

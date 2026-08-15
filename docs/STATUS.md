@@ -119,19 +119,21 @@
   the wider Guardian-focused gate recorded 126 passed. This does not prove installed
   i9 readiness, real camera behavior, Dashboard reachability or delivery to either
   phone.
-- Next Guardian slice: complete the deferred launchd scheduling/performance acceptance.
+- Guardian launchd scheduling/performance acceptance completed on the installed Intel
+  i9 on 2026-08-15. The 10-minute gate held 5 FPS for all 60 samples with processing
+  p50 100.836 ms, p95 130.789 ms and max 201.529 ms; the model remained available.
+  Redacted rate-limited stage telemetry attributed the sole over-180 ms sample to the
+  semantic stage without recording frames, events, paths or configuration.
   The supervised `make alpha-guardian-scene-test` software workflow is implemented
   with fixed seven-scene/ten-trial input, private resumable local state and no
   notification or production event writes. Its installed-i9 physical run passed on
   2026-08-15 with 10 operator-confirmed correct trials for each scene and no recorded
-  false-positive, missed or unavailable outcome. The next slice is the deferred
-  launchd scheduling/performance acceptance.
+  false-positive, missed or unavailable outcome. The next slice is the independent
+  24-hour environment calibration/stability gate.
   Per-parent acknowledgement and actor-bound false-positive feedback are deferred to a
   future contract where Baby Care consumes Guardian's read-only feed and owns
   identity/write state, so Guardian does not invent a second family identity model. The
-  i9 launchd update, 3-minute
-  observation and 10-minute performance
-  sampler are intentionally deferred and do not block this feature sequence.
+  i9 launchd update and 10-minute performance sampler are complete.
   The i9 environment calibration and 24-hour gate remain independent and unfinished.
 
 ## Pull request checkpoint
