@@ -119,11 +119,13 @@
   the wider Guardian-focused gate recorded 126 passed. This does not prove installed
   i9 readiness, real camera behavior, Dashboard reachability or delivery to either
   phone.
-- Next Guardian slice: complete household synthetic-scene validation, then the
-  deferred launchd scheduling/performance acceptance.
+- Next Guardian slice: complete the deferred launchd scheduling/performance acceptance.
   The supervised `make alpha-guardian-scene-test` software workflow is implemented
   with fixed seven-scene/ten-trial input, private resumable local state and no
-  notification or production event writes. Its physical scene run remains pending.
+  notification or production event writes. Its installed-i9 physical run passed on
+  2026-08-15 with 10 operator-confirmed correct trials for each scene and no recorded
+  false-positive, missed or unavailable outcome. The next slice is the deferred
+  launchd scheduling/performance acceptance.
   Per-parent acknowledgement and actor-bound false-positive feedback are deferred to a
   future contract where Baby Care consumes Guardian's read-only feed and owns
   identity/write state, so Guardian does not invent a second family identity model. The

@@ -148,6 +148,10 @@ Important ownership boundaries:
   infant present and an adult supervising. One labeled non-risk ntfy message reached
   both iPhones; the authenticated live view and Guardian event list were visible; the
   final result was `guardian_live_test=PASS`.
+- The installed i9 also completed the supervised seven-scene household synthetic gate
+  on 2026-08-15. Each fixed scene recorded 10 operator-confirmed `correct` trials with
+  zero false-positive, missed or unavailable outcomes; the final result was
+  `guardian_scene_test=PASS`. No household media or free-form model output was stored.
 
 ## Verification Evidence
 
@@ -217,8 +221,7 @@ legacy branch into this line without a separate integration decision.
 
 ## Next Priorities
 
-1. Complete household synthetic candidate-scene validation and the
-   deferred scheduling/performance acceptance.
+1. Complete the deferred visual launchd scheduling/performance acceptance.
 2. Complete the private WS2021 calibration and independent 24-hour environment gate.
 3. Define per-parent acknowledgement and false-positive feedback only through a future
    contract where Baby Care consumes Guardian's read-only feed and owns identity/write

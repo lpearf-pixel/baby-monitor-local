@@ -352,3 +352,15 @@ ntfy 消息，两台 iPhone 分别确认收件。经过鉴权的实时画面和 
 本次验收不记录 topic、token、私网地址、凭据、通知正文或家庭媒体。它证明该次运行中
 Intel i9 服务就绪、双 iPhone 文字通知、鉴权实时查看和事件列表闭环可用；不证明真实
 宝宝姿态识别准确率、持续性能、24/72 小时稳定性或无人照护安全。
+
+## Guardian household synthetic scene acceptance checkpoint
+
+2026-08-15，在 Intel i9 上完成监督式 `make alpha-guardian-scene-test`。固定七类场景
+为空床、玩偶或静态道具、成人入镜、红外夜视、安全模拟镜头遮挡、蚊帐摆动和安全正常
+翻身替代场景。每类完成 10 次操作员确认，聚合结果均为 `correct=10`、
+`false_positive=0`、`missed=0`、`unavailable=0`，最终固定结果为
+`guardian_scene_test=PASS`。
+
+本地状态只保存闭合枚举、序号和时间，不包含画面、模型原文、床区坐标、地址、凭据或
+自由文本。本结果是该次固定场景的人工观察记录，不是自动标注数据，不证明真实宝宝姿态
+识别准确率、医疗监护、持续性能或无人照护安全。

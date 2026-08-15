@@ -61,8 +61,8 @@ The repository baseline and environment implementation are complete. Do not rest
     Evidence retention is also complete: cleanup uses the centralized 30-day/30-GiB
     limits while protecting open, collecting, notification-pending and
     recovery-notice-nonterminal records. The supervised household scene command is
-    implemented in software; next complete its physical seven-scene run and the
-    deferred launchd performance
+    implemented in software, and its physical seven-scene run passed on 2026-08-15
+    with 70 operator-confirmed correct outcomes. Next complete the deferred launchd performance
     gate. Per-parent
     acknowledgement and actor-bound false-positive
     feedback require a future contract where Baby Care consumes Guardian's read-only
