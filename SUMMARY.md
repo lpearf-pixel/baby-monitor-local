@@ -13,8 +13,9 @@ Updated: 2026-08-15
   `27274d8`; it is not rewritten or force-pushed.
 - The feature branch has not been merged into `stable/xiaomi-alpha` or `main`. No PR
   was created for the squash publication.
-- The current priority is the functional guardian event loop. The installed i9
-  performance recheck remains intentionally deferred and must not block that work.
+- The functional guardian event loop and installed-i9 10-minute performance gate are
+  complete. The current priority is private WS2021 calibration and the independent
+  24-hour environment stability gate.
 - The earlier untracked `uv.lock` was never staged or published; the recovered checkout
   does not recreate or claim ownership of it.
 
@@ -157,7 +158,7 @@ Important ownership boundaries:
 
 The latest complete software gate, including Guardian live-acceptance coverage, was:
 
-- Python repository suite: passed on the installed Intel i9 after the acceptance fixes;
+- Python repository suite: `765 passed` on the installed Intel i9;
 - Dashboard Node suite: `73 passed`;
 - Python compilation: passed;
 - all tracked shell syntax, ASCII and LF checks: passed;
@@ -174,6 +175,11 @@ household scene accuracy, sustained performance or safe unattended care. The sep
 2026-08-15 supervised run establishes installed-i9 readiness for that run, text-only
 delivery to two iPhones, authenticated live view and the Guardian event list.
 
+The installed i9 also passed the 10-minute realtime production gate on 2026-08-15:
+all 60 samples remained at 5 FPS, processing p50 was 100.836 ms, p95 was 130.789 ms,
+maximum was 201.529 ms and the model remained available. This proves only that bounded
+window, not 24/72-hour stability or unattended-care safety.
+
 ## Current Git State
 
 | Item | State |
@@ -185,6 +191,8 @@ delivery to two iPhones, authenticated live view and the Guardian event list.
 | Guardian evidence-retention safety closure | `e3cd69c` |
 | Guardian live-notification helper | `d862f2a` |
 | Guardian supervised live acceptance | `67db75d` |
+| Guardian realtime stage telemetry | `2a385fc` |
+| Installed-i9 performance checkpoint | `aca4639` |
 | Published Dashboard base | `69e2d5b` |
 | Published pre-Dashboard checkpoint | `checkpoint/guardian-r4-pre-dashboard-20260813` → `08dbc90` |
 | Preserved legacy remote branch | `codex/baby-guardian-event-loop` at `27274d8` |
@@ -202,9 +210,6 @@ legacy branch into this line without a separate integration decision.
   mosquito-net, adult, empty-bed and safe simulated-obstruction scenes.
 - Complete WS2021 real calibration, 30 daylight comparisons, night/glare/occlusion
   rejection and the independent 24-hour environment gate.
-- Apply the visual launchd scheduling update on i9, observe for 3 minutes and run the
-  full 10-minute performance sampler. Production previously fell to 1 FPS, while a
-  foreground single-variable run reached the 5 FPS / 180 ms P95 budget.
 - Complete three-browser HD acceptance and the final 72-hour camera, i9, M2, network,
   storage and two-phone release gate before tagging `v0.1.0`.
 
@@ -221,8 +226,8 @@ legacy branch into this line without a separate integration decision.
 
 ## Next Priorities
 
-1. Complete the deferred visual launchd scheduling/performance acceptance.
-2. Complete the private WS2021 calibration and independent 24-hour environment gate.
+1. Complete the private WS2021 calibration and independent 24-hour environment gate.
+2. Complete three-browser HD acceptance on the installed i9.
 3. Define per-parent acknowledgement and false-positive feedback only through a future
    contract where Baby Care consumes Guardian's read-only feed and owns identity/write
    state; do not create a second identity model inside Guardian.
@@ -249,7 +254,7 @@ make alpha-logs
 make alpha-stop
 ```
 
-Deferred visual performance operations:
+Visual performance operations:
 
 ```bash
 make alpha-visual-launchd-update
