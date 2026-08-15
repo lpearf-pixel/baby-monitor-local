@@ -14,8 +14,9 @@ Updated: 2026-08-15
 - The feature branch has not been merged into `stable/xiaomi-alpha` or `main`. No PR
   was created for the squash publication.
 - The functional guardian event loop and installed-i9 10-minute performance gate are
-  complete. The current priority is private WS2021 calibration and the independent
-  24-hour environment stability gate.
+  complete. The go2rtc startup recovery defect found during the 2026-08-15 operator
+  session is fixed locally. The current priority is private WS2021 calibration and the
+  independent 24-hour environment stability gate.
 - The earlier untracked `uv.lock` was never staged or published; the recovered checkout
   does not recreate or claim ownership of it.
 
@@ -158,7 +159,7 @@ Important ownership boundaries:
 
 The latest complete software gate, including Guardian live-acceptance coverage, was:
 
-- Python repository suite: `765 passed` on the installed Intel i9;
+- Python repository suite: `772 passed` on the installed Intel i9;
 - Dashboard Node suite: `73 passed`;
 - Python compilation: passed;
 - all tracked shell syntax, ASCII and LF checks: passed;
@@ -193,11 +194,44 @@ window, not 24/72-hour stability or unattended-care safety.
 | Guardian supervised live acceptance | `67db75d` |
 | Guardian realtime stage telemetry | `2a385fc` |
 | Installed-i9 performance checkpoint | `aca4639` |
+| go2rtc unhealthy-process recovery | `c75683f` |
+| go2rtc listener-ownership verification | `1b1732d` |
 | Published Dashboard base | `69e2d5b` |
 | Published pre-Dashboard checkpoint | `checkpoint/guardian-r4-pre-dashboard-20260813` → `08dbc90` |
 | Preserved legacy remote branch | `codex/baby-guardian-event-loop` at `27274d8` |
 | PR/merge | No guardian PR; not merged |
 | Protected branches | `main` and `stable/xiaomi-alpha`; unchanged |
+
+Local HEAD is `1b1732d` on `codex/guardian-live-acceptance`. At the latest
+read-only check it was 19 commits ahead of its upstream and zero behind. Nothing from
+this recovery slice was pushed, merged or opened as a PR. Untracked `.local/`,
+`Interactive` and `test.sh` were deliberately preserved.
+
+## Latest Installed-i9 Runtime Evidence
+
+After an operator-visible restart conflict, go2rtc could remain alive after failing to
+bind its loopback API and RTSP listeners. Startup now distinguishes PID liveness from
+service readiness, checks the full BSD `ps -ww` command, and requires the validated PID
+to own the loopback API listener before accepting a healthy endpoint. Unknown processes
+fail closed and are never selected or terminated by port alone.
+
+Fresh software evidence for this repair is Python `772 passed` with the one existing
+Starlette/httpx deprecation warning. The focused Alpha deployment file recorded
+`26 passed`; the combined Guardian/Alpha deployment gate recorded `54 passed`.
+
+The authoritative runtime check was run from the `kandysmith` GUI-login account that
+owns the services. It reported `result=PASS`, `protocol=cs2+udp`, H.265 source video,
+native `2560x1440` source dimensions, `1280x720` live dimensions and nonzero received
+bytes. The visual worker was running at 5 FPS with current metrics, the realtime model
+was available, and the independently supervised Ollama tunnel and bridge were running
+and reachable. The Dashboard live view was visibly updating. No private address,
+camera identifier, credentials, notification topic or household media is recorded here.
+
+Codex sessions and macOS GUI services are account-scoped. A Codex process running as
+`chatgpt-agent` may receive false offline results for services owned by `kandysmith`.
+Installed runtime commands must therefore be executed by a Codex session launched
+directly from the `kandysmith` SSH login, or manually in that shell. Do not grant broad
+Full Disk Access or unrestricted sudo as a workaround.
 
 The retention branch starts from the published Dashboard snapshot. This avoids
 rewriting either the Dashboard or legacy squash history. Do not force-push or merge the
@@ -283,8 +317,8 @@ only the bounded log window needed to identify the first actionable failure.
 3. Verify repository root, remote, branch, HEAD, upstream, dirty state and recent log.
 4. Preserve `uv.lock` and any other user changes; do not reset or clean.
 5. Reconcile local and remote feature histories before any push or branch integration.
-6. Continue with separate two-parent acknowledgement unless fresh repository evidence
-   shows a newer approved priority.
+6. Continue the private WS2021 calibration and independent 24-hour environment gate;
+   do not restart completed Guardian milestones.
 7. Use focused tests for the slice and the full gate only at the next milestone or
    stable-branch integration.
 8. Do not push, create a PR, merge, tag or modify `main` without explicit approval.

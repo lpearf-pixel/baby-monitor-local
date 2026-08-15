@@ -166,3 +166,18 @@
 - Visual model output is observation evidence only; the deterministic i9 state machine
   owns decisions, and every result remains an auxiliary candidate rather than medical
   or unattended-care assurance.
+
+## Latest i9 operational status — 2026-08-15
+
+- go2rtc startup now rejects a live-but-unhealthy PID, verifies the exact full command,
+  and binds API acceptance to listener ownership by that same validated PID.
+- Fresh software verification recorded 772 Python tests passed with one existing
+  Starlette/httpx deprecation warning.
+- The authoritative `kandysmith` runtime check reported the Xiaomi `cs2+udp` H.265
+  source and Dashboard live stream healthy, the visual worker at 5 FPS with current
+  metrics, the realtime model available, and the Ollama tunnel/bridge healthy.
+- Runtime checks from `chatgpt-agent` are not authoritative for services in the
+  `kandysmith` GUI domain. Launch future operational Codex sessions directly from the
+  `kandysmith` SSH login; do not grant broad disk or sudo access.
+- The next approved product gate remains private WS2021 calibration and the independent
+  24-hour environment stability run.

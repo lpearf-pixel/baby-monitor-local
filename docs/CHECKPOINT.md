@@ -381,3 +381,28 @@ JPEG 解码 4.416ms、视觉特征 9.333ms、语义模型 187.779ms、总计 201
 
 本检查点只证明该 10 分钟窗口内的 i9 生产性能，不等同于 24/72 小时稳定性、真实宝宝
 识别准确率、医疗监护或无人照护保证。
+
+## go2rtc health-aware startup recovery checkpoint
+
+2026-08-15，i9 停止与恢复过程中出现两个 go2rtc 进程交叠：旧进程仍占用 loopback
+监听端口时新进程启动，新进程绑定失败但保持存活，PID 文件随后指向这个无监听进程。
+旧进程退出后，原启动脚本只以 `kill -0` 判断健康，因而持续跳过真正的恢复启动。
+
+修复后的启动路径同时验证 loopback API、PID 存活、BSD `ps -ww` 完整命令，以及该
+已验证 PID 对 API 监听端口的实际所有权。只有命令身份匹配但 API 不健康的进程才能
+进入有界停止与单次替换；未知进程、缺失或陈旧 PID、以及不属于该 PID 的健康端口均
+固定失败，且不会按端口选择或终止进程。功能提交为 `c75683f`，严格监听所有权闭环为
+`1b1732d`。
+
+新鲜软件门禁为 Alpha 部署测试 `26 passed`、Guardian/Alpha 联合部署测试
+`54 passed`、完整 Python 套件 `772 passed`，Shell 语法、ASCII/LF、Make dry-run、
+`git diff --check` 与跟踪差异敏感扫描通过，仅保留既有 Starlette/httpx 弃用警告。
+
+随后由实际拥有服务的 `kandysmith` 会话执行运行检查：Xiaomi 源为 `PASS`，使用
+`cs2+udp` 和 H.265，原始尺寸 `2560x1440`，Dashboard live 尺寸 `1280x720`，接收
+字节非零。视觉 worker 为 5 FPS、实时指标与模型可用，Ollama 隧道和桥接正常，
+Dashboard 画面持续更新。本文不记录私网地址、设备标识、凭据、topic 或家庭媒体。
+
+该事件同时确认 macOS 账户边界：`chatgpt-agent` 中的 Codex 可能无法权威观察
+`kandysmith` GUI 域中的监听和 launchd 服务。后续实机操作应从 `kandysmith` SSH
+登录直接启动 Codex；不要通过全盘读取权限或无限制 sudo 绕过账户隔离。
