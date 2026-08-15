@@ -13,6 +13,13 @@ def answers(*values: str) -> Iterator[str]:
     return iter(values)
 
 
+def interrupted_answers() -> Iterator[str]:
+    yield "YES"
+    yield "YES"
+    yield "correct"
+    raise KeyboardInterrupt
+
+
 def full_answers(*, obstruction_miss: bool = False) -> list[str]:
     values = ["YES", "YES"]
     for scene in SCENES:
@@ -75,6 +82,19 @@ def test_eof_keeps_incomplete_run_and_resume_does_not_duplicate_trials(
     assert second == 0
     assert second_lines[-1] == "guardian_scene_test=PASS"
     assert len(GuardianSceneAcceptanceStore(tmp_path).load()["trials"]) == 70
+
+
+def test_keyboard_interrupt_keeps_fixed_incomplete_output(tmp_path: Path) -> None:
+    lines: list[str] = []
+
+    code = run_scene_acceptance(tmp_path, interrupted_answers(), lines.append)
+
+    assert code == 2
+    assert lines[-2:] == [
+        "INCOMPLETE scene input",
+        "guardian_scene_test=INCOMPLETE",
+    ]
+    assert len(GuardianSceneAcceptanceStore(tmp_path).load()["trials"]) == 1
 
 
 def test_negative_scene_false_positive_fails_gate(tmp_path: Path) -> None:

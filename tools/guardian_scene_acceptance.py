@@ -29,7 +29,7 @@ def run_scene_acceptance(
             emit("FAIL scene safety safety_not_confirmed")
             emit("guardian_scene_test=FAIL")
             return 1
-    except StopIteration:
+    except (StopIteration, KeyboardInterrupt):
         emit("FAIL scene safety safety_not_confirmed")
         emit("guardian_scene_test=FAIL")
         return 1
@@ -50,7 +50,7 @@ def run_scene_acceptance(
                 emit(f"READY scene trial scene={scene} count={counts[scene] + 1}")
                 try:
                     outcome = next(input_values)
-                except StopIteration:
+                except (StopIteration, KeyboardInterrupt):
                     emit("INCOMPLETE scene input")
                     emit("guardian_scene_test=INCOMPLETE")
                     return 2
