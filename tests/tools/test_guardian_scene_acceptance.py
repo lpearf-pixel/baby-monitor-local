@@ -17,6 +17,7 @@ def answers(*values: str) -> Iterator[str]:
 def interrupted_answers() -> Iterator[str]:
     yield "YES"
     yield "YES"
+    yield "READY"
     yield "correct"
     raise KeyboardInterrupt
 
@@ -24,6 +25,7 @@ def interrupted_answers() -> Iterator[str]:
 def full_answers(*, obstruction_miss: bool = False) -> list[str]:
     values = ["YES", "YES"]
     for scene in SCENES:
+        values.append("READY")
         values.extend(["correct"] * 10)
         if scene == "camera_obstruction" and obstruction_miss:
             values[-1] = "missed"
@@ -68,7 +70,7 @@ def test_eof_keeps_incomplete_run_and_resume_does_not_duplicate_trials(
     first_lines: list[str] = []
     first = run_scene_acceptance(
         tmp_path,
-        answers("YES", "YES", "correct", "correct"),
+        answers("YES", "YES", "READY", "correct", "correct"),
         first_lines.append,
     )
 
@@ -76,7 +78,9 @@ def test_eof_keeps_incomplete_run_and_resume_does_not_duplicate_trials(
     assert first_lines[-1] == "guardian_scene_test=INCOMPLETE"
     assert len(GuardianSceneAcceptanceStore(tmp_path).load()["trials"]) == 2
 
-    remaining = ["YES", "YES"] + ["correct"] * 68
+    remaining = ["YES", "YES", "READY"] + ["correct"] * 8
+    for _scene in SCENES[1:]:
+        remaining.extend(["READY"] + ["correct"] * 10)
     second_lines: list[str] = []
     second = run_scene_acceptance(tmp_path, iter(remaining), second_lines.append)
 
@@ -100,7 +104,7 @@ def test_keyboard_interrupt_keeps_fixed_incomplete_output(tmp_path: Path) -> Non
 
 def test_negative_scene_false_positive_fails_gate(tmp_path: Path) -> None:
     values = full_answers()
-    values[2] = "false_positive"
+    values[3] = "false_positive"
     lines: list[str] = []
 
     code = run_scene_acceptance(tmp_path, iter(values), lines.append)
@@ -111,7 +115,7 @@ def test_negative_scene_false_positive_fails_gate(tmp_path: Path) -> None:
 
 def test_invalid_outcome_reprompts_without_recording_a_trial(tmp_path: Path) -> None:
     values = full_answers()
-    values.insert(2, "")
+    values.insert(3, "")
     lines: list[str] = []
 
     code = run_scene_acceptance(tmp_path, iter(values), lines.append)
@@ -129,7 +133,8 @@ def test_output_contains_only_fixed_ascii_status_lines(tmp_path: Path) -> None:
     assert all(line.isascii() for line in lines)
     assert not any(str(tmp_path) in line for line in lines)
     assert not any("http" in line or "ntfy" in line for line in lines)
-    assert any(line.startswith("READY scene trial scene=empty_bed count=1") for line in lines)
+    assert "PREPARE scene empty_bed trials_remaining=10 type=READY" in lines
+    assert "INPUT scene trial scene=empty_bed count=1/10" in lines
     assert "SUMMARY scene empty_bed correct=10 false_positive=0 missed=0 unavailable=0" in lines
 
 
@@ -184,10 +189,10 @@ def test_makefile_exposes_scene_command_without_running_it() -> None:
 
 
 def test_terminal_inputs_use_separate_read_and_prompt_streams() -> None:
-    input_stream = StringIO("YES\nYES\ncorrect\n")
+    input_stream = StringIO("YES\nYES\nREADY\ncorrect\n")
     output_stream = StringIO()
 
     values = list(_terminal_inputs(input_stream, output_stream))
 
-    assert values == ["YES", "YES", "correct"]
+    assert values == ["YES", "YES", "READY", "correct"]
     assert output_stream.getvalue().startswith("Confirm no real infant")

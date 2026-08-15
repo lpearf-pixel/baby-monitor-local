@@ -46,8 +46,22 @@ def run_scene_acceptance(
             for scene in SCENES
         }
         for scene in SCENES:
+            emit(
+                f"PREPARE scene {scene} trials_remaining={10 - counts[scene]} "
+                "type=READY"
+            )
+            while True:
+                try:
+                    ready = next(input_values)
+                except (StopIteration, KeyboardInterrupt):
+                    emit("INCOMPLETE scene input")
+                    emit("guardian_scene_test=INCOMPLETE")
+                    return 2
+                if ready == "READY":
+                    break
+                emit("RETRY scene prepare ready_required")
             while counts[scene] < 10:
-                emit(f"READY scene trial scene={scene} count={counts[scene] + 1}")
+                emit(f"INPUT scene trial scene={scene} count={counts[scene] + 1}/10")
                 try:
                     outcome = next(input_values)
                 except (StopIteration, KeyboardInterrupt):
@@ -114,7 +128,7 @@ def _terminal_inputs(input_stream: object, output_stream: object) -> Iterator[st
             return
         yield value.rstrip("\n")
     while True:
-        output_stream.write("Enter outcome (correct|false_positive|missed|unavailable): ")
+        output_stream.write("> ")
         output_stream.flush()
         value = input_stream.readline()
         if value == "":
