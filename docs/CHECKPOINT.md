@@ -340,3 +340,39 @@ EOF、readiness/通知失败或后续人工未确认都 fail closed，不能伪�
 runtime/媒体/SQLite 与敏感字面量扫描均通过，仅保留既有 Starlette/httpx 弃用警告。
 这些软件证据不证明 i9 已安装服务、真实 Xiaomi 画面、两台 Android 实际收件、家庭
 场景准确率、持续性能或无人照护安全。实机验收仍须在无真实婴儿、成人监督条件下完成。
+
+## Visual-model compatibility checkpoint
+
+2026-08-14，M2 上已下载的 JoyAI GGUF 虽显示 `qwen3vl` 架构，但 Ollama 只登记
+`completion` capability，没有 `vision`。缺失图片路径时产生的内容属于无效测试；在
+真实存在的合成测试图上，它只能给出疑似来自文件名的标题，其余视觉字段全部不确定。
+因此该包没有通过 grounded-image gate，不能接入 Guardian，也不能与当前 Qwen 进行
+视觉质量比较。后续只有在匹配视觉 projector/runtime 并由 Ollama 明确登记 vision 后，
+才值得重新验收。
+
+现有 `qwen3-vl:8b-instruct-q4_K_M` 正确读取同一合成图的文字、人形玩偶、黄色衣服、
+粗粒度平躺、脸部不可见和未离床。较大图片首次运行 `23.96s`；最长边缩到 640 像素并
+热运行后为 `3.32s`，用户确认该实验延迟可接受。仓库生产契约仍是固定 960×540 安全帧、
+最多四帧和 20 秒超时；本实验没有修改代码。语义模型仍只做异步事件复核，OpenCV/
+OpenVINO 快速层和 i9 确定性状态机分别继续拥有候选节奏和告警决策。
+
+## Installed-i9 TestClient dependency closure checkpoint
+
+2026-08-14，首次执行 `make alpha-guardian-test` 时，`guardian_focused` 与
+`python_regression` 同时失败。首个紧凑诊断显示当前 Starlette TestClient 要求
+`httpx2`。根因是宽版本 FastAPI 在新环境解析到 Starlette 1.6，而项目开发依赖只有
+旧的 `httpx`；同时 `tools/install_alpha_macos.sh` 只安装主包，没有安装验收所需的
+`[dev]` extras。
+
+TDD 回归先验证缺失依赖，再在 `pyproject.toml` 同时保留兼容旧 Starlette 的
+`httpx` 并加入 `httpx2>=2,<3`，安装器改为安装 `"$ROOT[dev]"`。全新临时 Python 3.11
+环境验证：部署/API focused `71 passed`、完整 Python `741 passed`、Node `73 passed`、
+`pip check` 无破损依赖；Python 编译、Shell 语法/ASCII/LF、Make dry-run 和
+`git diff --check` 通过。local commit 为 `00e2934`，发布到
+`codex/guardian-live-acceptance` 的 connector commit 为 `c4b2de0`，两者 tree 均为
+`137611024da2e4d02547a4fd35cb4335cfafb32c`。
+
+这证明软件依赖闭环，不证明 i9 已重新安装或真实服务通过。下一次接管应在 i9 拉取
+发布分支，执行 `make alpha-install`、`make alpha-guardian-start`、
+`make alpha-guardian-test`；自动门通过后，才在无真实婴儿、成人监督且两台手机就绪
+时运行 `make alpha-guardian-test-live`。

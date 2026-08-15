@@ -6,15 +6,19 @@ Updated: 2026-08-14
 
 - Repository: `lpearf-pixel/baby-monitor-local` (public).
 - Stable Xiaomi line: `stable/xiaomi-alpha` at `0df20ae`.
-- Active feature line: `codex/guardian-evidence-retention`.
+- Local working line: `codex/guardian-evidence-retention` at `00e2934`.
+- Published i9 acceptance line: `codex/guardian-live-acceptance` at `c4b2de0`.
+  The remote commit has the same source tree as local `00e2934`; connector-generated
+  history makes the commit IDs different.
 - The evidence-retention line is based on the published Dashboard snapshot `69e2d5b`;
   the Dashboard remains complete and its published branch is not rewritten.
 - Remote branch `codex/baby-guardian-event-loop` remains at its earlier squash snapshot
   `27274d8`; it is not rewritten or force-pushed.
 - The feature branch has not been merged into `stable/xiaomi-alpha` or `main`. No PR
   was created for the squash publication.
-- The current priority is the functional guardian event loop. The installed i9
-  performance recheck remains intentionally deferred and must not block that work.
+- The current priority is to pull the published acceptance branch on the installed i9,
+  reinstall development/acceptance dependencies and rerun the automatic gate. The
+  installed performance recheck remains intentionally deferred and must not block it.
 - The earlier untracked `uv.lock` was never staged or published; the recovered checkout
   does not recreate or claim ownership of it.
 
@@ -98,6 +102,23 @@ Important ownership boundaries:
 - Optional OpenCV/OpenVINO realtime watch layer with 5/3/1 FPS degradation and bounded
   metrics. The fast layer may request review but cannot open or recover a risk alert.
 
+### Latest visual-model experiment
+
+- The downloaded JoyAI GGUF identifies as `qwen3vl`, but Ollama registered only the
+  `completion` capability. With a real synthetic test image it read only a filename-like
+  label and returned all visual fields as uncertain. It is therefore rejected for visual
+  integration until a matching vision projector/runtime package is available and passes
+  the grounded-image gate. Earlier answers produced with a missing image path are invalid.
+- The existing `qwen3-vl:8b-instruct-q4_K_M` correctly read the synthetic control text,
+  yellow mannequin, coarse lying pose, hidden face and in-bed status. The first larger
+  image run took 23.96 seconds; a warm run after resizing the longest edge to 640 pixels
+  took 3.32 seconds, which the user accepted as an experiment baseline.
+- The repository production contract is still fixed at 960x540 safe frames and bounded
+  four-frame requests. The 640-pixel result is evidence for a future approved optimization,
+  not an implemented configuration change. Qwen remains asynchronous event review;
+  OpenCV/OpenVINO owns the fast candidate cadence and the deterministic i9 state machine
+  owns alert decisions.
+
 ### Guardian event loop
 
 - Stable event IDs and idempotent SQLite lifecycle persistence for risk open/recovery.
@@ -147,19 +168,23 @@ Important ownership boundaries:
 
 ## Verification Evidence
 
-The latest complete software gate, including Guardian live-acceptance coverage, was:
+The latest complete clean-environment software gate, including the current TestClient
+dependency closure, was:
 
-- Python repository suite: `739 passed`;
+- Python repository suite: `741 passed`;
 - Dashboard Node suite: `73 passed`;
 - Python compilation: passed;
 - all tracked shell syntax, ASCII and LF checks: passed;
 - Make dry-run and `git diff --check`: passed;
 - tracked runtime/media/SQLite and sensitive-literal checks: passed;
-- one existing Starlette/httpx deprecation warning remained.
+- package consistency (`pip check`): passed.
 
-The live-acceptance focused review recorded `38 passed`; the wider Guardian-focused
-gate recorded `126 passed`. The functional commits are `d862f2a` for the narrow,
-redacted notification helper and `67db75d` for the supervised command.
+The previous live-acceptance focused review recorded `38 passed`; the wider
+Guardian-focused gate recorded `126 passed`. A fresh i9 install exposed that current
+Starlette TestClient requires `httpx2`, while the installer omitted development extras.
+`00e2934` adds the current and legacy HTTP client dependencies and installs `[dev]`;
+the fix was published as remote `c4b2de0`. A clean temporary environment then recorded
+`71 passed` for focused deployment/API coverage before the `741`-test full suite.
 
 These results prove software behavior against synthetic fixtures. They do not prove
 the installed i9 services, real Xiaomi stream, household scene accuracy, two Android
@@ -171,7 +196,9 @@ deliveries, sustained performance or safe unattended care.
 |---|---|
 | Protected default branch | `main`; unchanged by guardian work |
 | Stable Xiaomi branch | `stable/xiaomi-alpha` at `0df20ae` |
-| Active feature branch | `codex/guardian-evidence-retention` |
+| Local working branch | `codex/guardian-evidence-retention` at `00e2934` |
+| Published i9 acceptance branch | `codex/guardian-live-acceptance` at `c4b2de0` |
+| Local/remote tree | identical: `137611024da2e4d02547a4fd35cb4335cfafb32c` |
 | Guardian evidence-retention runtime implementation | `718af9a` |
 | Guardian evidence-retention safety closure | `e3cd69c` |
 | Guardian live-notification helper | `d862f2a` |
@@ -182,14 +209,18 @@ deliveries, sustained performance or safe unattended care.
 | PR/merge | No guardian PR; not merged |
 | Protected branches | `main` and `stable/xiaomi-alpha`; unchanged |
 
-The retention branch starts from the published Dashboard snapshot. This avoids
-rewriting either the Dashboard or legacy squash history. Do not force-push or merge the
-legacy branch into this line without a separate integration decision.
+The local and published branches intentionally have different connector-generated
+commit histories but the same current source tree. Continue deployment from the
+published `codex/guardian-live-acceptance` tip. Do not force-push or merge the legacy
+branch into this line without a separate integration decision.
 
 ## Pending Real-Device Acceptance
 
-- Run `make alpha-guardian-start` and `make alpha-guardian-test` on the installed i9
-  with the real camera and launchd jobs.
+- On the installed i9, switch to/pull `codex/guardian-live-acceptance`, verify at least
+  `c4b2de0`, then run `make alpha-install`, `make alpha-guardian-start` and
+  `make alpha-guardian-test`. The earlier attempt failed before runtime checks because
+  the clean environment lacked `httpx2`; that repository defect is fixed but the i9
+  rerun has not yet been reported.
 - Complete private bed-zone configuration and the restricted i9-to-M2 semantic bridge.
 - Validate real semantic response shape, cold/hot latency and daylight, darkness,
   mosquito-net, adult, empty-bed and safe simulated-obstruction scenes.
@@ -213,20 +244,25 @@ legacy branch into this line without a separate integration decision.
   privacy-safe animated WebP design.
 - Real Baby posture, face obstruction and bed-exit accuracy remain unaccepted.
 - Audio/cry candidates are deferred.
+- The available JoyAI GGUF is completion-only in the tested Ollama runtime and is not
+  an accepted visual model. Its official Linux/NVIDIA-oriented package is not an M2
+  deployment substitute without a separately validated compatible runtime.
 - Remote private viewing and the 72-hour release gate remain unfinished.
 - This system does not detect breathing, heart rate, suffocation or medical emergencies.
 
 ## Next Priorities
 
-1. Run `make alpha-guardian-start`, `make alpha-guardian-test`, and then the separate
-   supervised `make alpha-guardian-test-live` on the installed i9 with two phones.
+1. Pull `codex/guardian-live-acceptance` on the i9, run `make alpha-install`, then run
+   `make alpha-guardian-start` and `make alpha-guardian-test`. Only after that passes,
+   run the separate supervised `make alpha-guardian-test-live` with two phones.
 2. Complete household synthetic candidate-scene validation and the
    deferred scheduling/performance acceptance.
 3. Define per-parent acknowledgement and false-positive feedback only through a future
    contract where Baby Care consumes Guardian's read-only feed and owns identity/write
    state; do not create a second identity model inside Guardian.
 4. Consider the FFmpeg ring-buffer upgrade after the functional and real-device gates.
-5. Add audio/cry candidates only after the visual guardian loop is functionally closed.
+5. Design audio/cry or voice-care interaction only after the visual guardian loop is
+   functionally closed, as a separate contract that preserves Baby Care write ownership.
 
 ## Operating Commands
 
@@ -276,8 +312,9 @@ only the bounded log window needed to identify the first actionable failure.
 3. Verify repository root, remote, branch, HEAD, upstream, dirty state and recent log.
 4. Preserve `uv.lock` and any other user changes; do not reset or clean.
 5. Reconcile local and remote feature histories before any push or branch integration.
-6. Continue with separate two-parent acknowledgement unless fresh repository evidence
-   shows a newer approved priority.
+6. Continue the installed-i9 acceptance rerun from published branch
+   `codex/guardian-live-acceptance`; do not start acknowledgement, audio or Baby Care
+   writes until that gate and a separate design are approved.
 7. Use focused tests for the slice and the full gate only at the next milestone or
    stable-branch integration.
 8. Do not push, create a PR, merge, tag or modify `main` without explicit approval.

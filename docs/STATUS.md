@@ -6,7 +6,10 @@
 - Design: approved.
 - Environment monitoring design and implementation plan: approved on 2026-08-05.
 - Stable Xiaomi Alpha commit: `0df20ae` on `stable/xiaomi-alpha`.
-- Active local development branch: `codex/guardian-evidence-retention`.
+- Local development branch: `codex/guardian-evidence-retention` at `00e2934`.
+- Published installed-i9 acceptance branch: `codex/guardian-live-acceptance` at
+  `c4b2de0`; its source tree matches local `00e2934` despite connector-generated
+  history using a different commit ID.
 - Xiaomi-first delivery scope: fixed to MJSXJ17CM for the first usable release;
   the proposed UVC USB source remains deferred behind the existing frame-source
   adapter boundary.
@@ -118,8 +121,25 @@
   the wider Guardian-focused gate recorded 126 passed. This does not prove installed
   i9 readiness, real camera behavior, Dashboard reachability or delivery to either
   phone.
+- Fresh dependency-closure gate on 2026-08-14: a clean temporary Python 3.11
+  environment recorded 71 focused deployment/API tests and 741 full Python tests;
+  73 Node tests, `pip check`, compilation, shell syntax/ASCII/LF, Make dry-runs and
+  `git diff --check` passed. The fix adds `httpx2` for current Starlette TestClient,
+  preserves `httpx` for older supported Starlette, and makes `alpha-install` install
+  development/acceptance extras. This closes the software root cause of the i9
+  `guardian_focused` and `python_regression` failures, but the physical i9 rerun is
+  still pending.
+- Visual-model control on 2026-08-14: the downloaded JoyAI GGUF was registered by
+  Ollama with completion only and failed a grounded synthetic-image control, so it is
+  not accepted as a visual model. Existing Qwen correctly grounded the synthetic
+  image; a warm max-640-pixel experiment completed in 3.32 seconds after a 23.96-second
+  first larger-image run. Production remains on the approved 960x540/four-frame
+  contract until a separate change is specified and tested.
 - Next Guardian slice: run the automatic and supervised live acceptance on the
-  installed i9, then complete household synthetic-scene validation.
+  installed i9 from published `codex/guardian-live-acceptance`: pull at least
+  `c4b2de0`, rerun `make alpha-install`, then startup and automatic acceptance before
+  the supervised two-phone command. After that, complete household synthetic-scene
+  validation.
   Per-parent acknowledgement and actor-bound false-positive feedback are deferred to a
   future contract where Baby Care consumes Guardian's read-only feed and owns
   identity/write state, so Guardian does not invent a second family identity model. The
@@ -147,6 +167,9 @@
   lifecycle persistence and safe-frame evidence export are complete locally;
   risk text ntfy and safe-frame evidence export are complete locally; deterministic
   source-health ntfy is already deployed and independently verified.
+- Future camera-audio/voice-care interaction remains unapproved and unimplemented. It
+  must use a separate cross-product contract: Baby Monitor may supply local perception
+  or voice intent, while Baby Care owns family identity, correction and final writes.
 - Verified Tailscale external access, real PTZ control, or the 72-hour release gate.
 
 ## Safety gates

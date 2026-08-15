@@ -16,6 +16,9 @@
 - Baby Guardian is the local perception/event layer. A future Baby Care integration
   may read normalized Guardian events, but Guardian must never write the Baby Care
   database directly.
+- Future camera-audio or voice-care interaction requires a separate approved contract.
+  Baby Monitor may own local capture, wake/ASR and response plumbing; Baby Care must
+  continue to own family identity, user correction and final care-record writes.
 
 ## System Architecture and Ownership
 
@@ -88,6 +91,13 @@
   models and launchd-generated state stay in ignored local locations.
 - Preserve fixed loopback and model boundaries already enforced by contracts. Do not
   make endpoints, prompts, model labels or privacy limits user-replaceable as a shortcut.
+- A model name or multimodal architecture label is not proof of visual capability.
+  Approve a VLM package only when its active runtime advertises vision and passes a
+  grounded synthetic-image control that cannot be answered from the filename or prompt.
+  A missing image, completion-only registration or filename-only guess fails this gate.
+- Measure semantic-review cold and warm latency separately. The semantic VLM remains
+  asynchronous event review, never the per-frame detector; performance experiments do
+  not silently change fixed frame or model contracts without an approved specification.
 - Prefer structured status files and stable diagnostic codes over large raw logs.
   Read only the relevant bounded diagnostic window when investigating failures.
 - Keep SQLite event/outbox operations restart-safe and idempotent. Preserve causal

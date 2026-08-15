@@ -52,12 +52,17 @@ The repository baseline and environment implementation are complete. Do not rest
    credentials and unauthenticated links. Physical delivery to both Android phones
    remains pending.
 10. Option A startup, automatic acceptance and the separate supervised live acceptance
-    are complete in software. On the installed i9 first run
-    `make alpha-guardian-start`, then `make alpha-guardian-test`, and finally—with no
+    are complete in software. On the installed i9 use published branch
+    `codex/guardian-live-acceptance` at least at `c4b2de0`; after pulling, first run
+    `make alpha-install`, then `make alpha-guardian-start`, then
+    `make alpha-guardian-test`, and finally—with no
     real infant present, an adult supervising and both phones available—run
     `make alpha-guardian-test-live`. Preserve the fixed PASS/FAIL output. The automatic
     command remains notification-free; only the explicit live command sends one clearly
     labeled harmless text notification. Software `SIMULATED` is not physical proof.
+    The previous automatic run stopped because the clean environment lacked the new
+    Starlette `httpx2` dependency; the published fix also makes the installer include
+    all development/acceptance extras. The i9 rerun remains pending.
 11. Authenticated event queries and the media-free Dashboard list are complete locally.
     Evidence retention is also complete: cleanup uses the centralized 30-day/30-GiB
     limits while protecting open, collecting, notification-pending and
@@ -71,7 +76,11 @@ The repository baseline and environment implementation are complete. Do not rest
     Upgrade to the FFmpeg ring-buffer option only after the functional guardian loop is
     complete.
 
-## P3 — Release gate
+## P3 — Release gate and deferred audio design
 
-Add audio candidates and private Tailscale access, then complete the 72-hour i9,
+After visual Guardian acceptance, specify audio/cry and any voice-care interaction as
+a separate work. Baby Monitor may own local camera-audio capture, wake/ASR and bounded
+response plumbing; Baby Care owns family identity, corrections and final care-record
+writes. Do not add direct Guardian-to-Baby-Care writes or let quiet-night behavior
+weaken safety alerts. Then add private Tailscale access and complete the 72-hour i9,
 camera, M2, network, storage, and two-phone acceptance before tagging `v0.1.0`.
