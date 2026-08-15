@@ -340,3 +340,15 @@ EOF、readiness/通知失败或后续人工未确认都 fail closed，不能伪�
 runtime/媒体/SQLite 与敏感字面量扫描均通过，仅保留既有 Starlette/httpx 弃用警告。
 这些软件证据不证明 i9 已安装服务、真实 Xiaomi 画面、两台 Android 实际收件、家庭
 场景准确率、持续性能或无人照护安全。实机验收仍须在无真实婴儿、成人监督条件下完成。
+
+### Installed Intel i9 and two-iPhone acceptance — 2026-08-15
+
+在无真实婴儿、成人全程监督的条件下，安装于 Intel i9 的 Guardian 完成真实交互验收。
+固定 readiness 门通过；命令只发送一条明确标注为验收测试、非宝宝风险告警的纯文字
+ntfy 消息，两台 iPhone 分别确认收件。经过鉴权的实时画面和 Dashboard 中的 Guardian
+事件列表均确认可见；事件列表为空是有效的已加载状态。最终固定结果为
+`guardian_live_test=PASS`。
+
+本次验收不记录 topic、token、私网地址、凭据、通知正文或家庭媒体。它证明该次运行中
+Intel i9 服务就绪、双 iPhone 文字通知、鉴权实时查看和事件列表闭环可用；不证明真实
+宝宝姿态识别准确率、持续性能、24/72 小时稳定性或无人照护安全。

@@ -10,9 +10,9 @@ The repository baseline and environment implementation are complete. Do not rest
    `make alpha-source-check`.
 3. Apply the verified MJSXJ17CM native-HD subtype with
    `make alpha-subtype-apply`; retain the automatic rollback gate.
-4. Check M2 Chrome/Safari and Android Chrome at 1x/2x/3x, including no-black-frame
+4. Check M2 Chrome/Safari and iPhone browsers at 1x/2x/3x, including no-black-frame
    fallback and on-demand VideoToolbox shutdown.
-5. Send test notifications to both Android phones and confirm no image or private
+5. Send test notifications to both iPhones and confirm no image or private
    address is included.
 
 ## P1 — Finish real environment acceptance
@@ -49,20 +49,19 @@ The repository baseline and environment implementation are complete. Do not rest
 9. R4 risk text ntfy software complete locally: open, recovery and linked adult
    intervention use a persistent idempotent outbox and an off-thread bounded
    dispatcher; payloads are text-only and omit media, paths, private addresses,
-   credentials and unauthenticated links. Physical delivery to both Android phones
-   remains pending.
+   credentials and unauthenticated links. Physical delivery to both iPhones passed the
+   supervised Intel i9 acceptance on 2026-08-15.
 10. Option A startup, automatic acceptance and the separate supervised live acceptance
-    are complete in software. On the installed i9 first run
-    `make alpha-guardian-start`, then `make alpha-guardian-test`, and finally—with no
-    real infant present, an adult supervising and both phones available—run
-    `make alpha-guardian-test-live`. Preserve the fixed PASS/FAIL output. The automatic
-    command remains notification-free; only the explicit live command sends one clearly
-    labeled harmless text notification. Software `SIMULATED` is not physical proof.
+    passed on the installed Intel i9 on 2026-08-15. The supervised command confirmed
+    one harmless text notification on both iPhones, authenticated live view and the
+    Guardian event list with no real infant present and an adult supervising. Preserve
+    the fixed PASS/FAIL output for future reruns; the automatic command remains
+    notification-free.
 11. Authenticated event queries and the media-free Dashboard list are complete locally.
     Evidence retention is also complete: cleanup uses the centralized 30-day/30-GiB
     limits while protecting open, collecting, notification-pending and
-    recovery-notice-nonterminal records. Next complete the installed-i9/two-phone live
-    run, household synthetic-scene validation and the deferred launchd performance
+    recovery-notice-nonterminal records. Next complete household synthetic-scene
+    validation and the deferred launchd performance
     gate. Per-parent
     acknowledgement and actor-bound false-positive
     feedback require a future contract where Baby Care consumes Guardian's read-only

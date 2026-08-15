@@ -6,7 +6,7 @@
 - Design: approved.
 - Environment monitoring design and implementation plan: approved on 2026-08-05.
 - Stable Xiaomi Alpha commit: `0df20ae` on `stable/xiaomi-alpha`.
-- Active local development branch: `codex/guardian-evidence-retention`.
+- Active local development branch: `codex/guardian-live-acceptance`.
 - Xiaomi-first delivery scope: fixed to MJSXJ17CM for the first usable release;
   the proposed UVC USB source remains deferred behind the existing frame-source
   adapter boundary.
@@ -67,7 +67,7 @@
   recovery now use a persistent idempotent SQLite outbox and a bounded off-thread
   ntfy dispatcher. Payloads are text-only and exclude media, local paths, private
   addresses, credentials, model text and unauthenticated links. Two-phone physical
-  delivery remains an i9/Android acceptance item.
+  delivery was confirmed on two iPhones during the 2026-08-15 supervised i9 acceptance.
 - Baby guardian option A operations: `make alpha-guardian-start` performs the existing
   idempotent Alpha startup followed by bounded readiness checks, and
   `make alpha-guardian-test` runs repository, software, installation, service, media
@@ -80,8 +80,9 @@
   adult is supervising, checks Guardian readiness, sends at most one clearly labeled
   text-only non-risk notification, and then confirms phone A, phone B, authenticated
   live view and the event list. Its hook-only test mode never reads production runtime
-  configuration and ends in `SIMULATED`, never PASS. Physical i9/two-phone execution is
-  still pending.
+  configuration and ends in `SIMULATED`, never PASS. Physical execution passed on the
+  installed Intel i9 on 2026-08-15: one non-risk message reached both iPhones, and the
+  authenticated live view plus Guardian event list were visible.
 - Baby guardian authenticated event Dashboard: a standalone read-only query service
   opens the existing SQLite database in query-only mode, joins event/evidence state and
   returns a strict media-free projection. The authenticated Dashboard loads the newest
@@ -118,8 +119,8 @@
   the wider Guardian-focused gate recorded 126 passed. This does not prove installed
   i9 readiness, real camera behavior, Dashboard reachability or delivery to either
   phone.
-- Next Guardian slice: run the automatic and supervised live acceptance on the
-  installed i9, then complete household synthetic-scene validation.
+- Next Guardian slice: complete household synthetic-scene validation, then the
+  deferred launchd scheduling/performance acceptance.
   Per-parent acknowledgement and actor-bound false-positive feedback are deferred to a
   future contract where Baby Care consumes Guardian's read-only feed and owns
   identity/write state, so Guardian does not invent a second family identity model. The

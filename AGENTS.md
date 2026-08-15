@@ -3,7 +3,7 @@
 ## Project Mission and Boundaries
 
 - Build a local-first, privacy-preserving Baby Guardian for the confirmed Xiaomi
-  MJSXJ17CM camera, Intel i9 Mac, M2 Mac, WS2021 dial gauge and two Android phones.
+  MJSXJ17CM camera, Intel i9 Mac, M2 Mac, WS2021 dial gauge and two iPhones.
 - The system may observe, summarize and raise candidate safety events. It is not a
   medical device, does not diagnose, and never replaces direct adult supervision.
 - Keep live viewing independent of AI availability. A model, tunnel or analysis

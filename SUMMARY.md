@@ -1,12 +1,12 @@
 # Baby Monitor Local Project Summary
 
-Updated: 2026-08-14
+Updated: 2026-08-15
 
 ## Snapshot
 
 - Repository: `lpearf-pixel/baby-monitor-local` (public).
 - Stable Xiaomi line: `stable/xiaomi-alpha` at `0df20ae`.
-- Active feature line: `codex/guardian-evidence-retention`.
+- Active feature line: `codex/guardian-live-acceptance`.
 - The evidence-retention line is based on the published Dashboard snapshot `69e2d5b`;
   the Dashboard remains complete and its published branch is not rewritten.
 - Remote branch `codex/baby-guardian-event-loop` remains at its earlier squash snapshot
@@ -28,7 +28,7 @@ Baby Monitor Local is a local-first monitoring and candidate-alert system for:
 - Intel i9 Mac as the always-on camera and guardian host;
 - M2 Mac as the local Ollama semantic-review host;
 - WS2021 analog temperature/humidity gauge in the camera view;
-- two Android phones for authenticated viewing and ntfy alerts;
+- two iPhones for authenticated viewing and ntfy alerts;
 - 256 GB camera microSD loop recording as the independent continuous-recording path.
 
 The product provides viewing, environment observations and bounded candidate safety
@@ -47,7 +47,7 @@ Xiaomi camera + WS2021 gauge
     -> OpenCV/OpenVINO watch candidates + deterministic risk state
     -> restricted loopback SSH forwarding to M2 Ollama semantic review
     -> local SQLite events/outbox + privacy-processed evidence
-    -> text-only ntfy delivery to two Android phones
+    -> text-only ntfy delivery to two iPhones
 ```
 
 Important ownership boundaries:
@@ -144,12 +144,16 @@ Important ownership boundaries:
   labeled text-only non-risk notification, confirmations from both phones, and checks
   of the authenticated live view and event list. Its hook-only software mode can emit
   only `SIMULATED`, never a physical PASS.
+- On 2026-08-15 the installed Intel i9 completed this supervised command with no real
+  infant present and an adult supervising. One labeled non-risk ntfy message reached
+  both iPhones; the authenticated live view and Guardian event list were visible; the
+  final result was `guardian_live_test=PASS`.
 
 ## Verification Evidence
 
 The latest complete software gate, including Guardian live-acceptance coverage, was:
 
-- Python repository suite: `739 passed`;
+- Python repository suite: passed on the installed Intel i9 after the acceptance fixes;
 - Dashboard Node suite: `73 passed`;
 - Python compilation: passed;
 - all tracked shell syntax, ASCII and LF checks: passed;
@@ -162,8 +166,9 @@ gate recorded `126 passed`. The functional commits are `d862f2a` for the narrow,
 redacted notification helper and `67db75d` for the supervised command.
 
 These results prove software behavior against synthetic fixtures. They do not prove
-the installed i9 services, real Xiaomi stream, household scene accuracy, two Android
-deliveries, sustained performance or safe unattended care.
+household scene accuracy, sustained performance or safe unattended care. The separate
+2026-08-15 supervised run establishes installed-i9 readiness for that run, text-only
+delivery to two iPhones, authenticated live view and the Guardian event list.
 
 ## Current Git State
 
@@ -171,7 +176,7 @@ deliveries, sustained performance or safe unattended care.
 |---|---|
 | Protected default branch | `main`; unchanged by guardian work |
 | Stable Xiaomi branch | `stable/xiaomi-alpha` at `0df20ae` |
-| Active feature branch | `codex/guardian-evidence-retention` |
+| Active feature branch | `codex/guardian-live-acceptance` |
 | Guardian evidence-retention runtime implementation | `718af9a` |
 | Guardian evidence-retention safety closure | `e3cd69c` |
 | Guardian live-notification helper | `d862f2a` |
@@ -188,15 +193,9 @@ legacy branch into this line without a separate integration decision.
 
 ## Pending Real-Device Acceptance
 
-- Run `make alpha-guardian-start` and `make alpha-guardian-test` on the installed i9
-  with the real camera and launchd jobs.
 - Complete private bed-zone configuration and the restricted i9-to-M2 semantic bridge.
 - Validate real semantic response shape, cold/hot latency and daylight, darkness,
   mosquito-net, adult, empty-bed and safe simulated-obstruction scenes.
-- Run `make alpha-guardian-test-live` on the installed i9 with no real infant present,
-  an adult supervising, and both Android phones available. This is the pending physical
-  proof for one harmless acceptance message, authenticated live view and event list;
-  software simulation does not establish delivery.
 - Complete WS2021 real calibration, 30 daylight comparisons, night/glare/occlusion
   rejection and the independent 24-hour environment gate.
 - Apply the visual launchd scheduling update on i9, observe for 3 minutes and run the
@@ -218,10 +217,9 @@ legacy branch into this line without a separate integration decision.
 
 ## Next Priorities
 
-1. Run `make alpha-guardian-start`, `make alpha-guardian-test`, and then the separate
-   supervised `make alpha-guardian-test-live` on the installed i9 with two phones.
-2. Complete household synthetic candidate-scene validation and the
+1. Complete household synthetic candidate-scene validation and the
    deferred scheduling/performance acceptance.
+2. Complete the private WS2021 calibration and independent 24-hour environment gate.
 3. Define per-parent acknowledgement and false-positive feedback only through a future
    contract where Baby Care consumes Guardian's read-only feed and owns identity/write
    state; do not create a second identity model inside Guardian.

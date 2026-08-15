@@ -5,7 +5,7 @@
 - 单上游取流、实时网页、microSD 降级路线。
 - 表盘白天/夜间读取。
 - 哭声、大声响、床区移动和离床候选。
-- ntfy 双 Android、企业微信冗余、Tailscale 外网查看。
+- ntfy 双 iPhone、企业微信冗余、Tailscale 外网查看。
 - launchd 自动恢复、资源降级和 72 小时验收。
 
 ## V0.2 — 准确率与家庭反馈
