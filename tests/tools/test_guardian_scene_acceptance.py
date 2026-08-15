@@ -1,12 +1,13 @@
 from __future__ import annotations
 
 from collections.abc import Iterator
+from io import StringIO
 import os
 from pathlib import Path
 import subprocess
 
 from services.vision.scene_acceptance import SCENES, GuardianSceneAcceptanceStore
-from tools.guardian_scene_acceptance import run_scene_acceptance
+from tools.guardian_scene_acceptance import _terminal_inputs, run_scene_acceptance
 
 
 def answers(*values: str) -> Iterator[str]:
@@ -168,3 +169,13 @@ def test_makefile_exposes_scene_command_without_running_it() -> None:
     assert result.stdout.splitlines() == [
         "./.venv-alpha/bin/python tools/guardian_scene_acceptance.py"
     ]
+
+
+def test_terminal_inputs_use_separate_read_and_prompt_streams() -> None:
+    input_stream = StringIO("YES\nYES\ncorrect\n")
+    output_stream = StringIO()
+
+    values = list(_terminal_inputs(input_stream, output_stream))
+
+    assert values == ["YES", "YES", "correct"]
+    assert output_stream.getvalue().startswith("Confirm no real infant")

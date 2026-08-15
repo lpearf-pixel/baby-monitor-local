@@ -100,7 +100,7 @@ def _emit_final(
     return 1
 
 
-def _terminal_inputs(terminal: object) -> Iterator[str]:
+def _terminal_inputs(input_stream: object, output_stream: object) -> Iterator[str]:
     prompts = iter(
         (
             "Confirm no real infant is used. Type YES: ",
@@ -108,16 +108,16 @@ def _terminal_inputs(terminal: object) -> Iterator[str]:
         )
     )
     for prompt in prompts:
-        terminal.write(prompt)
-        terminal.flush()
-        value = terminal.readline()
+        output_stream.write(prompt)
+        output_stream.flush()
+        value = input_stream.readline()
         if value == "":
             return
         yield value.rstrip("\n")
     while True:
-        terminal.write("Enter outcome (correct|false_positive|missed|unavailable): ")
-        terminal.flush()
-        value = terminal.readline()
+        output_stream.write("Enter outcome (correct|false_positive|missed|unavailable): ")
+        output_stream.flush()
+        value = input_stream.readline()
         if value == "":
             return
         yield value.rstrip("\n")
@@ -141,12 +141,11 @@ def main() -> int:
         print("FAIL scene interactive interactive_required")
         print("guardian_scene_test=FAIL")
         return 1
-    with open("/dev/tty", "r+", encoding="utf-8") as terminal:
-        return run_scene_acceptance(
-            ROOT / "runtime/status/guardian-scene-acceptance",
-            _terminal_inputs(terminal),
-            print,
-        )
+    return run_scene_acceptance(
+        ROOT / "runtime/status/guardian-scene-acceptance",
+        _terminal_inputs(sys.stdin, sys.stdout),
+        print,
+    )
 
 
 if __name__ == "__main__":
