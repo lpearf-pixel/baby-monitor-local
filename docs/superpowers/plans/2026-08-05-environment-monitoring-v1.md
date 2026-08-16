@@ -230,6 +230,24 @@ Commit: `feat: capture controlled gauge frame bursts`
 - Produces: `Ws2021Reader.read(burst, calibration, requested_at) -> EnvironmentReading`.
 - Internal per-frame output: `GaugeFrameResult(temperature_c, humidity_rh, temperature_confidence, humidity_confidence, captured_at)` or one closed `ReadingFailureReason`.
 
+#### E2 real-device corrective slice: preserve calibrated quadrilateral aspect ratio
+
+- **Status:** approved after the 2026-08-16 E1 re-calibration reproduced
+  `geometry_roi_out_of_bounds` on both faces; implementation pending.
+- **Prerequisite:** schema-v2 calibration valid and fixed 2560×1440 five-frame
+  `gauge` burst passing.
+- **Codex work:** add a failing portrait/non-16:9 quadrilateral regression test;
+  size the rectified canvas from calibrated edge lengths; keep source dimensions
+  separate from rectified canvas dimensions through point transformation and face
+  validation; run reader, environment, and production probes.
+- **Human work:** none for implementation. A further calibration is required only if
+  the corrected production geometry passes but scene quality still fails.
+- **Acceptance:** the regression test changes from RED to GREEN; existing day, night,
+  aggregation, skew and fail-closed tests remain green; a private production burst no
+  longer fails because a non-16:9 gauge was stretched to 16:9. No threshold is reduced.
+- **Next:** if a production reading is available, begin E2's 30 daylight comparisons;
+  otherwise record the next stable fail-closed reason and diagnose that gate.
+
 - [x] **Step 1: Add OpenCV dependency and write failing day-path test**
 
 ```python
