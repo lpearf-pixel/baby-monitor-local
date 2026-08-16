@@ -1,7 +1,10 @@
 from __future__ import annotations
 
 from enum import StrEnum
+from hashlib import sha256
 from io import BytesIO
+import json
+from pathlib import Path
 from typing import Protocol
 
 import cv2
@@ -165,3 +168,67 @@ class GaugeLocator:
         ] = resized
         tensor = np.ascontiguousarray(canvas.transpose(2, 0, 1)[None], dtype=np.float32)
         return tensor, scale, float(pad_x), float(pad_y)
+
+
+class OpenVinoGaugeBackend:
+    def __init__(
+        self,
+        *,
+        model_path: Path,
+        metadata_path: Path,
+        core: object | None = None,
+    ) -> None:
+        try:
+            metadata = json.loads(metadata_path.read_text(encoding="ascii"))
+            bin_path = model_path.with_suffix(".bin")
+            expected_files = {"ws2021.onnx", "ws2021.xml", "ws2021.bin"}
+            digests = metadata["sha256"]
+            if (
+                model_path.name != "ws2021.xml"
+                or metadata["architecture"] != "YOLOX-Tiny"
+                or metadata["input_size"] != INPUT_SIZE
+                or metadata["openvino_precision"] != "FP16"
+                or not isinstance(digests, dict)
+                or set(digests) != expected_files
+                or _digest(model_path) != digests["ws2021.xml"]
+                or _digest(bin_path) != digests["ws2021.bin"]
+            ):
+                raise ValueError("gauge_model_invalid")
+            self.model_version = str(metadata["model_version"])
+            GaugeLocation(
+                box=NormalizedRect(x=0, y=0, width=1, height=1),
+                confidence=1,
+                model_version=self.model_version,
+            )
+            if core is None:
+                import openvino as ov
+
+                core = ov.Core()
+            model = core.read_model(model_path)
+            self._compiled = core.compile_model(model, "CPU")
+            if tuple(self._compiled.input(0).shape) != (1, 3, INPUT_SIZE, INPUT_SIZE):
+                raise ValueError("gauge_model_invalid")
+            output_shape = tuple(self._compiled.output(0).shape)
+            if len(output_shape) != 3 or output_shape[0] != 1 or output_shape[2] != 6:
+                raise ValueError("gauge_model_invalid")
+        except GaugeLocalizationError:
+            raise
+        except Exception as exc:
+            raise GaugeLocalizationError(GaugeLocalizationCode.MODEL_INVALID) from exc
+
+    def infer(self, tensor: np.ndarray) -> np.ndarray:
+        try:
+            result = self._compiled([tensor])
+            if isinstance(result, dict):
+                return np.asarray(next(iter(result.values())), dtype=np.float32)
+            return np.asarray(result[0], dtype=np.float32)
+        except Exception as exc:
+            raise GaugeLocalizationError(GaugeLocalizationCode.INFERENCE_FAILED) from exc
+
+
+def _digest(path: Path) -> str:
+    digest = sha256()
+    with path.open("rb") as source:
+        while chunk := source.read(1024 * 1024):
+            digest.update(chunk)
+    return digest.hexdigest()

@@ -2,6 +2,9 @@ from __future__ import annotations
 
 from datetime import UTC, datetime
 from io import BytesIO
+import json
+from hashlib import sha256
+from pathlib import Path
 
 import numpy as np
 import pytest
@@ -94,3 +97,73 @@ def test_locator_rejects_malformed_backend_output(
     with pytest.raises(GaugeLocalizationError) as caught:
         GaugeLocator(backend=backend).locate(frame())
     assert caught.value.code.value == "gauge_model_invalid"
+
+
+def test_openvino_backend_verifies_private_artifacts_and_fixed_shapes(
+    tmp_path: Path,
+) -> None:
+    from services.gauge.locator import OpenVinoGaugeBackend
+
+    model = tmp_path / "ws2021.xml"
+    weights = tmp_path / "ws2021.bin"
+    model.write_bytes(b"synthetic-xml")
+    weights.write_bytes(b"synthetic-bin")
+    metadata = {
+        "architecture": "YOLOX-Tiny",
+        "input_size": 640,
+        "model_version": "ws2021-test-v1",
+        "openvino_precision": "FP16",
+        "sha256": {
+            "ws2021.onnx": "0" * 64,
+            "ws2021.xml": sha256(model.read_bytes()).hexdigest(),
+            "ws2021.bin": sha256(weights.read_bytes()).hexdigest(),
+        },
+    }
+    metadata_path = tmp_path / "metadata.json"
+    metadata_path.write_text(json.dumps(metadata), encoding="ascii")
+
+    class Port:
+        def __init__(self, shape: tuple[int, ...]) -> None:
+            self.shape = shape
+
+    class Compiled:
+        def input(self, index: int) -> Port:
+            return Port((1, 3, 640, 640))
+
+        def output(self, index: int) -> Port:
+            return Port((1, 8400, 6))
+
+        def __call__(self, inputs: list[np.ndarray]) -> dict[int, np.ndarray]:
+            assert inputs[0].shape == (1, 3, 640, 640)
+            return {0: np.zeros((1, 8400, 6), dtype=np.float32)}
+
+    class Core:
+        def read_model(self, path: Path) -> object:
+            assert path == model
+            return object()
+
+        def compile_model(self, loaded: object, device: str) -> Compiled:
+            assert device == "CPU"
+            return Compiled()
+
+    backend = OpenVinoGaugeBackend(
+        model_path=model,
+        metadata_path=metadata_path,
+        core=Core(),
+    )
+
+    assert backend.model_version == "ws2021-test-v1"
+    assert backend.infer(np.zeros((1, 3, 640, 640), dtype=np.float32)).shape == (
+        1,
+        8400,
+        6,
+    )
+
+    model.write_bytes(b"tampered")
+    with pytest.raises(Exception) as caught:
+        OpenVinoGaugeBackend(
+            model_path=model,
+            metadata_path=metadata_path,
+            core=Core(),
+        )
+    assert getattr(caught.value, "code").value == "gauge_model_invalid"

@@ -145,6 +145,17 @@
           "title": "Calibration Path",
           "type": "string"
         },
+        "auto_localization": {
+          "default": false,
+          "title": "Auto Localization",
+          "type": "boolean"
+        },
+        "localization_model_path": {
+          "default": "runtime/training/ws2021/model/ws2021.xml",
+          "format": "path",
+          "title": "Localization Model Path",
+          "type": "string"
+        },
         "policy": {
           "$ref": "#/$defs/EnvironmentPolicySettings",
           "default": {
@@ -533,6 +544,8 @@
         "critical_confirmations": 2,
         "critical_min_span_seconds": 60,
         "calibration_path": "runtime/calibration/ws2021-v1.json",
+        "auto_localization": false,
+        "localization_model_path": "runtime/training/ws2021/model/ws2021.xml",
         "policy": {
           "mode": "monitor_only",
           "required_independent_sources_for_control": 2

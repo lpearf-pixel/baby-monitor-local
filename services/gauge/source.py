@@ -14,7 +14,10 @@ from services.gauge.calibration import (
     CalibrationMissing,
     Ws2021Calibration,
 )
+from services.gauge.locator import GaugeLocation
+from services.gauge.relocation import refine_calibration
 from services.stream.frame_source import (
+    CapturedFrame,
     FrameBurst,
     FrameSourceUnavailable,
 )
@@ -50,6 +53,10 @@ class Ws2021ReadingAlgorithm(Protocol):
     ) -> EnvironmentReading: ...
 
 
+class GaugeLocationAlgorithm(Protocol):
+    def locate(self, frame: CapturedFrame) -> GaugeLocation: ...
+
+
 class Ws2021GaugeSource:
     def __init__(
         self,
@@ -61,6 +68,10 @@ class Ws2021GaugeSource:
         burst_interval_ms: int = 500,
         burst_timeout_seconds: float = 8,
         freshness_seconds: int = 90,
+        locator: GaugeLocationAlgorithm | None = None,
+        relocator: Callable[
+            [Ws2021Calibration, GaugeLocation, CapturedFrame], Ws2021Calibration
+        ] = refine_calibration,
         now: Callable[[], datetime] | None = None,
     ) -> None:
         self._frame_source = frame_source
@@ -70,6 +81,8 @@ class Ws2021GaugeSource:
         self._burst_interval_ms = burst_interval_ms
         self._burst_timeout_seconds = burst_timeout_seconds
         self._freshness_seconds = freshness_seconds
+        self._locator = locator
+        self._relocator = relocator
         self._now = now or (lambda: datetime.now(UTC))
 
     @property
@@ -118,11 +131,21 @@ class Ws2021GaugeSource:
             )
 
         try:
+            if self._locator is not None:
+                if not burst.frames:
+                    raise ValueError("gauge_not_found")
+                first_frame = burst.frames[0]
+                location = self._locator.locate(first_frame)
+                calibration = self._relocator(calibration, location, first_frame)
             return self._reader.read(burst, calibration, self._now())
         except Exception:
             return self._unavailable(
                 requested_at,
-                ReadingFailureReason.INTERNAL_ERROR,
+                (
+                    ReadingFailureReason.CALIBRATION_INVALID
+                    if self._locator is not None
+                    else ReadingFailureReason.INTERNAL_ERROR
+                ),
                 calibration_version=calibration.calibration_id,
                 sample_count=len(burst.frames),
             )

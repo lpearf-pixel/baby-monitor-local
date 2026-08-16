@@ -3,7 +3,7 @@ PYTHON := ./.venv-alpha/bin/python
 BASH ?= /bin/bash
 .DEFAULT_GOAL := help
 
-.PHONY: help alpha-update alpha-install alpha-start alpha-stop alpha-restart alpha-status alpha-guardian-start alpha-guardian-test alpha-guardian-test-live alpha-guardian-scene-test alpha-visual-status alpha-visual-performance alpha-visual-diagnostic alpha-visual-launchd-update alpha-logs alpha-quality-hd alpha-quality-info alpha-quality-rollback alpha-source-check alpha-subtype-probe alpha-subtype-apply alpha-go2rtc-info alpha-go2rtc-rebuild alpha-go2rtc-rollback alpha-realtime-models-check alpha-realtime-models-install
+.PHONY: help alpha-update alpha-install alpha-start alpha-stop alpha-restart alpha-status alpha-guardian-start alpha-guardian-test alpha-guardian-test-live alpha-guardian-scene-test alpha-visual-status alpha-visual-performance alpha-visual-diagnostic alpha-visual-launchd-update alpha-logs alpha-quality-hd alpha-quality-info alpha-quality-rollback alpha-source-check alpha-subtype-probe alpha-subtype-apply alpha-go2rtc-info alpha-go2rtc-rebuild alpha-go2rtc-rollback alpha-realtime-models-check alpha-realtime-models-install alpha-ws2021-collect-calibrated alpha-ws2021-collect-model alpha-ws2021-dataset alpha-ws2021-model-train alpha-ws2021-model-export alpha-ws2021-model-check
 
 help:
 	@echo "Baby Monitor Local Alpha commands:"
@@ -33,6 +33,12 @@ help:
 	@echo "  make alpha-go2rtc-rollback   Restore the newest valid go2rtc backup"
 	@echo "  make alpha-realtime-models-check    Verify pinned realtime visual models"
 	@echo "  make alpha-realtime-models-install  Explicitly install pinned models"
+	@echo "  make alpha-ws2021-collect-calibrated Collect private crops at current calibration"
+	@echo "  make alpha-ws2021-collect-model      Collect private crops using local detector"
+	@echo "  make alpha-ws2021-dataset            Build the private deterministic dataset"
+	@echo "  make alpha-ws2021-model-train        Train private YOLOX-Tiny weights on i9"
+	@echo "  make alpha-ws2021-model-export       Export private OpenVINO FP16 model"
+	@echo "  make alpha-ws2021-model-check        Verify private model artifacts"
 
 alpha-update:
 	@git config core.fileMode false
@@ -58,6 +64,24 @@ alpha-realtime-models-check:
 
 alpha-realtime-models-install:
 	@$(PYTHON) tools/realtime_models.py install
+
+alpha-ws2021-collect-calibrated:
+	@$(PYTHON) tools/ws2021_collect.py calibrated
+
+alpha-ws2021-collect-model:
+	@$(PYTHON) tools/ws2021_collect.py model
+
+alpha-ws2021-dataset:
+	@$(PYTHON) tools/ws2021_dataset.py --source runtime/training/ws2021/crops --output runtime/training/ws2021/dataset
+
+alpha-ws2021-model-train:
+	@$(PYTHON) tools/ws2021_model.py train
+
+alpha-ws2021-model-export:
+	@$(PYTHON) tools/ws2021_model.py export
+
+alpha-ws2021-model-check:
+	@$(PYTHON) tools/ws2021_model.py check
 
 alpha-start:
 	@bash tools/start_alpha.sh

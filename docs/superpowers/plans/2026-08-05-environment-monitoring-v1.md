@@ -639,17 +639,21 @@ overlap with persisted crops.
 - [ ] **15.4b Private model artifact:** after private crops exist, run the explicit
   train/export/check sequence and require exact ONNX/XML/BIN digests. Random or
   synthetic smoke weights cannot satisfy this gate.
-- [ ] **15.5 Gauge-worker integration:** locate on the first frame of each burst, refine
+- [x] **15.5 Gauge-worker integration:** locate on the first frame of each burst, refine
   the box to an outer quadrilateral plus two-circle layout, migrate schema-v2 geometry,
   and apply the same migrated calibration to all five frames. Missing or ambiguous
-  localization produces unavailable and never reuses an old location.
-- [ ] **15.6 Software and installed-i9 gates:** run focused Python tests, frontend tests
-  if changed, compilation, Make dry-runs, privacy scan and `git diff --check`. Then run
+  localization produces unavailable and never reuses an old location. The feature is
+  disabled by default until a verified private model exists.
+- [x] **15.6a Software gate:** focused settings/environment/gauge/dataset/model tests,
+  compilation, Make dry-runs and `git diff --check` pass; collection commands expose
+  counts only and persist crops only after person/face/skin-overlap rejection.
+- [ ] **15.6b Installed-i9 gate:** run
   five 30-second daylight positions plus night/IR collection, review only uncertain
   crops, train locally, verify minimum 1/10-width detection, and resume E2 only after a
   private production reading passes all existing deterministic gates.
 
-**Human work:** place the gauge in five upright, front-facing positions for 30 seconds
+**Human work:** first confirm no baby is present and collect the current calibrated
+position, then place the gauge in five upright, front-facing positions for 30 seconds
 each, repeat once under night/IR, and approve/reject only the bounded uncertain crop set.
 
 **Acceptance:** no household full frame persists; no baby crop is accepted; adult

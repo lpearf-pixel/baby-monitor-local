@@ -54,3 +54,37 @@ def test_unimplemented_source_kind_is_rejected_before_worker_composition(
             tmp_path,
             {},
         )
+
+
+def test_auto_localization_composes_fixed_openvino_backend(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    from services.environment import bootstrap
+
+    observed: dict[str, Path] = {}
+
+    class Backend:
+        model_version = "test-v1"
+
+        def __init__(self, *, model_path: Path, metadata_path: Path) -> None:
+            observed["model"] = model_path
+            observed["metadata"] = metadata_path
+
+        def infer(self, tensor: object) -> object:
+            raise AssertionError("inference is not part of composition")
+
+    monkeypatch.setattr(bootstrap, "OpenVinoGaugeBackend", Backend)
+    configured = settings().model_copy(
+        update={
+            "environment": EnvironmentSettings(auto_localization=True),
+        }
+    )
+
+    worker = bootstrap.build_gauge_worker(configured, tmp_path, {})
+
+    assert worker._source._locator is not None
+    assert observed == {
+        "model": tmp_path / "runtime/training/ws2021/model/ws2021.xml",
+        "metadata": tmp_path / "runtime/training/ws2021/model/metadata.json",
+    }

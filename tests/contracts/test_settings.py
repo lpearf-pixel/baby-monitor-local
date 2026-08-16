@@ -58,6 +58,8 @@ environment:
   critical_confirmations: 2
   critical_min_span_seconds: 60
   calibration_path: runtime/calibration/ws2021-v1.json
+  auto_localization: false
+  localization_model_path: runtime/training/ws2021/model/ws2021.xml
   policy:
     mode: monitor_only
     required_independent_sources_for_control: 2
@@ -308,6 +310,18 @@ def test_rejects_absolute_or_parent_traversal_calibration_path(tmp_path: Path) -
         AppSettings.load(traversal)
 
 
+def test_rejects_absolute_auto_localization_model_path(tmp_path: Path) -> None:
+    path = write_settings(
+        tmp_path,
+        valid_yaml().replace(
+            "runtime/training/ws2021/model/ws2021.xml",
+            "/private/model/ws2021.xml",
+        ),
+    )
+    with pytest.raises(ValidationError, match="relative local path"):
+        AppSettings.load(path)
+
+
 def test_environment_policy_cannot_enable_control(tmp_path: Path) -> None:
     path = write_settings(
         tmp_path,
@@ -330,6 +344,10 @@ def test_checked_in_schema_contains_strict_environment_contract() -> None:
     assert environment["additionalProperties"] is False
     assert environment["properties"]["interval_seconds"]["default"] == 60
     assert environment["properties"]["burst_frames"]["default"] == 5
+    assert environment["properties"]["auto_localization"]["default"] is False
+    assert environment["properties"]["localization_model_path"]["default"] == (
+        "runtime/training/ws2021/model/ws2021.xml"
+    )
     assert environment["properties"]["policy"]["$ref"] == (
         "#/$defs/EnvironmentPolicySettings"
     )

@@ -198,8 +198,10 @@
   metadata for negatives. The ignored Intel training environment now pins Torch 2.2.2
   and exact YOLOX commit `419778480ab6ec0590e5d3831b3afb3b46ab2aa3`; a synthetic
   640×640 CPU forward/loss/backward step passes. Real weights still await private crops,
-  so model-independent worker integration is next; no detector weights or household
-  images are tracked.
+  and model-independent worker integration now locates once per burst, validates the
+  outer quadrilateral/two-circle layout and applies one migrated schema-v2 geometry to
+  all five frames. Failure never reuses an old position. No detector weights or
+  household images are tracked; the next gate is supervised private crop collection.
 - After Task 15, resume environment-plan E2–E5 with 30 daylight comparisons,
   darkness/infrared/glare/occlusion/gauge-movement fail-closed checks, M2/Ollama outage
   isolation and the independent 24-hour run.

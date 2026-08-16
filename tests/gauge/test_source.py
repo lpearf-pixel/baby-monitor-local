@@ -10,7 +10,9 @@ from packages.contracts.events import (
     ReadingState,
 )
 from services.gauge.calibration import CalibrationInvalid, CalibrationMissing
-from services.stream.frame_source import FrameBurst, FrameSourceUnavailable
+from services.gauge.calibration import NormalizedRect
+from services.gauge.locator import GaugeLocation, GaugeLocalizationCode, GaugeLocalizationError
+from services.stream.frame_source import CapturedFrame, FrameBurst, FrameSourceUnavailable
 from tests.gauge.synthetic_dial import calibration
 
 
@@ -74,6 +76,16 @@ class RecordingReader:
             calibration_version="synthetic-calibration-v2",
             sample_count=0,
         )
+
+
+class BurstFrameSource:
+    def __init__(self) -> None:
+        self.frames = tuple(
+            CapturedFrame(b"synthetic", NOW, 2560, 1440) for _ in range(5)
+        )
+
+    def capture_burst(self, **kwargs: object) -> FrameBurst:
+        return FrameBurst(frames=self.frames)
 
 
 def test_missing_calibration_publishes_unavailable_without_opening_frames() -> None:
@@ -184,3 +196,64 @@ def test_unexpected_reader_error_becomes_internal_error_without_details() -> Non
     assert reading.failure_reason is ReadingFailureReason.INTERNAL_ERROR
     assert "/private" not in reading.model_dump_json()
     assert "Ollama" not in reading.model_dump_json()
+
+
+def test_auto_localization_runs_once_and_reuses_migrated_geometry_for_burst() -> None:
+    frames = BurstFrameSource()
+    reader = RecordingReader()
+    located = GaugeLocation(
+        box=NormalizedRect(x=0.4, y=0.1, width=0.2, height=0.5),
+        confidence=0.9,
+        model_version="test-v1",
+    )
+
+    class Locator:
+        def __init__(self) -> None:
+            self.calls: list[CapturedFrame] = []
+
+        def locate(self, frame: CapturedFrame) -> GaugeLocation:
+            self.calls.append(frame)
+            return located
+
+    locator = Locator()
+    migrated = calibration().model_copy(update={"center_x": 0.6})
+    relocations: list[tuple[object, GaugeLocation, CapturedFrame]] = []
+
+    def relocate(current: object, location: GaugeLocation, frame: CapturedFrame):
+        relocations.append((current, location, frame))
+        return migrated
+
+    source = source_module().Ws2021GaugeSource(
+        frame_source=frames,
+        calibration_store=CalibrationStore(),
+        reader=reader,
+        locator=locator,
+        relocator=relocate,
+        now=lambda: NOW,
+    )
+
+    source.read(NOW)
+
+    assert locator.calls == [frames.frames[0]]
+    assert relocations[0][1:] == (located, frames.frames[0])
+    assert reader.calls[0][1] is migrated
+    assert reader.calls[0][0].frames == frames.frames
+
+
+def test_auto_localization_failure_never_calls_reader_or_reuses_geometry() -> None:
+    class MissingLocator:
+        def locate(self, frame: CapturedFrame) -> GaugeLocation:
+            raise GaugeLocalizationError(GaugeLocalizationCode.NOT_FOUND)
+
+    source = source_module().Ws2021GaugeSource(
+        frame_source=BurstFrameSource(),
+        calibration_store=CalibrationStore(),
+        reader=FailIfCalled(),
+        locator=MissingLocator(),
+        relocator=FailIfCalled(),
+    )
+
+    reading = source.read(NOW)
+
+    assert reading.failure_reason is ReadingFailureReason.CALIBRATION_INVALID
+    assert reading.sample_count == 5

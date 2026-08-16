@@ -8,6 +8,7 @@ from packages.contracts.settings import AppSettings
 from services.environment.dashboard import LocalEnvironmentDashboardService
 from services.events.environment_state import EnvironmentStatePolicy
 from services.gauge.calibration import GaugeCalibrationStore
+from services.gauge.locator import GaugeLocator, OpenVinoGaugeBackend
 from services.gauge.reader import Ws2021Reader
 from services.gauge.source import Ws2021GaugeSource
 from services.gauge.worker import GaugeWorker
@@ -86,6 +87,22 @@ def build_gauge_worker(
         burst_frames=settings.environment.burst_frames,
         burst_interval_ms=settings.environment.burst_interval_ms,
         freshness_seconds=settings.environment.freshness_seconds,
+        locator=(
+            GaugeLocator(
+                backend=OpenVinoGaugeBackend(
+                    model_path=_resolve(
+                        project_root,
+                        settings.environment.localization_model_path,
+                    ),
+                    metadata_path=_resolve(
+                        project_root,
+                        settings.environment.localization_model_path,
+                    ).with_name("metadata.json"),
+                )
+            )
+            if settings.environment.auto_localization
+            else None
+        ),
     )
     return GaugeWorker(
         source=source,

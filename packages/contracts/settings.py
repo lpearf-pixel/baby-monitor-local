@@ -129,13 +129,17 @@ class EnvironmentSettings(StrictSettingsModel):
     critical_confirmations: int = Field(default=2, ge=2, le=10)
     critical_min_span_seconds: PositiveInt = 60
     calibration_path: Path = Path("runtime/calibration/ws2021-v1.json")
+    auto_localization: bool = False
+    localization_model_path: Path = Path(
+        "runtime/training/ws2021/model/ws2021.xml"
+    )
     policy: EnvironmentPolicySettings = EnvironmentPolicySettings()
 
-    @field_validator("calibration_path")
+    @field_validator("calibration_path", "localization_model_path")
     @classmethod
     def require_relative_local_calibration_path(cls, value: Path) -> Path:
         if value.is_absolute() or ".." in value.parts:
-            raise ValueError("calibration_path must be a relative local path")
+            raise ValueError("environment paths must be relative local paths")
         return value
 
     @model_validator(mode="after")

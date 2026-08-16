@@ -22,8 +22,9 @@ Updated: 2026-08-16
   automatic-localization Task 15 is now inserted before E2; strict localization and
   validated schema-v2 relocation contracts plus privacy-safe crop persistence are
   complete, as are deterministic private dataset preparation and pinned i9-local CPU
-  training/export tooling. Real weights await private crops; model-independent gauge
-  worker integration is the current automatic priority.
+  training/export tooling and fail-closed gauge-worker integration. Real weights await
+  private crops; the current gate is a human-confirmed no-baby scene followed by the
+  first 30-second calibrated collection.
 - The earlier untracked `uv.lock` was never staged or published; the recovered checkout
   does not recreate or claim ownership of it.
 
@@ -267,8 +268,9 @@ legacy branch into this line without a separate integration decision.
 
 ## Next Priorities
 
-1. Continue WS2021 Task 15 with model-independent worker integration, then collect the
-   approved private positions and run pinned i9-local training/OpenVINO export. Resume
+1. Continue WS2021 Task 15 by confirming no baby is in frame, then run the first
+   calibrated 30-second private collection, the approved moved positions, and pinned
+   i9-local training/OpenVINO export. Resume
    E2–E5 with
    30 daylight comparisons, fail-closed scene checks, M2/Ollama isolation and 24-hour
    stability. E1 and the native-resolution continuous frame source are complete.
