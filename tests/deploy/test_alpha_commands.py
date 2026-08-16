@@ -560,6 +560,16 @@ def test_default_config_has_separate_one_and_five_fps_analysis_profiles() -> Non
     assert "audio" not in config["streams"]["analysis_realtime"]
 
 
+def test_default_config_has_fixed_native_resolution_gauge_profile() -> None:
+    config = yaml.safe_load(
+        (ROOT / "config/go2rtc.alpha.yaml").read_text(encoding="utf-8")
+    )
+
+    assert config["streams"]["gauge"] == (
+        "ffmpeg:source#video=mjpeg#width=2560#height=1440#raw=-r 2"
+    )
+
+
 def test_realtime_model_commands_are_explicit_and_not_part_of_startup() -> None:
     check = subprocess.run(
         ["make", "-n", "alpha-realtime-models-check"],

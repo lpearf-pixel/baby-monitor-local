@@ -236,6 +236,27 @@ def test_apply_hd_reports_backup_without_printing_config(tmp_path: Path) -> None
     assert "192.0.2.10" not in combined
 
 
+def test_apply_gauge_stream_reports_backup_without_printing_config(tmp_path: Path) -> None:
+    config = tmp_path / "go2rtc.yaml"
+    backups = tmp_path / "backups"
+    config.write_text(
+        "streams:\n  source: xiaomi://device:cn@192.0.2.10?subtype=3\n",
+        encoding="utf-8",
+    )
+
+    result = run_cli(
+        "apply-gauge-stream",
+        "--config",
+        str(config),
+        "--backups",
+        str(backups),
+    )
+
+    assert result.returncode == 0
+    assert "backup=" in result.stdout
+    assert "xiaomi://" not in result.stdout + result.stderr
+
+
 def test_cli_returns_code_two_for_missing_source(tmp_path: Path) -> None:
     config = tmp_path / "go2rtc.yaml"
     config.write_text("streams: {live: old}\n", encoding="utf-8")

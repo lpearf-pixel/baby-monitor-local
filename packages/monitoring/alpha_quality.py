@@ -17,6 +17,7 @@ import yaml
 
 LIVE_HD = "ffmpeg:source#video=mjpeg#width=1280#height=720#raw=-r 10"
 ANALYSIS_STREAM = "ffmpeg:source#video=mjpeg#width=960#height=540#raw=-r 1"
+GAUGE_STREAM = "ffmpeg:source#video=mjpeg#width=2560#height=1440#raw=-r 2"
 COMPAT_HD = (
     "ffmpeg:source#video=h264#hardware=videotoolbox"
     "#width=2560#height=1440#bitrate=6M"
@@ -74,6 +75,7 @@ def upgrade_to_hd(config: dict[str, Any]) -> dict[str, Any]:
     )
     streams["live"] = LIVE_HD
     streams["analysis"] = ANALYSIS_STREAM
+    streams["gauge"] = GAUGE_STREAM
     streams["source_compat"] = COMPAT_HD
     return result
 
@@ -85,6 +87,16 @@ def with_visual_analysis_stream(config: dict[str, Any]) -> dict[str, Any]:
     if not isinstance(source, str) or not source.startswith("xiaomi://"):
         raise QualityConfigError("SOURCE_NOT_CONFIGURED")
     streams["analysis"] = ANALYSIS_STREAM
+    return result
+
+
+def with_gauge_stream(config: dict[str, Any]) -> dict[str, Any]:
+    result = deepcopy(config)
+    streams = _streams(result)
+    source = streams.get("source")
+    if not isinstance(source, str) or not source.startswith("xiaomi://"):
+        raise QualityConfigError("SOURCE_NOT_CONFIGURED")
+    streams["gauge"] = GAUGE_STREAM
     return result
 
 
@@ -110,6 +122,7 @@ def with_source_subtype(config: dict[str, Any], subtype: int) -> dict[str, Any]:
     )
     streams["live"] = LIVE_HD
     streams["analysis"] = ANALYSIS_STREAM
+    streams["gauge"] = GAUGE_STREAM
     streams["source_compat"] = COMPAT_HD
     return result
 
@@ -167,6 +180,22 @@ def apply_hd(config_path: Path, backups_dir: Path, now: datetime) -> Path:
 
     backups_dir.mkdir(parents=True, exist_ok=True)
     backup = backups_dir / f"go2rtc-quality-{now.strftime('%Y%m%d-%H%M%S')}.yaml"
+    backup.write_text(original_text, encoding="utf-8")
+    backup.chmod(mode)
+
+    rendered = yaml.safe_dump(updated, sort_keys=False, allow_unicode=True)
+    _atomic_write(config_path, rendered, mode)
+    return backup
+
+
+def apply_gauge_stream(config_path: Path, backups_dir: Path, now: datetime) -> Path:
+    original = _read_yaml_mapping(config_path, missing_code="SOURCE_NOT_CONFIGURED")
+    original_text = config_path.read_text(encoding="utf-8")
+    updated = with_gauge_stream(original)
+    mode = stat.S_IMODE(config_path.stat().st_mode)
+
+    backups_dir.mkdir(parents=True, exist_ok=True)
+    backup = backups_dir / f"go2rtc-gauge-{now.strftime('%Y%m%d-%H%M%S')}.yaml"
     backup.write_text(original_text, encoding="utf-8")
     backup.chmod(mode)
 

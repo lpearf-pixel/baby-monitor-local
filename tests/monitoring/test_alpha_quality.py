@@ -10,8 +10,10 @@ import yaml
 from packages.monitoring.alpha_quality import (
     ANALYSIS_STREAM,
     COMPAT_HD,
+    GAUGE_STREAM,
     LIVE_HD,
     QualityConfigError,
+    apply_gauge_stream,
     apply_hd,
     inspect_quality,
     rollback_latest,
@@ -42,6 +44,7 @@ def test_upgrade_to_hd_preserves_unknown_xiaomi_parameters() -> None:
     assert "vendor_hint=keep" in source
     assert upgraded["streams"]["live"] == LIVE_HD
     assert upgraded["streams"]["source_compat"] == COMPAT_HD
+    assert upgraded["streams"]["gauge"] == GAUGE_STREAM
     assert upgraded["xiaomi"] == original["xiaomi"]
 
 
@@ -74,6 +77,7 @@ def test_upgrade_is_idempotent() -> None:
     assert twice["streams"]["source"].count("subtype=hd") == 1
     assert twice["streams"]["source_compat"] == COMPAT_HD
     assert twice["streams"]["analysis"] == ANALYSIS_STREAM
+    assert twice["streams"]["gauge"] == GAUGE_STREAM
 
 
 def test_visual_analysis_profile_is_fixed_idempotent_and_preserves_input() -> None:
@@ -172,6 +176,7 @@ def test_source_subtype_candidate_preserves_unknown_parameters_and_input() -> No
     assert updated["streams"]["live"] == LIVE_HD
     assert updated["streams"]["source_compat"] == COMPAT_HD
     assert updated["streams"]["analysis"] == ANALYSIS_STREAM
+    assert updated["streams"]["gauge"] == GAUGE_STREAM
     assert "subtype=hd" in original["streams"]["source"]
 
 
@@ -213,6 +218,33 @@ def test_apply_hd_creates_backup_and_preserves_file_mode(tmp_path: Path) -> None
     assert config_path.stat().st_mode & 0o777 == 0o600
     current = yaml.safe_load(config_path.read_text(encoding="utf-8"))
     assert current["streams"]["live"] == LIVE_HD
+
+
+def test_apply_gauge_stream_only_adds_profile_and_creates_backup(tmp_path: Path) -> None:
+    config_path = tmp_path / "go2rtc.yaml"
+    backups = tmp_path / "backups"
+    original = {
+        "streams": {
+            "source": "xiaomi://device:cn@192.0.2.10?subtype=3&keep=yes",
+            "live": "keep-live",
+        }
+    }
+    config_path.write_text(yaml.safe_dump(original), encoding="utf-8")
+    config_path.chmod(0o600)
+
+    backup = apply_gauge_stream(
+        config_path,
+        backups,
+        datetime(2026, 8, 16, 10, 0, tzinfo=timezone.utc),
+    )
+
+    current = yaml.safe_load(config_path.read_text(encoding="utf-8"))
+    assert backup.name == "go2rtc-gauge-20260816-100000.yaml"
+    assert yaml.safe_load(backup.read_text(encoding="utf-8")) == original
+    assert current["streams"]["source"] == original["streams"]["source"]
+    assert current["streams"]["live"] == "keep-live"
+    assert current["streams"]["gauge"] == GAUGE_STREAM
+    assert config_path.stat().st_mode & 0o777 == 0o600
 
 
 def test_apply_hd_rejects_missing_runtime_config(tmp_path: Path) -> None:

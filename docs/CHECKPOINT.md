@@ -431,3 +431,15 @@ schema-v2 标定。只读验证确认标定模型有效、参考 JPEG 有效且�
 但固定高分辨率 `source` 的 MJPEG burst 返回 `frame_source_unavailable`；独立
 `alpha-source-check` 仍确认 H.265 source 健康。E2 必须先修复并验证这一受控帧源边界，
 不能把不可用样本计入 30 组白天对照。
+
+## WS2021 E2 frame-source prerequisite checkpoint
+
+2026-08-16 在不输出家庭画面、标定内容或读数值的前提下，为 go2rtc 增加固定按需
+`gauge` 派生流：2560×1440 MJPEG、2 FPS。环境受控帧源固定消费该流，仍以一个
+连续连接取得五帧。运行配置通过现有 0600 原子备份边界迁移，未改动 Xiaomi source
+参数。
+
+定向软件测试为 73 passed；实机单帧与单连接五帧 burst 均 PASS，尺寸一致。新的
+gauge worker 记录不再是 `frame_source_unavailable`，而是在后续几何门安全拒绝为
+`roi_out_of_bounds`。因此帧源前置阻塞已关闭，但 E2 尚未开始计数；下一步必须在
+不泄露私人坐标的前提下复核 E1 ROI 映射，不能降低质量门或把该样本计入 30 组。

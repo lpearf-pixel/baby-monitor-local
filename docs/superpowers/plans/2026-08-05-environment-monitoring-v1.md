@@ -182,7 +182,7 @@ Commit: `feat: add ws2021 calibration v2 store`
 
 **Interfaces:**
 - Produces: `CapturedFrame(jpeg: bytes, captured_at: datetime)`, `FrameBurst(frames: tuple[CapturedFrame, ...])`, `ControlledFrameSource.capture_burst(frame_count, interval_ms, timeout_seconds)`.
-- Only the fixed `source` profile is permitted; proxy environment variables are disabled for loopback access.
+- Only the fixed native-resolution `gauge` MJPEG profile is permitted; proxy environment variables are disabled for loopback access. The profile is `ffmpeg:source#video=mjpeg#width=2560#height=1440#raw=-r 2` and is inserted by the existing idempotent HD configuration transform.
 
 - [x] **Step 1: Write a failing boundary test**
 
@@ -204,7 +204,7 @@ Expected: FAIL on missing controlled frame source.
 
 - [x] **Step 3: Implement bounded MJPEG parsing**
 
-Enforce fixed loopback base URL, fixed stream name `source`, 16MiB maximum frame bytes, 4096×2160 and maximum-pixel checks, timezone-aware timestamps, five-frame maximum, and total burst deadline. Convert transport/parse failures into `FrameSourceUnavailable` without exposing URLs.
+Enforce fixed loopback base URL, fixed stream name `gauge`, 16MiB maximum frame bytes, 4096×2160 and maximum-pixel checks, timezone-aware timestamps, five-frame maximum, and total burst deadline. Convert transport/parse failures into `FrameSourceUnavailable` without exposing URLs.
 
 - [x] **Step 4: Add stale, oversized, malformed, and no-proxy tests**
 

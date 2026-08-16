@@ -73,7 +73,7 @@ CLI 标定流程。
 
 ```text
 MJSXJ17CM source 2560×1440
-  └─ go2rtc（i9 loopback，固定流名）
+  └─ go2rtc（i9 loopback，固定 `gauge` MJPEG 派生流）
        ├─ visual-review worker → 床区裁剪/隐私遮罩 → M2 Qwen3-VL
        └─ gauge worker → 固定 gauge_roi → 本地 OpenCV 读针
                               ↓
@@ -111,7 +111,7 @@ class EnvironmentReadingSource(Protocol):
 
 第一版 `Ws2021GaugeSource` 依赖：
 
-- `ControlledFrameSource`：从固定 `source` profile 获取受限高分辨率帧；
+- `ControlledFrameSource`：从固定 `gauge` profile 获取受限高分辨率帧；
 - `GaugeCalibrationStore`：只读取当前已验证标定；
 - `Ws2021Reader`：执行质量检查、透视校正、读针和多帧聚合。
 
@@ -173,7 +173,8 @@ runtime/calibration/backups/
 `gauge worker` 使用单调时钟每 60 秒启动一次采样，不追赶因休眠或过载错过的
 周期，不建立积压队列。每次采样：
 
-- 从固定高分辨率 source 连续取得 5 帧；
+- 从固定 `gauge` 高分辨率 MJPEG 流连续取得 5 帧；该按需派生流固定为
+  2560×1440、2 FPS，不允许客户端选择流名或 FFmpeg 参数；
 - 帧间隔目标为 500 毫秒，整个 burst 最长 8 秒；
 - 一个 burst 复用同一个连续 producer/解码会话，不连续发起五个一次性 JPEG
   请求，避免再次触发已修复的 go2rtc producer 停止/重启竞态；

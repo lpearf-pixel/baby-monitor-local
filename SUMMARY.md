@@ -16,7 +16,9 @@ Updated: 2026-08-16
 - The functional guardian event loop and installed-i9 10-minute performance gate are
   complete. The go2rtc startup recovery defect found during the 2026-08-15 operator
   session is fixed locally. WS2021 E1 private schema-v2 calibration passed on
-  2026-08-16. The current priority is E2 daylight accuracy, followed by the remaining
+  2026-08-16. Its fixed 2560×1440 five-frame gauge burst is now operational; the next
+  fail-closed result is `roi_out_of_bounds`. The current priority is correcting that
+  private geometry prerequisite and then E2 daylight accuracy, followed by the remaining
   environment acceptance gates.
 - The earlier untracked `uv.lock` was never staged or published; the recovered checkout
   does not recreate or claim ownership of it.
@@ -261,8 +263,10 @@ legacy branch into this line without a separate integration decision.
 
 ## Next Priorities
 
-1. Continue WS2021 plan gates E2–E5: 30 daylight comparisons, fail-closed scene checks,
-   M2/Ollama isolation and 24-hour stability. E1 schema-v2 calibration is complete.
+1. Continue WS2021 plan gates E2–E5: first reconcile the E1 ROI geometry until a
+   production read passes that gate, then run 30 daylight comparisons, fail-closed
+   scene checks, M2/Ollama isolation and 24-hour stability. E1 schema-v2 persistence
+   and the native-resolution continuous frame source are complete.
 2. Complete three-browser HD acceptance on the installed i9.
 3. Complete the supervised, normal-care-only real-Baby Guardian observation gate;
    never stage a hazardous pose or persist household media/model prose.
