@@ -620,9 +620,10 @@ overlap with persisted crops.
   candidate, missing/ambiguous/out-of-bounds candidates, fixed 640×640 letterbox preprocessing,
   deterministic output decoding, and validated schema-v2 geometry migration are covered.
   Implemented without runtime model download or configurable output semantics.
-- [ ] **15.2 Privacy-safe collection:** write RED tests proving full frames never reach
-  persistence, overlapping person/skin candidates are discarded, duplicates and poor
-  quality are rejected, files are private/atomic, and output contains counts only.
+- [x] **15.2 Privacy-safe collection:** tests prove full frames never reach persistence,
+  overlapping person/skin candidates and privacy-backend failures are discarded,
+  duplicates and poor quality are rejected, crop files are private/atomic, and the
+  public result contains closed aggregate counts only.
 - [ ] **15.3 Dataset and augmentation:** write RED tests for deterministic split before
   augmentation, crop-only annotations, no absolute paths, bounded transformations,
   negative-sample licensing metadata, and zero household full-frame export.

@@ -9,8 +9,9 @@ the detailed approved specs and plans remain authoritative for behavior.
 **Status:** E1 persistence passed on 2026-08-16. The fixed native frame source and
 non-16:9 rectification prerequisites pass, but a fixed private ROI still leaves the
 humidity face fail-closed. Approved Task 15 now inserts i9-local automatic WS2021
-localization before E2; its strict locator and schema-v2 relocation contracts are
-complete, and privacy-safe collection is next. E2 comparisons have not started.
+localization before E2; its strict locator/schema-v2 relocation contracts and
+privacy-safe crop persistence are complete. Deterministic dataset preparation is next.
+E2 comparisons have not started.
 
 **Prerequisites:** Run from the `kandysmith` login that owns the installed i9 GUI and
 launchd services. Keep calibration files, reference images, databases and runtime

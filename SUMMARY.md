@@ -20,8 +20,8 @@ Updated: 2026-08-16
   non-16:9 rectification now passes both ROI geometry gates plus the temperature circle
   match. Humidity remains fail-closed as `calibration_invalid`. The approved i9-local
   automatic-localization Task 15 is now inserted before E2; strict localization and
-  validated schema-v2 relocation contracts are complete, and privacy-safe crop
-  collection is the current priority.
+  validated schema-v2 relocation contracts plus privacy-safe crop persistence are
+  complete, and deterministic dataset preparation is the current priority.
 - The earlier untracked `uv.lock` was never staged or published; the recovered checkout
   does not recreate or claim ownership of it.
 
@@ -265,8 +265,8 @@ legacy branch into this line without a separate integration decision.
 
 ## Next Priorities
 
-1. Continue WS2021 Task 15 with privacy-safe crop collection, dataset preparation,
-   explicit i9-local training/export and worker integration. Then resume E2–E5 with
+1. Continue WS2021 Task 15 with deterministic dataset preparation, explicit i9-local
+   training/export and worker integration. Then resume E2–E5 with
    30 daylight comparisons, fail-closed scene checks, M2/Ollama isolation and 24-hour
    stability. E1 and the native-resolution continuous frame source are complete.
 2. Complete three-browser HD acceptance on the installed i9.
