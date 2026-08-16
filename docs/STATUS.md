@@ -202,6 +202,10 @@
   outer quadrilateral/two-circle layout and applies one migrated schema-v2 geometry to
   all five frames. Failure never reuses an old position. No detector weights or
   household images are tracked; the next gate is supervised private crop collection.
+- Installed-i9 Task 15.6b daylight position 1/5 completed with no baby present. The
+  private store contains 60 paired crops/metadata records with 0700/0600 permissions,
+  matching names, closed metadata fields and matching SHA-256 values. No media or
+  sample identity entered Git or status output. Daylight position 2/5 is next.
 - After Task 15, resume environment-plan E2–E5 with 30 daylight comparisons,
   darkness/infrared/glare/occlusion/gauge-movement fail-closed checks, M2/Ollama outage
   isolation and the independent 24-hour run.

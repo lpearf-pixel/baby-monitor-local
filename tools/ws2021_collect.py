@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import argparse
 import time
+from collections.abc import Callable
 from pathlib import Path
 
 from packages.contracts.settings import AppSettings
@@ -55,8 +56,7 @@ def main() -> int:
             )
         )
         locator = _locator(arguments.mode, settings, calibration)
-        attempts = max(1, arguments.duration_seconds * 1000 // arguments.interval_ms)
-        for index in range(attempts):
+        def attempt() -> CollectionCode:
             try:
                 burst = frame_source.capture_burst(
                     frame_count=1,
@@ -65,12 +65,15 @@ def main() -> int:
                 )
                 frame = burst.frames[0]
                 location = locator.locate(frame)
-                code = collector.collect(frame, location)
+                return collector.collect(frame, location)
             except Exception:
-                code = CollectionCode.FAILED
-            counts = counts.record(code)
-            if index + 1 < attempts:
-                time.sleep(arguments.interval_ms / 1000)
+                return CollectionCode.FAILED
+
+        counts = _collect_for_duration(
+            attempt,
+            duration_seconds=arguments.duration_seconds,
+            interval_seconds=arguments.interval_ms / 1000,
+        )
     except Exception:
         counts = counts.record(CollectionCode.FAILED)
     print("ws2021_collect=complete")
@@ -107,6 +110,27 @@ def _locator(mode: str, settings: AppSettings, calibration: object) -> object:
 
 def _resolve(path: Path) -> Path:
     return path if path.is_absolute() else ROOT / path
+
+
+def _collect_for_duration(
+    attempt: Callable[[], CollectionCode],
+    *,
+    duration_seconds: float,
+    interval_seconds: float,
+    monotonic: Callable[[], float] = time.monotonic,
+    sleep: Callable[[float], None] = time.sleep,
+) -> CollectionCounts:
+    deadline = monotonic() + duration_seconds
+    counts = CollectionCounts()
+    first = True
+    while first or monotonic() < deadline:
+        first = False
+        counts = counts.record(attempt())
+        remaining = deadline - monotonic()
+        if remaining <= 0:
+            break
+        sleep(min(interval_seconds, remaining))
+    return counts
 
 
 if __name__ == "__main__":

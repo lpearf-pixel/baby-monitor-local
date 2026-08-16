@@ -651,6 +651,9 @@ overlap with persisted crops.
   five 30-second daylight positions plus night/IR collection, review only uncertain
   crops, train locally, verify minimum 1/10-width detection, and resume E2 only after a
   private production reading passes all existing deterministic gates.
+  Daylight position 1/5 (current schema-v2 location) completed on 2026-08-16 with 60
+  private crop/metadata pairs and a passing aggregate integrity check; positions 2–5,
+  night/IR, training/export and reading acceptance remain open.
 
 **Human work:** first confirm no baby is present and collect the current calibrated
 position, then place the gauge in five upright, front-facing positions for 30 seconds

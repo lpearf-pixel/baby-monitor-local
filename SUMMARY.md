@@ -23,8 +23,9 @@ Updated: 2026-08-16
   validated schema-v2 relocation contracts plus privacy-safe crop persistence are
   complete, as are deterministic private dataset preparation and pinned i9-local CPU
   training/export tooling and fail-closed gauge-worker integration. Real weights await
-  private crops; the current gate is a human-confirmed no-baby scene followed by the
-  first 30-second calibrated collection.
+  private crops. Daylight position 1/5 completed with 60 valid private pairs; the
+  current gate is human placement of the upright gauge at daylight position 2/5 with
+  no baby present.
 - The earlier untracked `uv.lock` was never staged or published; the recovered checkout
   does not recreate or claim ownership of it.
 
@@ -268,12 +269,10 @@ legacy branch into this line without a separate integration decision.
 
 ## Next Priorities
 
-1. Continue WS2021 Task 15 by confirming no baby is in frame, then run the first
-   calibrated 30-second private collection, the approved moved positions, and pinned
-   i9-local training/OpenVINO export. Resume
-   E2–E5 with
-   30 daylight comparisons, fail-closed scene checks, M2/Ollama isolation and 24-hour
-   stability. E1 and the native-resolution continuous frame source are complete.
+1. Continue WS2021 Task 15 with daylight positions 2–5, then night/IR collection and
+   pinned i9-local training/OpenVINO export. Resume E2–E5 with 30 daylight comparisons,
+   fail-closed scene checks, M2/Ollama isolation and 24-hour stability. E1 and the
+   native-resolution continuous frame source are complete.
 2. Complete three-browser HD acceptance on the installed i9.
 3. Complete the supervised, normal-care-only real-Baby Guardian observation gate;
    never stage a hazardous pose or persist household media/model prose.

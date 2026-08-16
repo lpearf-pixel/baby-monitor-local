@@ -12,8 +12,9 @@ humidity face fail-closed. Approved Task 15 now inserts i9-local automatic WS202
 localization before E2; its strict locator/schema-v2 relocation contracts and
 privacy-safe crop persistence, deterministic dataset preparation and pinned Intel CPU
 training/export tooling and model-independent worker integration are complete. The
-next gate requires a human-confirmed no-baby scene for the first 30-second calibrated
-private crop collection. E2 comparisons have not started.
+first human-confirmed no-baby calibrated collection completed with 60 valid private
+pairs. The next gate is daylight position 2/5, still with no baby present and the gauge
+upright. E2 comparisons have not started.
 
 **Prerequisites:** Run from the `kandysmith` login that owns the installed i9 GUI and
 launchd services. Keep calibration files, reference images, databases and runtime
