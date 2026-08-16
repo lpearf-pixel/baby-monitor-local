@@ -184,7 +184,9 @@
   coordinates, image, path or household reading entered this checkpoint.
 - The fixed native-resolution `gauge` MJPEG profile now supplies one continuous
   2560×1440 five-frame burst. The former `frame_source_unavailable` blocker is closed;
-  the first production read now fails closed at `roi_out_of_bounds`, so no E2 accuracy
+  a rectification correction now preserves the calibrated gauge-plane aspect ratio and
+  supplies bounded search padding. Both ROI geometry gates and the temperature circle
+  match pass; humidity remains fail-closed as `calibration_invalid`, so no E2 accuracy
   sample has been counted.
 - The next approved product gate is environment-plan E2–E5: reconcile the saved ROI,
   then complete 30 daylight comparisons,

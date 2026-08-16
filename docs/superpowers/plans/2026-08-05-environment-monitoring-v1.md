@@ -232,12 +232,15 @@ Commit: `feat: capture controlled gauge frame bursts`
 
 #### E2 real-device corrective slice: preserve calibrated quadrilateral aspect ratio
 
-- **Status:** approved after the 2026-08-16 E1 re-calibration reproduced
-  `geometry_roi_out_of_bounds` on both faces; implementation pending.
+- **Status:** implemented and software-verified after the 2026-08-16 E1
+  re-calibration reproduced `geometry_roi_out_of_bounds` on both faces. The private
+  production probe now passes both ROI geometry gates and the temperature circle
+  match; humidity remains fail-closed as `calibration_invalid`, so E2 is still pending.
 - **Prerequisite:** schema-v2 calibration valid and fixed 2560×1440 five-frame
   `gauge` burst passing.
 - **Codex work:** add a failing portrait/non-16:9 quadrilateral regression test;
-  size the rectified canvas from calibrated edge lengths; keep source dimensions
+  infer the bounded rectified aspect ratio from circular scale-mark geometry; add
+  only enough bounded padding for the fixed 1.3-radius search window; keep source dimensions
   separate from rectified canvas dimensions through point transformation and face
   validation; run reader, environment, and production probes.
 - **Human work:** none for implementation. A further calibration is required only if

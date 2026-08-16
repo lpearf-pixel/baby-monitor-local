@@ -6,9 +6,10 @@ the detailed approved specs and plans remain authoritative for behavior.
 
 ## P0 — Environment real-device acceptance (current)
 
-**Status:** E1 passed on 2026-08-16. The E2 frame-source prerequisite now passes a
-native-resolution five-frame burst, but the first production read fails closed with
-`roi_out_of_bounds`; E2 comparisons have not started. E2–E5 are unfinished.
+**Status:** E1 persistence passed on 2026-08-16. The E2 frame-source and corrected
+non-16:9 ROI geometry prerequisites now pass; the temperature circle matches, while
+humidity remains fail-closed as `calibration_invalid`. E2 comparisons have not started.
+E2–E5 are unfinished.
 
 **Prerequisites:** Run from the `kandysmith` login that owns the installed i9 GUI and
 launchd services. Keep calibration files, reference images, databases and runtime
@@ -17,7 +18,8 @@ metrics in ignored local storage.
 **Stages:**
 
 1. E1 — complete one private WS2021 schema-v2 Dashboard calibration. **PASS**
-2. E2 — first reconcile the saved calibration geometry until a production reading
+2. E2 — first re-mark the humidity face until its strict circle match passes, then
+   obtain an available production reading and
    passes the ROI gate, then record at least 30 daylight comparisons against ±1℃ and
    ±5%RH.
 3. E3 — verify darkness/infrared, glare, occlusion and gauge movement fail closed.

@@ -208,12 +208,16 @@ class Ws2021Reader:
             transform,
             width,
             height,
+            warped.shape[1],
+            warped.shape[0],
         )
         temperature_geometry = self._face_geometry(
             calibration.temperature,
             transform,
             width,
             height,
+            warped.shape[1],
+            warped.shape[0],
         )
         if self._face_is_occluded(gray, humidity_geometry) or self._face_is_occluded(
             gray, temperature_geometry
@@ -276,27 +280,145 @@ class Ws2021Reader:
             ],
             dtype=np.float32,
         )
+        output_width, output_height = Ws2021Reader._rectified_dimensions(
+            source,
+            calibration,
+            width,
+            height,
+        )
         destination = np.asarray(
-            [[0, 0], [width - 1, 0], [width - 1, height - 1], [0, height - 1]],
+            [
+                [0, 0],
+                [output_width - 1, 0],
+                [output_width - 1, output_height - 1],
+                [0, output_height - 1],
+            ],
             dtype=np.float32,
         )
         transform = cv2.getPerspectiveTransform(source, destination)
         if not np.isfinite(transform).all() or abs(float(np.linalg.det(transform))) < 1e-9:
             raise _FrameRejected(ReadingFailureReason.CALIBRATION_INVALID)
+        left, top, right, bottom = Ws2021Reader._rectification_padding(
+            transform,
+            calibration,
+            width,
+            height,
+            output_width,
+            output_height,
+        )
+        translated_width = output_width + left + right
+        translated_height = output_height + top + bottom
+        scale = min(
+            1.0,
+            width / translated_width,
+            height / translated_height,
+        )
+        translation = np.asarray(
+            [[scale, 0, left * scale], [0, scale, top * scale], [0, 0, 1]],
+            dtype=np.float64,
+        )
+        transform = translation @ transform
+        output_width = max(2, round(translated_width * scale))
+        output_height = max(2, round(translated_height * scale))
         return (
-            cv2.warpPerspective(image, transform, (width, height)),
+            cv2.warpPerspective(image, transform, (output_width, output_height)),
             transform,
         )
+
+    @staticmethod
+    def _rectification_padding(
+        transform: np.ndarray,
+        calibration: Ws2021Calibration,
+        source_width: int,
+        source_height: int,
+        canvas_width: int,
+        canvas_height: int,
+    ) -> tuple[int, int, int, int]:
+        left = top = right = bottom = 0.0
+        for face in (calibration.humidity, calibration.temperature):
+            center_x, center_y = Ws2021Reader._transform_point(
+                face.center, transform, source_width, source_height
+            )
+            needle_x, needle_y = Ws2021Reader._transform_point(
+                face.needle_tip, transform, source_width, source_height
+            )
+            radius = math.hypot(needle_x - center_x, needle_y - center_y) / 0.8
+            search_radius = radius * 1.3
+            left = max(left, search_radius - center_x)
+            top = max(top, search_radius - center_y)
+            right = max(right, center_x + search_radius - canvas_width)
+            bottom = max(bottom, center_y + search_radius - canvas_height)
+        return tuple(max(0, math.ceil(value)) for value in (left, top, right, bottom))
+
+    @staticmethod
+    def _rectified_dimensions(
+        source: np.ndarray,
+        calibration: Ws2021Calibration,
+        source_width: int,
+        source_height: int,
+    ) -> tuple[int, int]:
+        area = abs(float(cv2.contourArea(source)))
+        if not math.isfinite(area) or area < 4:
+            raise _FrameRejected(ReadingFailureReason.CALIBRATION_INVALID)
+
+        def pixel(point: Point) -> np.ndarray:
+            return np.asarray(
+                [point.x * (source_width - 1), point.y * (source_height - 1)],
+                dtype=np.float32,
+            )
+
+        faces = tuple(
+            (
+                pixel(face.center),
+                tuple(pixel(mark.point) for mark in face.scale_marks),
+            )
+            for face in (calibration.humidity, calibration.temperature)
+        )
+        best_aspect: float | None = None
+        best_score = math.inf
+        for aspect in np.linspace(0.25, 4.0, 376):
+            destination = np.asarray(
+                [[0, 0], [aspect * 1_000, 0], [aspect * 1_000, 1_000], [0, 1_000]],
+                dtype=np.float32,
+            )
+            transform = cv2.getPerspectiveTransform(source, destination)
+            score = 0.0
+            for center, marks in faces:
+                points = np.asarray([[center, *marks]], dtype=np.float32)
+                transformed = cv2.perspectiveTransform(points, transform)[0]
+                radii = np.linalg.norm(transformed[1:] - transformed[0], axis=1)
+                mean_radius = float(np.mean(radii))
+                if mean_radius <= 0 or not np.isfinite(radii).all():
+                    score = math.inf
+                    break
+                score += float(np.std(radii) / mean_radius)
+            if score < best_score:
+                best_score = score
+                best_aspect = float(aspect)
+        if best_aspect is None or not math.isfinite(best_score):
+            raise _FrameRejected(ReadingFailureReason.CALIBRATION_INVALID)
+
+        output_width = math.sqrt(area * best_aspect)
+        output_height = math.sqrt(area / best_aspect)
+        scale = min(1.0, source_width / output_width, source_height / output_height)
+        return max(2, round(output_width * scale)), max(2, round(output_height * scale))
 
     @staticmethod
     def _transform_point(
         point: Point,
         transform: np.ndarray,
-        width: int,
-        height: int,
+        source_width: int,
+        source_height: int,
     ) -> tuple[float, float]:
         source = np.asarray(
-            [[[point.x * (width - 1), point.y * (height - 1)]]],
+            [
+                [
+                    [
+                        point.x * (source_width - 1),
+                        point.y * (source_height - 1),
+                    ]
+                ]
+            ],
             dtype=np.float32,
         )
         transformed = cv2.perspectiveTransform(source, transform)[0, 0]
@@ -306,24 +428,26 @@ class Ws2021Reader:
         self,
         face: GaugeFace,
         transform: np.ndarray,
-        width: int,
-        height: int,
+        source_width: int,
+        source_height: int,
+        canvas_width: int,
+        canvas_height: int,
     ) -> _FaceGeometry:
         center_x, center_y = self._transform_point(
-            face.center, transform, width, height
+            face.center, transform, source_width, source_height
         )
         needle_x, needle_y = self._transform_point(
             face.needle_tip,
             transform,
-            width,
-            height,
+            source_width,
+            source_height,
         )
         radius = math.hypot(needle_x - center_x, needle_y - center_y) / 0.8
         if radius < 12:
             raise _FrameRejected(ReadingFailureReason.CALIBRATION_INVALID)
         if not (
-            radius <= center_x < width - radius
-            and radius <= center_y < height - radius
+            radius <= center_x < canvas_width - radius
+            and radius <= center_y < canvas_height - radius
         ):
             raise _FrameRejected(ReadingFailureReason.ROI_OUT_OF_BOUNDS)
         return _FaceGeometry(

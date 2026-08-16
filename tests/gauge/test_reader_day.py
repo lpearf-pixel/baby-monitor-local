@@ -2,9 +2,12 @@ from __future__ import annotations
 
 import importlib
 
+import cv2
+import numpy as np
 import pytest
 
 from packages.contracts.events import ReadingFailureReason, ReadingState
+from services.gauge.calibration import GaugeQuadrilateral
 from tests.gauge.synthetic_dial import (
     NOW,
     blurred_frame,
@@ -21,6 +24,47 @@ from tests.gauge.synthetic_dial import (
 
 def reader_module():
     return importlib.import_module("services.gauge.reader")
+
+
+def test_rectification_preserves_portrait_gauge_aspect_ratio() -> None:
+    module = reader_module()
+    source = np.zeros((480, 640, 3), dtype=np.uint8)
+    portrait = calibration().model_copy(
+        update={
+            "gauge_quadrilateral": GaugeQuadrilateral.model_validate(
+                {
+                    "top_left": {"x": 0.3, "y": 0.1},
+                    "top_right": {"x": 0.7, "y": 0.1},
+                    "bottom_right": {"x": 0.7, "y": 0.9},
+                    "bottom_left": {"x": 0.3, "y": 0.9},
+                }
+            )
+        }
+    )
+
+    rectified, _transform = module.Ws2021Reader()._rectify(source, portrait)
+
+    height, width = rectified.shape[:2]
+    corners = np.asarray(
+        [[
+            [point.x * (source.shape[1] - 1), point.y * (source.shape[0] - 1)]
+            for point in portrait.gauge_quadrilateral.points
+        ]],
+        dtype=np.float32,
+    )
+    transformed = cv2.perspectiveTransform(corners, _transform)[0]
+    gauge_width = np.linalg.norm(transformed[1] - transformed[0])
+    gauge_height = np.linalg.norm(transformed[3] - transformed[0])
+    assert gauge_height / gauge_width == pytest.approx(1.5, rel=0.02)
+    for face in (portrait.humidity, portrait.temperature):
+        module.Ws2021Reader()._face_geometry(
+            face,
+            _transform,
+            source.shape[1],
+            source.shape[0],
+            width,
+            height,
+        )
 
 
 def test_red_needles_produce_both_values() -> None:
