@@ -406,3 +406,28 @@ Dashboard 画面持续更新。本文不记录私网地址、设备标识、凭�
 该事件同时确认 macOS 账户边界：`chatgpt-agent` 中的 Codex 可能无法权威观察
 `kandysmith` GUI 域中的监听和 launchd 服务。后续实机操作应从 `kandysmith` SSH
 登录直接启动 Codex；不要通过全盘读取权限或无限制 sudo 绕过账户隔离。
+
+## Project plan reconciliation checkpoint
+
+2026-08-16，按仓库现场状态复核正式规格、计划和交接文档。环境软件与 Guardian
+功能闭环保持已完成，不重新设计。当前未完成工作按依赖固定为：环境 E1–E5 实机门、
+三浏览器高清门、正常照护且不得摆拍危险姿势的真实宝宝 Guardian 观察门、另行批准的
+音频/哭声阶段、Tailscale Serve/ACL 私有远程访问，以及最终 72 小时发布门。
+
+WS2021 旧 schema-v1 标定稿明确标为已被 2026-08-05 批准的 schema-v2 环境规格
+取代。`docs/NEXT.md` 现在为每个阶段记录状态、前置条件、Codex/真人边界、验收、
+验证和下一步；详细行为仍由各自正式规格和计划约束。本检查点只整理文档，没有启动
+实机标定、24/72 小时运行、通知、设备操作或业务代码变更，也没有 push、merge 或
+修改 `main`。
+
+## WS2021 E1 private calibration checkpoint
+
+2026-08-16，在拥有服务的 `kandysmith` 登录会话中完成一次鉴权 Dashboard
+schema-v2 标定。只读验证确认标定模型有效、参考 JPEG 有效且两份文件均为私有权限；
+本文不记录标定 ID、坐标、画面、温湿度值、路径、地址或凭据。Guardian 固定 readiness
+同时全部通过。
+
+该结果只关闭 E1 标定文件门，不证明读针准确率。标定后的首条环境记录引用了新标定，
+但固定高分辨率 `source` 的 MJPEG burst 返回 `frame_source_unavailable`；独立
+`alpha-source-check` 仍确认 H.265 source 健康。E2 必须先修复并验证这一受控帧源边界，
+不能把不可用样本计入 30 组白天对照。

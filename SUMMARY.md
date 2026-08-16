@@ -1,6 +1,6 @@
 # Baby Monitor Local Project Summary
 
-Updated: 2026-08-15
+Updated: 2026-08-16
 
 ## Snapshot
 
@@ -15,8 +15,9 @@ Updated: 2026-08-15
   was created for the squash publication.
 - The functional guardian event loop and installed-i9 10-minute performance gate are
   complete. The go2rtc startup recovery defect found during the 2026-08-15 operator
-  session is fixed locally. The current priority is private WS2021 calibration and the
-  independent 24-hour environment stability gate.
+  session is fixed locally. WS2021 E1 private schema-v2 calibration passed on
+  2026-08-16. The current priority is E2 daylight accuracy, followed by the remaining
+  environment acceptance gates.
 - The earlier untracked `uv.lock` was never staged or published; the recovered checkout
   does not recreate or claim ownership of it.
 
@@ -202,9 +203,9 @@ window, not 24/72-hour stability or unattended-care safety.
 | PR/merge | No guardian PR; not merged |
 | Protected branches | `main` and `stable/xiaomi-alpha`; unchanged |
 
-Local HEAD is `1b1732d` on `codex/guardian-live-acceptance`. At the latest
-read-only check it was 19 commits ahead of its upstream and zero behind. Nothing from
-this recovery slice was pushed, merged or opened as a PR. Untracked `.local/`,
+The latest pre-documentation Git check found `a716dcc` on
+`codex/guardian-live-acceptance`, 20 commits ahead of its upstream and zero behind.
+Nothing from this recovery slice was pushed, merged or opened as a PR. Untracked `.local/`,
 `Interactive` and `test.sh` were deliberately preserved.
 
 ## Latest Installed-i9 Runtime Evidence
@@ -239,11 +240,11 @@ legacy branch into this line without a separate integration decision.
 
 ## Pending Real-Device Acceptance
 
-- Complete private bed-zone configuration and the restricted i9-to-M2 semantic bridge.
-- Validate real semantic response shape, cold/hot latency and daylight, darkness,
-  mosquito-net, adult, empty-bed and safe simulated-obstruction scenes.
-- Complete WS2021 real calibration, 30 daylight comparisons, night/glare/occlusion
-  rejection and the independent 24-hour environment gate.
+- Complete private bed-zone acceptance and real Baby posture/face/bed-exit accuracy;
+  the restricted i9-to-M2 bridge and supervised seven-scene synthetic gate have passed.
+- Complete WS2021 schema-v2 calibration, 30 daylight comparisons,
+  darkness/infrared/glare/occlusion/gauge-movement fail-closed checks, M2/Ollama outage
+  isolation and the independent 24-hour environment gate.
 - Complete three-browser HD acceptance and the final 72-hour camera, i9, M2, network,
   storage and two-phone release gate before tagging `v0.1.0`.
 
@@ -260,13 +261,18 @@ legacy branch into this line without a separate integration decision.
 
 ## Next Priorities
 
-1. Complete the private WS2021 calibration and independent 24-hour environment gate.
+1. Continue WS2021 plan gates E2–E5: 30 daylight comparisons, fail-closed scene checks,
+   M2/Ollama isolation and 24-hour stability. E1 schema-v2 calibration is complete.
 2. Complete three-browser HD acceptance on the installed i9.
-3. Define per-parent acknowledgement and false-positive feedback only through a future
+3. Complete the supervised, normal-care-only real-Baby Guardian observation gate;
+   never stage a hazardous pose or persist household media/model prose.
+4. Add audio/cry candidates only after a separately approved current design.
+5. Complete authenticated private remote access using Tailscale Serve/ACL only.
+6. Complete the final 72-hour release gate before any release/tag decision.
+7. Define per-parent acknowledgement and false-positive feedback only through a future
    contract where Baby Care consumes Guardian's read-only feed and owns identity/write
    state; do not create a second identity model inside Guardian.
-4. Consider the FFmpeg ring-buffer upgrade after the functional and real-device gates.
-5. Add audio/cry candidates only after the visual guardian loop is functionally closed.
+8. Consider the FFmpeg ring-buffer upgrade after the functional and real-device gates.
 
 ## Operating Commands
 

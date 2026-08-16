@@ -38,12 +38,11 @@
   ring sampling, and immediate urgent review scheduling are implemented locally.
   Missing models preserve motion, scene health and regular Qwen review while semantic
   tracks remain unavailable; the fast path cannot open or recover a risk alert.
-- Realtime visual scheduling: the i9 production gate failed with 60/60 samples at
-  1 FPS while the same worker run in the foreground reached 5 FPS within the 180 ms
-  P95 budget. The visual launchd template now uses `Interactive`, and a dedicated
-  update command validates, backs up, atomically replaces, verifies, and rolls back
-  only `com.babymonitor.visual`. The i9 installed job still requires the short
-  post-update observation and full 10-minute performance gate.
+- Realtime visual scheduling: the earlier i9 production gate exposed launchd
+  `Background` scheduling at 1 FPS. The visual job now uses `Interactive`, and the
+  installed i9 subsequently passed the full 10-minute gate at 5 FPS for all 60
+  samples. The dedicated update command remains rollback-safe and changes only
+  `com.babymonitor.visual`.
 - Visual frame-health alerts: the restart-safe SQLite incident pipeline and
   privacy-safe ntfy delivery are deployed on the Intel i9. A fresh controlled
   `source_offline` event delivered one open alert, recovered after the fixed
@@ -73,8 +72,9 @@
   `make alpha-guardian-test` runs repository, software, installation, service, media
   and isolated guardian gates with fixed redacted PASS/FAIL output. The automatic
   command never sends a real ntfy test, synthesizes a risk, or writes production
-  event/evidence data. It still must be run on the installed i9 to establish real
-  camera and launchd readiness.
+  event/evidence data. The later supervised installed-i9 acceptance established
+  readiness for its recorded run; future releases must rerun the automatic gate as
+  fresh evidence rather than treating that checkpoint as permanent health.
 - Baby guardian live acceptance: the separate `make alpha-guardian-test-live` command
   requires a controlling terminal, confirms that no real infant is present and that an
   adult is supervising, checks Guardian readiness, sends at most one clearly labeled
@@ -147,9 +147,9 @@
 
 ## Not yet in the usable Alpha
 
-- Installed i9-to-M2 SSH bridge, private bed-zone configuration, and end-to-end
-  household validation of face-obstruction, prone-position, bed-exit, or
-  adult-intervention candidates.
+- Private bed-zone acceptance and real Baby validation of face-obstruction,
+  prone-position, bed-exit and adult-intervention candidates. The installed
+  i9-to-M2 bridge and supervised synthetic household-scene gate have passed.
 - Authenticated parent feedback through the future Baby Care identity integration, the
   later FFmpeg clip upgrade, and cry/audio candidate detection. Guardian risk
   lifecycle persistence and safe-frame evidence export are complete locally;
@@ -179,5 +179,13 @@
 - Runtime checks from `chatgpt-agent` are not authoritative for services in the
   `kandysmith` GUI domain. Launch future operational Codex sessions directly from the
   `kandysmith` SSH login; do not grant broad disk or sudo access.
-- The next approved product gate remains private WS2021 calibration and the independent
-  24-hour environment stability run.
+- Environment E1 passed on 2026-08-16: the installed i9 saved a valid schema-v2
+  calibration and valid reference JPEG with private file modes. No calibration ID,
+  coordinates, image, path or household reading entered this checkpoint.
+- The next approved product gate is environment-plan E2–E5: 30 daylight comparisons,
+  darkness/infrared/glare/occlusion/gauge-movement fail-closed checks, M2/Ollama outage
+  isolation and the independent 24-hour run.
+- Ordered later stages are the three-browser HD gate, normal-care-only real-Baby
+  Guardian observation, separately approved audio/cry work, authenticated private
+  Tailscale access and the final 72-hour release gate. `docs/NEXT.md` owns the detailed
+  prerequisites, Codex/human boundary, acceptance and handoff for each stage.

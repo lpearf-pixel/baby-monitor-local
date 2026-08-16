@@ -1,78 +1,136 @@
 # Next Work
 
-The repository baseline and environment implementation are complete. Do not restart M0.
+The repository baseline, environment software and functional Guardian loop are
+complete. Do not restart completed milestones. Execute the following stages in order;
+the detailed approved specs and plans remain authoritative for behavior.
 
-## P0 — Deliver the fixed Xiaomi Alpha on Intel i9
+## P0 — Environment real-device acceptance (current)
 
-1. Transfer the fixed `codex/basic-usable-alpha` package or publish the 29 local
-   commits only after explicit push approval.
-2. On the i9 run `make alpha-install`, `make alpha-start`, and
-   `make alpha-source-check`.
-3. Apply the verified MJSXJ17CM native-HD subtype with
-   `make alpha-subtype-apply`; retain the automatic rollback gate.
-4. Check M2 Chrome/Safari and iPhone browsers at 1x/2x/3x, including no-black-frame
-   fallback and on-demand VideoToolbox shutdown.
-5. Send test notifications to both iPhones and confirm no image or private
-   address is included.
+**Status:** E1 passed on 2026-08-16; E2 is next. E2–E5 are unfinished.
 
-## P1 — Finish real environment acceptance
+**Prerequisites:** Run from the `kandysmith` login that owns the installed i9 GUI and
+launchd services. Keep calibration files, reference images, databases and runtime
+metrics in ignored local storage.
 
-1. Complete one private WS2021 schema-v2 Dashboard calibration.
-2. Record 30 daylight comparisons plus night, glare, and occlusion rejection.
-3. Run the independent gauge/watchdog path for 24 hours with M2 offline.
+**Stages:**
 
-## P2 — Add the local visual alert loop
+1. E1 — complete one private WS2021 schema-v2 Dashboard calibration. **PASS**
+2. E2 — record at least 30 daylight comparisons against ±1℃ and ±5%RH.
+3. E3 — verify darkness/infrared, glare, occlusion and gauge movement fail closed.
+4. E4 — take M2/Ollama offline and confirm gauge, storage, state and notification
+   independence.
+5. E5 — run the gauge/watchdog path for 24 hours without scheduling backlog; complete
+   the remaining state/notification, load-shedding and two-phone payload checks.
 
-1. R1 complete locally: strict Qwen observation contracts and the pure deterministic
-   risk state machine are implemented and tested.
-2. R2a complete locally: bed-zone crop, privacy masking, bounded JPEG preparation and
-   the 40-second in-memory frame ring are implemented and tested with generated images.
-3. R2b complete locally: a fixed private analysis stream, one continuous loopback
-   consumer, deterministic disconnect/freeze checks, bounded reconnect and
-   single-flight scheduling are implemented without a disk-backed normal-frame queue.
-4. R3 software complete locally: fixed loopback Qwen/Ollama endpoint, strict client
-   parsing, timeout, degraded/recovery behavior, production worker composition and
-   independent launchd lifecycle. Next install the restricted tunnel and private bed
-   zone, then verify real response schema, P95 latency and household candidate scenes.
-5. R3.5 software complete locally. The performance recheck is intentionally deferred:
-   retain the launchd update and 3/10-minute samplers, but do not let them block the
-   guardian feature loop. Software tests do not establish installed-i9 performance or
-   household accuracy.
-6. Source-health ntfy open/recovery delivery and independent gauge/real-time service
-   continuity passed one controlled i9 outage. Do not repeat a Baby posture or
-   face-risk event for this completed gate.
-7. R4 event core complete locally: deterministic risk transitions persist with stable
-   IDs, restart restoration, adult-intervention audit and redacted JSON-line logs.
-8. R4 safe evidence complete locally: a new risk event receives a privacy-processed
-   screenshot and a bounded pre-10/post-30-second animated WebP; restart and shutdown
-   mark incomplete captures explicitly instead of fabricating complete clips.
-9. R4 risk text ntfy software complete locally: open, recovery and linked adult
-   intervention use a persistent idempotent outbox and an off-thread bounded
-   dispatcher; payloads are text-only and omit media, paths, private addresses,
-   credentials and unauthenticated links. Physical delivery to both iPhones passed the
-   supervised Intel i9 acceptance on 2026-08-15.
-10. Option A startup, automatic acceptance and the separate supervised live acceptance
-    passed on the installed Intel i9 on 2026-08-15. The supervised command confirmed
-    one harmless text notification on both iPhones, authenticated live view and the
-    Guardian event list with no real infant present and an adult supervising. Preserve
-    the fixed PASS/FAIL output for future reruns; the automatic command remains
-    notification-free.
-11. Authenticated event queries and the media-free Dashboard list are complete locally.
-    Evidence retention is also complete: cleanup uses the centralized 30-day/30-GiB
-    limits while protecting open, collecting, notification-pending and
-    recovery-notice-nonterminal records. The supervised household scene command is
-    implemented in software, and its physical seven-scene run passed on 2026-08-15
-    with 70 operator-confirmed correct outcomes. The installed-i9 launchd update and
-    10-minute production performance gate passed at 5 FPS for all 60 samples. Next
-    complete the independent 24-hour environment calibration/stability gate. Per-parent
-    acknowledgement and actor-bound false-positive
-    feedback require a future contract where Baby Care consumes Guardian's read-only
-    feed and owns identity/write state; they must not create a competing Guardian
-    identity model. Live viewing must remain independent of AI.
-    Upgrade to the FFmpeg ring-buffer option only after the functional guardian loop is
-    complete.
+**Codex can:** run bounded readiness checks, guide the approved workflow, validate
+closed outputs, diagnose recoverable failures and update redacted documentation.
 
-## P3 — Release gate
+**Human required:** operate the authenticated Dashboard, position/read the physical
+gauge, provide reference comparisons, supervise scene changes and keep the i9 running.
 
-Add audio candidates and private Tailscale access, then complete the 72-hour i9,
-camera, M2, network, storage, and two-phone acceptance before tagging `v0.1.0`.
+**Acceptance and tests:** Follow environment plan E1–E5 and approved environment spec
+section 18. Every published daylight reading meets the error target; unreliable input
+is `unavailable`; M2 outage does not stop the environment path; 24-hour evidence shows
+no backlog. Run focused software checks only if code changes become separately approved.
+
+**Next:** P1 three-browser HD acceptance.
+
+## P1 — Three-browser HD real-device acceptance
+
+**Status:** Pending. Installed source/codec and Guardian live-view checks have passed;
+the browser matrix has not.
+
+**Prerequisites:** P0 complete; i9 source and Dashboard healthy.
+
+**Codex can:** run bounded source/status commands, provide the fixed matrix, collect
+closed outcomes and diagnose recoverable native/compat failures.
+
+**Human required:** visually check M2 Chrome, M2 Safari and iPhone browser behavior at
+1x/2x/3x.
+
+**Acceptance and tests:** Follow Hybrid HD plan Task 6 Step 6. Confirm visible detail,
+no-black-frame fallback, profile selection and on-demand VideoToolbox shutdown without
+exposing media or private addresses.
+
+**Next:** P2 real-Baby Guardian observation gate.
+
+## P2 — Real-Baby Guardian observation gate
+
+**Status:** Pending. The supervised seven-scene synthetic gate passed; real Baby
+posture, face-obstruction and bed-exit accuracy remain unaccepted.
+
+**Prerequisites:** P0 and P1 complete; private bed-zone acceptance complete; adult
+supervision and normal care only.
+
+**Codex can:** prepare the closed observation checklist, verify redacted status/event
+contracts, aggregate fixed outcomes and update checkpoints.
+
+**Human required:** supervise continuously and classify naturally occurring safe
+observations. Never stage obstruction, prone position, bed exit or another hazard.
+
+**Acceptance and tests:** Follow V1 plan Task 13 G1. Store no household media, model
+prose, coordinates or free-form notes. Passing proves only the observed scenes and does
+not authorize unattended care.
+
+**Next:** P3 audio/cry design and implementation.
+
+## P3 — Audio and cry candidates
+
+**Status:** Deferred; not implemented.
+
+**Prerequisites:** Visual functional and real-device gates P0–P2 complete. Obtain
+separate design approval before implementation because audio changes privacy and data
+handling boundaries.
+
+**Codex can:** reconcile V1 Task 10 with current architecture, draft the focused spec
+and plan, implement against synthetic/public audio and run focused/full software gates.
+
+**Human required:** approve the design and later conduct private household acceptance;
+never provide household audio for Git or chat.
+
+**Acceptance and tests:** Follow V1 Task 10 after an approved current specification.
+Test timing, deduplication, quiet/adult-speech negatives and privacy using generated or
+explicitly public media. Software tests do not prove household accuracy.
+
+**Next:** P4 authenticated private remote access.
+
+## P4 — Authenticated private remote access
+
+**Status:** Pending. Public exposure remains prohibited.
+
+**Prerequisites:** P3 complete unless the user separately approves resequencing; an
+approved private-access review and required local account permissions are available.
+
+**Codex can:** reconcile V1 Task 7 with current iPhone clients, verify loopback binds,
+prepare bounded Tailscale Serve/ACL steps and run configuration/security checks.
+
+**Human required:** authenticate devices/accounts, approve external service changes and
+confirm both phones from outside the home network.
+
+**Acceptance and tests:** Tailscale Serve/ACL only; never Funnel or router forwarding.
+Only the authenticated application is reachable; camera, go2rtc and SQLite remain
+private; no credentials enter Git, commands, reports or chat.
+
+**Next:** P5 final 72-hour release gate.
+
+## P5 — Final 72-hour release gate
+
+**Status:** Not started.
+
+**Prerequisites:** P0–P4 and all remaining V1 release prerequisites complete; no open
+high-risk release blocker.
+
+**Codex can:** run the approved bounded sampler/checklist, aggregate machine-readable
+and Markdown results, diagnose recoverable failures and run full software/security
+gates.
+
+**Human required:** maintain the real deployment, supervise disruptive checks and
+confirm two-phone/private-access outcomes. Tagging or publication requires separate
+explicit approval.
+
+**Acceptance and tests:** Follow V1 Task 16 and the approved V1 acceptance criteria for
+72 continuous hours across i9, camera, M2, network, storage and two phones. The earlier
+10-minute visual and 24-hour environment gates do not substitute for this run.
+
+**Next:** only after documented PASS, request explicit approval for release integration
+or tagging; do not modify `main`, push, merge or tag implicitly.

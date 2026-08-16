@@ -544,3 +544,28 @@ Commit: `feat: integrate local environment monitoring`
 ## Stage-completion evidence
 
 Automated completion requires every targeted Python and Node test above, compilation, schema validation, privacy scan, and `git diff --check` to pass with fresh output. Real i9 completion remains separate and must record: one schema v2 calibration, 30 daylight comparisons, night/reflection/occlusion rejection, 24-hour no-backlog run, state/notification simulation, M2 outage isolation, load-shedding behavior, and two Android ntfy payload inspection. No software-only result may claim those hardware checks passed.
+
+### Current real-device acceptance order
+
+The software tasks above are complete. The current stage is the unfinished installed-i9
+environment acceptance gate, executed in this order without changing business code:
+
+- [x] **E1 — Private schema-v2 calibration:** complete one authenticated Dashboard
+  calibration. Keep the reference image and calibration JSON only in ignored local
+  runtime storage. Passed on the installed i9 on 2026-08-16; validation recorded only
+  schema version, private modes and reference-JPEG validity.
+- [ ] **E2 — Daylight accuracy:** record at least 30 operator comparisons. Every
+  published `available` result must meet the ±1℃ and ±5%RH targets; otherwise it must
+  be rejected as `unavailable`.
+- [ ] **E3 — Fail-closed scenes:** verify darkness/infrared, glare, occlusion and gauge
+  movement. Unreliable scenes and invalidated geometry must not publish values.
+- [ ] **E4 — Independence:** take M2/Ollama offline and confirm gauge sampling, SQLite
+  writes, environment state and notification handling continue independently.
+- [ ] **E5 — 24-hour stability:** run the gauge/watchdog path for 24 hours, confirm
+  60-second scheduling does not build a backlog, and inspect trend gaps and bounded
+  health output. The state/notification, load-shedding and two-phone payload checks
+  remain part of this same real-device gate.
+
+After E1–E5 pass with redacted evidence, proceed to the existing three-browser HD gate
+in `2026-08-04-dashboard-hybrid-hd-streaming.md`; only after that gate and the remaining
+release prerequisites proceed to Task 16 in `2026-08-04-baby-monitor-local-v1.md`.
