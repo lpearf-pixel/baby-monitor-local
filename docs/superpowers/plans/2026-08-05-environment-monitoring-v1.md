@@ -638,7 +638,9 @@ overlap with persisted crops.
   a synthetic CPU forward/loss/backward step passes.
 - [ ] **15.4b Private model artifact:** after private crops exist, run the explicit
   train/export/check sequence and require exact ONNX/XML/BIN digests. Random or
-  synthetic smoke weights cannot satisfy this gate.
+  synthetic smoke weights cannot satisfy this gate. A 20-epoch position-1-only seed
+  was exported and digest-checked on 2026-08-16 for collection bootstrap only; it is
+  not the final private artifact and does not close this item.
 - [x] **15.5 Gauge-worker integration:** locate on the first frame of each burst, refine
   the box to an outer quadrilateral plus two-circle layout, migrate schema-v2 geometry,
   and apply the same migrated calibration to all five frames. Missing or ambiguous
@@ -652,8 +654,12 @@ overlap with persisted crops.
   crops, train locally, verify minimum 1/10-width detection, and resume E2 only after a
   private production reading passes all existing deterministic gates.
   Daylight position 1/5 (current schema-v2 location) completed on 2026-08-16 with 60
-  private crop/metadata pairs and a passing aggregate integrity check; positions 2–5,
-  night/IR, training/export and reading acceptance remain open.
+  private crop/metadata pairs and a passing aggregate integrity check. Deployment-scale
+  augmentation and the exporter source path were corrected, then a private collection
+  seed was trained/exported/checked. At position 2 it remains `gauge_not_found`; unsafe
+  lower thresholds and unreliable template/shape guesses were rejected. One local
+  position-2 box annotation is required before positions 2–5, night/IR, final training
+  and reading acceptance can continue.
 
 **Human work:** first confirm no baby is present and collect the current calibrated
 position, then place the gauge in five upright, front-facing positions for 30 seconds

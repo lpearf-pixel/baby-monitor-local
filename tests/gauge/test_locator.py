@@ -63,7 +63,7 @@ def test_locator_decodes_one_upright_candidate_to_source_coordinates() -> None:
             "gauge_ambiguous",
         ),
         ([[20, 320, 128, 142, 0.95, 0.95]], "gauge_box_invalid"),
-        ([[320, 320, 40, 45, 0.95, 0.95]], "gauge_box_invalid"),
+        ([[320, 320, 40, 45, 0.95, 0.95]], "gauge_too_small"),
         ([[320, 320, 180, 80, 0.95, 0.95]], "gauge_pose_invalid"),
     ],
 )

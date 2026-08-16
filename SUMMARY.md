@@ -22,10 +22,13 @@ Updated: 2026-08-16
   automatic-localization Task 15 is now inserted before E2; strict localization and
   validated schema-v2 relocation contracts plus privacy-safe crop persistence are
   complete, as are deterministic private dataset preparation and pinned i9-local CPU
-  training/export tooling and fail-closed gauge-worker integration. Real weights await
-  private crops. Daylight position 1/5 completed with 60 valid private pairs; the
-  current gate is human placement of the upright gauge at daylight position 2/5 with
-  no baby present.
+  training/export tooling and fail-closed gauge-worker integration. Daylight position
+  1/5 completed with 60 valid private pairs. A private collection-seed model was trained,
+  exported and digest-checked after correcting augmentation to the approved 1/10–1/3
+  deployment scale, but position 2 remains `gauge_not_found`; low-confidence predictions,
+  local feature templates and full-frame shape scans did not provide a safe label. The
+  current gate is one local position-2 bounding-box annotation before automatic private
+  collection can continue; no production threshold is reduced.
 - The earlier untracked `uv.lock` was never staged or published; the recovered checkout
   does not recreate or claim ownership of it.
 

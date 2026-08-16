@@ -197,15 +197,21 @@
   emits fixed 640×640 private files with relative labels, and requires licensed HTTPS
   metadata for negatives. The ignored Intel training environment now pins Torch 2.2.2
   and exact YOLOX commit `419778480ab6ec0590e5d3831b3afb3b46ab2aa3`; a synthetic
-  640×640 CPU forward/loss/backward step passes. Real weights still await private crops,
-  and model-independent worker integration now locates once per burst, validates the
+  640×640 CPU forward/loss/backward step passes. Model-independent worker integration
+  now locates once per burst, validates the
   outer quadrilateral/two-circle layout and applies one migrated schema-v2 geometry to
   all five frames. Failure never reuses an old position. No detector weights or
-  household images are tracked; the next gate is supervised private crop collection.
+  household images are tracked.
 - Installed-i9 Task 15.6b daylight position 1/5 completed with no baby present. The
   private store contains 60 paired crops/metadata records with 0700/0600 permissions,
   matching names, closed metadata fields and matching SHA-256 values. No media or
-  sample identity entered Git or status output. Daylight position 2/5 is next.
+  sample identity entered Git or status output. The first full training run exposed an
+  augmentation-scale mismatch (45%–80% instead of the approved roughly 10%–35% source
+  width). The dataset builder is corrected, and a bounded 20-epoch collection seed was
+  trained, exported and digest-checked locally. Position 2 still fails closed as
+  `gauge_not_found`; its best predictions are not geometrically valid, while local
+  feature/template and unconstrained shape searches are insufficiently reliable. One
+  local position-2 bounding-box annotation is now required before collection continues.
 - After Task 15, resume environment-plan E2–E5 with 30 daylight comparisons,
   darkness/infrared/glare/occlusion/gauge-movement fail-closed checks, M2/Ollama outage
   isolation and the independent 24-hour run.

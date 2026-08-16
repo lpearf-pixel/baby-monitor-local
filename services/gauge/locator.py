@@ -28,6 +28,7 @@ class GaugeLocalizationCode(StrEnum):
     NOT_FOUND = "gauge_not_found"
     AMBIGUOUS = "gauge_ambiguous"
     BOX_INVALID = "gauge_box_invalid"
+    TOO_SMALL = "gauge_too_small"
     POSE_INVALID = "gauge_pose_invalid"
     MODEL_INVALID = "gauge_model_invalid"
     INFERENCE_FAILED = "gauge_inference_failed"
@@ -105,9 +106,10 @@ class GaugeLocator:
             or height <= 0
             or left + width > frame.width
             or top + height > frame.height
-            or width / frame.width < MIN_SOURCE_WIDTH_FRACTION
         ):
             raise GaugeLocalizationError(GaugeLocalizationCode.BOX_INVALID)
+        if width / frame.width < MIN_SOURCE_WIDTH_FRACTION:
+            raise GaugeLocalizationError(GaugeLocalizationCode.TOO_SMALL)
         ratio = height / width
         if not MIN_UPRIGHT_RATIO <= ratio <= MAX_UPRIGHT_RATIO:
             raise GaugeLocalizationError(GaugeLocalizationCode.POSE_INVALID)

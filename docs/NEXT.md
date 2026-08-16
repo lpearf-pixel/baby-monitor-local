@@ -13,8 +13,10 @@ localization before E2; its strict locator/schema-v2 relocation contracts and
 privacy-safe crop persistence, deterministic dataset preparation and pinned Intel CPU
 training/export tooling and model-independent worker integration are complete. The
 first human-confirmed no-baby calibrated collection completed with 60 valid private
-pairs. The next gate is daylight position 2/5, still with no baby present and the gauge
-upright. E2 comparisons have not started.
+pairs. A 20-epoch private collection seed was exported and verified at the corrected
+deployment scale, but it fails closed as `gauge_not_found` at daylight position 2/5.
+The next gate is one local position-2 bounding-box annotation, followed by the same
+privacy-safe 30-second collection. E2 comparisons have not started.
 
 **Prerequisites:** Run from the `kandysmith` login that owns the installed i9 GUI and
 launchd services. Keep calibration files, reference images, databases and runtime
@@ -37,8 +39,9 @@ metrics in ignored local storage.
 **Codex can:** run bounded readiness checks, guide the approved workflow, validate
 closed outputs, diagnose recoverable failures and update redacted documentation.
 
-**Human required:** operate the authenticated Dashboard, position/read the physical
-gauge, provide reference comparisons, supervise scene changes and keep the i9 running.
+**Human required:** provide one local bounding-box annotation at position 2, operate the
+authenticated Dashboard, position/read the physical gauge, provide reference comparisons,
+supervise scene changes and keep the i9 running.
 
 **Acceptance and tests:** Follow environment plan E1–E5 and approved environment spec
 section 18. Every published daylight reading meets the error target; unreliable input

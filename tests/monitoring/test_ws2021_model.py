@@ -31,12 +31,43 @@ def test_offline_runner_disables_network_loggers(
         observed.update(kwargs)
 
     monkeypatch.setattr(ws2021_model.subprocess, "run", fake_run)
-    ws2021_model._run(("training-python", "trainer.py"), offline=True)
+    ws2021_model._run(
+        ("training-python", "trainer.py"),
+        offline=True,
+        pythonpath=Path("runtime/training/ws2021/YOLOX"),
+    )
     environment = observed["env"]
     assert environment["WANDB_MODE"] == "disabled"  # type: ignore[index]
     assert environment["PIP_NO_INDEX"] == "1"  # type: ignore[index]
+    assert environment["PYTHONPATH"].endswith("runtime/training/ws2021/YOLOX")  # type: ignore[index]
     assert observed["stdout"] is ws2021_model.subprocess.DEVNULL
     assert observed["stderr"] is ws2021_model.subprocess.DEVNULL
+
+
+def test_bootstrap_training_is_bounded_to_twenty_epochs(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    source = tmp_path / "YOLOX"
+    dataset = tmp_path / "dataset"
+    source.mkdir()
+    dataset.mkdir()
+    observed: dict[str, object] = {}
+
+    monkeypatch.setattr(ws2021_model, "_verify_source", lambda path: None)
+    monkeypatch.setattr(ws2021_model, "_require_dataset", lambda path: None)
+
+    def fake_run(command: tuple[str, ...], **kwargs: object) -> None:
+        observed["command"] = command
+        observed.update(kwargs)
+
+    monkeypatch.setattr(ws2021_model, "_run", fake_run)
+    ws2021_model._run_action("train-bootstrap", tmp_path)
+
+    command = observed["command"]
+    assert command[command.index("--epochs") + 1] == "20"  # type: ignore[union-attr]
+    assert observed["offline"] is True
+    assert observed["pythonpath"] == source
 
 
 def test_artifact_check_requires_exact_files_and_digests(tmp_path: Path) -> None:

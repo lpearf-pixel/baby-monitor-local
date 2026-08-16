@@ -83,7 +83,7 @@ def test_dataset_uses_relative_crop_annotations_and_bounded_transforms(
         assert all(0 <= value <= 1 for value in values)
         transform = sample["transform"]
         assert -3 <= transform["rotation_degrees"] <= 3
-        assert 0.45 <= transform["scale"] <= 0.8
+        assert 0.10 <= transform["scale"] <= 0.35
         assert 0.75 <= transform["brightness"] <= 1.25
 
     for split in ("train", "val"):

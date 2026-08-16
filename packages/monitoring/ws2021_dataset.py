@@ -439,7 +439,7 @@ def _render_positive(
         int(sha256(f"augment-v1:{digest}:{variant}".encode("ascii")).hexdigest()[:16], 16)
     )
     rotation = float(rng.uniform(-3.0, 3.0)) if augmented else 0.0
-    scale = float(rng.uniform(0.45, 0.8)) if augmented else 0.62
+    scale = float(rng.uniform(0.10, 0.35)) if augmented else 0.25
     brightness = float(rng.uniform(0.75, 1.25)) if augmented else 1.0
     adjusted = np.clip(image.astype(np.float32) * brightness, 0, 255).astype(np.uint8)
     height, width = adjusted.shape[:2]

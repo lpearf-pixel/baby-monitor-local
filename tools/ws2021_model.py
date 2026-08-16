@@ -26,7 +26,10 @@ TRAIN_PACKAGES = (
 
 def parser() -> argparse.ArgumentParser:
     command = argparse.ArgumentParser(description="Manage the private WS2021 model")
-    command.add_argument("action", choices=("bootstrap", "prepare", "train", "export", "check"))
+    command.add_argument(
+        "action",
+        choices=("bootstrap", "prepare", "train-bootstrap", "train", "export", "check"),
+    )
     command.add_argument("--root", type=Path, default=Path("runtime/training/ws2021"))
     return command
 
@@ -57,7 +60,7 @@ def _run_action(action: str, root: Path) -> None:
             _run(("git", "clone", "--no-checkout", YOLOX_URL, str(source)))
         _run(("git", "-C", str(source), "checkout", "--detach", YOLOX_COMMIT))
         _verify_source(source)
-    elif action == "train":
+    elif action in {"train-bootstrap", "train"}:
         _verify_source(source)
         _require_dataset(dataset)
         _run(
@@ -67,8 +70,10 @@ def _run_action(action: str, root: Path) -> None:
                 "--source", str(source),
                 "--dataset", str(dataset),
                 "--checkpoint", str(artifacts / "best_ckpt.pth"),
+                "--epochs", "20" if action == "train-bootstrap" else "80",
             ),
             offline=True,
+            pythonpath=source,
         )
     elif action == "export":
         _verify_source(source)
@@ -90,6 +95,7 @@ def _run_action(action: str, root: Path) -> None:
                 "-c", str(checkpoint),
             ),
             offline=True,
+            pythonpath=source,
         )
         _convert_openvino(onnx_path, artifacts / "ws2021.xml")
         _write_metadata(artifacts)
@@ -100,11 +106,18 @@ def _run_action(action: str, root: Path) -> None:
         raise ValueError("ws2021_model_invalid")
 
 
-def _run(command: tuple[str, ...], *, offline: bool = False) -> None:
+def _run(
+    command: tuple[str, ...],
+    *,
+    offline: bool = False,
+    pythonpath: Path | None = None,
+) -> None:
     environment = os.environ.copy()
     environment.update({"WANDB_MODE": "disabled", "YOLOX_NO_NETWORK": "1"})
     if offline:
         environment.update({"PIP_NO_INDEX": "1", "HF_HUB_OFFLINE": "1"})
+    if pythonpath is not None:
+        environment["PYTHONPATH"] = str(pythonpath.resolve())
     subprocess.run(
         command,
         check=True,
