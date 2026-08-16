@@ -624,9 +624,10 @@ overlap with persisted crops.
   overlapping person/skin candidates and privacy-backend failures are discarded,
   duplicates and poor quality are rejected, crop files are private/atomic, and the
   public result contains closed aggregate counts only.
-- [ ] **15.3 Dataset and augmentation:** write RED tests for deterministic split before
-  augmentation, crop-only annotations, no absolute paths, bounded transformations,
-  negative-sample licensing metadata, and zero household full-frame export.
+- [x] **15.3 Dataset and augmentation:** deterministic digest-based split occurs before
+  train-only augmentation; fixed 640×640 outputs use relative crop annotations and
+  bounded transformations. Negative samples require HTTPS source and license metadata;
+  tampered or full-frame private sources fail closed, and the CLI prints counts only.
 - [ ] **15.4 Explicit local training/export:** add an explicit command that checks out
   Apache-2.0 YOLOX 0.3.0 at full commit
   `419778480ab6ec0590e5d3831b3afb3b46ab2aa3` into ignored runtime storage, trains

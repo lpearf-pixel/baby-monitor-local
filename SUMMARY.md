@@ -21,7 +21,8 @@ Updated: 2026-08-16
   match. Humidity remains fail-closed as `calibration_invalid`. The approved i9-local
   automatic-localization Task 15 is now inserted before E2; strict localization and
   validated schema-v2 relocation contracts plus privacy-safe crop persistence are
-  complete, and deterministic dataset preparation is the current priority.
+  complete, as is deterministic private dataset preparation. Explicit pinned i9-local
+  training and OpenVINO export are the current priority.
 - The earlier untracked `uv.lock` was never staged or published; the recovered checkout
   does not recreate or claim ownership of it.
 
@@ -265,8 +266,8 @@ legacy branch into this line without a separate integration decision.
 
 ## Next Priorities
 
-1. Continue WS2021 Task 15 with deterministic dataset preparation, explicit i9-local
-   training/export and worker integration. Then resume E2–E5 with
+1. Continue WS2021 Task 15 with explicit pinned i9-local training/OpenVINO export and
+   worker integration. Then resume E2–E5 with
    30 daylight comparisons, fail-closed scene checks, M2/Ollama isolation and 24-hour
    stability. E1 and the native-resolution continuous frame source are complete.
 2. Complete three-browser HD acceptance on the installed i9.

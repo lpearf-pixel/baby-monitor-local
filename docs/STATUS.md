@@ -192,8 +192,11 @@
   strict single-candidate/fail-closed locator, fixed 640×640 preprocessing and validated
   schema-v2 geometry relocation contracts are implemented. Crop collection now passes
   only the bounded crop to private atomic persistence, rejects privacy overlap/backend
-  failure, duplicates and poor quality, and exposes aggregate counts only. Deterministic
-  dataset preparation is next; no detector weights or household images are tracked.
+  failure, duplicates and poor quality, and exposes aggregate counts only. Dataset
+  preparation now splits deterministically before train-only bounded augmentation,
+  emits fixed 640×640 private files with relative labels, and requires licensed HTTPS
+  metadata for negatives. Explicit pinned local training/export is next; no detector
+  weights or household images are tracked.
 - After Task 15, resume environment-plan E2–E5 with 30 daylight comparisons,
   darkness/infrared/glare/occlusion/gauge-movement fail-closed checks, M2/Ollama outage
   isolation and the independent 24-hour run.
