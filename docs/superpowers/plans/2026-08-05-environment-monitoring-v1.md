@@ -590,3 +590,64 @@ environment acceptance gate, executed in this order without changing business co
 After E1–E5 pass with redacted evidence, proceed to the existing three-browser HD gate
 in `2026-08-04-dashboard-hybrid-hd-streaming.md`; only after that gate and the remaining
 release prerequisites proceed to Task 16 in `2026-08-04-baby-monitor-local-v1.md`.
+
+### Task 15: i9-local WS2021 automatic localization
+
+**Status:** approved on 2026-08-16; implementation in progress before E2 resumes.
+
+**Prerequisites:** fixed 2560×1440 five-frame `gauge` burst; schema-v2 scale mapping;
+OpenVINO 2025.4.1 on Intel i9; private collection with no baby in frame and no adult
+overlap with persisted crops.
+
+**Files:**
+- Create: `services/gauge/locator.py`
+- Create: `services/gauge/relocation.py`
+- Create: `packages/monitoring/ws2021_dataset.py`
+- Create: `tools/ws2021_collect.py`
+- Create: `tools/ws2021_dataset.py`
+- Create: `tools/ws2021_model.py`
+- Create: focused tests under `tests/gauge/` and `tests/monitoring/`
+- Modify: `services/gauge/source.py`, `services/environment/bootstrap.py`, strict
+  settings/schema/examples, Makefile, and existing environment documentation.
+
+**Interfaces:**
+- `GaugeLocator.locate(frame: CapturedFrame) -> GaugeLocation`
+- `GaugeLocation(box: NormalizedRect, confidence: float, model_version: str)`
+- `relocate_calibration(calibration, location, frame) -> Ws2021Calibration`
+- collection and training CLIs emit only stable codes and aggregate counts.
+
+- [ ] **15.1 Strict locator and relocation contracts:** write RED tests for one valid
+  candidate, missing/ambiguous/out-of-bounds candidates, fixed 640×640 letterbox preprocessing,
+  deterministic output decoding, and homography migration. Implement without runtime
+  model download or configurable output semantics.
+- [ ] **15.2 Privacy-safe collection:** write RED tests proving full frames never reach
+  persistence, overlapping person/skin candidates are discarded, duplicates and poor
+  quality are rejected, files are private/atomic, and output contains counts only.
+- [ ] **15.3 Dataset and augmentation:** write RED tests for deterministic split before
+  augmentation, crop-only annotations, no absolute paths, bounded transformations,
+  negative-sample licensing metadata, and zero household full-frame export.
+- [ ] **15.4 Explicit local training/export:** add an explicit command that checks out
+  Apache-2.0 YOLOX 0.3.0 at full commit
+  `419778480ab6ec0590e5d3831b3afb3b46ab2aa3` into ignored runtime storage, trains
+  `YOLOX-Tiny` at 640×640 for the single `ws2021` class without W&B or network logging,
+  exports ONNX, converts it through the pinned OpenVINO Python API to FP16 IR, records
+  only non-sensitive metadata/digests, and never commits source checkout or weights.
+- [ ] **15.5 Gauge-worker integration:** locate on the first frame of each burst, refine
+  the box to an outer quadrilateral plus two-circle layout, migrate schema-v2 geometry,
+  and apply the same migrated calibration to all five frames. Missing or ambiguous
+  localization produces unavailable and never reuses an old location.
+- [ ] **15.6 Software and installed-i9 gates:** run focused Python tests, frontend tests
+  if changed, compilation, Make dry-runs, privacy scan and `git diff --check`. Then run
+  five 30-second daylight positions plus night/IR collection, review only uncertain
+  crops, train locally, verify minimum 1/10-width detection, and resume E2 only after a
+  private production reading passes all existing deterministic gates.
+
+**Human work:** place the gauge in five upright, front-facing positions for 30 seconds
+each, repeat once under night/IR, and approve/reject only the bounded uncertain crop set.
+
+**Acceptance:** no household full frame persists; no baby crop is accepted; adult
+overlap is discarded; model absence and every detection ambiguity fail closed; moving
+the upright gauge anywhere in frame re-localizes without manual coordinates; published
+readings still satisfy all existing geometry, five-frame, confidence and physical gates.
+
+**Next:** complete the 30 daylight E2 comparisons, then E3–E5 unchanged.
