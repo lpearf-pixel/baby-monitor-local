@@ -6,10 +6,11 @@ the detailed approved specs and plans remain authoritative for behavior.
 
 ## P0 — Environment real-device acceptance (current)
 
-**Status:** E1 persistence passed on 2026-08-16. The E2 frame-source and corrected
-non-16:9 ROI geometry prerequisites now pass; the temperature circle matches, while
-humidity remains fail-closed as `calibration_invalid`. E2 comparisons have not started.
-E2–E5 are unfinished.
+**Status:** E1 persistence passed on 2026-08-16. The fixed native frame source and
+non-16:9 rectification prerequisites pass, but a fixed private ROI still leaves the
+humidity face fail-closed. Approved Task 15 now inserts i9-local automatic WS2021
+localization before E2; its strict locator and schema-v2 relocation contracts are
+complete, and privacy-safe collection is next. E2 comparisons have not started.
 
 **Prerequisites:** Run from the `kandysmith` login that owns the installed i9 GUI and
 launchd services. Keep calibration files, reference images, databases and runtime
@@ -18,14 +19,15 @@ metrics in ignored local storage.
 **Stages:**
 
 1. E1 — complete one private WS2021 schema-v2 Dashboard calibration. **PASS**
-2. E2 — first re-mark the humidity face until its strict circle match passes, then
-   obtain an available production reading and
-   passes the ROI gate, then record at least 30 daylight comparisons against ±1℃ and
-   ±5%RH.
-3. E3 — verify darkness/infrared, glare, occlusion and gauge movement fail closed.
-4. E4 — take M2/Ollama offline and confirm gauge, storage, state and notification
+2. Task 15 — finish privacy-safe crop collection, deterministic dataset preparation,
+   explicit local YOLOX-Tiny training/OpenVINO export, worker integration and the
+   installed-i9 localization gate. Household full frames must never persist.
+3. E2 — obtain an available automatically localized production reading, then record
+   at least 30 daylight comparisons against ±1℃ and ±5%RH.
+4. E3 — verify darkness/infrared, glare, occlusion and gauge movement fail closed.
+5. E4 — take M2/Ollama offline and confirm gauge, storage, state and notification
    independence.
-5. E5 — run the gauge/watchdog path for 24 hours without scheduling backlog; complete
+6. E5 — run the gauge/watchdog path for 24 hours without scheduling backlog; complete
    the remaining state/notification, load-shedding and two-phone payload checks.
 
 **Codex can:** run bounded readiness checks, guide the approved workflow, validate

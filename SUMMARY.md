@@ -18,9 +18,10 @@ Updated: 2026-08-16
   session is fixed locally. WS2021 E1 private schema-v2 calibration passed on
   2026-08-16. Its fixed 2560×1440 five-frame gauge burst is operational, and corrected
   non-16:9 rectification now passes both ROI geometry gates plus the temperature circle
-  match. Humidity remains fail-closed as `calibration_invalid`; the current priority is
-  re-marking that private face and then E2 daylight accuracy, followed by the remaining
-  environment acceptance gates.
+  match. Humidity remains fail-closed as `calibration_invalid`. The approved i9-local
+  automatic-localization Task 15 is now inserted before E2; strict localization and
+  validated schema-v2 relocation contracts are complete, and privacy-safe crop
+  collection is the current priority.
 - The earlier untracked `uv.lock` was never staged or published; the recovered checkout
   does not recreate or claim ownership of it.
 
@@ -264,10 +265,10 @@ legacy branch into this line without a separate integration decision.
 
 ## Next Priorities
 
-1. Continue WS2021 plan gates E2–E5: re-mark the humidity face until its strict circle
-   match and a production reading pass, then run 30 daylight comparisons, fail-closed
-   scene checks, M2/Ollama isolation and 24-hour stability. E1 schema-v2 persistence
-   and the native-resolution continuous frame source are complete.
+1. Continue WS2021 Task 15 with privacy-safe crop collection, dataset preparation,
+   explicit i9-local training/export and worker integration. Then resume E2–E5 with
+   30 daylight comparisons, fail-closed scene checks, M2/Ollama isolation and 24-hour
+   stability. E1 and the native-resolution continuous frame source are complete.
 2. Complete three-browser HD acceptance on the installed i9.
 3. Complete the supervised, normal-care-only real-Baby Guardian observation gate;
    never stage a hazardous pose or persist household media/model prose.

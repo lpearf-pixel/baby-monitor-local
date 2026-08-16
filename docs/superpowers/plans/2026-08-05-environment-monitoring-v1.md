@@ -613,13 +613,13 @@ overlap with persisted crops.
 **Interfaces:**
 - `GaugeLocator.locate(frame: CapturedFrame) -> GaugeLocation`
 - `GaugeLocation(box: NormalizedRect, confidence: float, model_version: str)`
-- `relocate_calibration(calibration, location, frame) -> Ws2021Calibration`
+- `relocate_calibration(calibration, location) -> Ws2021Calibration`
 - collection and training CLIs emit only stable codes and aggregate counts.
 
-- [ ] **15.1 Strict locator and relocation contracts:** write RED tests for one valid
+- [x] **15.1 Strict locator and relocation contracts:** one valid
   candidate, missing/ambiguous/out-of-bounds candidates, fixed 640×640 letterbox preprocessing,
-  deterministic output decoding, and homography migration. Implement without runtime
-  model download or configurable output semantics.
+  deterministic output decoding, and validated schema-v2 geometry migration are covered.
+  Implemented without runtime model download or configurable output semantics.
 - [ ] **15.2 Privacy-safe collection:** write RED tests proving full frames never reach
   persistence, overlapping person/skin candidates are discarded, duplicates and poor
   quality are rejected, files are private/atomic, and output contains counts only.

@@ -188,8 +188,12 @@
   supplies bounded search padding. Both ROI geometry gates and the temperature circle
   match pass; humidity remains fail-closed as `calibration_invalid`, so no E2 accuracy
   sample has been counted.
-- The next approved product gate is environment-plan E2–E5: reconcile the saved ROI,
-  then complete 30 daylight comparisons,
+- Approved Task 15 now places i9-local WS2021 automatic localization before E2. Its
+  strict single-candidate/fail-closed locator, fixed 640×640 preprocessing and validated
+  schema-v2 geometry relocation contracts are implemented and covered by synthetic
+  tests. Privacy-safe crop collection is the next slice; no detector weights or
+  household images are tracked.
+- After Task 15, resume environment-plan E2–E5 with 30 daylight comparisons,
   darkness/infrared/glare/occlusion/gauge-movement fail-closed checks, M2/Ollama outage
   isolation and the independent 24-hour run.
 - Ordered later stages are the three-browser HD gate, normal-care-only real-Baby

@@ -449,3 +449,15 @@ gauge worker 记录不再是 `frame_source_unavailable`，而是在后续几何�
 圆搜索窗口增加有界 padding；40 个 gauge 测试通过。私人五帧探测随后通过两只
 表盘 ROI 几何门及温度圆匹配，湿度圆匹配仍严格拒绝为 `calibration_invalid`。
 E2 仍为零组，下一步只需重新标记湿度表盘，不得放宽圆心 5% 或半径 8% 门限。
+
+## WS2021 automatic-localization contract checkpoint
+
+2026-08-16，按已批准的环境规格开始 Task 15。新增 i9 本地定位边界：固定 640×640
+letterbox、单一候选、固定置信度/NMS、最小原图宽度和竖直姿态门；缺失、歧义、越界、
+过小、姿态或模型输出异常均使用稳定代码 fail closed。定位结果只迁移 schema-v2 几何，
+读数仍完全由既有确定性 OpenCV 门禁负责。
+
+新增测试使用合成 JPEG 和数值候选，不含家庭画面、私人坐标、模型权重或运行配置。
+定向扩大门禁为 `53 passed`，Python 编译与 `git diff --check` 通过。本检查点只证明
+定位/迁移软件契约，不证明真实 WS2021 定位率、读针准确率或家庭场景安全。下一步为
+15.2 隐私安全裁剪采集；原始家庭全帧不得持久化。
