@@ -195,8 +195,11 @@
   failure, duplicates and poor quality, and exposes aggregate counts only. Dataset
   preparation now splits deterministically before train-only bounded augmentation,
   emits fixed 640×640 private files with relative labels, and requires licensed HTTPS
-  metadata for negatives. Explicit pinned local training/export is next; no detector
-  weights or household images are tracked.
+  metadata for negatives. The ignored Intel training environment now pins Torch 2.2.2
+  and exact YOLOX commit `419778480ab6ec0590e5d3831b3afb3b46ab2aa3`; a synthetic
+  640×640 CPU forward/loss/backward step passes. Real weights still await private crops,
+  so model-independent worker integration is next; no detector weights or household
+  images are tracked.
 - After Task 15, resume environment-plan E2–E5 with 30 daylight comparisons,
   darkness/infrared/glare/occlusion/gauge-movement fail-closed checks, M2/Ollama outage
   isolation and the independent 24-hour run.

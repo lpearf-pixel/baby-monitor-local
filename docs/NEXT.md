@@ -10,8 +10,9 @@ the detailed approved specs and plans remain authoritative for behavior.
 non-16:9 rectification prerequisites pass, but a fixed private ROI still leaves the
 humidity face fail-closed. Approved Task 15 now inserts i9-local automatic WS2021
 localization before E2; its strict locator/schema-v2 relocation contracts and
-privacy-safe crop persistence and deterministic dataset preparation are complete.
-Explicit pinned local training/export is next. E2 comparisons have not started.
+privacy-safe crop persistence, deterministic dataset preparation and pinned Intel CPU
+training/export tooling are complete. A real model artifact awaits private crops;
+model-independent worker integration is next. E2 comparisons have not started.
 
 **Prerequisites:** Run from the `kandysmith` login that owns the installed i9 GUI and
 launchd services. Keep calibration files, reference images, databases and runtime

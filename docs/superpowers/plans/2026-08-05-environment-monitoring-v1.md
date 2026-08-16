@@ -628,12 +628,17 @@ overlap with persisted crops.
   train-only augmentation; fixed 640×640 outputs use relative crop annotations and
   bounded transformations. Negative samples require HTTPS source and license metadata;
   tampered or full-frame private sources fail closed, and the CLI prints counts only.
-- [ ] **15.4 Explicit local training/export:** add an explicit command that checks out
+- [x] **15.4a Explicit local training/export tooling:** an explicit command checks out
   Apache-2.0 YOLOX 0.3.0 at full commit
   `419778480ab6ec0590e5d3831b3afb3b46ab2aa3` into ignored runtime storage, trains
-  `YOLOX-Tiny` at 640×640 for the single `ws2021` class without W&B or network logging,
-  exports ONNX, converts it through the pinned OpenVINO Python API to FP16 IR, records
-  only non-sensitive metadata/digests, and never commits source checkout or weights.
+  `YOLOX-Tiny` at 640×640 for the single `ws2021` class through an Intel CPU loop without
+  W&B or network logging, exports ONNX, converts it through the pinned OpenVINO Python
+  API to FP16 IR, records only non-sensitive metadata/digests, and never commits source
+  checkout or weights. The fixed checkout and independent environment are installed;
+  a synthetic CPU forward/loss/backward step passes.
+- [ ] **15.4b Private model artifact:** after private crops exist, run the explicit
+  train/export/check sequence and require exact ONNX/XML/BIN digests. Random or
+  synthetic smoke weights cannot satisfy this gate.
 - [ ] **15.5 Gauge-worker integration:** locate on the first frame of each burst, refine
   the box to an outer quadrilateral plus two-circle layout, migrate schema-v2 geometry,
   and apply the same migrated calibration to all five frames. Missing or ambiguous

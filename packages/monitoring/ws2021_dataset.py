@@ -312,7 +312,7 @@ def build_training_dataset(
                 augmented=augmented,
             )
             sample_id = sha256(f"{digest}:{variant}".encode("ascii")).hexdigest()
-            image_relative = Path("images") / split / f"{sample_id}.jpg"
+            image_relative = Path(f"{split}2017") / f"{sample_id}.jpg"
             label_relative = Path("labels") / split / f"{sample_id}.txt"
             _write_private(output_root / image_relative, rendered)
             _write_private(output_root / label_relative, label.encode("ascii"))
@@ -335,7 +335,7 @@ def build_training_dataset(
     for negative in negatives:
         payload, digest = _load_negative(negative)
         sample_id = sha256(f"negative:{digest}".encode("ascii")).hexdigest()
-        image_relative = Path("images/train") / f"{sample_id}.jpg"
+        image_relative = Path("train2017") / f"{sample_id}.jpg"
         label_relative = Path("labels/train") / f"{sample_id}.txt"
         _write_private(output_root / image_relative, payload)
         _write_private(output_root / label_relative, b"")
@@ -357,10 +357,18 @@ def build_training_dataset(
             }
         )
 
+    sorted_samples = sorted(samples, key=lambda sample: str(sample["image"]))
+    coco_annotations = {
+        "train": "annotations/instances_train2017.json",
+        "val": "annotations/instances_val2017.json",
+    }
+    for split, relative in coco_annotations.items():
+        _write_coco_annotations(output_root / relative, sorted_samples, split=split)
     manifest = {
+        "coco_annotations": coco_annotations,
         "format_version": 1,
         "input_size": 640,
-        "samples": sorted(samples, key=lambda sample: str(sample["image"])),
+        "samples": sorted_samples,
     }
     _write_private(
         output_root / "manifest.json",
@@ -490,6 +498,62 @@ def _load_negative(sample: NegativeSample) -> tuple[bytes, str]:
         raise ValueError("ws2021_dataset_invalid")
     normalized = encoded.tobytes()
     return normalized, sha256(payload).hexdigest()
+
+
+def _write_coco_annotations(
+    path: Path,
+    samples: list[dict[str, object]],
+    *,
+    split: str,
+) -> None:
+    images: list[dict[str, object]] = []
+    annotations: list[dict[str, object]] = []
+    for image_id, sample in enumerate(
+        (sample for sample in samples if sample["split"] == split),
+        start=1,
+    ):
+        image_path = Path(str(sample["image"]))
+        images.append(
+            {
+                "file_name": image_path.name,
+                "height": 640,
+                "id": image_id,
+                "width": 640,
+            }
+        )
+        if sample["class_name"] != "ws2021":
+            continue
+        label_path = path.parents[1] / str(sample["label"])
+        fields = label_path.read_text(encoding="ascii").split()
+        if len(fields) != 5 or fields[0] != "0":
+            raise ValueError("ws2021_dataset_invalid")
+        center_x, center_y, width, height = (float(value) for value in fields[1:])
+        box = [
+            (center_x - width / 2) * 640,
+            (center_y - height / 2) * 640,
+            width * 640,
+            height * 640,
+        ]
+        annotations.append(
+            {
+                "area": box[2] * box[3],
+                "bbox": box,
+                "category_id": 1,
+                "id": len(annotations) + 1,
+                "image_id": image_id,
+                "iscrowd": 0,
+                "segmentation": [],
+            }
+        )
+    payload = {
+        "annotations": annotations,
+        "categories": [{"id": 1, "name": "ws2021"}],
+        "images": images,
+    }
+    _write_private(
+        path,
+        json.dumps(payload, sort_keys=True, separators=(",", ":")).encode("ascii"),
+    )
 
 
 def _prepare_dataset_root(root: Path) -> None:

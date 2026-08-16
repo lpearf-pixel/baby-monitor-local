@@ -86,6 +86,16 @@ def test_dataset_uses_relative_crop_annotations_and_bounded_transforms(
         assert 0.45 <= transform["scale"] <= 0.8
         assert 0.75 <= transform["brightness"] <= 1.25
 
+    for split in ("train", "val"):
+        annotation_path = output / manifest["coco_annotations"][split]
+        coco = json.loads(annotation_path.read_text(encoding="ascii"))
+        assert coco["categories"] == [{"id": 1, "name": "ws2021"}]
+        assert all(image["width"] == image["height"] == 640 for image in coco["images"])
+        image_ids = {image["id"] for image in coco["images"]}
+        assert all(annotation["image_id"] in image_ids for annotation in coco["annotations"])
+        assert all(annotation["category_id"] == 1 for annotation in coco["annotations"])
+        assert all(annotation["area"] > 0 for annotation in coco["annotations"])
+
 
 def test_negative_sample_requires_license_metadata_and_emits_empty_label(
     tmp_path: Path,
