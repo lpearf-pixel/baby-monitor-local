@@ -275,8 +275,9 @@ legacy branch into this line without a separate integration decision.
 - Audio/cry software work was separately approved on 2026-08-17 with a strict
   no-household-audio-persistence boundary. Stages A1-A2 strict contracts/settings and
   bounded in-memory PCM source and deterministic loudness/noise-floor gate pass;
-  and the fail-closed pinned-ONNX classifier boundary pass; the deterministic cry
-  state machine is next. No production cry model has been approved or enabled.
+  the fail-closed pinned-ONNX classifier boundary and the deterministic cry state
+  machine pass; text-only event/outbox integration is next. No production cry model
+  has been approved or enabled.
   The installed Xiaomi source and fixed loopback audio alias now expose Opus, and a
   bounded mono 16 kHz decode passed without persistence. Sustained stability and
   household cry accuracy remain unaccepted.
@@ -292,7 +293,7 @@ legacy branch into this line without a separate integration decision.
 2. Complete three-browser HD acceptance on the installed i9.
 3. Complete the supervised, normal-care-only real-Baby Guardian observation gate;
    never stage a hazardous pose or persist household media/model prose.
-4. Continue the approved audio/cry plan from Stage A5; household audio remains
+4. Continue the approved audio/cry plan from Stage A6; household audio remains
    memory-only. The real source-track prerequisite passes, while A7 and the supervised
    A8 stability/accuracy gate remain.
 5. Complete authenticated private remote access using Tailscale Serve/ACL only.

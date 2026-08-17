@@ -97,7 +97,7 @@ pinned artifact can enable classification.
 
 ## Stage A5: Deterministic Cry State Machine
 
-**Status:** Ready
+**Status:** Complete on 2026-08-17
 
 **Prerequisites:** A1 and observation boundary from A4.
 
@@ -116,7 +116,7 @@ pass with fixed event kinds and severities.
 
 ## Stage A6: Text-Only Event And Notification Integration
 
-**Status:** Pending
+**Status:** Ready
 
 **Prerequisites:** A5 complete.
 

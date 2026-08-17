@@ -233,6 +233,13 @@
   Xiaomi transport. In this macOS installation the source works from the interactive
   user session but timed out under launchd, so sustained service stability and A8
   household accuracy remain unaccepted.
+- Audio Stage A5 adds a deterministic restart-safe state machine. Five continuous
+  accepted cry seconds open a normal transition, ten escalate it to high, sustained
+  available non-cry input recovers, and a repeat within 30 seconds becomes one merged
+  high escalation. Unavailable input advances neither positive inference nor recovery;
+  duplicate observations are idempotent and backwards/conflicting timestamps are
+  rejected without changing state. Short candidate timing is deliberately not restored
+  across restart.
 - Installed-i9 Task 15.6b daylight position 1/5 completed with no baby present. The
   private store contains 60 paired crops/metadata records with 0700/0600 permissions,
   matching names, closed metadata fields and matching SHA-256 values. No media or
