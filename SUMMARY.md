@@ -1,6 +1,6 @@
 # Baby Monitor Local Project Summary
 
-Updated: 2026-08-16
+Updated: 2026-08-17
 
 ## Snapshot
 
@@ -38,6 +38,11 @@ Updated: 2026-08-16
   filters candidates before ambiguity resolution. A new calibrated capture was fully
   privacy-rejected with zero persistence; more safe private position diversity is
   still required.
+- 2026-08-17 fixed-ROI follow-up: a schema-v2 lower-right ROI and bounded consecutive-
+  frame stabilizer now run before the trained detector when automatic localization is
+  enabled. Same-aspect 2560x1440 to 1280x720 scaling is accepted; aspect-ratio drift
+  remains fail-closed. Gauge/environment tests recorded 95 passed; model artifact and
+  live source checks passed. This does not prove real reading accuracy or E2 acceptance.
 - The earlier untracked `uv.lock` was never staged or published; the recovered checkout
   does not recreate or claim ownership of it.
 

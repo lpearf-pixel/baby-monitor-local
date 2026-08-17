@@ -7,6 +7,10 @@
 - Environment monitoring design and implementation plan: approved on 2026-08-05.
 - Stable Xiaomi Alpha commit: `0df20ae` on `stable/xiaomi-alpha`.
 - Active local development branch: `codex/guardian-live-acceptance`.
+- WS2021 current localization path: fixed lower-right schema-v2 ROI with bounded
+  consecutive-frame stabilization; the trained OpenVINO detector remains fallback
+  only when fixed-ROI mode is not selected. Same-aspect resolution scaling is accepted;
+  invalid geometry and aspect-ratio drift fail closed.
 - Xiaomi-first delivery scope: fixed to MJSXJ17CM for the first usable release;
   the proposed UVC USB source remains deferred behind the existing frame-source
   adapter boundary.
@@ -278,6 +282,10 @@
 - After Task 15, resume environment-plan E2–E5 with 30 daylight comparisons,
   darkness/infrared/glare/occlusion/gauge-movement fail-closed checks, M2/Ollama outage
   isolation and the independent 24-hour run.
+- 2026-08-17 fixed-ROI software slice: fixed lower-right schema-v2 localization and
+  bounded frame stabilization are integrated; 95 gauge/environment tests, model
+  artifact check and live source check passed. This does not prove real-device reads,
+  30 daylight comparisons, night/IR/occlusion/movement gates or 24-hour stability.
 - Ordered later stages are the three-browser HD gate, normal-care-only real-Baby
   Guardian observation, separately approved audio/cry work, authenticated private
   Tailscale access and the final 72-hour release gate. `docs/NEXT.md` owns the detailed

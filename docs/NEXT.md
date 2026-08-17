@@ -15,8 +15,8 @@ training/export tooling and model-independent worker integration are complete. T
 first human-confirmed no-baby calibrated collection completed with 60 valid private
 pairs. A 20-epoch private collection seed was exported and verified at the corrected
 deployment scale, but it fails closed as `gauge_not_found` at daylight position 2/5.
-The next gate is one local position-2 bounding-box annotation, followed by the same
-privacy-safe 30-second collection. E2 comparisons have not started.
+The next gate is a controlled no-adult lower-right fixed-ROI live read, followed by
+the same privacy-safe 30-second collection. E2 comparisons have not started.
 
 **Prerequisites:** Run from the `kandysmith` login that owns the installed i9 GUI and
 launchd services. Keep calibration files, reference images, databases and runtime
@@ -25,9 +25,9 @@ metrics in ignored local storage.
 **Stages:**
 
 1. E1 — complete one private WS2021 schema-v2 Dashboard calibration. **PASS**
-2. Task 15 — finish privacy-safe crop collection, deterministic dataset preparation,
-   explicit local YOLOX-Tiny training/OpenVINO export, worker integration and the
-   installed-i9 localization gate. Household full frames must never persist.
+2. Task 15 — fixed lower-right ROI stabilization is software-complete; finish the
+   privacy-safe installed-i9 localization gate and retain the trained detector only as
+   fallback. Household full frames must never persist.
 3. E2 — obtain an available automatically localized production reading, then record
    at least 30 daylight comparisons against ±1℃ and ±5%RH.
 4. E3 — verify darkness/infrared, glare, occlusion and gauge movement fail closed.

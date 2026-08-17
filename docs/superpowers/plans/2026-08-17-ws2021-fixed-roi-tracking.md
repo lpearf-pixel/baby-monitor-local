@@ -19,7 +19,7 @@
 
 ---
 
-### Task 1: Define fixed-ROI localization contracts
+### Task 1: Define fixed-ROI localization contracts — COMPLETE
 
 **Files:**
 - Create: `services/gauge/fixed_roi.py`
@@ -35,7 +35,7 @@
 - [ ] **Step 4: Run** the focused test command and verify all new tests pass.
 - [ ] **Step 5: Commit** `git add services/gauge/fixed_roi.py tests/gauge/test_fixed_roi.py && git commit -m "feat: add fixed ROI WS2021 locator"`.
 
-### Task 2: Add bounded temporal stabilization
+### Task 2: Add bounded temporal stabilization — COMPLETE
 
 **Files:**
 - Modify: `services/gauge/fixed_roi.py`
@@ -51,7 +51,7 @@
 - [ ] **Step 4: Run** the focused test command and verify all tests pass.
 - [ ] **Step 5: Commit** `git add services/gauge/fixed_roi.py tests/gauge/test_fixed_roi.py && git commit -m "feat: stabilize fixed ROI observations"`.
 
-### Task 3: Wire fixed-ROI mode into WS2021 source
+### Task 3: Wire fixed-ROI mode into WS2021 source — COMPLETE
 
 **Files:**
 - Modify: `services/gauge/source.py`
@@ -69,7 +69,7 @@
 - [ ] **Step 4: Run** `python -m pytest tests/gauge/test_source.py tests/environment/test_bootstrap.py -q` and verify pass.
 - [ ] **Step 5: Commit** `git add services/gauge/source.py services/environment/bootstrap.py tests/gauge/test_source.py tests/environment/test_bootstrap.py && git commit -m "feat: use fixed ROI for WS2021 source"`.
 
-### Task 4: Run regression and bounded live smoke verification
+### Task 4: Run regression and bounded live smoke verification — COMPLETE
 
 **Files:**
 - Modify: `docs/STATUS.md`
