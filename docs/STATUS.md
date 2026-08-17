@@ -119,6 +119,12 @@
   the wider Guardian-focused gate recorded 126 passed. This does not prove installed
   i9 readiness, real camera behavior, Dashboard reachability or delivery to either
   phone.
+- The remote dependency-closure follow-up used a clean temporary Python 3.11
+  environment and passed 71 focused deployment/API tests, 741 full Python tests,
+  73 Node tests, `pip check`, compilation, shell checks, Make dry-runs and
+  `git diff --check`. It adds `httpx2` for current Starlette TestClient while
+  preserving `httpx` compatibility and makes `alpha-install` include acceptance
+  extras. This is software evidence, not a substitute for installed-i9 acceptance.
 - Guardian launchd scheduling/performance acceptance completed on the installed Intel
   i9 on 2026-08-15. The 10-minute gate held 5 FPS for all 60 samples with processing
   p50 100.836 ms, p95 130.789 ms and max 201.529 ms; the model remained available.

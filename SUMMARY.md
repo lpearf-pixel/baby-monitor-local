@@ -179,6 +179,12 @@ The latest complete software gate, including Guardian live-acceptance coverage, 
 - tracked runtime/media/SQLite and sensitive-literal checks: passed;
 - one existing Starlette/httpx deprecation warning remained.
 
+The remote dependency-closure checkpoint additionally verified a clean temporary
+Python 3.11 environment with `741 passed` after adding the current Starlette
+TestClient dependency and making `alpha-install` install acceptance extras. That
+portable result complements, but does not replace, the later installed-i9
+`772 passed` result.
+
 The live-acceptance focused review recorded `38 passed`; the wider Guardian-focused
 gate recorded `126 passed`. The functional commits are `d862f2a` for the narrow,
 redacted notification helper and `67db75d` for the supervised command.

@@ -3,6 +3,7 @@ from __future__ import annotations
 import os
 import shutil
 import subprocess
+import tomllib
 from pathlib import Path
 
 import pytest
@@ -600,6 +601,20 @@ def test_installer_preserves_existing_runtime_config() -> None:
     assert 'if [[ ! -f "$ROOT/runtime/go2rtc.yaml" ]]; then' in content
     assert 'cp "$ROOT/config/go2rtc.alpha.yaml" "$ROOT/runtime/go2rtc.yaml"' in content
     assert "1280x720 MJPEG at 10 FPS" in content
+
+
+def test_dev_dependencies_cover_supported_starlette_test_clients() -> None:
+    project = tomllib.loads((ROOT / "pyproject.toml").read_text(encoding="utf-8"))
+    dependencies = project["project"]["optional-dependencies"]["dev"]
+
+    assert any(item.startswith("httpx>=") for item in dependencies)
+    assert any(item.startswith("httpx2>=") for item in dependencies)
+
+
+def test_installer_installs_acceptance_test_dependencies() -> None:
+    content = (ROOT / "tools/install_alpha_macos.sh").read_text(encoding="utf-8")
+
+    assert 'python" -m pip install -e "$ROOT[dev]"' in content
 
 
 @pytest.mark.parametrize(

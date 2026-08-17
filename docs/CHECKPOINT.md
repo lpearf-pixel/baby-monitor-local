@@ -551,3 +551,9 @@ available、5 FPS。Ollama bridge 仍独立不可达，不影响此次视频恢�
 只返回闭合失败码。frame-aligned ring 严格裁剪到 15 秒上限且没有持久化接口。音频 A1-A2
 定向门禁 `23 passed`，Python 编译和 `git diff --check` 通过。测试仅使用生成字节与 fake
 process，不证明真实 Xiaomi 音轨存在；下一项为 A3 响度和动态底噪。
+
+合并远端依赖闭环证据：干净临时 Python 3.11 环境通过 71 项定向部署/API 测试、741 项
+完整 Python 测试、73 项 Node 测试、`pip check`、编译、Shell、Make dry-run 与
+`git diff --check`。修复为当前 Starlette TestClient 增加 `httpx2`，保留旧兼容依赖，
+并让 `alpha-install` 安装验收 extras。该软件证据与后续 i9 实机证据并存，不倒退或替代
+WS2021、Guardian 或音频阶段的最新状态。
