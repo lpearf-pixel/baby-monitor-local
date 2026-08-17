@@ -91,11 +91,14 @@ not authorize unattended care.
 
 ## P3 — Audio and cry candidates
 
-**Status:** Deferred; not implemented.
+**Status:** Separately approved and resequenced for parallel software work on
+2026-08-17. Stage A1 strict contracts/settings is complete; Stage A2 bounded
+in-memory PCM source is next. Real-device audio acceptance remains blocked until the
+fixed loopback source exposes a supported stable audio track.
 
-**Prerequisites:** Visual functional and real-device gates P0–P2 complete. Obtain
-separate design approval before implementation because audio changes privacy and data
-handling boundaries.
+**Prerequisites:** The current design approval permits synthetic/public-media software
+work before P0–P2 complete. P0–P2 and a verified source audio track remain prerequisites
+for household real-device acceptance.
 
 **Codex can:** reconcile V1 Task 10 with current architecture, draft the focused spec
 and plan, implement against synthetic/public audio and run focused/full software gates.
@@ -103,7 +106,8 @@ and plan, implement against synthetic/public audio and run focused/full software
 **Human required:** approve the design and later conduct private household acceptance;
 never provide household audio for Git or chat.
 
-**Acceptance and tests:** Follow V1 Task 10 after an approved current specification.
+**Acceptance and tests:** Follow
+`docs/superpowers/plans/2026-08-17-audio-cry-candidates.md`.
 Test timing, deduplication, quiet/adult-speech negatives and privacy using generated or
 explicitly public media. Software tests do not prove household accuracy.
 

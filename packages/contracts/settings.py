@@ -159,6 +159,40 @@ class RealtimeVisualSettings(StrictSettingsModel):
     enabled: bool = False
 
 
+class AudioSettings(StrictSettingsModel):
+    enabled: bool = False
+    stream_name: Literal["audio_analysis"] = "audio_analysis"
+    sample_rate_hz: Literal[16_000] = 16_000
+    channels: Literal[1] = 1
+    sample_width_bytes: Literal[2] = 2
+    buffer_seconds: Literal[15] = 15
+    window_ms: int = Field(default=1_000, ge=250, le=2_000)
+    stride_ms: int = Field(default=500, ge=100, le=1_000)
+    cry_confidence_threshold: float = Field(default=0.75, ge=0.5, le=0.99)
+    normal_seconds: int = Field(default=5, ge=1, le=15)
+    high_seconds: int = Field(default=10, ge=1, le=15)
+    repeat_seconds: int = Field(default=30, ge=10, le=120)
+    recovery_seconds: int = Field(default=5, ge=1, le=30)
+    model_path: Path = Path("runtime/models/cry-classifier.onnx")
+
+    @field_validator("model_path")
+    @classmethod
+    def require_relative_local_model_path(cls, value: Path) -> Path:
+        if value.is_absolute() or ".." in value.parts:
+            raise ValueError("model_path must be a relative local path")
+        return value
+
+    @model_validator(mode="after")
+    def require_coherent_timing(self) -> "AudioSettings":
+        if self.normal_seconds >= self.high_seconds:
+            raise ValueError("audio timing requires normal_seconds < high_seconds")
+        if self.high_seconds > self.buffer_seconds:
+            raise ValueError("audio buffer must cover high_seconds")
+        if self.stride_ms > self.window_ms:
+            raise ValueError("audio timing requires stride_ms <= window_ms")
+        return self
+
+
 class VisualSettings(StrictSettingsModel):
     enabled: bool = False
     model: Literal["qwen3-vl:8b-instruct-q4_K_M"] = VISUAL_MODEL_NAME
@@ -242,6 +276,7 @@ class AppSettings(StrictSettingsModel):
     retention: RetentionSettings = RetentionSettings()
     thresholds: ThresholdSettings = ThresholdSettings()
     environment: EnvironmentSettings = EnvironmentSettings()
+    audio: AudioSettings = AudioSettings()
     visual: VisualSettings = VisualSettings()
     notifications: NotificationSettings
     security: SecuritySettings

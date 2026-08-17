@@ -19,7 +19,7 @@ pytest, launchd.
 
 ## Stage A1: Strict Audio Contracts And Settings
 
-**Status:** Ready
+**Status:** Complete on 2026-08-17
 
 **Prerequisites:** Approved design; no real audio track is required.
 
@@ -39,7 +39,7 @@ the focused contract suite, Python compilation and `git diff --check`.
 
 ## Stage A2: Bounded In-Memory PCM Source
 
-**Status:** Pending
+**Status:** Ready
 
 **Prerequisites:** A1 complete.
 

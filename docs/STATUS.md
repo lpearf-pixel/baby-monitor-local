@@ -202,6 +202,11 @@
   outer quadrilateral/two-circle layout and applies one migrated schema-v2 geometry to
   all five frames. Failure never reuses an old position. No detector weights or
   household images are tracked.
+- Audio/cry software work has a separately approved current design with household PCM
+  limited to bounded memory and no audio persistence. Stage A1 adds closed observation
+  and failure contracts plus fixed mono 16 kHz, 15-second-buffer settings; focused
+  contract tests pass. No decoder, classifier, worker or real-device audio acceptance
+  is claimed yet, and an unavailable source track must fail closed.
 - Installed-i9 Task 15.6b daylight position 1/5 completed with no baby present. The
   private store contains 60 paired crops/metadata records with 0700/0600 permissions,
   matching names, closed metadata fields and matching SHA-256 values. No media or

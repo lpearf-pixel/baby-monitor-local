@@ -18,6 +18,103 @@
       "title": "ApplicationSettings",
       "type": "object"
     },
+    "AudioSettings": {
+      "additionalProperties": false,
+      "properties": {
+        "enabled": {
+          "default": false,
+          "title": "Enabled",
+          "type": "boolean"
+        },
+        "stream_name": {
+          "const": "audio_analysis",
+          "default": "audio_analysis",
+          "title": "Stream Name",
+          "type": "string"
+        },
+        "sample_rate_hz": {
+          "const": 16000,
+          "default": 16000,
+          "title": "Sample Rate Hz",
+          "type": "integer"
+        },
+        "channels": {
+          "const": 1,
+          "default": 1,
+          "title": "Channels",
+          "type": "integer"
+        },
+        "sample_width_bytes": {
+          "const": 2,
+          "default": 2,
+          "title": "Sample Width Bytes",
+          "type": "integer"
+        },
+        "buffer_seconds": {
+          "const": 15,
+          "default": 15,
+          "title": "Buffer Seconds",
+          "type": "integer"
+        },
+        "window_ms": {
+          "default": 1000,
+          "maximum": 2000,
+          "minimum": 250,
+          "title": "Window Ms",
+          "type": "integer"
+        },
+        "stride_ms": {
+          "default": 500,
+          "maximum": 1000,
+          "minimum": 100,
+          "title": "Stride Ms",
+          "type": "integer"
+        },
+        "cry_confidence_threshold": {
+          "default": 0.75,
+          "maximum": 0.99,
+          "minimum": 0.5,
+          "title": "Cry Confidence Threshold",
+          "type": "number"
+        },
+        "normal_seconds": {
+          "default": 5,
+          "maximum": 15,
+          "minimum": 1,
+          "title": "Normal Seconds",
+          "type": "integer"
+        },
+        "high_seconds": {
+          "default": 10,
+          "maximum": 15,
+          "minimum": 1,
+          "title": "High Seconds",
+          "type": "integer"
+        },
+        "repeat_seconds": {
+          "default": 30,
+          "maximum": 120,
+          "minimum": 10,
+          "title": "Repeat Seconds",
+          "type": "integer"
+        },
+        "recovery_seconds": {
+          "default": 5,
+          "maximum": 30,
+          "minimum": 1,
+          "title": "Recovery Seconds",
+          "type": "integer"
+        },
+        "model_path": {
+          "default": "runtime/models/cry-classifier.onnx",
+          "format": "path",
+          "title": "Model Path",
+          "type": "string"
+        }
+      },
+      "title": "AudioSettings",
+      "type": "object"
+    },
     "CameraSettings": {
       "additionalProperties": false,
       "properties": {
@@ -550,6 +647,25 @@
           "mode": "monitor_only",
           "required_independent_sources_for_control": 2
         }
+      }
+    },
+    "audio": {
+      "$ref": "#/$defs/AudioSettings",
+      "default": {
+        "enabled": false,
+        "stream_name": "audio_analysis",
+        "sample_rate_hz": 16000,
+        "channels": 1,
+        "sample_width_bytes": 2,
+        "buffer_seconds": 15,
+        "window_ms": 1000,
+        "stride_ms": 500,
+        "cry_confidence_threshold": 0.75,
+        "normal_seconds": 5,
+        "high_seconds": 10,
+        "repeat_seconds": 30,
+        "recovery_seconds": 5,
+        "model_path": "runtime/models/cry-classifier.onnx"
       }
     },
     "visual": {
