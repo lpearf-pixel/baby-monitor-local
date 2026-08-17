@@ -240,6 +240,12 @@
   duplicate observations are idempotent and backwards/conflicting timestamps are
   rejected without changing state. Short candidate timing is deliberately not restored
   across restart.
+- Audio Stage A6 maps only accepted state transitions into deterministic, idempotent
+  `audio_cry_candidate` events and a causally ordered SQLite notification outbox in one
+  transaction. Summaries and stages are closed constants; persisted metadata contains
+  only the transition name, with no samples, paths, source details, model prose or
+  media. The generic event-store schema is now version 4 and upgrades existing stores
+  by adding the bounded audio notification queue.
 - Installed-i9 Task 15.6b daylight position 1/5 completed with no baby present. The
   private store contains 60 paired crops/metadata records with 0700/0600 permissions,
   matching names, closed metadata fields and matching SHA-256 values. No media or

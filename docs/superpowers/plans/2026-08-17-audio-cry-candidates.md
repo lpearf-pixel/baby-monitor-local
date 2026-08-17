@@ -116,7 +116,7 @@ pass with fixed event kinds and severities.
 
 ## Stage A6: Text-Only Event And Notification Integration
 
-**Status:** Ready
+**Status:** Complete on 2026-08-17
 
 **Prerequisites:** A5 complete.
 
@@ -135,7 +135,7 @@ payloads contain no audio or private source detail.
 
 ## Stage A7: Independent Worker And Installed Software Gate
 
-**Status:** Pending
+**Status:** Ready
 
 **Prerequisites:** A2-A6 complete.
 

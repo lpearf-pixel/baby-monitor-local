@@ -582,3 +582,10 @@ shape 输出均 fail closed。输入固定为一秒 mono 16 kHz float32 waveform
 状态；重启只恢复已开启 normal/high，不恢复短候选计时。新增 9 项状态机测试，音频、
 契约和部署扩大门禁共 `79 passed`，Python 编译与 `git diff --check` 通过。下一项为
 A6 文字事件与通知 outbox 集成；本阶段未保存或读取家庭音频。
+
+同日，音频 A6 文字事件与通知 outbox 集成按 TDD 完成。只有状态机接受的转换可生成
+确定性、幂等的 `audio_cry_candidate` 事件；固定摘要、severity、置信度、规则版本和单个
+闭合 transition 标量与通知队列在同一 SQLite 事务写入。队列保持因果顺序，重复转换不
+重复创建事件或通知，接口不接受音频样本、路径、模型文字或媒体。EventStore schema
+升级为 v4；音频、事件、契约和部署扩大门禁 `93 passed`，Python 编译与
+`git diff --check` 通过。下一项为 A7 独立 worker、launchd 与无副作用软件门。

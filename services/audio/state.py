@@ -33,6 +33,7 @@ class AudioStateTransition:
     current_state: AudioAlertState
     severity: EventSeverity
     occurred_at: datetime
+    confidence: float | None = None
     rule_version: str = AUDIO_RULE_VERSION
 
 
@@ -108,6 +109,7 @@ class AudioStateMachine:
                     old_state,
                     EventSeverity.HIGH,
                     observation.observed_at,
+                    observation.cry_confidence,
                 )
             self.state = AudioAlertState.CANDIDATE
             self._cry_seconds = 0.0
@@ -129,6 +131,7 @@ class AudioStateMachine:
                 old_state,
                 EventSeverity.NORMAL,
                 observation.observed_at,
+                observation.cry_confidence,
             )
         if (
             self.state is AudioAlertState.NORMAL
@@ -141,6 +144,7 @@ class AudioStateMachine:
                 old_state,
                 EventSeverity.HIGH,
                 observation.observed_at,
+                observation.cry_confidence,
             )
         return None
 
@@ -178,6 +182,7 @@ class AudioStateMachine:
             old_state,
             EventSeverity.INFO,
             observation.observed_at,
+            None,
         )
 
     def _is_repeat(self, observed_at: datetime) -> bool:
@@ -192,6 +197,7 @@ class AudioStateMachine:
         previous_state: AudioAlertState,
         severity: EventSeverity,
         occurred_at: datetime,
+        confidence: float | None,
     ) -> AudioStateTransition:
         return AudioStateTransition(
             kind=kind,
@@ -199,4 +205,5 @@ class AudioStateMachine:
             current_state=self.state,
             severity=severity,
             occurred_at=occurred_at,
+            confidence=confidence,
         )
