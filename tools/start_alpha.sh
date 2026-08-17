@@ -8,12 +8,15 @@ API_PID="$ROOT/runtime/pids/api.pid"
 GAUGE_PID="$ROOT/runtime/pids/gauge.pid"
 WATCHDOG_PID="$ROOT/runtime/pids/environment-watchdog.pid"
 VISUAL_PID="$ROOT/runtime/pids/visual.pid"
+AUDIO_PID="$ROOT/runtime/pids/audio.pid"
 GAUGE_LABEL="com.babymonitor.gauge"
 GAUGE_PLIST="$HOME/Library/LaunchAgents/${GAUGE_LABEL}.plist"
 WATCHDOG_LABEL="com.babymonitor.environment-watchdog"
 WATCHDOG_PLIST="$HOME/Library/LaunchAgents/${WATCHDOG_LABEL}.plist"
 VISUAL_LABEL="com.babymonitor.visual"
 VISUAL_PLIST="$HOME/Library/LaunchAgents/${VISUAL_LABEL}.plist"
+AUDIO_LABEL="com.babymonitor.audio"
+AUDIO_PLIST="$HOME/Library/LaunchAgents/${AUDIO_LABEL}.plist"
 TUNNEL_LABEL="com.babymonitor.ollama-tunnel"
 TUNNEL_PLIST="$HOME/Library/LaunchAgents/${TUNNEL_LABEL}.plist"
 
@@ -149,6 +152,11 @@ if [[ "$(uname -s)" == "Darwin" ]] && command -v launchctl >/dev/null 2>&1; then
       launchctl bootstrap "$GAUGE_DOMAIN" "$VISUAL_PLIST"
     fi
   fi
+  if [[ -f "$AUDIO_PLIST" ]]; then
+    if ! launchctl print "${GAUGE_DOMAIN}/${AUDIO_LABEL}" >/dev/null 2>&1; then
+      launchctl bootstrap "$GAUGE_DOMAIN" "$AUDIO_PLIST"
+    fi
+  fi
   if ! launchctl print "${GAUGE_DOMAIN}/${WATCHDOG_LABEL}" >/dev/null 2>&1; then
     launchctl bootstrap "$GAUGE_DOMAIN" "$WATCHDOG_PLIST"
   fi
@@ -160,6 +168,10 @@ else
     nohup "$ROOT/.venv-alpha/bin/python" "$ROOT/tools/run_visual_worker.py" \
     --settings "$BABY_MONITOR_SETTINGS_PATH" --env-file "$ENV_FILE" \
     >"$ROOT/runtime/logs/visual.log" 2>&1
+  start_if_stopped "$AUDIO_PID" \
+    nohup "$ROOT/.venv-alpha/bin/python" "$ROOT/tools/run_audio_worker.py" \
+    --settings "$BABY_MONITOR_SETTINGS_PATH" \
+    >"$ROOT/runtime/logs/audio.log" 2>&1
   start_if_stopped "$WATCHDOG_PID" \
     nohup "$ROOT/.venv-alpha/bin/python" "$ROOT/tools/run_environment_watchdog.py" \
     --settings "$BABY_MONITOR_SETTINGS_PATH" --env-file "$ENV_FILE" \

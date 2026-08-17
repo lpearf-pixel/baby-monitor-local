@@ -589,3 +589,11 @@ A6 文字事件与通知 outbox 集成；本阶段未保存或读取家庭音频
 重复创建事件或通知，接口不接受音频样本、路径、模型文字或媒体。EventStore schema
 升级为 v4；音频、事件、契约和部署扩大门禁 `93 passed`，Python 编译与
 `git diff --check` 通过。下一项为 A7 独立 worker、launchd 与无副作用软件门。
+
+同日，音频 A7 独立 worker 与安装门完成。worker 组合固定 loopback 解码、动态响度门、
+固定 OpenVINO/ONNX 分类边界、确定性状态机、原子事件 sink 和 mode-0600 闭合状态文件；
+拥有独立 launchd job 与 `alpha-audio-status`/`alpha-audio-test`，音频失败不重启任何同级
+服务。事件持久化失败会回滚状态并只发布 `internal_error`。自动音频门 `59 passed`，
+完整 Python `879 passed`、前端 `73 passed`，编译、Shell、Make dry-run 与 diff 检查
+通过。i9 安装后 job 在 `audio.enabled=false` 下退出 0 并保持停止，没有执行家庭音频分析、
+生成事件或发送通知。A8 仍需批准的生产模型/许可证和真人监督场景。

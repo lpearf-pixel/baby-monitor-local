@@ -85,6 +85,8 @@ make alpha-stop
 make alpha-restart
 make alpha-status
 make alpha-visual-status
+make alpha-audio-status
+make alpha-audio-test
 make alpha-logs
 make alpha-quality-info
 make alpha-source-check

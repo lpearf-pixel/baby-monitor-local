@@ -95,10 +95,12 @@ not authorize unattended care.
 2026-08-17. Stages A1-A2 strict contracts/settings and bounded in-memory PCM source are
 complete; Stage A3 loudness/dynamic noise floor is complete and Stage A4 pinned ONNX
 classifier boundary is software-complete, with production artifact approval pending;
-Stages A5-A6 deterministic state and text-only event/outbox integration are complete;
-Stage A7 independent worker and installed software gate is next. The installed source and fixed audio-only
+Stages A5-A7 deterministic state, text-only event/outbox integration, independent worker
+and installed software gate are complete. The installed job is verified disabled by
+default. The installed source and fixed audio-only
 alias now expose Opus and passed a bounded no-persistence decode. A7 remains required
-before the supervised A8 stability and accuracy gate.
+before the supervised A8 stability and accuracy gate. A8 now awaits a production
+model/license decision and supervised household scenarios.
 
 **Prerequisites:** The current design approval permits synthetic/public-media software
 work before P0–P2 complete. P0–P2 and A7 remain prerequisites for household

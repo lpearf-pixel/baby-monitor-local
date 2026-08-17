@@ -246,6 +246,13 @@
   only the transition name, with no samples, paths, source details, model prose or
   media. The generic event-store schema is now version 4 and upgrades existing stores
   by adding the bounded audio notification queue.
+- Audio Stage A7 composes the fixed decoder, loudness gate, pinned OpenVINO-backed ONNX
+  classifier, state machine, atomic event sink and a mode-0600 bounded status file in
+  an independent worker. It has its own launchd definition and Make status/software
+  gates; an audio failure does not restart sibling services. Event persistence failure
+  rolls state back and publishes only `internal_error`. The installed i9 launchd job
+  was loaded with `audio.enabled=false`, exited 0 and remained stopped as designed;
+  no household analysis, event or notification occurred.
 - Installed-i9 Task 15.6b daylight position 1/5 completed with no baby present. The
   private store contains 60 paired crops/metadata records with 0700/0600 permissions,
   matching names, closed metadata fields and matching SHA-256 values. No media or

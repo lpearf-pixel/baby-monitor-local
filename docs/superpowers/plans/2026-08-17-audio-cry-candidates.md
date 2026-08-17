@@ -135,7 +135,7 @@ payloads contain no audio or private source detail.
 
 ## Stage A7: Independent Worker And Installed Software Gate
 
-**Status:** Ready
+**Status:** Complete on 2026-08-17; installed disabled-by-default job verified
 
 **Prerequisites:** A2-A6 complete.
 
@@ -151,11 +151,12 @@ automatic gate sends no real notification or production event.
 **Test:** Focused deploy tests, shell syntax/ASCII/LF checks, full Python/frontend gate,
 credential/private-data scan and `git diff --check`.
 
-**Next:** Stage A8.
+**Next:** Stage A8, after a production model/license decision and supervised scenarios.
 
 ## Stage A8: Real-Device Audio And Accuracy Gate
 
-**Status:** Waiting for A7; source-track prerequisite verified on 2026-08-17
+**Status:** Blocked by production model/license approval and supervised scenarios;
+software/source prerequisites complete
 
 **Prerequisites:** A7 complete. The installed Xiaomi/go2rtc source now exposes Opus on
 the fixed loopback source and the audio-only alias; a bounded mono 16 kHz decode passed
