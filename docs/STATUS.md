@@ -217,6 +217,10 @@
   timeout, closed source/stale/decoder failures and a frame-aligned 15-second in-memory
   PCM ring. EOF, process failure and malformed partial samples cannot produce an audio
   observation. No audio file or persistence interface exists.
+- Audio Stage A3 adds deterministic s16le RMS/dBFS extraction, a bounded adaptive
+  noise floor and a centralized loudness margin. Only quiet windows update the
+  baseline; accepted loud windows cannot contaminate it. Before a pinned classifier,
+  the output is limited to `quiet` or `sound`, never `cry_candidate`.
 - Installed-i9 Task 15.6b daylight position 1/5 completed with no baby present. The
   private store contains 60 paired crops/metadata records with 0700/0600 permissions,
   matching names, closed metadata fields and matching SHA-256 values. No media or

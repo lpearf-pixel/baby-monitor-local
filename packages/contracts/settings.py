@@ -168,6 +168,9 @@ class AudioSettings(StrictSettingsModel):
     buffer_seconds: Literal[15] = 15
     window_ms: int = Field(default=1_000, ge=250, le=2_000)
     stride_ms: int = Field(default=500, ge=100, le=1_000)
+    initial_noise_floor_dbfs: float = Field(default=-60.0, ge=-90, le=-20)
+    loudness_gate_margin_db: float = Field(default=12.0, ge=3, le=30)
+    noise_floor_adaptation: float = Field(default=0.1, gt=0, le=0.5)
     cry_confidence_threshold: float = Field(default=0.75, ge=0.5, le=0.99)
     normal_seconds: int = Field(default=5, ge=1, le=15)
     high_seconds: int = Field(default=10, ge=1, le=15)

@@ -557,3 +557,8 @@ process，不证明真实 Xiaomi 音轨存在；下一项为 A3 响度和动态�
 `git diff --check`。修复为当前 Starlette TestClient 增加 `httpx2`，保留旧兼容依赖，
 并让 `alpha-install` 安装验收 extras。该软件证据与后续 i9 实机证据并存，不倒退或替代
 WS2021、Guardian 或音频阶段的最新状态。
+
+同日，音频 A3 响度与动态底噪按 TDD 完成。生成的静音、变化底噪、音调和响声验证
+s16le RMS/dBFS 有界计算；底噪只在 gate 关闭时按集中设置适应，响声不能抬高基线，
+分类器前输出只允许 `quiet` 或 `sound`。定向门禁 `20 passed`；未读取、保存或提交任何
+家庭音频。下一项为 A4 固定 ONNX 分类器边界，软件测试不能替代真实哭声准确率。

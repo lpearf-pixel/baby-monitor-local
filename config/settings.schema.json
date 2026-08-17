@@ -70,6 +70,27 @@
           "title": "Stride Ms",
           "type": "integer"
         },
+        "initial_noise_floor_dbfs": {
+          "default": -60.0,
+          "maximum": -20,
+          "minimum": -90,
+          "title": "Initial Noise Floor Dbfs",
+          "type": "number"
+        },
+        "loudness_gate_margin_db": {
+          "default": 12.0,
+          "maximum": 30,
+          "minimum": 3,
+          "title": "Loudness Gate Margin Db",
+          "type": "number"
+        },
+        "noise_floor_adaptation": {
+          "default": 0.1,
+          "exclusiveMinimum": 0,
+          "maximum": 0.5,
+          "title": "Noise Floor Adaptation",
+          "type": "number"
+        },
         "cry_confidence_threshold": {
           "default": 0.75,
           "maximum": 0.99,
@@ -660,6 +681,9 @@
         "buffer_seconds": 15,
         "window_ms": 1000,
         "stride_ms": 500,
+        "initial_noise_floor_dbfs": -60.0,
+        "loudness_gate_margin_db": 12.0,
+        "noise_floor_adaptation": 0.1,
         "cry_confidence_threshold": 0.75,
         "normal_seconds": 5,
         "high_seconds": 10,

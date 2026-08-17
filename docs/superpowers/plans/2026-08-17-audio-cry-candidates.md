@@ -58,7 +58,7 @@ failure maps to a closed reason; no persistence API exists.
 
 ## Stage A3: Loudness And Dynamic Noise Floor
 
-**Status:** Ready
+**Status:** Complete on 2026-08-17
 
 **Prerequisites:** A2 complete.
 
@@ -76,7 +76,7 @@ bursts exercise stable, bounded output; quiet input never becomes a cry candidat
 
 ## Stage A4: Pinned ONNX Classifier Boundary
 
-**Status:** Pending
+**Status:** Ready
 
 **Prerequisites:** A3 complete; an approved redistributable model and digest are
 available before production enablement.
