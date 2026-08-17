@@ -33,6 +33,12 @@ def _lower_right_calibration():
     )
 
 
+def _high_res_calibration():
+    return _lower_right_calibration().model_copy(
+        update={"source_width": 2560, "source_height": 1440}
+    )
+
+
 def test_fixed_roi_derives_lower_right_normalized_location() -> None:
     from services.gauge.fixed_roi import FixedRoiLocator
 
@@ -63,6 +69,25 @@ def test_fixed_roi_rejects_source_dimensions_outside_bounded_drift() -> None:
 
     with pytest.raises(FixedRoiError) as caught:
         FixedRoiLocator(_lower_right_calibration()).locate(_frame(width=800, height=480))
+
+    assert caught.value.code is FixedRoiErrorCode.SOURCE_DRIFT
+
+
+def test_fixed_roi_accepts_same_aspect_ratio_scaled_frame() -> None:
+    from services.gauge.fixed_roi import FixedRoiLocator
+
+    location = FixedRoiLocator(_high_res_calibration()).locate(
+        _frame(width=1280, height=720)
+    )
+
+    assert location.box == _high_res_calibration().gauge_rect
+
+
+def test_fixed_roi_rejects_aspect_ratio_drift_after_resolution_scaling() -> None:
+    from services.gauge.fixed_roi import FixedRoiError, FixedRoiErrorCode, FixedRoiLocator
+
+    with pytest.raises(FixedRoiError) as caught:
+        FixedRoiLocator(_high_res_calibration()).locate(_frame(width=800, height=480))
 
     assert caught.value.code is FixedRoiErrorCode.SOURCE_DRIFT
 

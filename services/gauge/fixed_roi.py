@@ -77,9 +77,10 @@ class FixedRoiLocator:
 
         if frame.width <= 0 or frame.height <= 0:
             raise FixedRoiError(FixedRoiErrorCode.OUT_OF_FRAME)
-        width_drift = abs(frame.width - source_width) / source_width
-        height_drift = abs(frame.height - source_height) / source_height
-        if max(width_drift, height_drift) > self._settings.max_dimension_drift_fraction:
+        source_aspect = source_width / source_height
+        frame_aspect = frame.width / frame.height
+        aspect_drift = abs(frame_aspect - source_aspect) / source_aspect
+        if aspect_drift > self._settings.max_dimension_drift_fraction:
             raise FixedRoiError(FixedRoiErrorCode.SOURCE_DRIFT)
 
         right = rect.x + rect.width
