@@ -51,6 +51,43 @@ def test_locator_decodes_one_upright_candidate_to_source_coordinates() -> None:
     assert location.box.height == pytest.approx(0.39444, abs=0.0001)
 
 
+def test_layout_validator_selects_one_geometrically_valid_candidate() -> None:
+    from services.gauge.locator import GaugeLocator
+
+    backend = Backend(
+        [
+            [200, 320, 96, 112, 0.95, 0.95],
+            [440, 320, 96, 112, 0.94, 0.95],
+        ]
+    )
+
+    location = GaugeLocator(
+        backend=backend,
+        candidate_validator=lambda _frame, candidate: candidate.box.x > 0.5,
+    ).locate(frame())
+
+    assert location.box.x > 0.5
+
+
+def test_layout_validator_keeps_multiple_valid_candidates_ambiguous() -> None:
+    from services.gauge.locator import GaugeLocalizationError, GaugeLocator
+
+    backend = Backend(
+        [
+            [200, 320, 96, 112, 0.95, 0.95],
+            [440, 320, 96, 112, 0.94, 0.95],
+        ]
+    )
+
+    with pytest.raises(GaugeLocalizationError) as caught:
+        GaugeLocator(
+            backend=backend,
+            candidate_validator=lambda _frame, _candidate: True,
+        ).locate(frame())
+
+    assert caught.value.code.value == "gauge_ambiguous"
+
+
 @pytest.mark.parametrize(
     ("rows", "code"),
     [

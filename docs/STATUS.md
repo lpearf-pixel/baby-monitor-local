@@ -269,6 +269,12 @@
   fixed project-generated negatives. The corrected 20-epoch bootstrap, OpenVINO export
   and digest check pass; this remains a collection seed until a live localization and
   the multi-position/night gates pass.
+- Fresh live inference now produces three NMS candidates above the unchanged 0.75
+  threshold instead of no candidate, but every box is out of bounds and none passes
+  the approved outer-quadrilateral/two-circle geometry. Candidate layout validation
+  now runs before ambiguity resolution and still fails closed. A subsequent calibrated
+  collection attempt rejected all 11 frames at the privacy gate and persisted zero
+  crops; no privacy rule was bypassed.
 - After Task 15, resume environment-plan E2–E5 with 30 daylight comparisons,
   darkness/infrared/glare/occlusion/gauge-movement fail-closed checks, M2/Ollama outage
   isolation and the independent 24-hour run.

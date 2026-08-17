@@ -660,9 +660,12 @@ overlap with persisted crops.
   Daylight position 1/5 (current schema-v2 location) completed on 2026-08-16 with 60
   private crop/metadata pairs and a passing aggregate integrity check. Deployment-scale
   augmentation and the exporter source path were corrected, then a private collection
-  seed was trained/exported/checked. At position 2 it remains `gauge_not_found`; unsafe
-  lower thresholds and unreliable template/shape guesses were rejected. One local
-  position-2 box annotation is required before positions 2–5, night/IR, final training
+  seed was trained/exported/checked. The corrected seed now reaches three NMS candidates
+  above the unchanged 0.75 threshold, but all are out of bounds and none passes the
+  approved outer-quadrilateral/two-circle layout, so production remains unavailable.
+  Layout validation now safely filters before ambiguity resolution. A fresh calibrated
+  collection attempt was entirely privacy-rejected and persisted nothing. More private
+  position diversity remains required before positions 2–5, night/IR, final training
   and reading acceptance can continue.
 
 **Human work:** first confirm no baby is present and collect the current calibrated

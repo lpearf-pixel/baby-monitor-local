@@ -10,6 +10,7 @@ from services.events.environment_state import EnvironmentStatePolicy
 from services.gauge.calibration import GaugeCalibrationStore
 from services.gauge.locator import GaugeLocator, OpenVinoGaugeBackend
 from services.gauge.reader import Ws2021Reader
+from services.gauge.relocation import refine_calibration
 from services.gauge.source import Ws2021GaugeSource
 from services.gauge.worker import GaugeWorker
 from services.storage.environment import EnvironmentStore
@@ -77,9 +78,10 @@ def build_gauge_worker(
         f"http://{settings.stream.go2rtc_api_host}:"
         f"{settings.stream.go2rtc_api_port}"
     )
+    gauge_calibration_store = calibration_store(settings, project_root)
     source = Ws2021GaugeSource(
         frame_source=Go2RtcControlledFrameSource(base_url=base_url),
-        calibration_store=calibration_store(settings, project_root),
+        calibration_store=gauge_calibration_store,
         reader=Ws2021Reader(
             minimum_confidence=settings.environment.minimum_confidence,
             freshness_seconds=settings.environment.freshness_seconds,
@@ -98,7 +100,10 @@ def build_gauge_worker(
                         project_root,
                         settings.environment.localization_model_path,
                     ).with_name("metadata.json"),
-                )
+                ),
+                candidate_validator=lambda frame, location: _layout_valid(
+                    gauge_calibration_store, frame, location
+                ),
             )
             if settings.environment.auto_localization
             else None
@@ -109,3 +114,15 @@ def build_gauge_worker(
         sink=store,
         interval_seconds=settings.environment.interval_seconds,
     )
+
+
+def _layout_valid(
+    store: GaugeCalibrationStore,
+    frame: object,
+    location: object,
+) -> bool:
+    try:
+        refine_calibration(store.current(), location, frame)
+    except Exception:
+        return False
+    return True

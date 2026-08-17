@@ -5,6 +5,7 @@ from hashlib import sha256
 from io import BytesIO
 import json
 from pathlib import Path
+from collections.abc import Callable
 from typing import Protocol
 
 import cv2
@@ -59,8 +60,15 @@ class GaugeInferenceBackend(Protocol):
 
 
 class GaugeLocator:
-    def __init__(self, *, backend: GaugeInferenceBackend) -> None:
+    def __init__(
+        self,
+        *,
+        backend: GaugeInferenceBackend,
+        candidate_validator: Callable[[CapturedFrame, GaugeLocation], bool]
+        | None = None,
+    ) -> None:
         self._backend = backend
+        self._candidate_validator = candidate_validator
 
     def locate(self, frame: CapturedFrame) -> GaugeLocation:
         tensor, scale, pad_x, pad_y = self._preprocess(frame)
@@ -91,10 +99,44 @@ class GaugeLocator:
         indexes = [int(index) for index in np.asarray(kept).reshape(-1)]
         if not indexes:
             raise GaugeLocalizationError(GaugeLocalizationCode.NOT_FOUND)
-        if len(indexes) != 1:
+        if len(indexes) != 1 and self._candidate_validator is None:
             raise GaugeLocalizationError(GaugeLocalizationCode.AMBIGUOUS)
+        locations: list[GaugeLocation] = []
+        for index in indexes:
+            try:
+                location = self._location_from_candidate(
+                    frame,
+                    candidates[index],
+                    scale=scale,
+                    pad_x=pad_x,
+                    pad_y=pad_y,
+                )
+                if (
+                    self._candidate_validator is None
+                    or self._candidate_validator(frame, location)
+                ):
+                    locations.append(location)
+            except GaugeLocalizationError:
+                if len(indexes) == 1:
+                    raise
+            except Exception:
+                continue
+        if not locations:
+            raise GaugeLocalizationError(GaugeLocalizationCode.NOT_FOUND)
+        if len(locations) != 1:
+            raise GaugeLocalizationError(GaugeLocalizationCode.AMBIGUOUS)
+        return locations[0]
 
-        encoded_box, confidence = candidates[indexes[0]]
+    def _location_from_candidate(
+        self,
+        frame: CapturedFrame,
+        candidate: tuple[list[float], float],
+        *,
+        scale: float,
+        pad_x: float,
+        pad_y: float,
+    ) -> GaugeLocation:
+        encoded_box, confidence = candidate
         left = (encoded_box[0] - pad_x) / scale
         top = (encoded_box[1] - pad_y) / scale
         width = encoded_box[2] / scale

@@ -33,6 +33,11 @@ Updated: 2026-08-16
   snapshot, adds deterministic generated backgrounds/negatives, and passes training,
   OpenVINO export and digest checks. It is still not a production artifact until live
   localization and the remaining private gates pass.
+  Fresh live inference reaches three above-threshold NMS candidates, but all remain
+  out of bounds and fail the strict outer-frame/two-dial layout. The validator now
+  filters candidates before ambiguity resolution. A new calibrated capture was fully
+  privacy-rejected with zero persistence; more safe private position diversity is
+  still required.
 - The earlier untracked `uv.lock` was never staged or published; the recovered checkout
   does not recreate or claim ownership of it.
 

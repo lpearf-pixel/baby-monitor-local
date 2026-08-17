@@ -15,6 +15,7 @@ from packages.monitoring.ws2021_dataset import (
 from services.gauge.calibration import GaugeCalibrationStore
 from services.gauge.locator import GaugeLocation, GaugeLocator, OpenVinoGaugeBackend
 from services.gauge.privacy import Ws2021PrivacyGuard
+from services.gauge.relocation import refine_calibration
 from services.stream.frame_source import Go2RtcControlledFrameSource
 from services.vision.realtime_models import build_realtime_model_backend
 
@@ -104,8 +105,19 @@ def _locator(mode: str, settings: AppSettings, calibration: object) -> object:
         backend=OpenVinoGaugeBackend(
             model_path=model_path,
             metadata_path=model_path.with_name("metadata.json"),
-        )
+        ),
+        candidate_validator=lambda frame, location: _layout_valid(
+            calibration, frame, location
+        ),
     )
+
+
+def _layout_valid(calibration: object, frame: object, location: object) -> bool:
+    try:
+        refine_calibration(calibration, location, frame)
+    except Exception:
+        return False
+    return True
 
 
 def _resolve(path: Path) -> Path:
