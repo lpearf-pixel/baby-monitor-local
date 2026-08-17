@@ -240,6 +240,108 @@ def test_auto_localization_runs_once_and_reuses_migrated_geometry_for_burst() ->
     assert reader.calls[0][0].frames == frames.frames
 
 
+def test_fixed_roi_stabilization_overrides_model_locator_for_burst() -> None:
+    frames = BurstFrameSource()
+    reader = RecordingReader()
+    located = GaugeLocation(
+        box=NormalizedRect(x=0.6, y=0.2, width=0.35, height=0.7),
+        confidence=1.0,
+        model_version="fixed-roi-v1",
+    )
+
+    class StableFixedRoi:
+        def __init__(self) -> None:
+            self.calls: list[CapturedFrame] = []
+
+        def observe(self, frame: CapturedFrame) -> GaugeLocation | None:
+            self.calls.append(frame)
+            if len(self.calls) < 3:
+                return None
+            return located
+
+    stable = StableFixedRoi()
+    migrated = calibration().model_copy(update={"center_x": 0.7})
+    relocations: list[tuple[object, GaugeLocation, CapturedFrame]] = []
+
+    def relocate(current: object, location: GaugeLocation, frame: CapturedFrame):
+        relocations.append((current, location, frame))
+        return migrated
+
+    source = source_module().Ws2021GaugeSource(
+        frame_source=frames,
+        calibration_store=CalibrationStore(),
+        reader=reader,
+        fixed_roi_factory=lambda current: stable,
+        locator=FailIfCalled(),
+        relocator=relocate,
+        now=lambda: NOW,
+    )
+
+    source.read(NOW)
+
+    assert stable.calls == list(frames.frames[:3])
+    assert relocations == [(calibration(), located, frames.frames[2])]
+    assert reader.calls[0][1] is migrated
+
+
+def test_unstable_fixed_roi_returns_unavailable_without_reader_or_model() -> None:
+    class UnstableFixedRoi:
+        def observe(self, frame: CapturedFrame) -> GaugeLocation | None:
+            return None
+
+    source = source_module().Ws2021GaugeSource(
+        frame_source=BurstFrameSource(),
+        calibration_store=CalibrationStore(),
+        reader=FailIfCalled(),
+        fixed_roi_factory=lambda current: UnstableFixedRoi(),
+        locator=FailIfCalled(),
+        relocator=FailIfCalled(),
+    )
+
+    reading = source.read(NOW)
+
+    assert reading.state is ReadingState.UNAVAILABLE
+    assert reading.failure_reason is ReadingFailureReason.CALIBRATION_INVALID
+    assert reading.sample_count == 5
+    assert "fixed_roi" not in reading.model_dump_json()
+
+
+def test_model_locator_fallback_is_unchanged_when_fixed_roi_disabled() -> None:
+    frames = BurstFrameSource()
+    reader = RecordingReader()
+    located = GaugeLocation(
+        box=NormalizedRect(x=0.4, y=0.1, width=0.2, height=0.5),
+        confidence=0.9,
+        model_version="test-v1",
+    )
+
+    class Locator:
+        def __init__(self) -> None:
+            self.calls: list[CapturedFrame] = []
+
+        def locate(self, frame: CapturedFrame) -> GaugeLocation:
+            self.calls.append(frame)
+            return located
+
+    locator = Locator()
+    migrated = calibration().model_copy(update={"center_x": 0.6})
+
+    source = source_module().Ws2021GaugeSource(
+        frame_source=frames,
+        calibration_store=CalibrationStore(),
+        reader=reader,
+        fixed_roi_factory=lambda current: None,
+        locator=locator,
+        relocator=lambda current, location, frame: migrated,
+        now=lambda: NOW,
+    )
+
+    source.read(NOW)
+
+    assert locator.calls == [frames.frames[0]]
+    assert reader.calls[0][1] is migrated
+
+
 def test_auto_localization_failure_never_calls_reader_or_reuses_geometry() -> None:
     class MissingLocator:
         def locate(self, frame: CapturedFrame) -> GaugeLocation:

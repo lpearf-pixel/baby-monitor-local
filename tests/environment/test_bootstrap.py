@@ -12,7 +12,11 @@ from packages.contracts.settings import (
     NotificationSettings,
     SecuritySettings,
 )
+from services.gauge.calibration import NormalizedRect
+from services.gauge.locator import GaugeLocation
+from services.gauge.relocation import relocate_calibration
 from services.environment.notification_config import resolve_notification_topic
+from tests.gauge.synthetic_dial import calibration
 
 
 def settings(*, source_kind: EnvironmentSourceKind = EnvironmentSourceKind.WS2021_GAUGE) -> AppSettings:
@@ -88,3 +92,46 @@ def test_auto_localization_composes_fixed_openvino_backend(
         "model": tmp_path / "runtime/training/ws2021/model/ws2021.xml",
         "metadata": tmp_path / "runtime/training/ws2021/model/metadata.json",
     }
+
+
+def test_auto_localization_prefers_fixed_roi_for_lower_right_calibration(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    from services.environment import bootstrap
+
+    class Backend:
+        def __init__(self, **kwargs: object) -> None:
+            raise AssertionError("OpenVINO must not override fixed ROI")
+
+    monkeypatch.setattr(bootstrap, "OpenVinoGaugeBackend", Backend)
+    lower_right = relocate_calibration(
+        calibration(),
+        GaugeLocation(
+            box=NormalizedRect(x=0.60, y=0.20, width=0.35, height=0.70),
+            confidence=1.0,
+            model_version="test-v1",
+        ),
+    )
+    calibration_path = tmp_path / "runtime/calibration/ws2021-v1.json"
+    calibration_path.parent.mkdir(parents=True)
+    calibration_path.write_bytes(lower_right.model_dump_json().encode("utf-8"))
+    configured = settings().model_copy(
+        update={
+            "environment": EnvironmentSettings(auto_localization=True),
+        }
+    )
+
+    worker = bootstrap.build_gauge_worker(configured, tmp_path, {})
+
+    assert worker._source._fixed_roi_factory is not None
+    assert worker._source._locator is None
+
+
+def test_auto_localization_disabled_keeps_source_without_locator(tmp_path: Path) -> None:
+    from services.environment import bootstrap
+
+    worker = bootstrap.build_gauge_worker(settings(), tmp_path, {})
+
+    assert worker._source._fixed_roi_factory is None
+    assert worker._source._locator is None
