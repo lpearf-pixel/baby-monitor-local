@@ -100,3 +100,41 @@ class FixedRoiLocator:
             )
         except Exception as exc:
             raise FixedRoiError(FixedRoiErrorCode.CALIBRATION_INVALID) from exc
+
+
+class StableFixedRoiLocator:
+    """Release fixed-ROI locations only after a bounded valid-frame run."""
+
+    _MAX_REQUIRED_CONSECUTIVE_FRAMES = 60
+
+    def __init__(
+        self,
+        locator: FixedRoiLocator,
+        *,
+        required_consecutive_frames: int = 3,
+    ) -> None:
+        if isinstance(required_consecutive_frames, bool) or not (
+            1 <= required_consecutive_frames <= self._MAX_REQUIRED_CONSECUTIVE_FRAMES
+        ):
+            raise ValueError("required_consecutive_frames must be between 1 and 60")
+        self._locator = locator
+        self._required_consecutive_frames = required_consecutive_frames
+        self._valid_count = 0
+        self._latest_location: GaugeLocation | None = None
+
+    def observe(self, frame: CapturedFrame) -> GaugeLocation | None:
+        try:
+            location = self._locator.locate(frame)
+        except FixedRoiError:
+            self._valid_count = 0
+            self._latest_location = None
+            return None
+
+        self._valid_count = min(
+            self._valid_count + 1,
+            self._required_consecutive_frames,
+        )
+        self._latest_location = location
+        if self._valid_count < self._required_consecutive_frames:
+            return None
+        return self._latest_location

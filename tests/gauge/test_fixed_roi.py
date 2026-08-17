@@ -1,5 +1,8 @@
 from __future__ import annotations
 
+import gc
+import weakref
+
 import pytest
 
 from services.gauge.calibration import NormalizedRect
@@ -108,3 +111,51 @@ def test_fixed_roi_rejects_malformed_calibration_fail_closed() -> None:
         FixedRoiLocator(malformed).locate(_frame())
 
     assert caught.value.code is FixedRoiErrorCode.CALIBRATION_INVALID
+
+
+def test_stable_fixed_roi_requires_consecutive_valid_frames() -> None:
+    from services.gauge.fixed_roi import FixedRoiLocator, StableFixedRoiLocator
+
+    stable = StableFixedRoiLocator(
+        FixedRoiLocator(_lower_right_calibration()),
+        required_consecutive_frames=3,
+    )
+
+    assert stable.observe(_frame()) is None
+    assert stable.observe(_frame()) is None
+    location = stable.observe(_frame())
+
+    assert location is not None
+    assert location.box == _lower_right_calibration().gauge_rect
+
+
+def test_stable_fixed_roi_resets_after_one_invalid_frame() -> None:
+    from services.gauge.fixed_roi import FixedRoiLocator, StableFixedRoiLocator
+
+    stable = StableFixedRoiLocator(
+        FixedRoiLocator(_lower_right_calibration()),
+        required_consecutive_frames=3,
+    )
+
+    assert stable.observe(_frame()) is None
+    assert stable.observe(_frame(width=800)) is None
+    assert stable.observe(_frame()) is None
+    assert stable.observe(_frame()) is None
+    assert stable.observe(_frame()) is not None
+
+
+def test_stable_fixed_roi_does_not_retain_frames() -> None:
+    from services.gauge.fixed_roi import FixedRoiLocator, StableFixedRoiLocator
+
+    stable = StableFixedRoiLocator(
+        FixedRoiLocator(_lower_right_calibration()),
+        required_consecutive_frames=2,
+    )
+    frame = _frame()
+    reference = weakref.ref(frame)
+
+    assert stable.observe(frame) is None
+    del frame
+    gc.collect()
+
+    assert reference() is None
