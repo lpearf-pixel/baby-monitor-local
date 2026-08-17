@@ -568,3 +568,10 @@ SHA-256 在 runtime 创建前流式核对，符号链接逃逸、缺失、摘要
 shape 输出均 fail closed。输入固定为一秒 mono 16 kHz float32 waveform；低于阈值仍为
 `sound` 且不持久化分数。定向门禁 `22 passed`，仅使用合成模型字节和 fake runner。
 生产模型、许可证与实机准确率仍未批准；A5 确定性状态机可继续。
+
+同日完成 Xiaomi 实机音轨发现。固定生产 `source` 同时暴露 HEVC 视频与 Opus 音频，
+新增 loopback-only `audio_analysis` 仅暴露 Opus；两秒音频成功解码为 mono 16 kHz PCM
+后直接丢弃，未保存、播放或输出任何家庭音频。强制 Xiaomi TCP 握手失败，因此继续保持
+现有自动/UDP 传输。实机还确认 launchd 后台上下文会发生 UDP timeout，而当前交互用户
+会话可稳定建立音视频源；这通过了音轨存在性与短时解码门，不替代 A7、持续稳定性或
+家庭哭声准确率验收。

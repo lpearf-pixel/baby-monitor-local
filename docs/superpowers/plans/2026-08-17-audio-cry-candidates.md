@@ -155,10 +155,11 @@ credential/private-data scan and `git diff --check`.
 
 ## Stage A8: Real-Device Audio And Accuracy Gate
 
-**Status:** Blocked by unavailable source track
+**Status:** Waiting for A7; source-track prerequisite verified on 2026-08-17
 
-**Prerequisites:** The Xiaomi/go2rtc source exposes a supported, stable loopback audio
-track; A7 complete.
+**Prerequisites:** A7 complete. The installed Xiaomi/go2rtc source now exposes Opus on
+the fixed loopback source and the audio-only alias; a bounded mono 16 kHz decode passed
+without persistence. Sustained stability and household accuracy remain unaccepted.
 
 **Codex work:** Run bounded health, latency, fail-closed and aggregate accuracy checks
 without saving household audio.

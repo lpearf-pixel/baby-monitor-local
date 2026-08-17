@@ -277,7 +277,9 @@ legacy branch into this line without a separate integration decision.
   bounded in-memory PCM source and deterministic loudness/noise-floor gate pass;
   and the fail-closed pinned-ONNX classifier boundary pass; the deterministic cry
   state machine is next. No production cry model has been approved or enabled.
-  Real-device audio remains unaccepted.
+  The installed Xiaomi source and fixed loopback audio alias now expose Opus, and a
+  bounded mono 16 kHz decode passed without persistence. Sustained stability and
+  household cry accuracy remain unaccepted.
 - Remote private viewing and the 72-hour release gate remain unfinished.
 - This system does not detect breathing, heart rate, suffocation or medical emergencies.
 
@@ -291,7 +293,8 @@ legacy branch into this line without a separate integration decision.
 3. Complete the supervised, normal-care-only real-Baby Guardian observation gate;
    never stage a hazardous pose or persist household media/model prose.
 4. Continue the approved audio/cry plan from Stage A5; household audio remains
-   memory-only and the unavailable real source track blocks real-device acceptance.
+   memory-only. The real source-track prerequisite passes, while A7 and the supervised
+   A8 stability/accuracy gate remain.
 5. Complete authenticated private remote access using Tailscale Serve/ACL only.
 6. Complete the final 72-hour release gate before any release/tag decision.
 7. Define per-parent acknowledgement and false-positive feedback only through a future

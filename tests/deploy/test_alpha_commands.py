@@ -561,6 +561,16 @@ def test_default_config_has_separate_one_and_five_fps_analysis_profiles() -> Non
     assert "audio" not in config["streams"]["analysis_realtime"]
 
 
+def test_default_config_has_fixed_audio_only_analysis_profile() -> None:
+    config = yaml.safe_load(
+        (ROOT / "config/go2rtc.alpha.yaml").read_text(encoding="utf-8")
+    )
+
+    assert config["streams"]["audio_analysis"] == (
+        "ffmpeg:source#audio=opus/16000"
+    )
+
+
 def test_default_config_has_fixed_native_resolution_gauge_profile() -> None:
     config = yaml.safe_load(
         (ROOT / "config/go2rtc.alpha.yaml").read_text(encoding="utf-8")

@@ -95,12 +95,13 @@ not authorize unattended care.
 2026-08-17. Stages A1-A2 strict contracts/settings and bounded in-memory PCM source are
 complete; Stage A3 loudness/dynamic noise floor is complete and Stage A4 pinned ONNX
 classifier boundary is software-complete, with production artifact approval pending;
-Stage A5 deterministic state machine is next. Real-device audio acceptance remains blocked until the
-fixed loopback source exposes a supported stable audio track.
+Stage A5 deterministic state machine is next. The installed source and fixed audio-only
+alias now expose Opus and passed a bounded no-persistence decode. A7 remains required
+before the supervised A8 stability and accuracy gate.
 
 **Prerequisites:** The current design approval permits synthetic/public-media software
-work before P0–P2 complete. P0–P2 and a verified source audio track remain prerequisites
-for household real-device acceptance.
+work before P0–P2 complete. P0–P2 and A7 remain prerequisites for household
+real-device acceptance; the source-track prerequisite is verified.
 
 **Codex can:** reconcile V1 Task 10 with current architecture, draft the focused spec
 and plan, implement against synthetic/public audio and run focused/full software gates.

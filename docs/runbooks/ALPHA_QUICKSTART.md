@@ -175,11 +175,15 @@ webrtc:
   listen: "127.0.0.1:8555"
 streams:
   source: "本机生成的 Xiaomi 敏感地址，subtype=hd，传输自动协商"
+  audio_analysis: ffmpeg:source#audio=opus/16000
   live: ffmpeg:source#video=mjpeg#width=1280#height=720#raw=-r 10
   source_compat: ffmpeg:source#video=h264#hardware=videotoolbox#width=2560#height=1440#bitrate=6M
 ```
 
 不要将 go2rtc 端口改成 `0.0.0.0`，也不要把完整 `xiaomi://` 地址贴到聊天、Issue 或公开仓库。
+
+`audio_analysis` 是按需、仅回环的分析别名。它不录音、不提供播放页，音频 worker
+只在有消费者时解码到有界内存。不得把家庭音频、抓包或解码输出保存到仓库。
 
 ## 7. 将现有安装升级到高清预览
 

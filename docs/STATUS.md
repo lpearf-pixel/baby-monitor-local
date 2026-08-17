@@ -226,6 +226,13 @@
   waveform and a finite `(1, 1)` probability, and maps missing, malformed or failing
   models to closed unavailable reasons. Tests use a fake runner and synthetic bytes;
   no production model, license or household accuracy is approved by this result.
+- Installed-i9 audio-source discovery now verifies that the Xiaomi source exposes HEVC
+  video plus Opus audio and that the fixed loopback `audio_analysis` alias exposes only
+  Opus. A bounded two-second decode to mono 16 kHz PCM passed with output discarded;
+  no household audio was persisted. The camera requires the existing automatic/UDP
+  Xiaomi transport. In this macOS installation the source works from the interactive
+  user session but timed out under launchd, so sustained service stability and A8
+  household accuracy remain unaccepted.
 - Installed-i9 Task 15.6b daylight position 1/5 completed with no baby present. The
   private store contains 60 paired crops/metadata records with 0700/0600 permissions,
   matching names, closed metadata fields and matching SHA-256 values. No media or
