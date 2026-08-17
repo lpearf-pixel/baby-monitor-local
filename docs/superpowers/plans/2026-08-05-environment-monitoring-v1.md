@@ -640,7 +640,11 @@ overlap with persisted crops.
   train/export/check sequence and require exact ONNX/XML/BIN digests. Random or
   synthetic smoke weights cannot satisfy this gate. A 20-epoch position-1-only seed
   was exported and digest-checked on 2026-08-16 for collection bootstrap only; it is
-  not the final private artifact and does not close this item.
+  not the final private artifact and does not close this item. On 2026-08-17 the CPU
+  loop's upstream zero warmup rate and live-state checkpoint aliasing were fixed, and
+  deterministic generated backgrounds/negative samples were added. The corrected
+  20-epoch bootstrap trained, exported and passed exact artifact checks; live installed
+  localization remains the acceptance boundary.
 - [x] **15.5 Gauge-worker integration:** locate on the first frame of each burst, refine
   the box to an outer quadrilateral plus two-circle layout, migrate schema-v2 geometry,
   and apply the same migrated calibration to all five frames. Missing or ambiguous

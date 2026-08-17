@@ -25,6 +25,7 @@ def main() -> int:
             arguments.output,
             negatives=negatives,
             augmentation_count=arguments.augmentations,
+            synthetic_negative_count=64,
         )
     except (OSError, ValueError, TypeError, json.JSONDecodeError):
         print("ws2021_dataset=failed")

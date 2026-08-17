@@ -37,7 +37,7 @@ def main() -> int:
         exp.input_size = (640, 640)
         exp.test_size = (640, 640)
         model = exp.get_model().cpu()
-        optimizer = exp.get_optimizer(arguments.batch_size)
+        optimizer = _cpu_optimizer(exp, batch_size=arguments.batch_size)
         samples = _load_samples(arguments.dataset)
         best_loss = float("inf")
         best_state = None
@@ -60,7 +60,7 @@ def main() -> int:
             epoch_loss = total_loss / max(1, batches)
             if epoch_loss < best_loss:
                 best_loss = epoch_loss
-                best_state = {key: value.detach().cpu() for key, value in model.state_dict().items()}
+                best_state = _snapshot_state(model.state_dict())
         if best_state is None:
             return 2
         arguments.checkpoint.parent.mkdir(parents=True, exist_ok=True)
@@ -75,6 +75,24 @@ def os_cpu_count() -> int | None:
     import os
 
     return os.cpu_count()
+
+
+def _cpu_optimizer(exp: object, *, batch_size: int) -> object:
+    exp.warmup_epochs = 0
+    optimizer = exp.get_optimizer(batch_size)
+    learning_rate = exp.basic_lr_per_img * batch_size
+    if learning_rate <= 0:
+        raise ValueError("ws2021_training_failed")
+    for group in optimizer.param_groups:
+        group["lr"] = learning_rate
+    return optimizer
+
+
+def _snapshot_state(state: dict[str, object]) -> dict[str, object]:
+    return {
+        key: value.detach().cpu().clone()
+        for key, value in state.items()
+    }
 
 
 def _load_samples(dataset: Path) -> list[dict[str, object]]:

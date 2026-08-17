@@ -10,6 +10,7 @@ import pytest
 from packages.monitoring.ws2021_dataset import (
     NegativeSample,
     PrivateCropStore,
+    _render_positive,
     build_training_dataset,
 )
 
@@ -97,6 +98,27 @@ def test_dataset_uses_relative_crop_annotations_and_bounded_transforms(
         assert all(annotation["area"] > 0 for annotation in coco["annotations"])
 
 
+def test_positive_render_uses_deterministic_nonuniform_synthetic_background() -> None:
+    source = cv2.imdecode(np.frombuffer(_jpeg(7), dtype=np.uint8), cv2.IMREAD_COLOR)
+
+    first, _, _ = _render_positive(
+        source,
+        digest="a" * 64,
+        variant=0,
+        augmented=False,
+    )
+    second, _, _ = _render_positive(
+        source,
+        digest="a" * 64,
+        variant=0,
+        augmented=False,
+    )
+
+    assert first == second
+    rendered = cv2.imdecode(np.frombuffer(first, dtype=np.uint8), cv2.IMREAD_COLOR)
+    assert float(rendered[:100, :100].std()) > 2.0
+
+
 def test_negative_sample_requires_license_metadata_and_emits_empty_label(
     tmp_path: Path,
 ) -> None:
@@ -130,6 +152,35 @@ def test_negative_sample_requires_license_metadata_and_emits_empty_label(
     assert (output / negatives[0]["label"]).read_text(encoding="ascii") == ""
     assert negatives[0]["license_id"] == "CC0-1.0"
     assert negatives[0]["source_url"].startswith("https://")
+
+
+def test_generated_negatives_are_deterministic_and_have_empty_labels(
+    tmp_path: Path,
+) -> None:
+    first = tmp_path / "first"
+    second = tmp_path / "second"
+
+    first_counts = build_training_dataset(
+        _source(tmp_path),
+        first,
+        synthetic_negative_count=4,
+    )
+    second_counts = build_training_dataset(
+        tmp_path / "source",
+        second,
+        synthetic_negative_count=4,
+    )
+
+    assert first_counts.negative == 4
+    assert _manifest(first) == _manifest(second)
+    negatives = [
+        sample
+        for sample in _manifest(first)["samples"]  # type: ignore[index]
+        if sample["class_name"] == "background"
+    ]
+    assert len(negatives) == 4
+    assert all(sample["license_id"] == "project-generated" for sample in negatives)
+    assert all((first / sample["label"]).read_text(encoding="ascii") == "" for sample in negatives)
 
 
 def test_builder_rejects_tampered_or_full_frame_source(tmp_path: Path) -> None:

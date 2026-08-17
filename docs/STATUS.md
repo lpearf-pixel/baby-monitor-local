@@ -263,6 +263,12 @@
   `gauge_not_found`; its best predictions are not geometrically valid, while local
   feature/template and unconstrained shape searches are insufficiently reliable. One
   local position-2 bounding-box annotation is now required before collection continues.
+- The WS2021 CPU bootstrap no longer inherits YOLOX's zero warmup learning rate and
+  snapshots cloned best weights instead of shared live storage. Positive augmentation
+  now uses deterministic nonuniform generated backgrounds and the training set includes
+  fixed project-generated negatives. The corrected 20-epoch bootstrap, OpenVINO export
+  and digest check pass; this remains a collection seed until a live localization and
+  the multi-position/night gates pass.
 - After Task 15, resume environment-plan E2–E5 with 30 daylight comparisons,
   darkness/infrared/glare/occlusion/gauge-movement fail-closed checks, M2/Ollama outage
   isolation and the independent 24-hour run.

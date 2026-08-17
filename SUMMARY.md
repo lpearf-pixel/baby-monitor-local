@@ -29,6 +29,10 @@ Updated: 2026-08-16
   local feature templates and full-frame shape scans did not provide a safe label. The
   current gate is one local position-2 bounding-box annotation before automatic private
   collection can continue; no production threshold is reduced.
+  The latest bootstrap rerun fixes the zero CPU learning rate and aliased best-state
+  snapshot, adds deterministic generated backgrounds/negatives, and passes training,
+  OpenVINO export and digest checks. It is still not a production artifact until live
+  localization and the remaining private gates pass.
 - The earlier untracked `uv.lock` was never staged or published; the recovered checkout
   does not recreate or claim ownership of it.
 

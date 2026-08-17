@@ -7,6 +7,7 @@ from pathlib import Path
 import pytest
 
 from tools import ws2021_model
+from tools import ws2021_cpu_train
 
 
 def test_model_contract_pins_source_architecture_and_training_packages() -> None:
@@ -68,6 +69,44 @@ def test_bootstrap_training_is_bounded_to_twenty_epochs(
     assert command[command.index("--epochs") + 1] == "20"  # type: ignore[union-attr]
     assert observed["offline"] is True
     assert observed["pythonpath"] == source
+
+
+def test_cpu_optimizer_never_keeps_upstream_zero_warmup_rate() -> None:
+    class Optimizer:
+        param_groups = [{"lr": 0.0}, {"lr": 0.0}]
+
+    class Experiment:
+        warmup_epochs = 5
+        basic_lr_per_img = 0.01 / 64
+
+        def get_optimizer(self, batch_size: int) -> Optimizer:
+            assert self.warmup_epochs == 0
+            return Optimizer()
+
+    optimizer = ws2021_cpu_train._cpu_optimizer(Experiment(), batch_size=4)
+
+    assert [group["lr"] for group in optimizer.param_groups] == [0.000625, 0.000625]
+
+
+def test_best_state_snapshot_does_not_share_live_parameter_storage() -> None:
+    class Tensor:
+        def __init__(self, value: int) -> None:
+            self.value = value
+
+        def detach(self) -> "Tensor":
+            return self
+
+        def cpu(self) -> "Tensor":
+            return self
+
+        def clone(self) -> "Tensor":
+            return Tensor(self.value)
+
+    live = Tensor(7)
+    snapshot = ws2021_cpu_train._snapshot_state({"weight": live})
+    live.value = 9
+
+    assert snapshot["weight"].value == 7
 
 
 def test_artifact_check_requires_exact_files_and_digests(tmp_path: Path) -> None:

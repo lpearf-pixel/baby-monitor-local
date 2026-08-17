@@ -597,3 +597,10 @@ A6 文字事件与通知 outbox 集成；本阶段未保存或读取家庭音频
 完整 Python `879 passed`、前端 `73 passed`，编译、Shell、Make dry-run 与 diff 检查
 通过。i9 安装后 job 在 `audio.enabled=false` 下退出 0 并保持停止，没有执行家庭音频分析、
 生成事件或发送通知。A8 仍需批准的生产模型/许可证和真人监督场景。
+
+同日，WS2021 collection-seed 训练闭环修复完成。Intel CPU loop 不再继承 YOLOX warmup
+产生的零学习率，最佳 state 使用独立 clone，避免后续 epoch 覆盖；确定性非均匀背景和
+64 个项目生成负样本替代单色 padding 偏差。修正后的 20-epoch bootstrap、OpenVINO
+FP16 export 和精确工件检查均通过；WS2021/gauge 专项 `78 passed`，完整 Python 门的
+`879 passed` 也包含这些改动。该结果只证明训练/导出链，不能替代实时定位、位置 2–5、
+夜间/IR 或 E2 人工对照。

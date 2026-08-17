@@ -289,8 +289,9 @@ def build_training_dataset(
     *,
     negatives: tuple[NegativeSample, ...] = (),
     augmentation_count: int = 1,
+    synthetic_negative_count: int = 0,
 ) -> DatasetCounts:
-    if not 0 <= augmentation_count <= 8:
+    if not 0 <= augmentation_count <= 8 or not 0 <= synthetic_negative_count <= 256:
         raise ValueError("ws2021_dataset_invalid")
     sources = _load_private_crops(source_root)
     if not sources:
@@ -357,6 +358,30 @@ def build_training_dataset(
             }
         )
 
+    for index in range(synthetic_negative_count):
+        payload, digest = _render_synthetic_negative(index)
+        sample_id = sha256(f"synthetic-negative:{digest}".encode("ascii")).hexdigest()
+        image_relative = Path("train2017") / f"{sample_id}.jpg"
+        label_relative = Path("labels/train") / f"{sample_id}.txt"
+        _write_private(output_root / image_relative, payload)
+        _write_private(output_root / label_relative, b"")
+        samples.append(
+            {
+                "augmented": True,
+                "class_name": "background",
+                "image": image_relative.as_posix(),
+                "label": label_relative.as_posix(),
+                "license_id": "project-generated",
+                "source_digest": digest,
+                "split": "train",
+                "transform": {
+                    "brightness": 1.0,
+                    "rotation_degrees": 0.0,
+                    "scale": 1.0,
+                },
+            }
+        )
+
     sorted_samples = sorted(samples, key=lambda sample: str(sample["image"]))
     coco_annotations = {
         "train": "annotations/instances_train2017.json",
@@ -378,7 +403,7 @@ def build_training_dataset(
     return DatasetCounts(
         train=train_count,
         val=val_count,
-        negative=len(negatives),
+        negative=len(negatives) + synthetic_negative_count,
     )
 
 
@@ -462,7 +487,7 @@ def _render_positive(
     else:
         left = (640 - resized_width) // 2
         top = (640 - resized_height) // 2
-    canvas = np.full((640, 640, 3), 114, dtype=np.uint8)
+    canvas = _synthetic_background(rng)
     canvas[top : top + resized_height, left : left + resized_width] = resized
     ok, encoded = cv2.imencode(".jpg", canvas, [cv2.IMWRITE_JPEG_QUALITY, 92])
     if not ok:
@@ -482,6 +507,50 @@ def _render_positive(
             "scale": round(scale, 6),
         },
     )
+
+
+def _synthetic_background(rng: np.random.Generator) -> np.ndarray:
+    base = rng.uniform(75, 180, size=(1, 1, 3))
+    horizontal = np.linspace(-1, 1, 640, dtype=np.float32)[None, :, None]
+    vertical = np.linspace(-1, 1, 640, dtype=np.float32)[:, None, None]
+    horizontal_gain = rng.uniform(-28, 28, size=(1, 1, 3))
+    vertical_gain = rng.uniform(-28, 28, size=(1, 1, 3))
+    coarse = rng.normal(0, 12, size=(20, 20, 3)).astype(np.float32)
+    texture = cv2.resize(coarse, (640, 640), interpolation=cv2.INTER_CUBIC)
+    canvas = base + horizontal * horizontal_gain + vertical * vertical_gain + texture
+    return np.clip(canvas, 32, 224).astype(np.uint8)
+
+
+def _render_synthetic_negative(index: int) -> tuple[bytes, str]:
+    rng = np.random.default_rng(
+        int(sha256(f"negative-v1:{index}".encode("ascii")).hexdigest()[:16], 16)
+    )
+    canvas = _synthetic_background(rng)
+    for _ in range(12):
+        color = tuple(int(value) for value in rng.integers(32, 224, size=3))
+        left, top = (int(value) for value in rng.integers(0, 560, size=2))
+        width, height = (int(value) for value in rng.integers(20, 160, size=2))
+        right = min(639, left + width)
+        bottom = min(639, top + height)
+        thickness = int(rng.integers(1, 8))
+        if bool(rng.integers(0, 2)):
+            cv2.rectangle(canvas, (left, top), (right, bottom), color, thickness)
+        else:
+            cv2.ellipse(
+                canvas,
+                ((left + right) // 2, (top + bottom) // 2),
+                (max(1, width // 2), max(1, height // 2)),
+                float(rng.uniform(-90, 90)),
+                0,
+                360,
+                color,
+                thickness,
+            )
+    ok, encoded = cv2.imencode(".jpg", canvas, [cv2.IMWRITE_JPEG_QUALITY, 92])
+    if not ok:
+        raise ValueError("ws2021_dataset_invalid")
+    payload = encoded.tobytes()
+    return payload, sha256(payload).hexdigest()
 
 
 def _load_negative(sample: NegativeSample) -> tuple[bytes, str]:
