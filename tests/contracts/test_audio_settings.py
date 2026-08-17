@@ -77,6 +77,14 @@ def test_audio_loudness_settings_are_bounded(field: str, value: float) -> None:
         AudioSettings.model_validate({field: value})
 
 
+def test_enabled_audio_requires_pinned_model_digest() -> None:
+    with pytest.raises(ValidationError, match="model_sha256"):
+        AudioSettings(enabled=True)
+
+    settings = AudioSettings(enabled=True, model_sha256="a" * 64)
+    assert settings.model_sha256 == "a" * 64
+
+
 def test_exported_schema_and_example_expose_safe_audio_defaults() -> None:
     schema = json.loads(
         Path("config/settings.schema.json").read_text(encoding="utf-8")

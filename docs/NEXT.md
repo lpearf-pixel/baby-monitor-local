@@ -94,7 +94,8 @@ not authorize unattended care.
 **Status:** Separately approved and resequenced for parallel software work on
 2026-08-17. Stages A1-A2 strict contracts/settings and bounded in-memory PCM source are
 complete; Stage A3 loudness/dynamic noise floor is complete and Stage A4 pinned ONNX
-classifier boundary is next. Real-device audio acceptance remains blocked until the
+classifier boundary is software-complete, with production artifact approval pending;
+Stage A5 deterministic state machine is next. Real-device audio acceptance remains blocked until the
 fixed loopback source exposes a supported stable audio track.
 
 **Prerequisites:** The current design approval permits synthetic/public-media software

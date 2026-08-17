@@ -221,6 +221,11 @@
   noise floor and a centralized loudness margin. Only quiet windows update the
   baseline; accepted loud windows cannot contaminate it. Before a pinned classifier,
   the output is limited to `quiet` or `sound`, never `cry_candidate`.
+- Audio Stage A4 validates a relative in-project ONNX path and pinned SHA-256 before
+  runtime creation, rejects symlink escape, accepts only a fixed one-second mono
+  waveform and a finite `(1, 1)` probability, and maps missing, malformed or failing
+  models to closed unavailable reasons. Tests use a fake runner and synthetic bytes;
+  no production model, license or household accuracy is approved by this result.
 - Installed-i9 Task 15.6b daylight position 1/5 completed with no baby present. The
   private store contains 60 paired crops/metadata records with 0700/0600 permissions,
   matching names, closed metadata fields and matching SHA-256 values. No media or

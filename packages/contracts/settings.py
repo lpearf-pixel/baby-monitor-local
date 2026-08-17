@@ -177,6 +177,7 @@ class AudioSettings(StrictSettingsModel):
     repeat_seconds: int = Field(default=30, ge=10, le=120)
     recovery_seconds: int = Field(default=5, ge=1, le=30)
     model_path: Path = Path("runtime/models/cry-classifier.onnx")
+    model_sha256: str | None = Field(default=None, pattern=r"^[0-9a-f]{64}$")
 
     @field_validator("model_path")
     @classmethod
@@ -193,6 +194,8 @@ class AudioSettings(StrictSettingsModel):
             raise ValueError("audio buffer must cover high_seconds")
         if self.stride_ms > self.window_ms:
             raise ValueError("audio timing requires stride_ms <= window_ms")
+        if self.enabled and self.model_sha256 is None:
+            raise ValueError("enabled audio requires model_sha256")
         return self
 
 

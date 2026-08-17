@@ -76,7 +76,7 @@ bursts exercise stable, bounded output; quiet input never becomes a cry candidat
 
 ## Stage A4: Pinned ONNX Classifier Boundary
 
-**Status:** Ready
+**Status:** Software boundary complete on 2026-08-17; production artifact approval pending
 
 **Prerequisites:** A3 complete; an approved redistributable model and digest are
 available before production enablement.
@@ -97,7 +97,7 @@ pinned artifact can enable classification.
 
 ## Stage A5: Deterministic Cry State Machine
 
-**Status:** Pending
+**Status:** Ready
 
 **Prerequisites:** A1 and observation boundary from A4.
 

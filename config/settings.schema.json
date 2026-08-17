@@ -131,6 +131,19 @@
           "format": "path",
           "title": "Model Path",
           "type": "string"
+        },
+        "model_sha256": {
+          "anyOf": [
+            {
+              "pattern": "^[0-9a-f]{64}$",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Model Sha256"
         }
       },
       "title": "AudioSettings",
@@ -689,7 +702,8 @@
         "high_seconds": 10,
         "repeat_seconds": 30,
         "recovery_seconds": 5,
-        "model_path": "runtime/models/cry-classifier.onnx"
+        "model_path": "runtime/models/cry-classifier.onnx",
+        "model_sha256": null
       }
     },
     "visual": {
