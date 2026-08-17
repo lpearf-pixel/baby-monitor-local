@@ -527,3 +527,14 @@ train 86、val 17、negative 0；20 轮训练、OpenVINO FP16 导出及精确工
 候选还出现越界或不满足尺寸/姿态；位置 1 私有裁剪的 SIFT/边缘模板匹配和全帧圆形搜索
 也没有形成唯一可靠候选。因此未降低生产阈值、未保存猜测裁剪、未把种子声明为最终
 模型。下一步需要一次本地位置 2 框标注，再继续 30 秒隐私采集和后续位置循环。
+
+2026-08-17，WS2021 有效训练期间用户报告 Dashboard 实时影像消失。训练被优先停止，
+有界诊断确认 Dashboard、gauge 和 visual launchd job 仍在，但 source 为 0 字节、
+visual 指标 stale。`alpha-restart` 随后按设计拒绝 `go2rtc pid identity mismatch`；
+只读身份核对确认 1984 监听者确属当前仓库 go2rtc，但运行时 PID 所有权记录缺失。
+
+停止该已确认的孤立进程并以当前固定配置重新启动后，`make alpha-source-check` 返回
+PASS：`cs2+udp`、H.265、2560×1440 source、1280×720 live；visual 指标恢复为
+available、5 FPS。Ollama bridge 仍独立不可达，不影响此次视频恢复结论。操作手册
+新增了 fail-closed 排查和安全接管步骤；未修改摄像头 URI、FFmpeg 参数、隐私门或
+业务代码，也未记录地址、凭据、画面或绝对路径。

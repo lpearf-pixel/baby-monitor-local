@@ -573,6 +573,57 @@ microSD 回放继续使用米家 App。
 
 ## 15. 已验证故障案例
 
+### Dashboard 仍在线但实时影像消失
+
+2026-08-17 已验证过一种独立故障：Dashboard、gauge 和 visual launchd job 仍显示
+运行，但 go2rtc 源为 0 字节，visual 指标随之变为 `stale`。先停止占满 CPU 的本地
+WS2021 训练，再运行：
+
+```bash
+make alpha-source-check
+make alpha-status
+```
+
+若第一条返回 `SOURCE_OFFLINE`，不要修改 Dashboard、摄像头 URI、FFmpeg 参数或
+质量门。先执行现有幂等恢复：
+
+```bash
+make alpha-restart
+```
+
+若恢复命令返回 `go2rtc pid identity mismatch`，说明 1984 监听进程与
+`runtime/pids/go2rtc.pid` 的所有权记录不一致。启动脚本会 fail closed，避免停止
+无关进程。不要直接删除 PID 文件，也不要凭 PID 猜测后强杀。先在 i9 本机核对：
+
+```bash
+lsof -nP -iTCP:1984 -sTCP:LISTEN
+ps -ww -p <PID> -o command=
+```
+
+只有命令精确属于当前仓库的 `.local/bin/go2rtc`，且参数是当前仓库的
+`runtime/go2rtc.yaml` 时，才停止该已确认的孤立进程并重新启动：
+
+```bash
+kill <PID>
+make alpha-start
+```
+
+不要把 `alpha-start` 输出的局域网地址或任何完整命令路径粘贴到聊天、Issue 或 PR。
+恢复后必须重新验证：
+
+```bash
+make alpha-source-check
+make alpha-visual-status
+```
+
+本次恢复证据为：`SOURCE PASS`、`cs2+udp`、H.265、2560×1440 source、
+1280×720 live，以及 visual 指标恢复为 `available`、5 FPS。该结果证明本地摄像头
+源和分析画面恢复，不证明 M2/Ollama 可用；Ollama bridge 可独立保持不可用。
+
+根因不是 Dashboard 页面代码，也不是 WS2021 模型。它是一个已确认属于本项目、
+但失去 PID 所有权记录的 go2rtc 监听进程；安全启动脚本因此拒绝接管。恢复过程中
+不得降低源检查、隐私或 fail-closed 门限。
+
 Intel macOS 上遇到以下现象时：
 
 ```text
