@@ -545,3 +545,9 @@ available、5 FPS。Ollama bridge 仍独立不可达，不影响此次视频恢�
 边界、15 秒内存上限、5/10/30 秒时序设置与相对本地模型路径校验。定向契约门禁
 `37 passed`，Python 编译与 `git diff --check` 通过。该证据不证明真实音轨可用或哭声
 准确率；当前下一项为 A2 有界内存 PCM source，实机音频门仍由上游音轨阻塞。
+
+同日，A2 有界内存 PCM source 按 TDD 完成。固定 loopback-only FFmpeg 命令只选择音轨，
+带 5 秒读取超时并输出 mono 16 kHz s16le；启动失败、EOF、stale、解码异常和畸形半采样
+只返回闭合失败码。frame-aligned ring 严格裁剪到 15 秒上限且没有持久化接口。音频 A1-A2
+定向门禁 `23 passed`，Python 编译和 `git diff --check` 通过。测试仅使用生成字节与 fake
+process，不证明真实 Xiaomi 音轨存在；下一项为 A3 响度和动态底噪。

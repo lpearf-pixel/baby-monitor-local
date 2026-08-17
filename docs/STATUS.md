@@ -207,6 +207,10 @@
   and failure contracts plus fixed mono 16 kHz, 15-second-buffer settings; focused
   contract tests pass. No decoder, classifier, worker or real-device audio acceptance
   is claimed yet, and an unavailable source track must fail closed.
+- Audio Stage A2 adds a fixed loopback-only FFmpeg audio command with a bounded read
+  timeout, closed source/stale/decoder failures and a frame-aligned 15-second in-memory
+  PCM ring. EOF, process failure and malformed partial samples cannot produce an audio
+  observation. No audio file or persistence interface exists.
 - Installed-i9 Task 15.6b daylight position 1/5 completed with no baby present. The
   private store contains 60 paired crops/metadata records with 0700/0600 permissions,
   matching names, closed metadata fields and matching SHA-256 values. No media or

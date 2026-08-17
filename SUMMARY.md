@@ -267,8 +267,9 @@ legacy branch into this line without a separate integration decision.
   privacy-safe animated WebP design.
 - Real Baby posture, face obstruction and bed-exit accuracy remain unaccepted.
 - Audio/cry software work was separately approved on 2026-08-17 with a strict
-  no-household-audio-persistence boundary. Stage A1 strict contracts/settings pass;
-  the bounded in-memory PCM source is next. Real-device audio remains unaccepted.
+  no-household-audio-persistence boundary. Stages A1-A2 strict contracts/settings and
+  bounded in-memory PCM source pass; loudness/noise-floor analysis is next.
+  Real-device audio remains unaccepted.
 - Remote private viewing and the 72-hour release gate remain unfinished.
 - This system does not detect breathing, heart rate, suffocation or medical emergencies.
 
@@ -281,7 +282,7 @@ legacy branch into this line without a separate integration decision.
 2. Complete three-browser HD acceptance on the installed i9.
 3. Complete the supervised, normal-care-only real-Baby Guardian observation gate;
    never stage a hazardous pose or persist household media/model prose.
-4. Continue the approved audio/cry plan from Stage A2; household audio remains
+4. Continue the approved audio/cry plan from Stage A3; household audio remains
    memory-only and the unavailable real source track blocks real-device acceptance.
 5. Complete authenticated private remote access using Tailscale Serve/ACL only.
 6. Complete the final 72-hour release gate before any release/tag decision.

@@ -39,7 +39,7 @@ the focused contract suite, Python compilation and `git diff --check`.
 
 ## Stage A2: Bounded In-Memory PCM Source
 
-**Status:** Ready
+**Status:** Complete on 2026-08-17
 
 **Prerequisites:** A1 complete.
 
@@ -58,7 +58,7 @@ failure maps to a closed reason; no persistence API exists.
 
 ## Stage A3: Loudness And Dynamic Noise Floor
 
-**Status:** Pending
+**Status:** Ready
 
 **Prerequisites:** A2 complete.
 

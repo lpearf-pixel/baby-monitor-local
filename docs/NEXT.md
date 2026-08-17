@@ -92,8 +92,8 @@ not authorize unattended care.
 ## P3 — Audio and cry candidates
 
 **Status:** Separately approved and resequenced for parallel software work on
-2026-08-17. Stage A1 strict contracts/settings is complete; Stage A2 bounded
-in-memory PCM source is next. Real-device audio acceptance remains blocked until the
+2026-08-17. Stages A1-A2 strict contracts/settings and bounded in-memory PCM source are
+complete; Stage A3 loudness/dynamic noise floor is next. Real-device audio acceptance remains blocked until the
 fixed loopback source exposes a supported stable audio track.
 
 **Prerequisites:** The current design approval permits synthetic/public-media software
