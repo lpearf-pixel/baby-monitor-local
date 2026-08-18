@@ -625,9 +625,10 @@ temperature 最近圆心偏差约 0.393R（门限 0.25R）；不是可安全放�
 当前读表门仍未通过，不能把 OCR 接到生产链；下一步必须在当前视角重新执行 schema-v2
 标定。
 
-随后在不改变标定数据的前提下增加 calibrated-center pointer fallback。gauge 专项保持
-`80 passed`；实时 5 帧现在可得到 5 个温度和 5 个湿度候选，但聚合置信度约 `0.68–0.70`，
-低于既定 `0.75` 发布门，因此仍 fail closed。该改动不降低置信度门，也不证明 E2 或 OCR。
+随后在不改变标定数据的前提下增加 calibrated-center pointer fallback，并在白天红色
+指针掩码较弱时改用 grayscale temperature needle signal。gauge 专项为 `81 passed`；
+实时 5 帧现可得到约 `29.3C / 59.5%RH`、置信度 `0.75` 的 available smoke reading。
+该结果不降低置信度门，也不证明 E2 准确率或 OCR；下一步进入 30 组白天人工对照。
 
 分层诊断显示透视校正本身成功；湿度圆的清晰度/圆检测失败，温度圆的 ROI 越界。该
 结果说明当前 schema-v2 双圆几何与实时画面不一致，按 fail-closed 要求先重新标定，

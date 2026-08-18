@@ -13,10 +13,11 @@
   invalid geometry and aspect-ratio drift fail closed.
 - 2026-08-18 live check: five-frame source burst produced three stable fixed-ROI
   observations, but the dual-face needle reader initially returned `calibration_invalid`.
-  Task 5 adaptive geometry is implemented (`c001507`), and calibrated-center pointer
-  fallback is now implemented (`ecf8aa8`); the full gauge suite is 80 passed. Live frames
-  now yield five valid samples, but aggregate confidence is ~0.68–0.70, below the 0.75
-  publication gate, so the end-to-end reading remains unavailable and is not OCR evidence.
+  Task 5 adaptive geometry is implemented (`c001507`), calibrated-center pointer fallback
+  is implemented (`ecf8aa8`), and day temperature now uses grayscale needle evidence when
+  red is weak (`8b27da1`). The full gauge suite is 81 passed. The latest live five-frame
+  read is available at approximately 29.3C / 59.5%RH with confidence exactly 0.75. This
+  is a live smoke result, not E2 accuracy evidence.
 - Layered diagnostic: perspective rectification and both face ROIs succeed, but no
   humidity circle candidate is within the approved bounds and the nearest temperature
   center is ~0.393R away (limit 0.25R). Treat the current calibration as stale and
