@@ -196,7 +196,10 @@
   Starlette/httpx deprecation warning.
 - The authoritative `kandysmith` runtime check reported the Xiaomi `cs2+udp` H.265
   source and Dashboard live stream healthy, the visual worker at 5 FPS with current
-  metrics, the realtime model available, and the Ollama tunnel/bridge healthy.
+  metrics, and the realtime model available. Ollama bridge health requires loopback
+  HTTP 200; launchd `running` alone is insufficient. A recent M2→i9 login did not
+  establish the configured i9→M2 `-L` forward (`http=000`); the stale listener was
+  stopped and E4 controlled recovery remains pending.
 - Runtime checks from `chatgpt-agent` are not authoritative for services in the
   `kandysmith` GUI domain. Launch future operational Codex sessions directly from the
   `kandysmith` SSH login; do not grant broad disk or sudo access.

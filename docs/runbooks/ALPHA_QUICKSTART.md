@@ -416,6 +416,26 @@ make alpha-visual-status
 确定性风险候选；当前仍没有事件截图/视频、ntfy 风险通知或 Dashboard 人工反馈，
 这些属于 R4。它也不是医疗监护，不能替代成人持续照护。
 
+### Ollama bridge 方向故障恢复
+
+正常架构是 i9 发起单一 `-L`：`i9 127.0.0.1:11435 → M2 127.0.0.1:11434`。
+M2→i9 的 SSH 登录本身不会建立该转发；即使 launchd 显示 `running`，bridge 也可能
+实际返回 `http=000`。不要开放 Ollama 到局域网或公网。
+
+若 i9→M2 暂时不可达而 M2→i9 可用，先停止旧 tunnel 并确认 11435 已释放，再在 M2
+重新建立带反向转发的连接（不能给已建立会话动态追加）：
+
+```bash
+ssh -N -T -o ExitOnForwardFailure=yes \
+  -o ServerAliveInterval=15 -o ServerAliveCountMax=3 \
+  -R 127.0.0.1:11435:127.0.0.1:11434 <i9用户>@<i9地址>
+```
+
+保持连接后，在 i9 执行 `curl -sS -m 5 -o /dev/null -w
+'ollama_bridge_http=%{http_code}\n' http://127.0.0.1:11435/api/tags` 和
+`make alpha-visual-status`。只有 HTTP 200 且状态为 `reachable` 才算恢复；恢复后
+回到正式 i9→M2 `-L` 配置，反向转发仅作受控故障恢复路径。
+
 ## 11. iPhone 通知
 
 两台 iPhone 安装 ntfy，并订阅：

@@ -46,8 +46,11 @@ metrics in ignored local storage.
    is recorded. A transient stack outage was recovered with `make alpha-start`; this is
    recovery evidence, not the controlled M2/Ollama interruption gate. The first tunnel-only
    unload attempt also interrupted capture, so the next attempt must isolate tunnel failure
-   without taking go2rtc offline. Current bounded logs identify the immediate blocker as
-   the configured M2 SSH host timing out/host-down; wait for that external host to recover.
+   without taking go2rtc offline. The latest diagnosis also recorded a direction mismatch:
+   an M2→i9 SSH login did not establish the configured i9→M2 `-L` bridge. If using the
+   approved recovery path, stop the stale i9 listener, establish `-R 127.0.0.1:11435:127.0.0.1:11434`
+   from M2, and verify HTTP 200 before repeating E4; do not treat launchd `running` as
+   bridge health.
 6. E5 — run the gauge/watchdog path for 24 hours without scheduling backlog; complete
    the remaining state/notification, load-shedding and two-phone payload checks. Short
    preflight is green, but do not start the 24-hour gate until E4 tunnel isolation is

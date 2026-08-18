@@ -101,6 +101,10 @@ Important ownership boundaries:
 - go2rtc administration and the model bridge remain loopback-only. External access
   must be authenticated and private; Tailscale Funnel and router port forwarding are
   prohibited.
+- Ollama tunnel direction is fixed: normal operation is i9 `-L` to M2 loopback. An
+  M2→i9 SSH login without explicit reverse `-R` does not provide the bridge; verify
+  `/api/tags` HTTP 200 instead of trusting launchd `running`. The latest stale listener
+  was stopped; E4 controlled isolation/recovery remains pending.
 
 ## Completed Capabilities
 
