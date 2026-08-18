@@ -42,6 +42,8 @@ class _Candidate:
 
 
 class Ws2021Reader:
+    _MAX_ASPECT_RATIO_DRIFT_FRACTION = 0.05
+
     def __init__(
         self,
         *,
@@ -188,12 +190,7 @@ class Ws2021Reader:
         if image is None:
             raise _FrameRejected(ReadingFailureReason.FRAME_SOURCE_UNAVAILABLE)
         height, width = image.shape[:2]
-        if (
-            width != frame.width
-            or height != frame.height
-            or width != calibration.source_width
-            or height != calibration.source_height
-        ):
+        if not self._frame_dimensions_match(width, height, frame, calibration):
             raise _FrameRejected(ReadingFailureReason.CALIBRATION_INVALID)
 
         warped, transform = self._rectify(image, calibration)
@@ -266,6 +263,25 @@ class Ws2021Reader:
             humidity_confidence=humidity_candidate.confidence,
             captured_at=frame.captured_at,
         )
+
+    @classmethod
+    def _frame_dimensions_match(
+        cls,
+        width: int,
+        height: int,
+        frame: CapturedFrame,
+        calibration: Ws2021Calibration,
+    ) -> bool:
+        if min(width, height, frame.width, frame.height) <= 0:
+            return False
+        if width != frame.width or height != frame.height:
+            return False
+        source_aspect = calibration.source_width / calibration.source_height
+        frame_aspect = width / height
+        if not math.isfinite(source_aspect) or not math.isfinite(frame_aspect):
+            return False
+        aspect_drift = abs(frame_aspect - source_aspect) / source_aspect
+        return aspect_drift <= cls._MAX_ASPECT_RATIO_DRIFT_FRACTION
 
     @staticmethod
     def _rectify(

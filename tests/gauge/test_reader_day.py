@@ -1,13 +1,16 @@
 from __future__ import annotations
 
 import importlib
+from io import BytesIO
 
 import cv2
 import numpy as np
 import pytest
+from PIL import Image
 
 from packages.contracts.events import ReadingFailureReason, ReadingState
 from services.gauge.calibration import GaugeQuadrilateral
+from services.stream.frame_source import CapturedFrame, FrameBurst
 from tests.gauge.synthetic_dial import (
     NOW,
     blurred_frame,
@@ -24,6 +27,21 @@ from tests.gauge.synthetic_dial import (
 
 def reader_module():
     return importlib.import_module("services.gauge.reader")
+
+
+def _scaled_burst(width: int, height: int) -> FrameBurst:
+    if width > 0 and height > 0:
+        source = Image.open(BytesIO(frame_jpeg()))
+        output = BytesIO()
+        source.resize((width, height)).save(output, format="JPEG", quality=95)
+        payload = output.getvalue()
+    else:
+        payload = frame_jpeg()
+    return FrameBurst(
+        frames=tuple(
+            CapturedFrame(payload, NOW, width, height) for _ in range(5)
+        )
+    )
 
 
 def test_rectification_preserves_portrait_gauge_aspect_ratio() -> None:
@@ -80,6 +98,40 @@ def test_red_needles_produce_both_values() -> None:
     assert reading.humidity_rh == pytest.approx(48.0, abs=5.0)
     assert reading.valid_temperature_samples == 5
     assert reading.valid_humidity_samples == 5
+
+
+def test_same_aspect_scaled_frame_is_accepted_by_reader() -> None:
+    high_resolution = calibration().model_copy(
+        update={"source_width": 2560, "source_height": 1440}
+    )
+
+    reading = reader_module().Ws2021Reader().read(
+        _scaled_burst(1280, 720), high_resolution, requested_at=NOW
+    )
+
+    assert reading.state is ReadingState.AVAILABLE
+
+
+def test_aspect_ratio_drift_is_rejected_by_reader() -> None:
+    high_resolution = calibration().model_copy(
+        update={"source_width": 2560, "source_height": 1440}
+    )
+
+    reading = reader_module().Ws2021Reader().read(
+        _scaled_burst(800, 480), high_resolution, requested_at=NOW
+    )
+
+    assert reading.state is ReadingState.UNAVAILABLE
+    assert reading.failure_reason is ReadingFailureReason.CALIBRATION_INVALID
+
+
+def test_invalid_frame_dimensions_are_rejected_by_reader() -> None:
+    reading = reader_module().Ws2021Reader().read(
+        _scaled_burst(0, 0), calibration(), requested_at=NOW
+    )
+
+    assert reading.state is ReadingState.UNAVAILABLE
+    assert reading.failure_reason is ReadingFailureReason.CALIBRATION_INVALID
 
 
 def test_missing_one_face_never_publishes_partial_values() -> None:
