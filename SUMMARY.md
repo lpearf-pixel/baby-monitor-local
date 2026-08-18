@@ -43,6 +43,10 @@ Updated: 2026-08-17
   enabled. Same-aspect 2560x1440 to 1280x720 scaling is accepted; aspect-ratio drift
   remains fail-closed. Gauge/environment tests recorded 95 passed; model artifact and
   live source checks passed. This does not prove real reading accuracy or E2 acceptance.
+- 2026-08-18 live fixed-ROI read: 5-frame source burst yielded 3 stable ROI observations,
+  but all five dual-face/needle reader attempts failed closed as `calibration_invalid`.
+  OCR has not started because the approved schema-v2 geometry is not yet producing a
+  safe temperature/humidity value.
 - The earlier untracked `uv.lock` was never staged or published; the recovered checkout
   does not recreate or claim ownership of it.
 

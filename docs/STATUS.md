@@ -11,6 +11,9 @@
   consecutive-frame stabilization; the trained OpenVINO detector remains fallback
   only when fixed-ROI mode is not selected. Same-aspect resolution scaling is accepted;
   invalid geometry and aspect-ratio drift fail closed.
+- 2026-08-18 live check: five-frame source burst produced three stable fixed-ROI
+  observations, but the existing dual-face needle reader returned `calibration_invalid`
+  for all five frames. This is an end-to-end read failure, not evidence for OCR.
 - Xiaomi-first delivery scope: fixed to MJSXJ17CM for the first usable release;
   the proposed UVC USB source remains deferred behind the existing frame-source
   adapter boundary.

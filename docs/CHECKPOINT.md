@@ -617,3 +617,7 @@ FP16 export 和精确工件检查均通过；WS2021/gauge 专项 `78 passed`，�
 1280×720 缩放通过，宽高比漂移、无效几何和未稳定帧 fail closed。gauge/environment
 软件回归 95 passed，模型工件检查和实时源检查均 PASS。该证据不替代真实读表、30 组
 白天对照、夜间/红外/反光/遮挡/移动、M2/Ollama 离线、24 小时、三浏览器或 72 小时门。
+
+2026-08-18，实时 5 帧 burst 中有 3 帧达到固定 ROI 稳定阈值；同一 burst 交给现有
+schema-v2 双圆/指针 reader 时，5 帧全部以 `calibration_invalid` fail closed。当前
+读表门仍未通过，不能把 OCR 接到生产链；需要先确认实时双圆/指针几何或重新标定。
