@@ -302,6 +302,31 @@ def test_calibrated_centers_allow_pointer_read_when_circle_detector_is_unavailab
     assert reading.humidity_rh == pytest.approx(48.0, abs=5.0)
 
 
+def test_day_temperature_uses_gray_pointer_signal_when_red_signal_is_weak(
+    monkeypatch,
+) -> None:
+    module = reader_module()
+    reader = module.Ws2021Reader()
+    original_color = reader._color_candidate
+    original_gray = reader._gray_candidate
+    def color_candidate(red_mask, geometry):
+        candidate = original_color(red_mask, geometry)
+        if geometry.calibration.center.x < 0.5:
+            return candidate
+        return candidate.__class__(candidate.angle_degrees, 0.4)
+
+    monkeypatch.setattr(reader, "_color_candidate", color_candidate)
+    monkeypatch.setattr(reader, "_gray_candidate", original_gray)
+
+    reading = reader.read(
+        burst([frame_jpeg(22.0, 48.0) for _ in range(5)]),
+        calibration(),
+        requested_at=NOW,
+    )
+
+    assert reading.state is ReadingState.AVAILABLE
+
+
 def test_perspective_calibration_uses_rectified_scale_angles() -> None:
     skewed_calibration, payload = perspective_case()
 

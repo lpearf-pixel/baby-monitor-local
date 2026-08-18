@@ -268,9 +268,7 @@ class Ws2021Reader:
 
         if mode == "day":
             humidity_candidate = self._color_candidate(red_mask, humidity_geometry)
-            temperature_candidate = self._color_candidate(
-                red_mask, temperature_geometry
-            )
+            temperature_candidate = self._gray_candidate(gray, temperature_geometry)
         else:
             humidity_candidate = self._gray_candidate(gray, humidity_geometry)
             temperature_candidate = self._gray_candidate(gray, temperature_geometry)
