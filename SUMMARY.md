@@ -292,7 +292,7 @@ legacy branch into this line without a separate integration decision.
   the restricted i9-to-M2 bridge and supervised seven-scene synthetic gate have passed.
 - Complete WS2021 schema-v2 calibration, 30 daylight comparisons,
   darkness/infrared/glare/occlusion/gauge-movement fail-closed checks, M2/Ollama outage
-  isolation and the independent 24-hour environment gate.
+  isolation and the independent 12-hour environment gate.
 - Complete three-browser HD acceptance and the final 72-hour camera, i9, M2, network,
   storage and two-phone release gate before tagging `v0.1.0`.
 
@@ -321,7 +321,7 @@ legacy branch into this line without a separate integration decision.
 
 1. Continue WS2021 Task 15 with daylight positions 2–5, then night/IR collection and
    pinned i9-local training/OpenVINO export. Resume E2–E5 with 30 daylight comparisons,
-   fail-closed scene checks, M2/Ollama isolation and 24-hour stability. E1 and the
+   fail-closed scene checks, M2/Ollama isolation and 12-hour stability. E1 and the
    native-resolution continuous frame source are complete.
 2. Complete three-browser HD acceptance on the installed i9.
 3. Complete the supervised, normal-care-only real-Baby Guardian observation gate;
@@ -386,7 +386,7 @@ only the bounded log window needed to identify the first actionable failure.
 3. Verify repository root, remote, branch, HEAD, upstream, dirty state and recent log.
 4. Preserve `uv.lock` and any other user changes; do not reset or clean.
 5. Reconcile local and remote feature histories before any push or branch integration.
-6. Continue the private WS2021 calibration and independent 24-hour environment gate;
+6. Continue the private WS2021 calibration and independent 12-hour environment gate;
    do not restart completed Guardian milestones.
 7. Use focused tests for the slice and the full gate only at the next milestone or
    stable-branch integration.

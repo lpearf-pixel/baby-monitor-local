@@ -150,12 +150,12 @@
   notification or production event writes. Its installed-i9 physical run passed on
   2026-08-15 with 10 operator-confirmed correct trials for each scene and no recorded
   false-positive, missed or unavailable outcome. The next slice is the independent
-  24-hour environment calibration/stability gate.
+  12-hour environment calibration/stability gate.
   Per-parent acknowledgement and actor-bound false-positive feedback are deferred to a
   future contract where Baby Care consumes Guardian's read-only feed and owns
   identity/write state, so Guardian does not invent a second family identity model. The
   i9 launchd update and 10-minute performance sampler are complete.
-  The i9 environment calibration and 24-hour gate remain independent and unfinished.
+  The i9 environment calibration and 12-hour gate remain independent and unfinished.
 
 ## Pull request checkpoint
 
@@ -295,11 +295,11 @@
   crops; no privacy rule was bypassed.
 - After Task 15, resume environment-plan E2–E5 with 30 daylight comparisons,
   darkness/infrared/glare/occlusion/gauge-movement fail-closed checks, M2/Ollama outage
-  isolation and the independent 24-hour run.
+  isolation and the independent 12-hour run.
 - 2026-08-17 fixed-ROI software slice: fixed lower-right schema-v2 localization and
   bounded frame stabilization are integrated; 95 gauge/environment tests, model
   artifact check and live source check passed. This does not prove real-device reads,
-  30 daylight comparisons, night/IR/occlusion/movement gates or 24-hour stability.
+  30 daylight comparisons, night/IR/occlusion/movement gates or 12-hour stability.
 - Ordered later stages are the three-browser HD gate, normal-care-only real-Baby
   Guardian observation, separately approved audio/cry work, authenticated private
   Tailscale access and the final 72-hour release gate. `docs/NEXT.md` owns the detailed

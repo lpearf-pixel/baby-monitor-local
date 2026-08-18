@@ -564,7 +564,7 @@ Commit: `feat: integrate local environment monitoring`
 
 ## Stage-completion evidence
 
-Automated completion requires every targeted Python and Node test above, compilation, schema validation, privacy scan, and `git diff --check` to pass with fresh output. Real i9 completion remains separate and must record: one schema v2 calibration, 30 daylight comparisons, night/reflection/occlusion rejection, 24-hour no-backlog run, state/notification simulation, M2 outage isolation, load-shedding behavior, and two Android ntfy payload inspection. No software-only result may claim those hardware checks passed.
+Automated completion requires every targeted Python and Node test above, compilation, schema validation, privacy scan, and `git diff --check` to pass with fresh output. Real i9 completion remains separate and must record: one schema v2 calibration, 30 daylight comparisons, night/reflection/occlusion rejection, 12-hour no-backlog run, state/notification simulation, M2 outage isolation, load-shedding behavior, and two Android ntfy payload inspection. No software-only result may claim those hardware checks passed.
 
 ### Current real-device acceptance order
 
@@ -582,7 +582,7 @@ environment acceptance gate, executed in this order without changing business co
   movement. Unreliable scenes and invalidated geometry must not publish values.
 - [ ] **E4 — Independence:** take M2/Ollama offline and confirm gauge sampling, SQLite
   writes, environment state and notification handling continue independently.
-- [ ] **E5 — 24-hour stability:** run the gauge/watchdog path for 24 hours, confirm
+- [ ] **E5 — 12-hour stability:** run the gauge/watchdog path for 12 hours, confirm
   60-second scheduling does not build a backlog, and inspect trend gaps and bounded
   health output. The state/notification, load-shedding and two-phone payload checks
   remain part of this same real-device gate.

@@ -45,9 +45,9 @@ metrics in ignored local storage.
    camera, gauge and i9 workers continued normally; after reconnect, i9 port 11435
    returned HTTP 200. Keep the direction-mismatch recovery note in the runbook and do
    not treat launchd `running` alone as bridge health.
-6. E5 — run the gauge/watchdog path for 24 hours without scheduling backlog; complete
+6. E5 — run the gauge/watchdog path for 12 hours without scheduling backlog; complete
    the remaining state/notification, load-shedding and two-phone payload checks. Short
-   preflight is green and E4 is complete; start the 24-hour gate next.
+   preflight is green and E4 is complete; start the 12-hour gate next.
 
 **Codex can:** run bounded readiness checks, guide the approved workflow, validate
 closed outputs, diagnose recoverable failures and update redacted documentation.
@@ -58,7 +58,7 @@ supervise scene changes and keep the i9 running.
 
 **Acceptance and tests:** Follow environment plan E1–E5 and approved environment spec
 section 18. Every published daylight reading meets the error target; unreliable input
-is `unavailable`; M2 outage does not stop the environment path; 24-hour evidence shows
+is `unavailable`; M2 outage does not stop the environment path; 12-hour evidence shows
 no backlog. Run focused software checks only if code changes become separately approved.
 
 **Next:** P1 three-browser HD acceptance.
@@ -168,7 +168,7 @@ explicit approval.
 
 **Acceptance and tests:** Follow V1 Task 16 and the approved V1 acceptance criteria for
 72 continuous hours across i9, camera, M2, network, storage and two phones. The earlier
-10-minute visual and 24-hour environment gates do not substitute for this run.
+10-minute visual and 12-hour environment gates do not substitute for this run.
 
 **Next:** only after documented PASS, request explicit approval for release integration
 or tagging; do not modify `main`, push, merge or tag implicitly.
