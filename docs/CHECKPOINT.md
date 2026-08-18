@@ -644,6 +644,12 @@ worker launchd、Ollama tunnel/visual worker 的离线与独立失败路径共 `
 一次退出码为 `255`，因此不能宣称 E4 实机离线门通过；下一步需在不影响 gauge 的前提下
 记录一次受控 M2/Ollama 断开与恢复。
 
+后续一次现场检查发现 go2rtc、Dashboard 和 Ollama bridge 短暂不可用，但各 worker 仍由
+launchd 独立保持；执行既有 `make alpha-start` 恢复后，readiness 8/8、`alpha-source-check`
+恢复 PASS（H265，2560x1440 -> 1280x720），当前 5 帧 WS2021 实读 available，约
+`29.38C / 60.00%RH`、置信度 `0.8333`。这证明可恢复性和独立 worker 行为，不替代受控
+M2/Ollama 断开恢复门。
+
 随后连续 3 次独立 5 帧 burst 均 available：温度约 `29.32C +/-0.01C`、湿度约
 `59.46%RH +/-0.02`，每次置信度 `0.75`、温湿度各 5 个有效样本。该结果只证明短时
 软件/源流稳定，不替代真人参考温湿度计的 30 组 E2 对照。

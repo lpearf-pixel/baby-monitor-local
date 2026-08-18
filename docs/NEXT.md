@@ -43,7 +43,8 @@ metrics in ignored local storage.
    independence. Software independence checks are green; real offline interruption
    remains outstanding. Current readiness is green, but the tunnel has a recent exit
    code `255`, so do not claim the real gate until a controlled interruption/recovery
-   is recorded.
+   is recorded. A transient stack outage was recovered with `make alpha-start`; this is
+   recovery evidence, not the controlled M2/Ollama interruption gate.
 6. E5 — run the gauge/watchdog path for 24 hours without scheduling backlog; complete
    the remaining state/notification, load-shedding and two-phone payload checks.
 
