@@ -97,12 +97,17 @@
 - Consumes: the fixed ROI and schema-v2 `GaugeFace` geometry.
 - Produces: per-burst in-memory face centers/radii only; persisted calibration is never changed.
 
-- [ ] **Step 1: Write failing tests** for same-aspect camera movement with both circles translated/scaled inside the fixed ROI, stable multi-frame acceptance, ambiguous/missing circle rejection, and unchanged calibration bytes.
-- [ ] **Step 2: Run** `.venv-alpha/bin/python -m pytest tests/gauge/test_reader_day.py tests/gauge/test_reader_aggregation.py -q` and verify the new tests fail.
-- [ ] **Step 3: Implement** bounded Hough candidate selection inside each calibrated face ROI, require candidate consistency across the existing burst, create an ephemeral face geometry used only for that read, and preserve fail-closed behavior for out-of-bounds, ambiguity, glare, occlusion, and excessive drift.
-- [ ] **Step 4: Run** the focused reader tests and the full `tests/gauge` suite; verify pass.
-- [ ] **Step 5: Run** the real five-frame aggregate smoke check; report only accepted/unavailable counts and reasons.
-- [ ] **Step 6: Commit** `git add services/gauge/reader.py tests/gauge/test_reader_day.py tests/gauge/test_reader_aggregation.py && git commit -m "feat: adapt WS2021 face geometry per burst"`.
+- [x] **Step 1: Write failing tests** for same-aspect camera movement with both circles translated/scaled inside the fixed ROI, stable multi-frame acceptance, ambiguous/missing circle rejection, and unchanged calibration bytes.
+- [x] **Step 2: Run** `.venv-alpha/bin/python -m pytest tests/gauge/test_reader_day.py tests/gauge/test_reader_aggregation.py -q` and verify the new tests fail.
+- [x] **Step 3: Implement** bounded Hough candidate selection inside each calibrated face ROI, require candidate consistency across the existing burst, create an ephemeral face geometry used only for that read, and preserve fail-closed behavior for out-of-bounds, ambiguity, glare, occlusion, and excessive drift.
+- [x] **Step 4: Run** the focused reader tests and the full `tests/gauge` suite; verify pass (`20 passed`; `79 passed`).
+- [x] **Step 5: Run** the real five-frame aggregate smoke check; it remains unavailable and fail-closed because the persisted geometry is outside the approved adaptive bounds.
+- [x] **Step 6: Commit** `c001507 feat: adapt WS2021 face geometry per burst`.
+
+**Task 5 result:** software implementation is complete. The live gate now requires a
+fresh authenticated schema-v2 calibration at the present camera view; adaptive limits
+must not be widened to absorb the measured temperature-center drift (~0.393R) or the
+missing humidity-circle match.
 
 ## Completion Criteria
 

@@ -45,11 +45,13 @@ Updated: 2026-08-17
   live source checks passed. This does not prove real reading accuracy or E2 acceptance.
 - 2026-08-18 live fixed-ROI read: 5-frame source burst yielded 3 stable ROI observations,
   but all five dual-face/needle reader attempts failed closed as `calibration_invalid`.
-  OCR has not started because the approved schema-v2 geometry is not yet producing a
-  safe temperature/humidity value.
-- Layered diagnosis confirms rectification succeeds, while humidity circle validation
-  fails and temperature ROI bounds fail; the current schema-v2 face geometry must be
-  recalibrated before OCR or E2.
+  Task 5 now provides bounded in-memory adaptive face geometry (`c001507`); focused
+  reader tests are 20 passed and the full gauge suite is 79 passed. OCR has not started
+  because the current persisted geometry remains outside the approved adaptive bounds.
+- Live diagnosis confirms rectification and face ROIs succeed, but humidity has no
+  bounded circle candidate and temperature's nearest center is ~0.393R away. A fresh
+  schema-v2 calibration at the current camera view is required; fail-closed limits are
+  not widened.
 - The earlier untracked `uv.lock` was never staged or published; the recovered checkout
   does not recreate or claim ownership of it.
 

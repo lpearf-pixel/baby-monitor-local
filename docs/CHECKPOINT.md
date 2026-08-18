@@ -618,9 +618,12 @@ FP16 export 和精确工件检查均通过；WS2021/gauge 专项 `78 passed`，�
 软件回归 95 passed，模型工件检查和实时源检查均 PASS。该证据不替代真实读表、30 组
 白天对照、夜间/红外/反光/遮挡/移动、M2/Ollama 离线、24 小时、三浏览器或 72 小时门。
 
-2026-08-18，实时 5 帧 burst 中有 3 帧达到固定 ROI 稳定阈值；同一 burst 交给现有
-schema-v2 双圆/指针 reader 时，5 帧全部以 `calibration_invalid` fail closed。当前
-读表门仍未通过，不能把 OCR 接到生产链；需要先确认实时双圆/指针几何或重新标定。
+2026-08-18，实时 5 帧 burst 中有 3 帧达到固定 ROI 稳定阈值；Task 5 的有界内存自适应
+双圆几何已提交为 `c001507`，reader 专项 20 passed、完整 gauge 79 passed。同一 burst
+仍全部以 `calibration_invalid` fail closed。诊断为 humidity 无 0.25R/12% 范围内候选，
+temperature 最近圆心偏差约 0.393R（门限 0.25R）；不是可安全放宽的代码缺陷。
+当前读表门仍未通过，不能把 OCR 接到生产链；下一步必须在当前视角重新执行 schema-v2
+标定。
 
 分层诊断显示透视校正本身成功；湿度圆的清晰度/圆检测失败，温度圆的 ROI 越界。该
 结果说明当前 schema-v2 双圆几何与实时画面不一致，按 fail-closed 要求先重新标定，

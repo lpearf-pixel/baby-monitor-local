@@ -12,11 +12,14 @@
   only when fixed-ROI mode is not selected. Same-aspect resolution scaling is accepted;
   invalid geometry and aspect-ratio drift fail closed.
 - 2026-08-18 live check: five-frame source burst produced three stable fixed-ROI
-  observations, but the existing dual-face needle reader returned `calibration_invalid`
-  for all five frames. This is an end-to-end read failure, not evidence for OCR.
-- Layered diagnostic: perspective rectification succeeds; humidity circle validation
-  fails and the temperature ROI is out of bounds. Treat the current calibration as
-  stale for this scene and require a new schema-v2 geometry calibration.
+  observations, but the dual-face needle reader returned `calibration_invalid` for all
+  five frames. Task 5 adaptive geometry is implemented (`c001507`); focused reader tests
+  are 20 passed and the full gauge suite is 79 passed. This is still an end-to-end read
+  failure, not evidence for OCR.
+- Layered diagnostic: perspective rectification and both face ROIs succeed, but no
+  humidity circle candidate is within the approved bounds and the nearest temperature
+  center is ~0.393R away (limit 0.25R). Treat the current calibration as stale and
+  require a new schema-v2 geometry calibration; do not widen the limits.
 - Xiaomi-first delivery scope: fixed to MJSXJ17CM for the first usable release;
   the proposed UVC USB source remains deferred behind the existing frame-source
   adapter boundary.
