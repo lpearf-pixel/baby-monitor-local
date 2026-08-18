@@ -49,7 +49,9 @@ Updated: 2026-08-17
   calibrated-center pointer fallback (`ecf8aa8`). Day temperature now uses the grayscale
   needle signal when the red mask is weak (`8b27da1`); the full gauge suite is 81 passed.
   A live five-frame read is now available at about 29.3C / 59.5%RH with confidence 0.75.
-  This is a software/live smoke result, not E2 accuracy evidence.
+  Three independent bursts remained available at 29.32C +/-0.01C and 59.46%RH +/-0.02,
+  all at confidence 0.75. This is still a software/live stability result, not E2 accuracy
+  evidence.
 - Live diagnosis confirms rectification and face ROIs succeed, but humidity has no
   bounded circle candidate and temperature's nearest center is ~0.393R away. A fresh
   schema-v2 calibration at the current camera view is required; fail-closed limits are
