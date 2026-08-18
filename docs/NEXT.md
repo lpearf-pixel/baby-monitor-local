@@ -19,8 +19,10 @@ The fixed ROI now stabilizes on the live source. Task 5 adaptive in-memory geome
 software-complete and its focused/full gauge gates pass, but the end-to-end reader still
 returns `calibration_invalid` for all five frames: the persisted geometry is outside the
 approved adaptive bounds (humidity has no bounded circle candidate; temperature's nearest
-center is about 0.393R away). The next action is a fresh authenticated schema-v2
-calibration at the present camera view before E2 comparisons or OCR; do not widen limits.
+center is about 0.393R away). A calibrated-center pointer fallback now extracts five valid
+samples, but aggregate confidence remains below the 0.75 publication gate. The next
+software action is confidence/needle-quality diagnosis without lowering that gate; E2
+comparisons and OCR remain blocked.
 
 **Prerequisites:** Run from the `kandysmith` login that owns the installed i9 GUI and
 launchd services. Keep calibration files, reference images, databases and runtime

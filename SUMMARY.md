@@ -45,9 +45,11 @@ Updated: 2026-08-17
   live source checks passed. This does not prove real reading accuracy or E2 acceptance.
 - 2026-08-18 live fixed-ROI read: 5-frame source burst yielded 3 stable ROI observations,
   but all five dual-face/needle reader attempts failed closed as `calibration_invalid`.
-  Task 5 now provides bounded in-memory adaptive face geometry (`c001507`); focused
-  reader tests are 20 passed and the full gauge suite is 79 passed. OCR has not started
-  because the current persisted geometry remains outside the approved adaptive bounds.
+  Task 5 now provides bounded in-memory adaptive face geometry (`c001507`) plus a
+  calibrated-center pointer fallback (`ecf8aa8`); the full gauge suite is 80 passed.
+  OCR has not started. Live frames now produce five valid temperature/humidity samples,
+  but aggregate confidence remains below the 0.75 publication gate, so the reading stays
+  fail-closed.
 - Live diagnosis confirms rectification and face ROIs succeed, but humidity has no
   bounded circle candidate and temperature's nearest center is ~0.393R away. A fresh
   schema-v2 calibration at the current camera view is required; fail-closed limits are

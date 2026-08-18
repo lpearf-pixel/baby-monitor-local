@@ -12,10 +12,11 @@
   only when fixed-ROI mode is not selected. Same-aspect resolution scaling is accepted;
   invalid geometry and aspect-ratio drift fail closed.
 - 2026-08-18 live check: five-frame source burst produced three stable fixed-ROI
-  observations, but the dual-face needle reader returned `calibration_invalid` for all
-  five frames. Task 5 adaptive geometry is implemented (`c001507`); focused reader tests
-  are 20 passed and the full gauge suite is 79 passed. This is still an end-to-end read
-  failure, not evidence for OCR.
+  observations, but the dual-face needle reader initially returned `calibration_invalid`.
+  Task 5 adaptive geometry is implemented (`c001507`), and calibrated-center pointer
+  fallback is now implemented (`ecf8aa8`); the full gauge suite is 80 passed. Live frames
+  now yield five valid samples, but aggregate confidence is ~0.68–0.70, below the 0.75
+  publication gate, so the end-to-end reading remains unavailable and is not OCR evidence.
 - Layered diagnostic: perspective rectification and both face ROIs succeed, but no
   humidity circle candidate is within the approved bounds and the nearest temperature
   center is ~0.393R away (limit 0.25R). Treat the current calibration as stale and
