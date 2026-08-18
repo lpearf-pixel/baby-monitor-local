@@ -639,6 +639,11 @@ E3 软件专项已复核：夜间灰度读针、无指针、过暗、反光、�
 worker launchd、Ollama tunnel/visual worker 的离线与独立失败路径共 `64 passed`。
 该结果不替代实际断开 M2/Ollama 后的 i9 实机验收。
 
+随后 i9 readiness 检查 8 项均 PASS，`make alpha-guardian-test` 4 项均 PASS；gauge
+和 visual launchd 当前 running。Ollama tunnel 当前虽被 launchd 保持 running，但最近
+一次退出码为 `255`，因此不能宣称 E4 实机离线门通过；下一步需在不影响 gauge 的前提下
+记录一次受控 M2/Ollama 断开与恢复。
+
 随后连续 3 次独立 5 帧 burst 均 available：温度约 `29.32C +/-0.01C`、湿度约
 `59.46%RH +/-0.02`，每次置信度 `0.75`、温湿度各 5 个有效样本。该结果只证明短时
 软件/源流稳定，不替代真人参考温湿度计的 30 组 E2 对照。

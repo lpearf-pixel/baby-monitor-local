@@ -41,7 +41,9 @@ metrics in ignored local storage.
    Software contract checks are green; the real-device scenarios remain outstanding.
 5. E4 — take M2/Ollama offline and confirm gauge, storage, state and notification
    independence. Software independence checks are green; real offline interruption
-   remains outstanding.
+   remains outstanding. Current readiness is green, but the tunnel has a recent exit
+   code `255`, so do not claim the real gate until a controlled interruption/recovery
+   is recorded.
 6. E5 — run the gauge/watchdog path for 24 hours without scheduling backlog; complete
    the remaining state/notification, load-shedding and two-phone payload checks.
 
