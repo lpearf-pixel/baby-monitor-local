@@ -44,6 +44,22 @@ def _scaled_burst(width: int, height: int) -> FrameBurst:
     )
 
 
+def _moved_frame(*, offset_x: float, scale: float = 1.0) -> bytes:
+    image = cv2.imdecode(np.frombuffer(frame_jpeg(), dtype=np.uint8), cv2.IMREAD_COLOR)
+    height, width = image.shape[:2]
+    transform = cv2.getRotationMatrix2D((width / 2, height / 2), 0, scale)
+    transform[0, 2] += offset_x
+    moved = cv2.warpAffine(
+        image,
+        transform,
+        (width, height),
+        borderValue=(210, 210, 210),
+    )
+    encoded, payload = cv2.imencode(".jpg", moved, [cv2.IMWRITE_JPEG_QUALITY, 95])
+    assert encoded
+    return payload.tobytes()
+
+
 def test_rectification_preserves_portrait_gauge_aspect_ratio() -> None:
     module = reader_module()
     source = np.zeros((480, 640, 3), dtype=np.uint8)
@@ -208,6 +224,59 @@ def test_blurred_dial_fails_sharpness_gate() -> None:
 def test_shifted_dial_invalidates_calibration() -> None:
     reading = reader_module().Ws2021Reader().read(
         burst([shifted_frame() for _ in range(5)]),
+        calibration(),
+        requested_at=NOW,
+    )
+
+    assert reading.state is ReadingState.UNAVAILABLE
+    assert reading.failure_reason is ReadingFailureReason.CALIBRATION_INVALID
+
+
+def test_stable_bounded_face_movement_is_read_without_mutating_calibration() -> None:
+    source_calibration = calibration()
+    original = source_calibration.model_dump_json()
+
+    reading = reader_module().Ws2021Reader().read(
+        burst([_moved_frame(offset_x=10, scale=1.04) for _ in range(5)]),
+        source_calibration,
+        requested_at=NOW,
+    )
+
+    assert reading.state is ReadingState.AVAILABLE
+    assert reading.temperature_c == pytest.approx(22.0, abs=1.0)
+    assert reading.humidity_rh == pytest.approx(48.0, abs=5.0)
+    assert source_calibration.model_dump_json() == original
+
+
+def test_inconsistent_face_movement_is_rejected_across_burst() -> None:
+    reading = reader_module().Ws2021Reader().read(
+        burst(
+            [
+                _moved_frame(offset_x=offset)
+                for offset in (-5, 5, -5, 5, -5)
+            ]
+        ),
+        calibration(),
+        requested_at=NOW,
+    )
+
+    assert reading.state is ReadingState.UNAVAILABLE
+    assert reading.failure_reason is ReadingFailureReason.CALIBRATION_INVALID
+
+
+def test_ambiguous_nearby_face_circles_are_rejected(monkeypatch) -> None:
+    module = reader_module()
+    monkeypatch.setattr(
+        module.cv2,
+        "HoughCircles",
+        lambda *_args, **_kwargs: np.asarray(
+            [[[94.0, 94.0, 72.0], [104.0, 94.0, 72.0]]],
+            dtype=np.float32,
+        ),
+    )
+
+    reading = module.Ws2021Reader().read(
+        burst([frame_jpeg() for _ in range(5)]),
         calibration(),
         requested_at=NOW,
     )
