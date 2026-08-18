@@ -672,6 +672,12 @@ E5 短时前置检查：gauge 与 environment-watchdog launchd 均 running、各
 HTTP 200 和 `alpha-visual-status` 的 `reachable` 双重证据确认；恢复后应回到正式
 i9→M2 `-L` 配置。该记录不证明 E4 真实断开/恢复门已通过，E4 仍待完成。
 
+随后用户在实际 `kandysmith` i9 终端完成 E4 受控验证：短暂停止 M2→i9 反向 SSH
+后，Ollama bridge 按预期 fail-closed，而摄像头、go2rtc、gauge、存储/状态链路继续
+正常；恢复 SSH 后 i9 `127.0.0.1:11435/api/tags` 返回 HTTP 200。结合前置 `117 passed`
+软件独立性门，E4 标记 PASS。下一阶段转入 E5 24 小时环境稳定性门；该证据仍不替代
+24 小时持续运行、三浏览器高清验收或最终 72 小时发布门。
+
 随后由 `kandysmith` i9 实际终端确认反向映射已恢复：访问 i9 本地
 `127.0.0.1:11435/api/tags` 返回 HTTP 200，M2 本机 Ollama 仍保持
 `127.0.0.1:11434`。该证据证明 bridge 可用，但不替代 E4 受控断开、恢复及独立性

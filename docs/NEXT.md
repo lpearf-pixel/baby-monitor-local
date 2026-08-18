@@ -40,21 +40,14 @@ metrics in ignored local storage.
 4. E3 — verify darkness/infrared, glare, occlusion and gauge movement fail closed.
    Software contract checks are green; the real-device scenarios remain outstanding.
 5. E4 — take M2/Ollama offline and confirm gauge, storage, state and notification
-   independence. Software independence checks are green; real offline interruption
-   remains outstanding. Current readiness is green, but the tunnel has a recent exit
-   code `255`, so do not claim the real gate until a controlled interruption/recovery
-   is recorded. A transient stack outage was recovered with `make alpha-start`; this is
-   recovery evidence, not the controlled M2/Ollama interruption gate. The first tunnel-only
-   unload attempt also interrupted capture, so the next attempt must isolate tunnel failure
-   without taking go2rtc offline. The latest diagnosis also recorded a direction mismatch:
-   an M2→i9 SSH login did not establish the configured i9→M2 `-L` bridge. If using the
-   approved recovery path, stop the stale i9 listener, establish `-R 127.0.0.1:11435:127.0.0.1:11434`
-   from M2, and verify HTTP 200 before repeating E4; do not treat launchd `running` as
-   bridge health.
+   independence. **PASS (user-confirmed real interruption/recovery).** During the
+   controlled M2/Ollama tunnel interruption, bridge failure remained fail-closed while
+   camera, gauge and i9 workers continued normally; after reconnect, i9 port 11435
+   returned HTTP 200. Keep the direction-mismatch recovery note in the runbook and do
+   not treat launchd `running` alone as bridge health.
 6. E5 — run the gauge/watchdog path for 24 hours without scheduling backlog; complete
    the remaining state/notification, load-shedding and two-phone payload checks. Short
-   preflight is green, but do not start the 24-hour gate until E4 tunnel isolation is
-   resolved and the Ollama bridge is reachable for the controlled test.
+   preflight is green and E4 is complete; start the 24-hour gate next.
 
 **Codex can:** run bounded readiness checks, guide the approved workflow, validate
 closed outputs, diagnose recoverable failures and update redacted documentation.
