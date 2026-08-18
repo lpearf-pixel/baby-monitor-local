@@ -38,6 +38,7 @@ metrics in ignored local storage.
 3. E2 — obtain an available automatically localized production reading. The 30 daylight
    manual comparisons against ±1℃ and ±5%RH are deferred and do not block the mainline.
 4. E3 — verify darkness/infrared, glare, occlusion and gauge movement fail closed.
+   Software contract checks are green; the real-device scenarios remain outstanding.
 5. E4 — take M2/Ollama offline and confirm gauge, storage, state and notification
    independence.
 6. E5 — run the gauge/watchdog path for 24 hours without scheduling backlog; complete
