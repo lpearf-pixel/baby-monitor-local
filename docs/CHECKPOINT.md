@@ -655,6 +655,11 @@ M2/Ollama 断开恢复门。
 available（约 `29.58C / 59.90%RH`、置信度 `0.8333`）。这证明恢复路径，但不能宣称
 “断开期间 gauge 独立”已通过；下次需在真实 i9 终端中隔离 tunnel 进程，避免影响 go2rtc。
 
+E5 短时前置检查：gauge 与 environment-watchdog launchd 均 running、各自 `runs=1` 且
+无退出码；visual realtime 维持 5 FPS（P50 105.5ms、P95 121.7ms、max 129.2ms），
+`alpha-source-check` PASS。Ollama bridge 仍 unreachable，因此 E4 先于 E5 长测继续保持
+未完成，尚未启动 24 小时测试。
+
 随后连续 3 次独立 5 帧 burst 均 available：温度约 `29.32C +/-0.01C`、湿度约
 `59.46%RH +/-0.02`，每次置信度 `0.75`、温湿度各 5 个有效样本。该结果只证明短时
 软件/源流稳定，不替代真人参考温湿度计的 30 组 E2 对照。

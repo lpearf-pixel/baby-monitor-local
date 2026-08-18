@@ -48,7 +48,9 @@ metrics in ignored local storage.
    unload attempt also interrupted capture, so the next attempt must isolate tunnel failure
    without taking go2rtc offline.
 6. E5 — run the gauge/watchdog path for 24 hours without scheduling backlog; complete
-   the remaining state/notification, load-shedding and two-phone payload checks.
+   the remaining state/notification, load-shedding and two-phone payload checks. Short
+   preflight is green, but do not start the 24-hour gate until E4 tunnel isolation is
+   resolved and the Ollama bridge is reachable for the controlled test.
 
 **Codex can:** run bounded readiness checks, guide the approved workflow, validate
 closed outputs, diagnose recoverable failures and update redacted documentation.
