@@ -678,6 +678,12 @@ i9→M2 `-L` 配置。该记录不证明 E4 真实断开/恢复门已通过，E4
 软件独立性门，E4 标记 PASS。下一阶段转入 E5 24 小时环境稳定性门；该证据仍不替代
 24 小时持续运行、三浏览器高清验收或最终 72 小时发布门。
 
+E5 于 2026-08-18 在实际 `kandysmith` i9 终端开始。权威基线：Dashboard health
+`status=ok`，Dashboard/go2rtc/gauge/visual workers 均 running，visual 5 FPS、P95
+约 `106.713ms`，`alpha-source-check` PASS（H.265，source `2560x1440`，live
+`1280x720`，接收字节非零）。Ollama tunnel 当前可暂时断开；E4 已证明其不会停止
+环境链路。24 小时窗口尚未完成，期间不得宣称 E5 PASS。
+
 随后由 `kandysmith` i9 实际终端确认反向映射已恢复：访问 i9 本地
 `127.0.0.1:11435/api/tags` 返回 HTTP 200，M2 本机 Ollama 仍保持
 `127.0.0.1:11434`。该证据证明 bridge 可用，但不替代 E4 受控断开、恢复及独立性
