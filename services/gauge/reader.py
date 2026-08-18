@@ -254,8 +254,9 @@ class Ws2021Reader:
             gray, temperature_geometry
         ):
             raise _FrameRejected(ReadingFailureReason.OCCLUDED)
-        self._validate_face_geometry(gray, humidity_geometry)
-        self._validate_face_geometry(gray, temperature_geometry)
+        if adaptive_geometries is None:
+            self._validate_face_geometry(gray, humidity_geometry)
+            self._validate_face_geometry(gray, temperature_geometry)
         hsv = cv2.cvtColor(warped, cv2.COLOR_BGR2HSV)
         red_mask = cv2.bitwise_or(
             cv2.inRange(hsv, (0, 80, 70), (12, 255, 255)),
@@ -345,8 +346,26 @@ class Ws2021Reader:
                     gray, expected_humidity
                 ) or self._face_is_occluded(gray, expected_temperature):
                     continue
-                humidity = self._detect_face_geometry(gray, expected_humidity)
-                temperature = self._detect_face_geometry(gray, expected_temperature)
+                try:
+                    humidity = self._detect_face_geometry(gray, expected_humidity)
+                    temperature = self._detect_face_geometry(gray, expected_temperature)
+                except _CircleDetectionUnavailable:
+                    hsv = cv2.cvtColor(warped, cv2.COLOR_BGR2HSV)
+                    red_mask = cv2.bitwise_or(
+                        cv2.inRange(hsv, (0, 80, 70), (12, 255, 255)),
+                        cv2.inRange(hsv, (168, 80, 70), (179, 255, 255)),
+                    )
+                    mode: Literal["day", "night"] = (
+                        "day" if int(np.count_nonzero(red_mask)) >= 30 else "night"
+                    )
+                    if mode == "day":
+                        self._color_candidate(red_mask, expected_humidity)
+                        self._color_candidate(red_mask, expected_temperature)
+                    else:
+                        self._gray_candidate(gray, expected_humidity)
+                        self._gray_candidate(gray, expected_temperature)
+                    humidity = expected_humidity
+                    temperature = expected_temperature
             except _FrameRejected:
                 continue
             humidity_observations.append(humidity)
@@ -613,12 +632,15 @@ class Ws2021Reader:
         search_radius = round(geometry.radius * 1.3)
         center_x = round(geometry.center_x)
         center_y = round(geometry.center_y)
-        left = center_x - search_radius
-        top = center_y - search_radius
-        right = center_x + search_radius + 1
-        bottom = center_y + search_radius + 1
-        if left < 0 or top < 0 or right > gray.shape[1] or bottom > gray.shape[0]:
+        if not (
+            geometry.radius <= geometry.center_x < gray.shape[1] - geometry.radius
+            and geometry.radius <= geometry.center_y < gray.shape[0] - geometry.radius
+        ):
             raise _FrameRejected(ReadingFailureReason.ROI_OUT_OF_BOUNDS)
+        left = max(0, center_x - search_radius)
+        top = max(0, center_y - search_radius)
+        right = min(gray.shape[1], center_x + search_radius + 1)
+        bottom = min(gray.shape[0], center_y + search_radius + 1)
         crop = gray[top:bottom, left:right]
         sharpness = float(cv2.Laplacian(crop, cv2.CV_64F).var())
         if sharpness < 12:
@@ -635,7 +657,7 @@ class Ws2021Reader:
             maxRadius=round(geometry.radius * 1.28),
         )
         if circles is None:
-            raise _FrameRejected(ReadingFailureReason.CALIBRATION_INVALID)
+            raise _CircleDetectionUnavailable
         expected_x = geometry.center_x - left
         expected_y = geometry.center_y - top
         candidates = [
@@ -649,6 +671,8 @@ class Ws2021Reader:
             and abs(float(circle[2]) - geometry.radius) / geometry.radius
             <= self._MAX_FACE_RADIUS_DRIFT_FRACTION
         ]
+        if not candidates:
+            raise _CircleDetectionUnavailable
         if len(candidates) != 1:
             raise _FrameRejected(ReadingFailureReason.CALIBRATION_INVALID)
         detected = candidates[0]
@@ -834,3 +858,8 @@ class _FrameRejected(RuntimeError):
     def __init__(self, reason: ReadingFailureReason) -> None:
         super().__init__(reason.value)
         self.reason = reason
+
+
+class _CircleDetectionUnavailable(_FrameRejected):
+    def __init__(self) -> None:
+        super().__init__(ReadingFailureReason.CALIBRATION_INVALID)

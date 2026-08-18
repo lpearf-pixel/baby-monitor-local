@@ -285,6 +285,23 @@ def test_ambiguous_nearby_face_circles_are_rejected(monkeypatch) -> None:
     assert reading.failure_reason is ReadingFailureReason.CALIBRATION_INVALID
 
 
+def test_calibrated_centers_allow_pointer_read_when_circle_detector_is_unavailable(
+    monkeypatch,
+) -> None:
+    module = reader_module()
+    monkeypatch.setattr(module.cv2, "HoughCircles", lambda *_args, **_kwargs: None)
+
+    reading = module.Ws2021Reader().read(
+        burst([frame_jpeg(22.0, 48.0) for _ in range(5)]),
+        calibration(),
+        requested_at=NOW,
+    )
+
+    assert reading.state is ReadingState.AVAILABLE
+    assert reading.temperature_c == pytest.approx(22.0, abs=1.0)
+    assert reading.humidity_rh == pytest.approx(48.0, abs=5.0)
+
+
 def test_perspective_calibration_uses_rectified_scale_angles() -> None:
     skewed_calibration, payload = perspective_case()
 
