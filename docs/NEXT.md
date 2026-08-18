@@ -44,7 +44,9 @@ metrics in ignored local storage.
    remains outstanding. Current readiness is green, but the tunnel has a recent exit
    code `255`, so do not claim the real gate until a controlled interruption/recovery
    is recorded. A transient stack outage was recovered with `make alpha-start`; this is
-   recovery evidence, not the controlled M2/Ollama interruption gate.
+   recovery evidence, not the controlled M2/Ollama interruption gate. The first tunnel-only
+   unload attempt also interrupted capture, so the next attempt must isolate tunnel failure
+   without taking go2rtc offline.
 6. E5 — run the gauge/watchdog path for 24 hours without scheduling backlog; complete
    the remaining state/notification, load-shedding and two-phone payload checks.
 

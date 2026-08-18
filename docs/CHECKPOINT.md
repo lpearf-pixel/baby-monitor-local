@@ -650,6 +650,11 @@ launchd 独立保持；执行既有 `make alpha-start` 恢复后，readiness 8/8
 `29.38C / 60.00%RH`、置信度 `0.8333`。这证明可恢复性和独立 worker 行为，不替代受控
 M2/Ollama 断开恢复门。
 
+尝试受控卸载 `com.babymonitor.ollama-tunnel` 后，断开窗口内 gauge 捕获链也短暂不可用，
+随后使用 `make alpha-start` 恢复；readiness 和 source-check 恢复 PASS，WS2021 读数恢复
+available（约 `29.58C / 59.90%RH`、置信度 `0.8333`）。这证明恢复路径，但不能宣称
+“断开期间 gauge 独立”已通过；下次需在真实 i9 终端中隔离 tunnel 进程，避免影响 go2rtc。
+
 随后连续 3 次独立 5 帧 burst 均 available：温度约 `29.32C +/-0.01C`、湿度约
 `59.46%RH +/-0.02`，每次置信度 `0.75`、温湿度各 5 个有效样本。该结果只证明短时
 软件/源流稳定，不替代真人参考温湿度计的 30 组 E2 对照。
