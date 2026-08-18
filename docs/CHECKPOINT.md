@@ -660,6 +660,10 @@ E5 短时前置检查：gauge 与 environment-watchdog launchd 均 running、各
 `alpha-source-check` PASS。Ollama bridge 仍 unreachable，因此 E4 先于 E5 长测继续保持
 未完成，尚未启动 24 小时测试。
 
+最新 tunnel 诊断窗口显示失败根因是配置的 M2 SSH 主机多次 timeout/host down，
+不是 i9 gauge 或固定配置错误。tunnel launchd 仍按 KeepAlive 重试；该外部主机不可达
+期间不再反复重启 Alpha，待 M2 SSH/Ollama 恢复后再执行 E4 断开/恢复门。
+
 随后连续 3 次独立 5 帧 burst 均 available：温度约 `29.32C +/-0.01C`、湿度约
 `59.46%RH +/-0.02`，每次置信度 `0.75`、温湿度各 5 个有效样本。该结果只证明短时
 软件/源流稳定，不替代真人参考温湿度计的 30 组 E2 对照。
