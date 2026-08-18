@@ -40,7 +40,8 @@ metrics in ignored local storage.
 4. E3 — verify darkness/infrared, glare, occlusion and gauge movement fail closed.
    Software contract checks are green; the real-device scenarios remain outstanding.
 5. E4 — take M2/Ollama offline and confirm gauge, storage, state and notification
-   independence.
+   independence. Software independence checks are green; real offline interruption
+   remains outstanding.
 6. E5 — run the gauge/watchdog path for 24 hours without scheduling backlog; complete
    the remaining state/notification, load-shedding and two-phone payload checks.
 

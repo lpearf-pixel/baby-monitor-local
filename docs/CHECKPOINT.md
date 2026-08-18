@@ -635,6 +635,10 @@ E3 软件专项已复核：夜间灰度读针、无指针、过暗、反光、�
 不一致移动共 `6 passed`。这些测试只证明 fail-closed 合同，不替代真实夜间/红外/反光
 和物理移动实机验收。
 
+主线继续执行 E4 软件独立性复核：WS2021 source、视觉 frame-health/worker、gauge
+worker launchd、Ollama tunnel/visual worker 的离线与独立失败路径共 `64 passed`。
+该结果不替代实际断开 M2/Ollama 后的 i9 实机验收。
+
 随后连续 3 次独立 5 帧 burst 均 available：温度约 `29.32C +/-0.01C`、湿度约
 `59.46%RH +/-0.02`，每次置信度 `0.75`、温湿度各 5 个有效样本。该结果只证明短时
 软件/源流稳定，不替代真人参考温湿度计的 30 组 E2 对照。
