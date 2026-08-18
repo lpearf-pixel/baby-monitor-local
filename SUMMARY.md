@@ -47,6 +47,9 @@ Updated: 2026-08-17
   but all five dual-face/needle reader attempts failed closed as `calibration_invalid`.
   OCR has not started because the approved schema-v2 geometry is not yet producing a
   safe temperature/humidity value.
+- Layered diagnosis confirms rectification succeeds, while humidity circle validation
+  fails and temperature ROI bounds fail; the current schema-v2 face geometry must be
+  recalibrated before OCR or E2.
 - The earlier untracked `uv.lock` was never staged or published; the recovered checkout
   does not recreate or claim ownership of it.
 

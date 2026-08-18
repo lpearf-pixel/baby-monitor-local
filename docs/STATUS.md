@@ -14,6 +14,9 @@
 - 2026-08-18 live check: five-frame source burst produced three stable fixed-ROI
   observations, but the existing dual-face needle reader returned `calibration_invalid`
   for all five frames. This is an end-to-end read failure, not evidence for OCR.
+- Layered diagnostic: perspective rectification succeeds; humidity circle validation
+  fails and the temperature ROI is out of bounds. Treat the current calibration as
+  stale for this scene and require a new schema-v2 geometry calibration.
 - Xiaomi-first delivery scope: fixed to MJSXJ17CM for the first usable release;
   the proposed UVC USB source remains deferred behind the existing frame-source
   adapter boundary.

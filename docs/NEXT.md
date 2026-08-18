@@ -16,8 +16,9 @@ first human-confirmed no-baby calibrated collection completed with 60 valid priv
 pairs. A 20-epoch private collection seed was exported and verified at the corrected
 deployment scale, but it fails closed as `gauge_not_found` at daylight position 2/5.
 The fixed ROI now stabilizes on the live source, but the end-to-end reader still
-returns `calibration_invalid` for all five frames because the calibrated dual-face
-needle geometry is not producing a safe value. E2 comparisons and OCR have not started.
+returns `calibration_invalid` for all five frames. Layered diagnosis shows humidity
+circle validation failing and the temperature ROI out of bounds, so the schema-v2
+dual-face geometry must be recalibrated before E2 comparisons or OCR.
 
 **Prerequisites:** Run from the `kandysmith` login that owns the installed i9 GUI and
 launchd services. Keep calibration files, reference images, databases and runtime

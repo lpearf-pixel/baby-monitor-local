@@ -621,3 +621,7 @@ FP16 export 和精确工件检查均通过；WS2021/gauge 专项 `78 passed`，�
 2026-08-18，实时 5 帧 burst 中有 3 帧达到固定 ROI 稳定阈值；同一 burst 交给现有
 schema-v2 双圆/指针 reader 时，5 帧全部以 `calibration_invalid` fail closed。当前
 读表门仍未通过，不能把 OCR 接到生产链；需要先确认实时双圆/指针几何或重新标定。
+
+分层诊断显示透视校正本身成功；湿度圆的清晰度/圆检测失败，温度圆的 ROI 越界。该
+结果说明当前 schema-v2 双圆几何与实时画面不一致，按 fail-closed 要求先重新标定，
+不绕过几何门禁，也不提前接入 OCR。
