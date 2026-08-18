@@ -51,7 +51,7 @@ Updated: 2026-08-17
   A live five-frame read is now available at about 29.3C / 59.5%RH with confidence 0.75.
   Three independent bursts remained available at 29.32C +/-0.01C and 59.46%RH +/-0.02,
   all at confidence 0.75. This is still a software/live stability result, not E2 accuracy
-  evidence.
+  evidence. The 30 daylight manual comparisons are deferred and do not block the mainline.
 - Live diagnosis confirms rectification and face ROIs succeed, but humidity has no
   bounded circle candidate and temperature's nearest center is ~0.393R away. A fresh
   schema-v2 calibration at the current camera view is required; fail-closed limits are

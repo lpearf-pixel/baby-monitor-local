@@ -628,7 +628,8 @@ temperature 最近圆心偏差约 0.393R（门限 0.25R）；不是可安全放�
 随后在不改变标定数据的前提下增加 calibrated-center pointer fallback，并在白天红色
 指针掩码较弱时改用 grayscale temperature needle signal。gauge 专项为 `81 passed`；
 实时 5 帧现可得到约 `29.3C / 59.5%RH`、置信度 `0.75` 的 available smoke reading。
-该结果不降低置信度门，也不证明 E2 准确率或 OCR；下一步进入 30 组白天人工对照。
+该结果不降低置信度门，也不证明 E2 准确率或 OCR。用户已决定将 30 组白天人工对照
+延后，主线下一项改为 E3 的夜间/红外反光/遮挡/表盘移动 fail-closed 验收。
 
 随后连续 3 次独立 5 帧 burst 均 available：温度约 `29.32C +/-0.01C`、湿度约
 `59.46%RH +/-0.02`，每次置信度 `0.75`、温湿度各 5 个有效样本。该结果只证明短时

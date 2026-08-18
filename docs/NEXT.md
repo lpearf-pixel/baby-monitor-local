@@ -21,8 +21,9 @@ returns `calibration_invalid` for all five frames: the persisted geometry is out
 approved adaptive bounds (humidity has no bounded circle candidate; temperature's nearest
 center is about 0.393R away). A calibrated-center pointer fallback plus grayscale day
 temperature signal now produces an available five-frame smoke reading at the 0.75 gate.
-The next action is E2: record at least 30 daylight manual comparisons; OCR remains deferred
-until the analog reader passes that acceptance gate.
+The next mainline action is E3: run the darkness/infrared, glare, occlusion and gauge
+movement fail-closed acceptance. The 30 daylight manual comparisons are deferred and do
+not block E3/E4/E5; OCR remains deferred.
 
 **Prerequisites:** Run from the `kandysmith` login that owns the installed i9 GUI and
 launchd services. Keep calibration files, reference images, databases and runtime
@@ -34,8 +35,8 @@ metrics in ignored local storage.
 2. Task 15 — fixed lower-right ROI stabilization is software-complete; resolve the
    live dual-face/needle calibration gate before any OCR work. Household full frames
    must never persist.
-3. E2 — obtain an available automatically localized production reading, then record
-   at least 30 daylight comparisons against ±1℃ and ±5%RH.
+3. E2 — obtain an available automatically localized production reading. The 30 daylight
+   manual comparisons against ±1℃ and ±5%RH are deferred and do not block the mainline.
 4. E3 — verify darkness/infrared, glare, occlusion and gauge movement fail closed.
 5. E4 — take M2/Ollama offline and confirm gauge, storage, state and notification
    independence.
