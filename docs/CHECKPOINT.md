@@ -16,7 +16,7 @@ Dashboard 标定、每分钟一次的独立 gauge worker、连续五帧读表、
 24 小时与 7 天趋势，以及只含文字和鉴权 HTTPS 链接的 ntfy 环境通知。
 
 当前仍未通过 Intel i9 实机门禁。必须在本地完成一次真实表盘标定，并记录
-30 组白天对照、夜视/反光/遮挡拒绝、12 小时无积压运行、Qwen/M2 离线隔离、
+30 组白天对照、夜视/反光/遮挡拒绝、24 小时无积压运行、Qwen/M2 离线隔离、
 负载降级和两台 Android 通知内容检查。真实画面、表盘参考图、标定 JSON、
 SQLite、Token、私网地址和本地绝对路径不得提交或粘贴到 PR。
 
@@ -616,7 +616,7 @@ FP16 export 和精确工件检查均通过；WS2021/gauge 专项 `78 passed`，�
 稳定器。自动定位开启时，固定 ROI 优先于 OpenVINO 检测器；同宽高比的 2560×1440 到
 1280×720 缩放通过，宽高比漂移、无效几何和未稳定帧 fail closed。gauge/environment
 软件回归 95 passed，模型工件检查和实时源检查均 PASS。该证据不替代真实读表、30 组
-白天对照、夜间/红外/反光/遮挡/移动、M2/Ollama 离线、12 小时、三浏览器或 72 小时门。
+白天对照、夜间/红外/反光/遮挡/移动、M2/Ollama 离线、24 小时、三浏览器或 72 小时门。
 
 2026-08-18，实时 5 帧 burst 中有 3 帧达到固定 ROI 稳定阈值；Task 5 的有界内存自适应
 双圆几何已提交为 `c001507`，reader 专项 20 passed、完整 gauge 79 passed。同一 burst
@@ -658,7 +658,7 @@ available（约 `29.58C / 59.90%RH`、置信度 `0.8333`）。这证明恢复路
 E5 短时前置检查：gauge 与 environment-watchdog launchd 均 running、各自 `runs=1` 且
 无退出码；visual realtime 维持 5 FPS（P50 105.5ms、P95 121.7ms、max 129.2ms），
 `alpha-source-check` PASS。Ollama bridge 仍 unreachable，因此 E4 先于 E5 长测继续保持
-未完成，尚未启动 12 小时测试。
+未完成，尚未启动 24 小时测试。
 
 最新 tunnel 诊断窗口显示失败根因是配置的 M2 SSH 主机多次 timeout/host down，
 不是 i9 gauge 或固定配置错误。tunnel launchd 仍按 KeepAlive 重试；该外部主机不可达
@@ -675,8 +675,8 @@ i9→M2 `-L` 配置。该记录不证明 E4 真实断开/恢复门已通过，E4
 随后用户在实际 `kandysmith` i9 终端完成 E4 受控验证：短暂停止 M2→i9 反向 SSH
 后，Ollama bridge 按预期 fail-closed，而摄像头、go2rtc、gauge、存储/状态链路继续
 正常；恢复 SSH 后 i9 `127.0.0.1:11435/api/tags` 返回 HTTP 200。结合前置 `117 passed`
-软件独立性门，E4 标记 PASS。下一阶段转入 E5 12 小时环境稳定性门；该证据仍不替代
-12 小时持续运行、三浏览器高清验收或最终 72 小时发布门。
+软件独立性门，E4 标记 PASS。下一阶段转入 E5 24 小时环境稳定性门；该证据仍不替代
+24 小时持续运行、三浏览器高清验收或最终 72 小时发布门。
 
 随后由 `kandysmith` i9 实际终端确认反向映射已恢复：访问 i9 本地
 `127.0.0.1:11435/api/tags` 返回 HTTP 200，M2 本机 Ollama 仍保持
