@@ -86,6 +86,24 @@
 - [ ] **Step 4: Update** the three handoff documents to record software evidence, explicitly preserve the real-device gates, and set the next task to OCR only after stable ROI evidence.
 - [ ] **Step 5: Run** `git diff --check` and sensitive-artifact scan; commit `git add docs/STATUS.md SUMMARY.md docs/CHECKPOINT.md && git commit -m "docs: record fixed ROI WS2021 status"`.
 
+### Task 5: Add bounded in-memory adaptive face geometry
+
+**Files:**
+- Modify: `services/gauge/reader.py`
+- Test: `tests/gauge/test_reader_day.py`
+- Test: `tests/gauge/test_reader_aggregation.py`
+
+**Interfaces:**
+- Consumes: the fixed ROI and schema-v2 `GaugeFace` geometry.
+- Produces: per-burst in-memory face centers/radii only; persisted calibration is never changed.
+
+- [ ] **Step 1: Write failing tests** for same-aspect camera movement with both circles translated/scaled inside the fixed ROI, stable multi-frame acceptance, ambiguous/missing circle rejection, and unchanged calibration bytes.
+- [ ] **Step 2: Run** `.venv-alpha/bin/python -m pytest tests/gauge/test_reader_day.py tests/gauge/test_reader_aggregation.py -q` and verify the new tests fail.
+- [ ] **Step 3: Implement** bounded Hough candidate selection inside each calibrated face ROI, require candidate consistency across the existing burst, create an ephemeral face geometry used only for that read, and preserve fail-closed behavior for out-of-bounds, ambiguity, glare, occlusion, and excessive drift.
+- [ ] **Step 4: Run** the focused reader tests and the full `tests/gauge` suite; verify pass.
+- [ ] **Step 5: Run** the real five-frame aggregate smoke check; report only accepted/unavailable counts and reasons.
+- [ ] **Step 6: Commit** `git add services/gauge/reader.py tests/gauge/test_reader_day.py tests/gauge/test_reader_aggregation.py && git commit -m "feat: adapt WS2021 face geometry per burst"`.
+
 ## Completion Criteria
 
 - All fixed-ROI and source regression tests pass.

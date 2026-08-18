@@ -16,10 +16,13 @@ This slice covers localization only. It does not add temperature/humidity OCR, c
 4. Require a configurable bounded number of consecutive valid frames before a location is considered stable. Any invalid, obstructed, reflective, or missing frame resets the stability counter and returns an unavailable/fail-closed result.
 5. Keep the trained OpenVINO detector as an explicit fallback path only when fixed-ROI mode is not configured. It must not override a fixed-ROI rejection.
 6. Emit only bounded status/error codes and normalized geometry. No raw frames, crops, household media, or calibration data may be committed or logged.
+7. Within the accepted fixed ROI, allow bounded per-burst adaptation of the two calibrated circular faces. Adaptation is in-memory only, requires consistent circle candidates across the burst, and never rewrites the persisted schema-v2 calibration.
 
 ## Data flow
 
 `CapturedFrame` -> fixed lower-right ROI validator -> bounded temporal stabilizer -> existing WS2021 source/reader. The reader and event state machine remain unchanged. A later OCR slice will consume only stabilized ROI frames.
+
+For camera movement, the reader may relocate each face center/radius inside the fixed ROI using bounded circle candidates. The candidate must remain near the calibrated face, be unique enough, and agree across the required consecutive frames. If either face fails, the whole reading remains unavailable.
 
 ## Failure and safety rules
 
@@ -28,6 +31,7 @@ This slice covers localization only. It does not add temperature/humidity OCR, c
 - Frame source failure: preserve existing source-unavailable behavior.
 - No automatic PTZ or camera movement is introduced.
 - Existing privacy guard remains authoritative before any persistence or model transmission.
+- Adaptive face geometry is ephemeral per burst; the saved calibration remains unchanged until an explicit Dashboard calibration save.
 
 ## Verification
 
