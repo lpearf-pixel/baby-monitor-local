@@ -696,6 +696,11 @@ E5 结束检查由实际 i9 终端完成：过去 24 小时 `environment_reading
 布局列为后续 UX 改进，不阻塞 Guardian 主线。下一阶段进入 P2 正常照护条件下的真实
 Baby Guardian 观察门，必须有成人持续监督，不得摆拍危险姿势。
 
+用户确认当前没有 Baby，P2 真实 Guardian 观察门暂缓，先推进 P3 音频/哭声阶段。
+音频软件门 `make alpha-audio-test` 通过 `59 passed`；`audio_status=unavailable` 是
+生产音频默认关闭的预期状态。A1–A7 已完成，A8 仍需批准的生产模型/许可证与监督场景；
+任何家庭音频继续只允许有界内存处理，永不持久化，只保存文字事件和聚合指标。
+
 随后由 `kandysmith` i9 实际终端确认反向映射已恢复：访问 i9 本地
 `127.0.0.1:11435/api/tags` 返回 HTTP 200，M2 本机 Ollama 仍保持
 `127.0.0.1:11434`。该证据证明 bridge 可用，但不替代 E4 受控断开、恢复及独立性

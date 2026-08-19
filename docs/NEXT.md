@@ -90,8 +90,9 @@ exposing media or private addresses.
 
 ## P2 — Real-Baby Guardian observation gate
 
-**Status:** Pending. The supervised seven-scene synthetic gate passed; real Baby
-posture, face-obstruction and bed-exit accuracy remain unaccepted.
+**Status:** Deferred until a Baby is available. The supervised seven-scene synthetic
+gate passed; real Baby posture, face-obstruction and bed-exit accuracy remain
+unaccepted. Online video cannot substitute for this household gate.
 
 **Prerequisites:** P0 and P1 complete; private bed-zone acceptance complete; adult
 supervision and normal care only.
@@ -106,11 +107,12 @@ observations. Never stage obstruction, prone position, bed exit or another hazar
 prose, coordinates or free-form notes. Passing proves only the observed scenes and does
 not authorize unattended care.
 
-**Next:** P3 audio/cry design and implementation.
+**Next:** P3 audio/cry A8 production-model/license decision and supervised public-media
+preflight; household audio remains disabled and memory-only.
 
 ## P3 — Audio and cry candidates
 
-**Status:** Separately approved and resequenced for parallel software work on
+**Status:** Current next stage. Separately approved and resequenced for parallel software work on
 2026-08-17. Stages A1-A2 strict contracts/settings and bounded in-memory PCM source are
 complete; Stage A3 loudness/dynamic noise floor is complete and Stage A4 pinned ONNX
 classifier boundary is software-complete, with production artifact approval pending;

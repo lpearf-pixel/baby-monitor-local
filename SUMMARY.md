@@ -325,12 +325,12 @@ legacy branch into this line without a separate integration decision.
    pinned i9-local training/OpenVINO export. Resume E2–E5 with 30 daylight comparisons,
    fail-closed scene checks, M2/Ollama isolation and 24-hour stability. E1 and the
    native-resolution continuous frame source are complete.
-2. Complete normal-care-only real-Baby Guardian observation on the installed i9; the
+2. Defer normal-care-only real-Baby Guardian observation until a Baby is available; the
    three-browser HD gate is already user-confirmed PASS.
 3. Complete the supervised, normal-care-only real-Baby Guardian observation gate;
    never stage a hazardous pose or persist household media/model prose.
-4. Continue the approved audio/cry plan at Stage A8 only after a production model and
-   license are approved; household audio remains
+4. Continue the approved audio/cry plan at Stage A8; a production model and
+   license are still required before enablement; household audio remains
    memory-only. The real source-track prerequisite passes, while A7 and the supervised
    A8 stability/accuracy gate remain.
 5. Complete authenticated private remote access using Tailscale Serve/ACL only.
