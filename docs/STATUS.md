@@ -6,7 +6,7 @@
 - Design: approved.
 - Environment monitoring design and implementation plan: approved on 2026-08-05.
 - Stable Xiaomi Alpha commit: `0df20ae` on `stable/xiaomi-alpha`.
-- Active local development branch: `codex/guardian-live-acceptance`.
+- Active local development branch: `codex/voice-care-v1-design`.
 - WS2021 current localization path: fixed lower-right schema-v2 ROI with bounded
   consecutive-frame stabilization; the trained OpenVINO detector remains fallback
   only when fixed-ROI mode is not selected. Same-aspect resolution scaling is accepted;

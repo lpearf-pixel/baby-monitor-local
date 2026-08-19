@@ -6,7 +6,7 @@ Updated: 2026-08-17
 
 - Repository: `lpearf-pixel/baby-monitor-local` (public).
 - Stable Xiaomi line: `stable/xiaomi-alpha` at `0df20ae`.
-- Active feature line: `codex/guardian-live-acceptance`.
+- Active feature line: `codex/voice-care-v1-design`.
 - The evidence-retention line is based on the published Dashboard snapshot `69e2d5b`;
   the Dashboard remains complete and its published branch is not rewritten.
 - Remote branch `codex/baby-guardian-event-loop` remains at its earlier squash snapshot
@@ -236,7 +236,7 @@ window, not 24/72-hour stability or unattended-care safety.
 |---|---|
 | Protected default branch | `main`; unchanged by guardian work |
 | Stable Xiaomi branch | `stable/xiaomi-alpha` at `0df20ae` |
-| Active feature branch | `codex/guardian-live-acceptance` |
+| Active feature branch | `codex/voice-care-v1-design` |
 | Guardian evidence-retention runtime implementation | `718af9a` |
 | Guardian evidence-retention safety closure | `e3cd69c` |
 | Guardian live-notification helper | `d862f2a` |
@@ -251,8 +251,8 @@ window, not 24/72-hour stability or unattended-care safety.
 | PR/merge | No guardian PR; not merged |
 | Protected branches | `main` and `stable/xiaomi-alpha`; unchanged |
 
-The latest pre-documentation Git check found `a716dcc` on
-`codex/guardian-live-acceptance`, 20 commits ahead of its upstream and zero behind.
+The latest pre-documentation Git check found `6d711ba` on
+`codex/voice-care-v1-design`, up to date with its upstream.
 Nothing from this recovery slice was pushed, merged or opened as a PR. Untracked `.local/`,
 `Interactive` and `test.sh` were deliberately preserved.
 
