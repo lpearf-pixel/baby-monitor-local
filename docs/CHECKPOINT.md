@@ -684,6 +684,13 @@ E5 于 2026-08-18 在实际 `kandysmith` i9 终端开始。权威基线：Dashbo
 `1280x720`，接收字节非零）。Ollama tunnel 当前可暂时断开；E4 已证明其不会停止
 环境链路。24 小时窗口尚未完成，期间不得宣称 E5 PASS。
 
+E5 结束检查由实际 i9 终端完成：过去 24 小时 `environment_readings` 共 1,414 条，
+覆盖 `2026-08-18T04:16:35Z` 至 `2026-08-19T04:16:06Z`；最大相邻读数间隔为
+`82.105s`。Dashboard health、go2rtc、gauge/visual worker 与两次 source-check
+均正常，未发现调度积压或 worker 异常退出。按“无积压”而非“每次严格 60 秒”的
+验收定义，E5 标记 PASS；82 秒间隔作为后续性能观察项保留，不降低任何 fail-closed
+门槛。
+
 随后由 `kandysmith` i9 实际终端确认反向映射已恢复：访问 i9 本地
 `127.0.0.1:11435/api/tags` 返回 HTTP 200，M2 本机 Ollama 仍保持
 `127.0.0.1:11434`。该证据证明 bridge 可用，但不替代 E4 受控断开、恢复及独立性

@@ -47,8 +47,10 @@ metrics in ignored local storage.
    not treat launchd `running` alone as bridge health.
 6. E5 — run the gauge/watchdog path for 24 hours without scheduling backlog; complete
    the remaining state/notification, load-shedding and two-phone payload checks. Short
-   preflight is green and E4 is complete. **RUNNING:** the authoritative i9 baseline
-   passed; keep the installed workers running through the 24-hour observation window.
+   preflight is green and E4 is complete. **PASS (user-confirmed):** the authoritative
+   i9 window contains 1,414 readings across the full 24 hours; the largest observed
+   interval was `82.105s`, with no accumulated scheduling backlog indicated. Keep the
+   bounded interval as a follow-up observation, not as a fabricated 60-second guarantee.
 
 **Codex can:** run bounded readiness checks, guide the approved workflow, validate
 closed outputs, diagnose recoverable failures and update redacted documentation.
