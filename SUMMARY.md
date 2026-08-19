@@ -292,7 +292,8 @@ legacy branch into this line without a separate integration decision.
   the restricted i9-to-M2 bridge and supervised seven-scene synthetic gate have passed.
 - Complete WS2021 schema-v2 calibration, 30 daylight comparisons,
   darkness/infrared/glare/occlusion/gauge-movement fail-closed checks, M2/Ollama outage
-  isolation and the independent 24-hour environment gate.
+  isolation and the independent 24-hour environment gate. E3 real-scene checks are
+  intentionally deferred; the current next task is three-browser HD acceptance.
 - Complete three-browser HD acceptance and the final 72-hour camera, i9, M2, network,
   storage and two-phone release gate before tagging `v0.1.0`.
 

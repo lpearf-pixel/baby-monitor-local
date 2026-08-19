@@ -38,7 +38,8 @@ metrics in ignored local storage.
 3. E2 — obtain an available automatically localized production reading. The 30 daylight
    manual comparisons against ±1℃ and ±5%RH are deferred and do not block the mainline.
 4. E3 — verify darkness/infrared, glare, occlusion and gauge movement fail closed.
-   Software contract checks are green; the real-device scenarios remain outstanding.
+   Software contract checks are green; the real-device scenarios remain outstanding and
+   are intentionally deferred by the current execution order.
 5. E4 — take M2/Ollama offline and confirm gauge, storage, state and notification
    independence. **PASS (user-confirmed real interruption/recovery).** During the
    controlled M2/Ollama tunnel interruption, bridge failure remained fail-closed while
@@ -64,11 +65,12 @@ section 18. Every published daylight reading meets the error target; unreliable 
 is `unavailable`; M2 outage does not stop the environment path; 24-hour evidence shows
 no backlog. Run focused software checks only if code changes become separately approved.
 
-**Next:** P1 three-browser HD acceptance.
+**Next:** P1 three-browser HD acceptance. E3 real-scene checks remain queued behind this
+stage and must be completed before the final release gate.
 
 ## P1 — Three-browser HD real-device acceptance
 
-**Status:** Pending. Installed source/codec and Guardian live-view checks have passed;
+**Status:** Next. Installed source/codec and Guardian live-view checks have passed;
 the browser matrix has not.
 
 **Prerequisites:** P0 complete; i9 source and Dashboard healthy.
