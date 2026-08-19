@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import json
+from io import StringIO
 from pathlib import Path
 import sqlite3
 import threading
@@ -12,8 +13,24 @@ from services.vision.realtime_status import (
     RealtimeVisualMetricsSnapshot,
     RealtimeVisualStatusPublisher,
 )
+from services.vision.realtime_analyzer import RealtimeStageTiming
 from packages.contracts.vision import VisualRiskKind
 from services.storage.visual_risk import VisualRiskEventStore
+
+
+def test_slow_analysis_line_is_fixed_redacted_ascii() -> None:
+    from tools.run_visual_worker import _print_slow_analysis
+
+    stream = StringIO()
+    _print_slow_analysis(
+        RealtimeStageTiming(10.0, 20.0, 190.0, 220.0),
+        stream=stream,
+    )
+
+    assert stream.getvalue() == (
+        "realtime_slow_analysis decode_ms=10.000 features_ms=20.000 "
+        "semantic_ms=190.000 total_ms=220.000\n"
+    )
 
 
 class RecordingRing:

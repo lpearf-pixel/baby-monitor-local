@@ -16,6 +16,7 @@ if str(ROOT) not in sys.path:
 
 from packages.monitoring.alpha_quality import (  # noqa: E402
     QualityConfigError,
+    apply_gauge_stream,
     apply_hd,
     check_hd_health,
     check_source_health,
@@ -49,6 +50,13 @@ def _build_parser() -> argparse.ArgumentParser:
     )
     apply_parser.add_argument("--config", required=True, type=_path)
     apply_parser.add_argument("--backups", required=True, type=_path)
+
+    gauge_parser = subparsers.add_parser(
+        "apply-gauge-stream",
+        help="Back up the runtime config and add the fixed gauge profile.",
+    )
+    gauge_parser.add_argument("--config", required=True, type=_path)
+    gauge_parser.add_argument("--backups", required=True, type=_path)
 
     info_parser = subparsers.add_parser(
         "info", help="Print non-sensitive derived quality settings."
@@ -119,6 +127,15 @@ def _restart_alpha(command: str) -> None:
 def _run(args: argparse.Namespace) -> int:
     if args.command == "apply-hd":
         backup = apply_hd(
+            args.config,
+            args.backups,
+            datetime.now(timezone.utc),
+        )
+        print(f"backup={backup}")
+        return 0
+
+    if args.command == "apply-gauge-stream":
+        backup = apply_gauge_stream(
             args.config,
             args.backups,
             datetime.now(timezone.utc),

@@ -6,10 +6,22 @@
 - Design: approved.
 - Environment monitoring design and implementation plan: approved on 2026-08-05.
 - Stable Xiaomi Alpha commit: `0df20ae` on `stable/xiaomi-alpha`.
-- Local development branch: `codex/guardian-evidence-retention` at `00e2934`.
-- Published installed-i9 acceptance branch: `codex/guardian-live-acceptance` at
-  `c4b2de0`; its source tree matches local `00e2934` despite connector-generated
-  history using a different commit ID.
+- Active local development branch: `codex/guardian-live-acceptance`.
+- WS2021 current localization path: fixed lower-right schema-v2 ROI with bounded
+  consecutive-frame stabilization; the trained OpenVINO detector remains fallback
+  only when fixed-ROI mode is not selected. Same-aspect resolution scaling is accepted;
+  invalid geometry and aspect-ratio drift fail closed.
+- 2026-08-18 live check: five-frame source burst produced three stable fixed-ROI
+  observations, but the dual-face needle reader initially returned `calibration_invalid`.
+  Task 5 adaptive geometry is implemented (`c001507`), calibrated-center pointer fallback
+  is implemented (`ecf8aa8`), and day temperature now uses grayscale needle evidence when
+  red is weak (`8b27da1`). The full gauge suite is 81 passed. The latest live five-frame
+  read is available at approximately 29.3C / 59.5%RH with confidence exactly 0.75. This
+  is a live smoke result, not E2 accuracy evidence.
+- Layered diagnostic: perspective rectification and both face ROIs succeed, but no
+  humidity circle candidate is within the approved bounds and the nearest temperature
+  center is ~0.393R away (limit 0.25R). Treat the current calibration as stale and
+  require a new schema-v2 geometry calibration; do not widen the limits.
 - Xiaomi-first delivery scope: fixed to MJSXJ17CM for the first usable release;
   the proposed UVC USB source remains deferred behind the existing frame-source
   adapter boundary.
@@ -41,12 +53,11 @@
   ring sampling, and immediate urgent review scheduling are implemented locally.
   Missing models preserve motion, scene health and regular Qwen review while semantic
   tracks remain unavailable; the fast path cannot open or recover a risk alert.
-- Realtime visual scheduling: the i9 production gate failed with 60/60 samples at
-  1 FPS while the same worker run in the foreground reached 5 FPS within the 180 ms
-  P95 budget. The visual launchd template now uses `Interactive`, and a dedicated
-  update command validates, backs up, atomically replaces, verifies, and rolls back
-  only `com.babymonitor.visual`. The i9 installed job still requires the short
-  post-update observation and full 10-minute performance gate.
+- Realtime visual scheduling: the earlier i9 production gate exposed launchd
+  `Background` scheduling at 1 FPS. The visual job now uses `Interactive`, and the
+  installed i9 subsequently passed the full 10-minute gate at 5 FPS for all 60
+  samples. The dedicated update command remains rollback-safe and changes only
+  `com.babymonitor.visual`.
 - Visual frame-health alerts: the restart-safe SQLite incident pipeline and
   privacy-safe ntfy delivery are deployed on the Intel i9. A fresh controlled
   `source_offline` event delivered one open alert, recovered after the fixed
@@ -70,21 +81,23 @@
   recovery now use a persistent idempotent SQLite outbox and a bounded off-thread
   ntfy dispatcher. Payloads are text-only and exclude media, local paths, private
   addresses, credentials, model text and unauthenticated links. Two-phone physical
-  delivery remains an i9/Android acceptance item.
+  delivery was confirmed on two iPhones during the 2026-08-15 supervised i9 acceptance.
 - Baby guardian option A operations: `make alpha-guardian-start` performs the existing
   idempotent Alpha startup followed by bounded readiness checks, and
   `make alpha-guardian-test` runs repository, software, installation, service, media
   and isolated guardian gates with fixed redacted PASS/FAIL output. The automatic
   command never sends a real ntfy test, synthesizes a risk, or writes production
-  event/evidence data. It still must be run on the installed i9 to establish real
-  camera and launchd readiness.
+  event/evidence data. The later supervised installed-i9 acceptance established
+  readiness for its recorded run; future releases must rerun the automatic gate as
+  fresh evidence rather than treating that checkpoint as permanent health.
 - Baby guardian live acceptance: the separate `make alpha-guardian-test-live` command
   requires a controlling terminal, confirms that no real infant is present and that an
   adult is supervising, checks Guardian readiness, sends at most one clearly labeled
   text-only non-risk notification, and then confirms phone A, phone B, authenticated
   live view and the event list. Its hook-only test mode never reads production runtime
-  configuration and ends in `SIMULATED`, never PASS. Physical i9/two-phone execution is
-  still pending.
+  configuration and ends in `SIMULATED`, never PASS. Physical execution passed on the
+  installed Intel i9 on 2026-08-15: one non-risk message reached both iPhones, and the
+  authenticated live view plus Guardian event list were visible.
 - Baby guardian authenticated event Dashboard: a standalone read-only query service
   opens the existing SQLite database in query-only mode, joins event/evidence state and
   returns a strict media-free projection. The authenticated Dashboard loads the newest
@@ -121,31 +134,27 @@
   the wider Guardian-focused gate recorded 126 passed. This does not prove installed
   i9 readiness, real camera behavior, Dashboard reachability or delivery to either
   phone.
-- Fresh dependency-closure gate on 2026-08-14: a clean temporary Python 3.11
-  environment recorded 71 focused deployment/API tests and 741 full Python tests;
-  73 Node tests, `pip check`, compilation, shell syntax/ASCII/LF, Make dry-runs and
-  `git diff --check` passed. The fix adds `httpx2` for current Starlette TestClient,
-  preserves `httpx` for older supported Starlette, and makes `alpha-install` install
-  development/acceptance extras. This closes the software root cause of the i9
-  `guardian_focused` and `python_regression` failures, but the physical i9 rerun is
-  still pending.
-- Visual-model control on 2026-08-14: the downloaded JoyAI GGUF was registered by
-  Ollama with completion only and failed a grounded synthetic-image control, so it is
-  not accepted as a visual model. Existing Qwen correctly grounded the synthetic
-  image; a warm max-640-pixel experiment completed in 3.32 seconds after a 23.96-second
-  first larger-image run. Production remains on the approved 960x540/four-frame
-  contract until a separate change is specified and tested.
-- Next Guardian slice: run the automatic and supervised live acceptance on the
-  installed i9 from published `codex/guardian-live-acceptance`: pull at least
-  `c4b2de0`, rerun `make alpha-install`, then startup and automatic acceptance before
-  the supervised two-phone command. After that, complete household synthetic-scene
-  validation.
+- The remote dependency-closure follow-up used a clean temporary Python 3.11
+  environment and passed 71 focused deployment/API tests, 741 full Python tests,
+  73 Node tests, `pip check`, compilation, shell checks, Make dry-runs and
+  `git diff --check`. It adds `httpx2` for current Starlette TestClient while
+  preserving `httpx` compatibility and makes `alpha-install` include acceptance
+  extras. This is software evidence, not a substitute for installed-i9 acceptance.
+- Guardian launchd scheduling/performance acceptance completed on the installed Intel
+  i9 on 2026-08-15. The 10-minute gate held 5 FPS for all 60 samples with processing
+  p50 100.836 ms, p95 130.789 ms and max 201.529 ms; the model remained available.
+  Redacted rate-limited stage telemetry attributed the sole over-180 ms sample to the
+  semantic stage without recording frames, events, paths or configuration.
+  The supervised `make alpha-guardian-scene-test` software workflow is implemented
+  with fixed seven-scene/ten-trial input, private resumable local state and no
+  notification or production event writes. Its installed-i9 physical run passed on
+  2026-08-15 with 10 operator-confirmed correct trials for each scene and no recorded
+  false-positive, missed or unavailable outcome. The next slice is the independent
+  24-hour environment calibration/stability gate.
   Per-parent acknowledgement and actor-bound false-positive feedback are deferred to a
   future contract where Baby Care consumes Guardian's read-only feed and owns
   identity/write state, so Guardian does not invent a second family identity model. The
-  i9 launchd update, 3-minute
-  observation and 10-minute performance
-  sampler are intentionally deferred and do not block this feature sequence.
+  i9 launchd update and 10-minute performance sampler are complete.
   The i9 environment calibration and 24-hour gate remain independent and unfinished.
 
 ## Pull request checkpoint
@@ -159,17 +168,14 @@
 
 ## Not yet in the usable Alpha
 
-- Installed i9-to-M2 SSH bridge, private bed-zone configuration, and end-to-end
-  household validation of face-obstruction, prone-position, bed-exit, or
-  adult-intervention candidates.
+- Private bed-zone acceptance and real Baby validation of face-obstruction,
+  prone-position, bed-exit and adult-intervention candidates. The installed
+  i9-to-M2 bridge and supervised synthetic household-scene gate have passed.
 - Authenticated parent feedback through the future Baby Care identity integration, the
   later FFmpeg clip upgrade, and cry/audio candidate detection. Guardian risk
   lifecycle persistence and safe-frame evidence export are complete locally;
   risk text ntfy and safe-frame evidence export are complete locally; deterministic
   source-health ntfy is already deployed and independently verified.
-- Future camera-audio/voice-care interaction remains unapproved and unimplemented. It
-  must use a separate cross-product contract: Baby Monitor may supply local perception
-  or voice intent, while Baby Care owns family identity, correction and final writes.
 - Verified Tailscale external access, real PTZ control, or the 72-hour release gate.
 
 ## Safety gates
@@ -181,3 +187,120 @@
 - Visual model output is observation evidence only; the deterministic i9 state machine
   owns decisions, and every result remains an auxiliary candidate rather than medical
   or unattended-care assurance.
+
+## Latest i9 operational status — 2026-08-15
+
+- go2rtc startup now rejects a live-but-unhealthy PID, verifies the exact full command,
+  and binds API acceptance to listener ownership by that same validated PID.
+- Fresh software verification recorded 772 Python tests passed with one existing
+  Starlette/httpx deprecation warning.
+- The authoritative `kandysmith` runtime check reported the Xiaomi `cs2+udp` H.265
+  source and Dashboard live stream healthy, the visual worker at 5 FPS with current
+  metrics, and the realtime model available. Ollama bridge health requires loopback
+  HTTP 200; launchd `running` alone is insufficient. A recent M2→i9 login did not
+  establish the configured i9→M2 `-L` forward (`http=000`); the stale listener was
+  stopped and E4 controlled recovery remains pending.
+- Runtime checks from `chatgpt-agent` are not authoritative for services in the
+  `kandysmith` GUI domain. Launch future operational Codex sessions directly from the
+  `kandysmith` SSH login; do not grant broad disk or sudo access.
+- Environment E1 passed on 2026-08-16: the installed i9 saved a valid schema-v2
+  calibration and valid reference JPEG with private file modes. No calibration ID,
+  coordinates, image, path or household reading entered this checkpoint.
+- The fixed native-resolution `gauge` MJPEG profile now supplies one continuous
+  2560×1440 five-frame burst. The former `frame_source_unavailable` blocker is closed;
+  a rectification correction now preserves the calibrated gauge-plane aspect ratio and
+  supplies bounded search padding. Both ROI geometry gates and the temperature circle
+  match pass; humidity remains fail-closed as `calibration_invalid`, so no E2 accuracy
+  sample has been counted.
+- Approved Task 15 now places i9-local WS2021 automatic localization before E2. Its
+  strict single-candidate/fail-closed locator, fixed 640×640 preprocessing and validated
+  schema-v2 geometry relocation contracts are implemented. Crop collection now passes
+  only the bounded crop to private atomic persistence, rejects privacy overlap/backend
+  failure, duplicates and poor quality, and exposes aggregate counts only. Dataset
+  preparation now splits deterministically before train-only bounded augmentation,
+  emits fixed 640×640 private files with relative labels, and requires licensed HTTPS
+  metadata for negatives. The ignored Intel training environment now pins Torch 2.2.2
+  and exact YOLOX commit `419778480ab6ec0590e5d3831b3afb3b46ab2aa3`; a synthetic
+  640×640 CPU forward/loss/backward step passes. Model-independent worker integration
+  now locates once per burst, validates the
+  outer quadrilateral/two-circle layout and applies one migrated schema-v2 geometry to
+  all five frames. Failure never reuses an old position. No detector weights or
+  household images are tracked.
+- Audio/cry software work has a separately approved current design with household PCM
+  limited to bounded memory and no audio persistence. Stage A1 adds closed observation
+  and failure contracts plus fixed mono 16 kHz, 15-second-buffer settings; focused
+  contract tests pass. No decoder, classifier, worker or real-device audio acceptance
+  is claimed yet, and an unavailable source track must fail closed.
+- Audio Stage A2 adds a fixed loopback-only FFmpeg audio command with a bounded read
+  timeout, closed source/stale/decoder failures and a frame-aligned 15-second in-memory
+  PCM ring. EOF, process failure and malformed partial samples cannot produce an audio
+  observation. No audio file or persistence interface exists.
+- Audio Stage A3 adds deterministic s16le RMS/dBFS extraction, a bounded adaptive
+  noise floor and a centralized loudness margin. Only quiet windows update the
+  baseline; accepted loud windows cannot contaminate it. Before a pinned classifier,
+  the output is limited to `quiet` or `sound`, never `cry_candidate`.
+- Audio Stage A4 validates a relative in-project ONNX path and pinned SHA-256 before
+  runtime creation, rejects symlink escape, accepts only a fixed one-second mono
+  waveform and a finite `(1, 1)` probability, and maps missing, malformed or failing
+  models to closed unavailable reasons. Tests use a fake runner and synthetic bytes;
+  no production model, license or household accuracy is approved by this result.
+- Installed-i9 audio-source discovery now verifies that the Xiaomi source exposes HEVC
+  video plus Opus audio and that the fixed loopback `audio_analysis` alias exposes only
+  Opus. A bounded two-second decode to mono 16 kHz PCM passed with output discarded;
+  no household audio was persisted. The camera requires the existing automatic/UDP
+  Xiaomi transport. In this macOS installation the source works from the interactive
+  user session but timed out under launchd, so sustained service stability and A8
+  household accuracy remain unaccepted.
+- Audio Stage A5 adds a deterministic restart-safe state machine. Five continuous
+  accepted cry seconds open a normal transition, ten escalate it to high, sustained
+  available non-cry input recovers, and a repeat within 30 seconds becomes one merged
+  high escalation. Unavailable input advances neither positive inference nor recovery;
+  duplicate observations are idempotent and backwards/conflicting timestamps are
+  rejected without changing state. Short candidate timing is deliberately not restored
+  across restart.
+- Audio Stage A6 maps only accepted state transitions into deterministic, idempotent
+  `audio_cry_candidate` events and a causally ordered SQLite notification outbox in one
+  transaction. Summaries and stages are closed constants; persisted metadata contains
+  only the transition name, with no samples, paths, source details, model prose or
+  media. The generic event-store schema is now version 4 and upgrades existing stores
+  by adding the bounded audio notification queue.
+- Audio Stage A7 composes the fixed decoder, loudness gate, pinned OpenVINO-backed ONNX
+  classifier, state machine, atomic event sink and a mode-0600 bounded status file in
+  an independent worker. It has its own launchd definition and Make status/software
+  gates; an audio failure does not restart sibling services. Event persistence failure
+  rolls state back and publishes only `internal_error`. The installed i9 launchd job
+  was loaded with `audio.enabled=false`, exited 0 and remained stopped as designed;
+  no household analysis, event or notification occurred.
+- Installed-i9 Task 15.6b daylight position 1/5 completed with no baby present. The
+  private store contains 60 paired crops/metadata records with 0700/0600 permissions,
+  matching names, closed metadata fields and matching SHA-256 values. No media or
+  sample identity entered Git or status output. The first full training run exposed an
+  augmentation-scale mismatch (45%–80% instead of the approved roughly 10%–35% source
+  width). The dataset builder is corrected, and a bounded 20-epoch collection seed was
+  trained, exported and digest-checked locally. Position 2 still fails closed as
+  `gauge_not_found`; its best predictions are not geometrically valid, while local
+  feature/template and unconstrained shape searches are insufficiently reliable. One
+  local position-2 bounding-box annotation is now required before collection continues.
+- The WS2021 CPU bootstrap no longer inherits YOLOX's zero warmup learning rate and
+  snapshots cloned best weights instead of shared live storage. Positive augmentation
+  now uses deterministic nonuniform generated backgrounds and the training set includes
+  fixed project-generated negatives. The corrected 20-epoch bootstrap, OpenVINO export
+  and digest check pass; this remains a collection seed until a live localization and
+  the multi-position/night gates pass.
+- Fresh live inference now produces three NMS candidates above the unchanged 0.75
+  threshold instead of no candidate, but every box is out of bounds and none passes
+  the approved outer-quadrilateral/two-circle geometry. Candidate layout validation
+  now runs before ambiguity resolution and still fails closed. A subsequent calibrated
+  collection attempt rejected all 11 frames at the privacy gate and persisted zero
+  crops; no privacy rule was bypassed.
+- After Task 15, resume environment-plan E2–E5 with 30 daylight comparisons,
+  darkness/infrared/glare/occlusion/gauge-movement fail-closed checks, M2/Ollama outage
+  isolation and the independent 24-hour run.
+- 2026-08-17 fixed-ROI software slice: fixed lower-right schema-v2 localization and
+  bounded frame stabilization are integrated; 95 gauge/environment tests, model
+  artifact check and live source check passed. This does not prove real-device reads,
+  30 daylight comparisons, night/IR/occlusion/movement gates or 24-hour stability.
+- Ordered later stages are the three-browser HD gate, normal-care-only real-Baby
+  Guardian observation, separately approved audio/cry work, authenticated private
+  Tailscale access and the final 72-hour release gate. `docs/NEXT.md` owns the detailed
+  prerequisites, Codex/human boundary, acceptance and handoff for each stage.

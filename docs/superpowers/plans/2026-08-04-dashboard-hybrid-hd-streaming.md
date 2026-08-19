@@ -584,3 +584,10 @@ completed.
   remains pending until the branch can be pushed.
 - Intel i9 and three-browser real-device gate: pending; no synthetic result is
   represented as real-camera evidence.
+
+Current status: the installed i9 source/codec path and Guardian live view have passed
+their later recorded checks. The remaining gate in this plan is Step 6's browser
+matrix: M2 Chrome, M2 Safari and iPhone browser behavior at 1x/2x/3x, including the
+no-black-frame fallback and on-demand VideoToolbox shutdown. Run it after the WS2021
+E1–E5 environment gate and before the V1 Task 16 72-hour release gate. This status
+update does not mark the browser matrix complete.

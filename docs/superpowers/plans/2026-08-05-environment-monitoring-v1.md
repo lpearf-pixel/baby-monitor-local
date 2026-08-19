@@ -182,7 +182,7 @@ Commit: `feat: add ws2021 calibration v2 store`
 
 **Interfaces:**
 - Produces: `CapturedFrame(jpeg: bytes, captured_at: datetime)`, `FrameBurst(frames: tuple[CapturedFrame, ...])`, `ControlledFrameSource.capture_burst(frame_count, interval_ms, timeout_seconds)`.
-- Only the fixed `source` profile is permitted; proxy environment variables are disabled for loopback access.
+- Only the fixed native-resolution `gauge` MJPEG profile is permitted; proxy environment variables are disabled for loopback access. The profile is `ffmpeg:source#video=mjpeg#width=2560#height=1440#raw=-r 2` and is inserted by the existing idempotent HD configuration transform.
 
 - [x] **Step 1: Write a failing boundary test**
 
@@ -204,7 +204,7 @@ Expected: FAIL on missing controlled frame source.
 
 - [x] **Step 3: Implement bounded MJPEG parsing**
 
-Enforce fixed loopback base URL, fixed stream name `source`, 16MiB maximum frame bytes, 4096×2160 and maximum-pixel checks, timezone-aware timestamps, five-frame maximum, and total burst deadline. Convert transport/parse failures into `FrameSourceUnavailable` without exposing URLs.
+Enforce fixed loopback base URL, fixed stream name `gauge`, 16MiB maximum frame bytes, 4096×2160 and maximum-pixel checks, timezone-aware timestamps, five-frame maximum, and total burst deadline. Convert transport/parse failures into `FrameSourceUnavailable` without exposing URLs.
 
 - [x] **Step 4: Add stale, oversized, malformed, and no-proxy tests**
 
@@ -229,6 +229,27 @@ Commit: `feat: capture controlled gauge frame bursts`
 **Interfaces:**
 - Produces: `Ws2021Reader.read(burst, calibration, requested_at) -> EnvironmentReading`.
 - Internal per-frame output: `GaugeFrameResult(temperature_c, humidity_rh, temperature_confidence, humidity_confidence, captured_at)` or one closed `ReadingFailureReason`.
+
+#### E2 real-device corrective slice: preserve calibrated quadrilateral aspect ratio
+
+- **Status:** implemented and software-verified after the 2026-08-16 E1
+  re-calibration reproduced `geometry_roi_out_of_bounds` on both faces. The private
+  production probe now passes both ROI geometry gates and the temperature circle
+  match; humidity remains fail-closed as `calibration_invalid`, so E2 is still pending.
+- **Prerequisite:** schema-v2 calibration valid and fixed 2560×1440 five-frame
+  `gauge` burst passing.
+- **Codex work:** add a failing portrait/non-16:9 quadrilateral regression test;
+  infer the bounded rectified aspect ratio from circular scale-mark geometry; add
+  only enough bounded padding for the fixed 1.3-radius search window; keep source dimensions
+  separate from rectified canvas dimensions through point transformation and face
+  validation; run reader, environment, and production probes.
+- **Human work:** none for implementation. A further calibration is required only if
+  the corrected production geometry passes but scene quality still fails.
+- **Acceptance:** the regression test changes from RED to GREEN; existing day, night,
+  aggregation, skew and fail-closed tests remain green; a private production burst no
+  longer fails because a non-16:9 gauge was stretched to 16:9. No threshold is reduced.
+- **Next:** if a production reading is available, begin E2's 30 daylight comparisons;
+  otherwise record the next stable fail-closed reason and diagnose that gate.
 
 - [x] **Step 1: Add OpenCV dependency and write failing day-path test**
 
@@ -544,3 +565,116 @@ Commit: `feat: integrate local environment monitoring`
 ## Stage-completion evidence
 
 Automated completion requires every targeted Python and Node test above, compilation, schema validation, privacy scan, and `git diff --check` to pass with fresh output. Real i9 completion remains separate and must record: one schema v2 calibration, 30 daylight comparisons, night/reflection/occlusion rejection, 24-hour no-backlog run, state/notification simulation, M2 outage isolation, load-shedding behavior, and two Android ntfy payload inspection. No software-only result may claim those hardware checks passed.
+
+### Current real-device acceptance order
+
+The software tasks above are complete. The current stage is the unfinished installed-i9
+environment acceptance gate, executed in this order without changing business code:
+
+- [x] **E1 — Private schema-v2 calibration:** complete one authenticated Dashboard
+  calibration. Keep the reference image and calibration JSON only in ignored local
+  runtime storage. Passed on the installed i9 on 2026-08-16; validation recorded only
+  schema version, private modes and reference-JPEG validity.
+- [ ] **E2 — Daylight accuracy:** record at least 30 operator comparisons. Every
+  published `available` result must meet the ±1℃ and ±5%RH targets; otherwise it must
+  be rejected as `unavailable`.
+- [ ] **E3 — Fail-closed scenes:** verify darkness/infrared, glare, occlusion and gauge
+  movement. Unreliable scenes and invalidated geometry must not publish values.
+- [ ] **E4 — Independence:** take M2/Ollama offline and confirm gauge sampling, SQLite
+  writes, environment state and notification handling continue independently.
+- [ ] **E5 — 24-hour stability:** run the gauge/watchdog path for 24 hours, confirm
+  60-second scheduling does not build a backlog, and inspect trend gaps and bounded
+  health output. The state/notification, load-shedding and two-phone payload checks
+  remain part of this same real-device gate.
+
+After E1–E5 pass with redacted evidence, proceed to the existing three-browser HD gate
+in `2026-08-04-dashboard-hybrid-hd-streaming.md`; only after that gate and the remaining
+release prerequisites proceed to Task 16 in `2026-08-04-baby-monitor-local-v1.md`.
+
+### Task 15: i9-local WS2021 automatic localization
+
+**Status:** approved on 2026-08-16; implementation in progress before E2 resumes.
+
+**Prerequisites:** fixed 2560×1440 five-frame `gauge` burst; schema-v2 scale mapping;
+OpenVINO 2025.4.1 on Intel i9; private collection with no baby in frame and no adult
+overlap with persisted crops.
+
+**Files:**
+- Create: `services/gauge/locator.py`
+- Create: `services/gauge/relocation.py`
+- Create: `packages/monitoring/ws2021_dataset.py`
+- Create: `tools/ws2021_collect.py`
+- Create: `tools/ws2021_dataset.py`
+- Create: `tools/ws2021_model.py`
+- Create: focused tests under `tests/gauge/` and `tests/monitoring/`
+- Modify: `services/gauge/source.py`, `services/environment/bootstrap.py`, strict
+  settings/schema/examples, Makefile, and existing environment documentation.
+
+**Interfaces:**
+- `GaugeLocator.locate(frame: CapturedFrame) -> GaugeLocation`
+- `GaugeLocation(box: NormalizedRect, confidence: float, model_version: str)`
+- `relocate_calibration(calibration, location) -> Ws2021Calibration`
+- collection and training CLIs emit only stable codes and aggregate counts.
+
+- [x] **15.1 Strict locator and relocation contracts:** one valid
+  candidate, missing/ambiguous/out-of-bounds candidates, fixed 640×640 letterbox preprocessing,
+  deterministic output decoding, and validated schema-v2 geometry migration are covered.
+  Implemented without runtime model download or configurable output semantics.
+- [x] **15.2 Privacy-safe collection:** tests prove full frames never reach persistence,
+  overlapping person/skin candidates and privacy-backend failures are discarded,
+  duplicates and poor quality are rejected, crop files are private/atomic, and the
+  public result contains closed aggregate counts only.
+- [x] **15.3 Dataset and augmentation:** deterministic digest-based split occurs before
+  train-only augmentation; fixed 640×640 outputs use relative crop annotations and
+  bounded transformations. Negative samples require HTTPS source and license metadata;
+  tampered or full-frame private sources fail closed, and the CLI prints counts only.
+- [x] **15.4a Explicit local training/export tooling:** an explicit command checks out
+  Apache-2.0 YOLOX 0.3.0 at full commit
+  `419778480ab6ec0590e5d3831b3afb3b46ab2aa3` into ignored runtime storage, trains
+  `YOLOX-Tiny` at 640×640 for the single `ws2021` class through an Intel CPU loop without
+  W&B or network logging, exports ONNX, converts it through the pinned OpenVINO Python
+  API to FP16 IR, records only non-sensitive metadata/digests, and never commits source
+  checkout or weights. The fixed checkout and independent environment are installed;
+  a synthetic CPU forward/loss/backward step passes.
+- [ ] **15.4b Private model artifact:** after private crops exist, run the explicit
+  train/export/check sequence and require exact ONNX/XML/BIN digests. Random or
+  synthetic smoke weights cannot satisfy this gate. A 20-epoch position-1-only seed
+  was exported and digest-checked on 2026-08-16 for collection bootstrap only; it is
+  not the final private artifact and does not close this item. On 2026-08-17 the CPU
+  loop's upstream zero warmup rate and live-state checkpoint aliasing were fixed, and
+  deterministic generated backgrounds/negative samples were added. The corrected
+  20-epoch bootstrap trained, exported and passed exact artifact checks; live installed
+  localization remains the acceptance boundary.
+- [x] **15.5 Gauge-worker integration:** locate on the first frame of each burst, refine
+  the box to an outer quadrilateral plus two-circle layout, migrate schema-v2 geometry,
+  and apply the same migrated calibration to all five frames. Missing or ambiguous
+  localization produces unavailable and never reuses an old location. The feature is
+  disabled by default until a verified private model exists.
+- [x] **15.6a Software gate:** focused settings/environment/gauge/dataset/model tests,
+  compilation, Make dry-runs and `git diff --check` pass; collection commands expose
+  counts only and persist crops only after person/face/skin-overlap rejection.
+- [ ] **15.6b Installed-i9 gate:** run
+  five 30-second daylight positions plus night/IR collection, review only uncertain
+  crops, train locally, verify minimum 1/10-width detection, and resume E2 only after a
+  private production reading passes all existing deterministic gates.
+  Daylight position 1/5 (current schema-v2 location) completed on 2026-08-16 with 60
+  private crop/metadata pairs and a passing aggregate integrity check. Deployment-scale
+  augmentation and the exporter source path were corrected, then a private collection
+  seed was trained/exported/checked. The corrected seed now reaches three NMS candidates
+  above the unchanged 0.75 threshold, but all are out of bounds and none passes the
+  approved outer-quadrilateral/two-circle layout, so production remains unavailable.
+  Layout validation now safely filters before ambiguity resolution. A fresh calibrated
+  collection attempt was entirely privacy-rejected and persisted nothing. More private
+  position diversity remains required before positions 2–5, night/IR, final training
+  and reading acceptance can continue.
+
+**Human work:** first confirm no baby is present and collect the current calibrated
+position, then place the gauge in five upright, front-facing positions for 30 seconds
+each, repeat once under night/IR, and approve/reject only the bounded uncertain crop set.
+
+**Acceptance:** no household full frame persists; no baby crop is accepted; adult
+overlap is discarded; model absence and every detection ambiguity fail closed; moving
+the upright gauge anywhere in frame re-localizes without manual coordinates; published
+readings still satisfy all existing geometry, five-frame, confidence and physical gates.
+
+**Next:** complete the 30 daylight E2 comparisons, then E3–E5 unchanged.

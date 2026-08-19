@@ -44,6 +44,9 @@ sed "s|__PROJECT_ROOT__|$ROOT|g" \
 sed "s|__PROJECT_ROOT__|$ROOT|g" \
   "$ROOT/deploy/launchd/com.babymonitor.visual.plist.example" \
   >"$ROOT/runtime/launchd/com.babymonitor.visual.plist"
+sed "s|__PROJECT_ROOT__|$ROOT|g" \
+  "$ROOT/deploy/launchd/com.babymonitor.audio.plist.example" \
+  >"$ROOT/runtime/launchd/com.babymonitor.audio.plist"
 mkdir -p "$HOME/Library/LaunchAgents"
 cp "$ROOT/runtime/launchd/com.babymonitor.gauge.plist" \
   "$HOME/Library/LaunchAgents/com.babymonitor.gauge.plist"
@@ -51,6 +54,8 @@ cp "$ROOT/runtime/launchd/com.babymonitor.environment-watchdog.plist" \
   "$HOME/Library/LaunchAgents/com.babymonitor.environment-watchdog.plist"
 cp "$ROOT/runtime/launchd/com.babymonitor.visual.plist" \
   "$HOME/Library/LaunchAgents/com.babymonitor.visual.plist"
+cp "$ROOT/runtime/launchd/com.babymonitor.audio.plist" \
+  "$HOME/Library/LaunchAgents/com.babymonitor.audio.plist"
 
 if [[ ! -f "$ROOT/runtime/alpha.env" ]]; then
   password="$(openssl rand -hex 20 | cut -c 1-28)"

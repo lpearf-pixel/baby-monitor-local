@@ -5,6 +5,7 @@ ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 GAUGE_LABEL="com.babymonitor.gauge"
 WATCHDOG_LABEL="com.babymonitor.environment-watchdog"
 VISUAL_LABEL="com.babymonitor.visual"
+AUDIO_LABEL="com.babymonitor.audio"
 TUNNEL_LABEL="com.babymonitor.ollama-tunnel"
 
 stop_pidfile() {
@@ -31,6 +32,9 @@ if [[ "$(uname -s)" == "Darwin" ]] && command -v launchctl >/dev/null 2>&1; then
   if launchctl print "${GAUGE_DOMAIN}/${VISUAL_LABEL}" >/dev/null 2>&1; then
     launchctl bootout "${GAUGE_DOMAIN}/${VISUAL_LABEL}"
   fi
+  if launchctl print "${GAUGE_DOMAIN}/${AUDIO_LABEL}" >/dev/null 2>&1; then
+    launchctl bootout "${GAUGE_DOMAIN}/${AUDIO_LABEL}"
+  fi
   if launchctl print "${GAUGE_DOMAIN}/${TUNNEL_LABEL}" >/dev/null 2>&1; then
     launchctl bootout "${GAUGE_DOMAIN}/${TUNNEL_LABEL}"
   fi
@@ -42,6 +46,7 @@ if [[ "$(uname -s)" == "Darwin" ]] && command -v launchctl >/dev/null 2>&1; then
   fi
 fi
 stop_pidfile "$ROOT/runtime/pids/visual.pid"
+stop_pidfile "$ROOT/runtime/pids/audio.pid"
 stop_pidfile "$ROOT/runtime/pids/gauge.pid"
 stop_pidfile "$ROOT/runtime/pids/environment-watchdog.pid"
 stop_pidfile "$ROOT/runtime/pids/go2rtc.pid"

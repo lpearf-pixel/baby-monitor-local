@@ -17,7 +17,7 @@ from services.vision.frame_ring import AnalysisFrameRing
 from services.vision.ollama_client import OllamaVisualReviewer
 from services.vision.review_runtime import VisualReviewRuntime
 from services.vision.review_scheduler import VisualReviewScheduler
-from services.vision.realtime_analyzer import RealtimeVisualAnalyzer
+from services.vision.realtime_analyzer import RealtimeStageTiming, RealtimeVisualAnalyzer
 from services.vision.realtime_candidates import RealtimeCandidateStateMachine
 from services.vision.realtime_load import RealtimeLoadController
 from services.vision.realtime_models import build_realtime_model_backend
@@ -60,6 +60,8 @@ def build_visual_runtime(
     on_safe_frame: Callable[[PreparedAnalysisFrame], None] | None = None,
     on_risk_transition: Callable[[RiskTransition], None] | None = None,
     on_realtime_status: Callable[[RealtimeVisualMetricsSnapshot], None]
+    | None = None,
+    on_realtime_slow_analysis: Callable[[RealtimeStageTiming], None]
     | None = None,
 ) -> VisualRuntimeResources:
     if not settings.visual.enabled:
@@ -109,7 +111,8 @@ def build_visual_runtime(
             settings.app.data_dir / "models" / "openvino-2025.4.1"
         )
         realtime_analyzer = RealtimeVisualAnalyzer(
-            model_backend=build_realtime_model_backend(model_root)
+            model_backend=build_realtime_model_backend(model_root),
+            on_slow_analysis=on_realtime_slow_analysis,
         )
         candidate_machine = RealtimeCandidateStateMachine()
         load_controller = RealtimeLoadController()

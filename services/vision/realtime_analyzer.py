@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import time
 from collections.abc import Callable
+from dataclasses import dataclass
 
 import cv2
 import numpy as np
@@ -21,15 +22,26 @@ class RealtimeAnalyzerError(RuntimeError):
     """A stable, non-sensitive realtime analysis failure."""
 
 
+@dataclass(frozen=True)
+class RealtimeStageTiming:
+    decode_ms: float
+    features_ms: float
+    semantic_ms: float
+    total_ms: float
+
+
 class RealtimeVisualAnalyzer:
     def __init__(
         self,
         *,
         model_backend: RealtimeModelBackend | None = None,
         perf_counter: Callable[[], float] = time.perf_counter,
+        on_slow_analysis: Callable[[RealtimeStageTiming], None] | None = None,
     ) -> None:
         self._model_backend = model_backend
         self._perf_counter = perf_counter
+        self._on_slow_analysis = on_slow_analysis or (lambda _timing: None)
+        self._last_slow_report_at: float | None = None
         self._previous_gray: np.ndarray | None = None
         self._previous_mean_luma: float | None = None
         self._uncertain_until: float | None = None
@@ -59,6 +71,7 @@ class RealtimeVisualAnalyzer:
         self._require_monotonic(monotonic_now)
         started = self._perf_counter()
         bgr = self._decode(frame)
+        decoded_at = self._perf_counter()
         gray = cv2.cvtColor(bgr, cv2.COLOR_BGR2GRAY)
         mean_luma = float(np.mean(gray))
         scene_quality = self._scene_quality(gray)
@@ -74,6 +87,7 @@ class RealtimeVisualAnalyzer:
 
         self._previous_gray = gray
         self._previous_mean_luma = mean_luma
+        features_at = self._perf_counter()
         (
             pose_count,
             face_count,
@@ -81,7 +95,17 @@ class RealtimeVisualAnalyzer:
             adult_track,
             head_face_state,
         ) = self._semantic_tracks(bgr, scene_quality)
-        processing_ms = max(0.0, (self._perf_counter() - started) * 1000)
+        completed_at = self._perf_counter()
+        processing_ms = max(0.0, (completed_at - started) * 1000)
+        self._report_slow_analysis(
+            RealtimeStageTiming(
+                decode_ms=round(max(0.0, decoded_at - started) * 1000, 3),
+                features_ms=round(max(0.0, features_at - decoded_at) * 1000, 3),
+                semantic_ms=round(max(0.0, completed_at - features_at) * 1000, 3),
+                total_ms=round(processing_ms, 3),
+            ),
+            monotonic_now=monotonic_now,
+        )
         return RealtimeObservation(
             motion_ratio=motion_ratio,
             scene_quality=scene_quality,
@@ -92,6 +116,25 @@ class RealtimeVisualAnalyzer:
             head_face_state=head_face_state,
             processing_ms=processing_ms,
         )
+
+    def _report_slow_analysis(
+        self,
+        timing: RealtimeStageTiming,
+        *,
+        monotonic_now: float,
+    ) -> None:
+        if timing.total_ms <= 180.0:
+            return
+        if (
+            self._last_slow_report_at is not None
+            and monotonic_now - self._last_slow_report_at < 10.0
+        ):
+            return
+        self._last_slow_report_at = monotonic_now
+        try:
+            self._on_slow_analysis(timing)
+        except Exception:
+            pass
 
     def _semantic_tracks(
         self,

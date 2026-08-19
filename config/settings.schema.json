@@ -18,6 +18,137 @@
       "title": "ApplicationSettings",
       "type": "object"
     },
+    "AudioSettings": {
+      "additionalProperties": false,
+      "properties": {
+        "enabled": {
+          "default": false,
+          "title": "Enabled",
+          "type": "boolean"
+        },
+        "stream_name": {
+          "const": "audio_analysis",
+          "default": "audio_analysis",
+          "title": "Stream Name",
+          "type": "string"
+        },
+        "sample_rate_hz": {
+          "const": 16000,
+          "default": 16000,
+          "title": "Sample Rate Hz",
+          "type": "integer"
+        },
+        "channels": {
+          "const": 1,
+          "default": 1,
+          "title": "Channels",
+          "type": "integer"
+        },
+        "sample_width_bytes": {
+          "const": 2,
+          "default": 2,
+          "title": "Sample Width Bytes",
+          "type": "integer"
+        },
+        "buffer_seconds": {
+          "const": 15,
+          "default": 15,
+          "title": "Buffer Seconds",
+          "type": "integer"
+        },
+        "window_ms": {
+          "default": 1000,
+          "maximum": 2000,
+          "minimum": 250,
+          "title": "Window Ms",
+          "type": "integer"
+        },
+        "stride_ms": {
+          "default": 500,
+          "maximum": 1000,
+          "minimum": 100,
+          "title": "Stride Ms",
+          "type": "integer"
+        },
+        "initial_noise_floor_dbfs": {
+          "default": -60.0,
+          "maximum": -20,
+          "minimum": -90,
+          "title": "Initial Noise Floor Dbfs",
+          "type": "number"
+        },
+        "loudness_gate_margin_db": {
+          "default": 12.0,
+          "maximum": 30,
+          "minimum": 3,
+          "title": "Loudness Gate Margin Db",
+          "type": "number"
+        },
+        "noise_floor_adaptation": {
+          "default": 0.1,
+          "exclusiveMinimum": 0,
+          "maximum": 0.5,
+          "title": "Noise Floor Adaptation",
+          "type": "number"
+        },
+        "cry_confidence_threshold": {
+          "default": 0.75,
+          "maximum": 0.99,
+          "minimum": 0.5,
+          "title": "Cry Confidence Threshold",
+          "type": "number"
+        },
+        "normal_seconds": {
+          "default": 5,
+          "maximum": 15,
+          "minimum": 1,
+          "title": "Normal Seconds",
+          "type": "integer"
+        },
+        "high_seconds": {
+          "default": 10,
+          "maximum": 15,
+          "minimum": 1,
+          "title": "High Seconds",
+          "type": "integer"
+        },
+        "repeat_seconds": {
+          "default": 30,
+          "maximum": 120,
+          "minimum": 10,
+          "title": "Repeat Seconds",
+          "type": "integer"
+        },
+        "recovery_seconds": {
+          "default": 5,
+          "maximum": 30,
+          "minimum": 1,
+          "title": "Recovery Seconds",
+          "type": "integer"
+        },
+        "model_path": {
+          "default": "runtime/models/cry-classifier.onnx",
+          "format": "path",
+          "title": "Model Path",
+          "type": "string"
+        },
+        "model_sha256": {
+          "anyOf": [
+            {
+              "pattern": "^[0-9a-f]{64}$",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Model Sha256"
+        }
+      },
+      "title": "AudioSettings",
+      "type": "object"
+    },
     "CameraSettings": {
       "additionalProperties": false,
       "properties": {
@@ -143,6 +274,17 @@
           "default": "runtime/calibration/ws2021-v1.json",
           "format": "path",
           "title": "Calibration Path",
+          "type": "string"
+        },
+        "auto_localization": {
+          "default": false,
+          "title": "Auto Localization",
+          "type": "boolean"
+        },
+        "localization_model_path": {
+          "default": "runtime/training/ws2021/model/ws2021.xml",
+          "format": "path",
+          "title": "Localization Model Path",
           "type": "string"
         },
         "policy": {
@@ -533,10 +675,35 @@
         "critical_confirmations": 2,
         "critical_min_span_seconds": 60,
         "calibration_path": "runtime/calibration/ws2021-v1.json",
+        "auto_localization": false,
+        "localization_model_path": "runtime/training/ws2021/model/ws2021.xml",
         "policy": {
           "mode": "monitor_only",
           "required_independent_sources_for_control": 2
         }
+      }
+    },
+    "audio": {
+      "$ref": "#/$defs/AudioSettings",
+      "default": {
+        "enabled": false,
+        "stream_name": "audio_analysis",
+        "sample_rate_hz": 16000,
+        "channels": 1,
+        "sample_width_bytes": 2,
+        "buffer_seconds": 15,
+        "window_ms": 1000,
+        "stride_ms": 500,
+        "initial_noise_floor_dbfs": -60.0,
+        "loudness_gate_margin_db": 12.0,
+        "noise_floor_adaptation": 0.1,
+        "cry_confidence_threshold": 0.75,
+        "normal_seconds": 5,
+        "high_seconds": 10,
+        "repeat_seconds": 30,
+        "recovery_seconds": 5,
+        "model_path": "runtime/models/cry-classifier.onnx",
+        "model_sha256": null
       }
     },
     "visual": {

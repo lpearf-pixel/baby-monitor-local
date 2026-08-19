@@ -42,6 +42,14 @@ class _Candidate:
 
 
 class Ws2021Reader:
+    _MAX_ASPECT_RATIO_DRIFT_FRACTION = 0.05
+    _MAX_FACE_CENTER_DRIFT_FRACTION = 0.25
+    _MAX_FACE_RADIUS_DRIFT_FRACTION = 0.12
+    _MAX_FRAME_CENTER_ERROR_FRACTION = 0.10
+    _MAX_FRAME_RADIUS_ERROR_FRACTION = 0.08
+    _MAX_BURST_CENTER_SPREAD_FRACTION = 0.08
+    _MAX_BURST_RADIUS_SPREAD_FRACTION = 0.06
+
     def __init__(
         self,
         *,
@@ -66,6 +74,26 @@ class Ws2021Reader:
         if requested_at.tzinfo is None or requested_at.utcoffset() is None:
             raise ValueError("requested_at must be timezone-aware")
 
+        try:
+            adaptive_geometries = self._burst_face_geometries(
+                burst, calibration, requested_at
+            )
+        except _FrameRejected as rejected:
+            captured_at = max(
+                (frame.captured_at for frame in burst.frames), default=requested_at
+            )
+            return EnvironmentReading.unavailable(
+                reading_id=str(uuid4()),
+                source_kind=EnvironmentSourceKind.WS2021_GAUGE,
+                captured_at=captured_at,
+                failure_reason=rejected.reason,
+                calibration_version=calibration.calibration_id,
+                sample_count=len(burst.frames),
+                valid_temperature_samples=0,
+                valid_humidity_samples=0,
+                freshness_seconds=self._freshness_seconds,
+            )
+
         valid: list[GaugeFrameResult] = []
         failures: list[ReadingFailureReason] = []
         observed_times: list[datetime] = []
@@ -76,7 +104,11 @@ class Ws2021Reader:
                 failures.append(ReadingFailureReason.FRAME_STALE)
                 continue
             try:
-                result = self._read_frame(frame, calibration)
+                result = self._read_frame(
+                    frame,
+                    calibration,
+                    adaptive_geometries=adaptive_geometries,
+                )
             except _FrameRejected as rejected:
                 failures.append(rejected.reason)
             except Exception:
@@ -182,18 +214,15 @@ class Ws2021Reader:
         self,
         frame: CapturedFrame,
         calibration: Ws2021Calibration,
+        *,
+        adaptive_geometries: tuple[_FaceGeometry, _FaceGeometry] | None = None,
     ) -> GaugeFrameResult:
         encoded = np.frombuffer(frame.jpeg, dtype=np.uint8)
         image = cv2.imdecode(encoded, cv2.IMREAD_COLOR)
         if image is None:
             raise _FrameRejected(ReadingFailureReason.FRAME_SOURCE_UNAVAILABLE)
         height, width = image.shape[:2]
-        if (
-            width != frame.width
-            or height != frame.height
-            or width != calibration.source_width
-            or height != calibration.source_height
-        ):
+        if not self._frame_dimensions_match(width, height, frame, calibration):
             raise _FrameRejected(ReadingFailureReason.CALIBRATION_INVALID)
 
         warped, transform = self._rectify(image, calibration)
@@ -208,19 +237,26 @@ class Ws2021Reader:
             transform,
             width,
             height,
+            warped.shape[1],
+            warped.shape[0],
         )
         temperature_geometry = self._face_geometry(
             calibration.temperature,
             transform,
             width,
             height,
+            warped.shape[1],
+            warped.shape[0],
         )
+        if adaptive_geometries is not None:
+            humidity_geometry, temperature_geometry = adaptive_geometries
         if self._face_is_occluded(gray, humidity_geometry) or self._face_is_occluded(
             gray, temperature_geometry
         ):
             raise _FrameRejected(ReadingFailureReason.OCCLUDED)
-        self._validate_face_geometry(gray, humidity_geometry)
-        self._validate_face_geometry(gray, temperature_geometry)
+        if adaptive_geometries is None:
+            self._validate_face_geometry(gray, humidity_geometry)
+            self._validate_face_geometry(gray, temperature_geometry)
         hsv = cv2.cvtColor(warped, cv2.COLOR_BGR2HSV)
         red_mask = cv2.bitwise_or(
             cv2.inRange(hsv, (0, 80, 70), (12, 255, 255)),
@@ -232,9 +268,7 @@ class Ws2021Reader:
 
         if mode == "day":
             humidity_candidate = self._color_candidate(red_mask, humidity_geometry)
-            temperature_candidate = self._color_candidate(
-                red_mask, temperature_geometry
-            )
+            temperature_candidate = self._gray_candidate(gray, temperature_geometry)
         else:
             humidity_candidate = self._gray_candidate(gray, humidity_geometry)
             temperature_candidate = self._gray_candidate(gray, temperature_geometry)
@@ -245,6 +279,7 @@ class Ws2021Reader:
             transform,
             width,
             height,
+            humidity_geometry,
         )
         temperature = self._rectified_value(
             calibration.temperature,
@@ -252,6 +287,7 @@ class Ws2021Reader:
             transform,
             width,
             height,
+            temperature_geometry,
         )
         if humidity is None or temperature is None:
             raise _FrameRejected(ReadingFailureReason.CALIBRATION_INVALID)
@@ -262,6 +298,126 @@ class Ws2021Reader:
             humidity_confidence=humidity_candidate.confidence,
             captured_at=frame.captured_at,
         )
+
+    def _burst_face_geometries(
+        self,
+        burst: FrameBurst,
+        calibration: Ws2021Calibration,
+        requested_at: datetime,
+    ) -> tuple[_FaceGeometry, _FaceGeometry] | None:
+        humidity_observations: list[_FaceGeometry] = []
+        temperature_observations: list[_FaceGeometry] = []
+        for frame in burst.frames:
+            if (
+                requested_at - frame.captured_at
+            ).total_seconds() > self._maximum_frame_age_seconds:
+                continue
+            encoded = np.frombuffer(frame.jpeg, dtype=np.uint8)
+            image = cv2.imdecode(encoded, cv2.IMREAD_COLOR)
+            if image is None:
+                continue
+            height, width = image.shape[:2]
+            if not self._frame_dimensions_match(width, height, frame, calibration):
+                continue
+            try:
+                warped, transform = self._rectify(image, calibration)
+                gray = cv2.cvtColor(warped, cv2.COLOR_BGR2GRAY)
+                if float(np.mean(gray)) < 8 or float(np.mean(gray >= 250)) > 0.25:
+                    continue
+                expected_humidity = self._face_geometry(
+                    calibration.humidity,
+                    transform,
+                    width,
+                    height,
+                    warped.shape[1],
+                    warped.shape[0],
+                )
+                expected_temperature = self._face_geometry(
+                    calibration.temperature,
+                    transform,
+                    width,
+                    height,
+                    warped.shape[1],
+                    warped.shape[0],
+                )
+                if self._face_is_occluded(
+                    gray, expected_humidity
+                ) or self._face_is_occluded(gray, expected_temperature):
+                    continue
+                try:
+                    humidity = self._detect_face_geometry(gray, expected_humidity)
+                    temperature = self._detect_face_geometry(gray, expected_temperature)
+                except _CircleDetectionUnavailable:
+                    hsv = cv2.cvtColor(warped, cv2.COLOR_BGR2HSV)
+                    red_mask = cv2.bitwise_or(
+                        cv2.inRange(hsv, (0, 80, 70), (12, 255, 255)),
+                        cv2.inRange(hsv, (168, 80, 70), (179, 255, 255)),
+                    )
+                    mode: Literal["day", "night"] = (
+                        "day" if int(np.count_nonzero(red_mask)) >= 30 else "night"
+                    )
+                    if mode == "day":
+                        self._color_candidate(red_mask, expected_humidity)
+                        self._color_candidate(red_mask, expected_temperature)
+                    else:
+                        self._gray_candidate(gray, expected_humidity)
+                        self._gray_candidate(gray, expected_temperature)
+                    humidity = expected_humidity
+                    temperature = expected_temperature
+            except _FrameRejected:
+                continue
+            humidity_observations.append(humidity)
+            temperature_observations.append(temperature)
+
+        if len(humidity_observations) < 3:
+            return None
+        return (
+            self._consistent_face_geometry(humidity_observations),
+            self._consistent_face_geometry(temperature_observations),
+        )
+
+    def _consistent_face_geometry(
+        self,
+        observations: list[_FaceGeometry],
+    ) -> _FaceGeometry:
+        center_x = float(np.median([item.center_x for item in observations]))
+        center_y = float(np.median([item.center_y for item in observations]))
+        radius = float(np.median([item.radius for item in observations]))
+        for item in observations:
+            center_spread = math.hypot(
+                item.center_x - center_x, item.center_y - center_y
+            )
+            radius_spread = abs(item.radius - radius) / radius
+            if (
+                center_spread > radius * self._MAX_BURST_CENTER_SPREAD_FRACTION
+                or radius_spread > self._MAX_BURST_RADIUS_SPREAD_FRACTION
+            ):
+                raise _FrameRejected(ReadingFailureReason.CALIBRATION_INVALID)
+        return _FaceGeometry(
+            calibration=observations[0].calibration,
+            center_x=center_x,
+            center_y=center_y,
+            radius=radius,
+        )
+
+    @classmethod
+    def _frame_dimensions_match(
+        cls,
+        width: int,
+        height: int,
+        frame: CapturedFrame,
+        calibration: Ws2021Calibration,
+    ) -> bool:
+        if min(width, height, frame.width, frame.height) <= 0:
+            return False
+        if width != frame.width or height != frame.height:
+            return False
+        source_aspect = calibration.source_width / calibration.source_height
+        frame_aspect = width / height
+        if not math.isfinite(source_aspect) or not math.isfinite(frame_aspect):
+            return False
+        aspect_drift = abs(frame_aspect - source_aspect) / source_aspect
+        return aspect_drift <= cls._MAX_ASPECT_RATIO_DRIFT_FRACTION
 
     @staticmethod
     def _rectify(
@@ -276,27 +432,145 @@ class Ws2021Reader:
             ],
             dtype=np.float32,
         )
+        output_width, output_height = Ws2021Reader._rectified_dimensions(
+            source,
+            calibration,
+            width,
+            height,
+        )
         destination = np.asarray(
-            [[0, 0], [width - 1, 0], [width - 1, height - 1], [0, height - 1]],
+            [
+                [0, 0],
+                [output_width - 1, 0],
+                [output_width - 1, output_height - 1],
+                [0, output_height - 1],
+            ],
             dtype=np.float32,
         )
         transform = cv2.getPerspectiveTransform(source, destination)
         if not np.isfinite(transform).all() or abs(float(np.linalg.det(transform))) < 1e-9:
             raise _FrameRejected(ReadingFailureReason.CALIBRATION_INVALID)
+        left, top, right, bottom = Ws2021Reader._rectification_padding(
+            transform,
+            calibration,
+            width,
+            height,
+            output_width,
+            output_height,
+        )
+        translated_width = output_width + left + right
+        translated_height = output_height + top + bottom
+        scale = min(
+            1.0,
+            width / translated_width,
+            height / translated_height,
+        )
+        translation = np.asarray(
+            [[scale, 0, left * scale], [0, scale, top * scale], [0, 0, 1]],
+            dtype=np.float64,
+        )
+        transform = translation @ transform
+        output_width = max(2, round(translated_width * scale))
+        output_height = max(2, round(translated_height * scale))
         return (
-            cv2.warpPerspective(image, transform, (width, height)),
+            cv2.warpPerspective(image, transform, (output_width, output_height)),
             transform,
         )
+
+    @staticmethod
+    def _rectification_padding(
+        transform: np.ndarray,
+        calibration: Ws2021Calibration,
+        source_width: int,
+        source_height: int,
+        canvas_width: int,
+        canvas_height: int,
+    ) -> tuple[int, int, int, int]:
+        left = top = right = bottom = 0.0
+        for face in (calibration.humidity, calibration.temperature):
+            center_x, center_y = Ws2021Reader._transform_point(
+                face.center, transform, source_width, source_height
+            )
+            needle_x, needle_y = Ws2021Reader._transform_point(
+                face.needle_tip, transform, source_width, source_height
+            )
+            radius = math.hypot(needle_x - center_x, needle_y - center_y) / 0.8
+            search_radius = radius * 1.3
+            left = max(left, search_radius - center_x)
+            top = max(top, search_radius - center_y)
+            right = max(right, center_x + search_radius - canvas_width)
+            bottom = max(bottom, center_y + search_radius - canvas_height)
+        return tuple(max(0, math.ceil(value)) for value in (left, top, right, bottom))
+
+    @staticmethod
+    def _rectified_dimensions(
+        source: np.ndarray,
+        calibration: Ws2021Calibration,
+        source_width: int,
+        source_height: int,
+    ) -> tuple[int, int]:
+        area = abs(float(cv2.contourArea(source)))
+        if not math.isfinite(area) or area < 4:
+            raise _FrameRejected(ReadingFailureReason.CALIBRATION_INVALID)
+
+        def pixel(point: Point) -> np.ndarray:
+            return np.asarray(
+                [point.x * (source_width - 1), point.y * (source_height - 1)],
+                dtype=np.float32,
+            )
+
+        faces = tuple(
+            (
+                pixel(face.center),
+                tuple(pixel(mark.point) for mark in face.scale_marks),
+            )
+            for face in (calibration.humidity, calibration.temperature)
+        )
+        best_aspect: float | None = None
+        best_score = math.inf
+        for aspect in np.linspace(0.25, 4.0, 376):
+            destination = np.asarray(
+                [[0, 0], [aspect * 1_000, 0], [aspect * 1_000, 1_000], [0, 1_000]],
+                dtype=np.float32,
+            )
+            transform = cv2.getPerspectiveTransform(source, destination)
+            score = 0.0
+            for center, marks in faces:
+                points = np.asarray([[center, *marks]], dtype=np.float32)
+                transformed = cv2.perspectiveTransform(points, transform)[0]
+                radii = np.linalg.norm(transformed[1:] - transformed[0], axis=1)
+                mean_radius = float(np.mean(radii))
+                if mean_radius <= 0 or not np.isfinite(radii).all():
+                    score = math.inf
+                    break
+                score += float(np.std(radii) / mean_radius)
+            if score < best_score:
+                best_score = score
+                best_aspect = float(aspect)
+        if best_aspect is None or not math.isfinite(best_score):
+            raise _FrameRejected(ReadingFailureReason.CALIBRATION_INVALID)
+
+        output_width = math.sqrt(area * best_aspect)
+        output_height = math.sqrt(area / best_aspect)
+        scale = min(1.0, source_width / output_width, source_height / output_height)
+        return max(2, round(output_width * scale)), max(2, round(output_height * scale))
 
     @staticmethod
     def _transform_point(
         point: Point,
         transform: np.ndarray,
-        width: int,
-        height: int,
+        source_width: int,
+        source_height: int,
     ) -> tuple[float, float]:
         source = np.asarray(
-            [[[point.x * (width - 1), point.y * (height - 1)]]],
+            [
+                [
+                    [
+                        point.x * (source_width - 1),
+                        point.y * (source_height - 1),
+                    ]
+                ]
+            ],
             dtype=np.float32,
         )
         transformed = cv2.perspectiveTransform(source, transform)[0, 0]
@@ -306,24 +580,26 @@ class Ws2021Reader:
         self,
         face: GaugeFace,
         transform: np.ndarray,
-        width: int,
-        height: int,
+        source_width: int,
+        source_height: int,
+        canvas_width: int,
+        canvas_height: int,
     ) -> _FaceGeometry:
         center_x, center_y = self._transform_point(
-            face.center, transform, width, height
+            face.center, transform, source_width, source_height
         )
         needle_x, needle_y = self._transform_point(
             face.needle_tip,
             transform,
-            width,
-            height,
+            source_width,
+            source_height,
         )
         radius = math.hypot(needle_x - center_x, needle_y - center_y) / 0.8
         if radius < 12:
             raise _FrameRejected(ReadingFailureReason.CALIBRATION_INVALID)
         if not (
-            radius <= center_x < width - radius
-            and radius <= center_y < height - radius
+            radius <= center_x < canvas_width - radius
+            and radius <= center_y < canvas_height - radius
         ):
             raise _FrameRejected(ReadingFailureReason.ROI_OUT_OF_BOUNDS)
         return _FaceGeometry(
@@ -346,17 +622,23 @@ class Ws2021Reader:
         inside = x * x + y * y <= radius * radius
         return float(np.mean(crop[inside] <= 8)) > 0.45
 
-    @staticmethod
-    def _validate_face_geometry(gray: np.ndarray, geometry: _FaceGeometry) -> None:
+    def _detect_face_geometry(
+        self,
+        gray: np.ndarray,
+        geometry: _FaceGeometry,
+    ) -> _FaceGeometry:
         search_radius = round(geometry.radius * 1.3)
         center_x = round(geometry.center_x)
         center_y = round(geometry.center_y)
-        left = center_x - search_radius
-        top = center_y - search_radius
-        right = center_x + search_radius + 1
-        bottom = center_y + search_radius + 1
-        if left < 0 or top < 0 or right > gray.shape[1] or bottom > gray.shape[0]:
+        if not (
+            geometry.radius <= geometry.center_x < gray.shape[1] - geometry.radius
+            and geometry.radius <= geometry.center_y < gray.shape[0] - geometry.radius
+        ):
             raise _FrameRejected(ReadingFailureReason.ROI_OUT_OF_BOUNDS)
+        left = max(0, center_x - search_radius)
+        top = max(0, center_y - search_radius)
+        right = min(gray.shape[1], center_x + search_radius + 1)
+        bottom = min(gray.shape[0], center_y + search_radius + 1)
         crop = gray[top:bottom, left:right]
         sharpness = float(cv2.Laplacian(crop, cv2.CV_64F).var())
         if sharpness < 12:
@@ -373,23 +655,47 @@ class Ws2021Reader:
             maxRadius=round(geometry.radius * 1.28),
         )
         if circles is None:
-            raise _FrameRejected(ReadingFailureReason.CALIBRATION_INVALID)
+            raise _CircleDetectionUnavailable
         expected_x = geometry.center_x - left
         expected_y = geometry.center_y - top
-        candidates = circles[0]
-        detected = min(
-            candidates,
-            key=lambda circle: math.hypot(
+        candidates = [
+            circle
+            for circle in circles[0]
+            if math.hypot(
                 float(circle[0]) - expected_x,
                 float(circle[1]) - expected_y,
-            ),
+            )
+            <= geometry.radius * self._MAX_FACE_CENTER_DRIFT_FRACTION
+            and abs(float(circle[2]) - geometry.radius) / geometry.radius
+            <= self._MAX_FACE_RADIUS_DRIFT_FRACTION
+        ]
+        if not candidates:
+            raise _CircleDetectionUnavailable
+        if len(candidates) != 1:
+            raise _FrameRejected(ReadingFailureReason.CALIBRATION_INVALID)
+        detected = candidates[0]
+        return _FaceGeometry(
+            calibration=geometry.calibration,
+            center_x=left + float(detected[0]),
+            center_y=top + float(detected[1]),
+            radius=float(detected[2]),
         )
-        center_offset = math.hypot(
-            float(detected[0]) - expected_x,
-            float(detected[1]) - expected_y,
+
+    def _validate_face_geometry(
+        self,
+        gray: np.ndarray,
+        geometry: _FaceGeometry,
+    ) -> None:
+        detected = self._detect_face_geometry(gray, geometry)
+        center_error = math.hypot(
+            detected.center_x - geometry.center_x,
+            detected.center_y - geometry.center_y,
         )
-        radius_error = abs(float(detected[2]) - geometry.radius) / geometry.radius
-        if center_offset > geometry.radius * 0.1 or radius_error > 0.08:
+        radius_error = abs(detected.radius - geometry.radius) / geometry.radius
+        if (
+            center_error > geometry.radius * self._MAX_FRAME_CENTER_ERROR_FRACTION
+            or radius_error > self._MAX_FRAME_RADIUS_ERROR_FRACTION
+        ):
             raise _FrameRejected(ReadingFailureReason.CALIBRATION_INVALID)
 
     def _rectified_value(
@@ -399,13 +705,28 @@ class Ws2021Reader:
         transform: np.ndarray,
         width: int,
         height: int,
+        geometry: _FaceGeometry,
     ) -> float | None:
-        center_x, center_y = self._transform_point(
+        calibrated_center_x, calibrated_center_y = self._transform_point(
             face.center,
             transform,
             width,
             height,
         )
+        needle_x, needle_y = self._transform_point(
+            face.needle_tip,
+            transform,
+            width,
+            height,
+        )
+        calibrated_radius = (
+            math.hypot(
+                needle_x - calibrated_center_x,
+                needle_y - calibrated_center_y,
+            )
+            / 0.8
+        )
+        radius_scale = geometry.radius / calibrated_radius
         rectified_marks: list[tuple[float, float]] = []
         previous: float | None = None
         for mark in face.scale_marks:
@@ -415,7 +736,18 @@ class Ws2021Reader:
                 width,
                 height,
             )
-            angle = math.degrees(math.atan2(mark_y - center_y, mark_x - center_x)) % 360
+            adjusted_mark_x = geometry.center_x + (
+                mark_x - calibrated_center_x
+            ) * radius_scale
+            adjusted_mark_y = geometry.center_y + (
+                mark_y - calibrated_center_y
+            ) * radius_scale
+            angle = math.degrees(
+                math.atan2(
+                    adjusted_mark_y - geometry.center_y,
+                    adjusted_mark_x - geometry.center_x,
+                )
+            ) % 360
             unwrapped = angle
             while previous is not None and unwrapped <= previous:
                 unwrapped += 360
@@ -524,3 +856,8 @@ class _FrameRejected(RuntimeError):
     def __init__(self, reason: ReadingFailureReason) -> None:
         super().__init__(reason.value)
         self.reason = reason
+
+
+class _CircleDetectionUnavailable(_FrameRejected):
+    def __init__(self) -> None:
+        super().__init__(ReadingFailureReason.CALIBRATION_INVALID)

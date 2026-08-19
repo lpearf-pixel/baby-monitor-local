@@ -12,6 +12,10 @@ streams:
   analysis: ffmpeg:source#video=mjpeg#width=960#height=540#raw=-r 1
   # Opt-in private stream consumed only by the realtime visual worker.
   analysis_realtime: ffmpeg:source#video=mjpeg#width=960#height=540#raw=-r 5
+  # On-demand native-resolution stream consumed only by the gauge worker.
+  gauge: ffmpeg:source#video=mjpeg#width=2560#height=1440#raw=-r 2
+  # On-demand audio-only stream for the private in-memory audio worker.
+  audio_analysis: ffmpeg:source#audio=opus/16000
   # Stable HD browser preview generated only while somebody is watching.
   live: ffmpeg:source#video=mjpeg#width=1280#height=720#raw=-r 10
   # Hardware-only 1440p compatibility stream, started only for an HD consumer.

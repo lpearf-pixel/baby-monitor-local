@@ -39,9 +39,30 @@ environment:
   critical_confirmations: 2
   critical_min_span_seconds: 60
   calibration_path: runtime/calibration/ws2021-v1.json
+  auto_localization: false
+  localization_model_path: runtime/training/ws2021/model/ws2021.xml
   policy:
     mode: monitor_only
     required_independent_sources_for_control: 2
+audio:
+  enabled: false
+  stream_name: audio_analysis
+  sample_rate_hz: 16000
+  channels: 1
+  sample_width_bytes: 2
+  buffer_seconds: 15
+  window_ms: 1000
+  stride_ms: 500
+  initial_noise_floor_dbfs: -60.0
+  loudness_gate_margin_db: 12.0
+  noise_floor_adaptation: 0.1
+  cry_confidence_threshold: 0.75
+  normal_seconds: 5
+  high_seconds: 10
+  repeat_seconds: 30
+  recovery_seconds: 5
+  model_path: runtime/models/cry-classifier.onnx
+  model_sha256: null
 visual:
   enabled: false
   model: qwen3-vl:8b-instruct-q4_K_M

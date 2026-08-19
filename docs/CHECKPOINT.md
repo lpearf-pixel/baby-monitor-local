@@ -341,38 +341,375 @@ runtime/媒体/SQLite 与敏感字面量扫描均通过，仅保留既有 Starle
 这些软件证据不证明 i9 已安装服务、真实 Xiaomi 画面、两台 Android 实际收件、家庭
 场景准确率、持续性能或无人照护安全。实机验收仍须在无真实婴儿、成人监督条件下完成。
 
-## Visual-model compatibility checkpoint
+### Installed Intel i9 and two-iPhone acceptance — 2026-08-15
 
-2026-08-14，M2 上已下载的 JoyAI GGUF 虽显示 `qwen3vl` 架构，但 Ollama 只登记
-`completion` capability，没有 `vision`。缺失图片路径时产生的内容属于无效测试；在
-真实存在的合成测试图上，它只能给出疑似来自文件名的标题，其余视觉字段全部不确定。
-因此该包没有通过 grounded-image gate，不能接入 Guardian，也不能与当前 Qwen 进行
-视觉质量比较。后续只有在匹配视觉 projector/runtime 并由 Ollama 明确登记 vision 后，
-才值得重新验收。
+在无真实婴儿、成人全程监督的条件下，安装于 Intel i9 的 Guardian 完成真实交互验收。
+固定 readiness 门通过；命令只发送一条明确标注为验收测试、非宝宝风险告警的纯文字
+ntfy 消息，两台 iPhone 分别确认收件。经过鉴权的实时画面和 Dashboard 中的 Guardian
+事件列表均确认可见；事件列表为空是有效的已加载状态。最终固定结果为
+`guardian_live_test=PASS`。
 
-现有 `qwen3-vl:8b-instruct-q4_K_M` 正确读取同一合成图的文字、人形玩偶、黄色衣服、
-粗粒度平躺、脸部不可见和未离床。较大图片首次运行 `23.96s`；最长边缩到 640 像素并
-热运行后为 `3.32s`，用户确认该实验延迟可接受。仓库生产契约仍是固定 960×540 安全帧、
-最多四帧和 20 秒超时；本实验没有修改代码。语义模型仍只做异步事件复核，OpenCV/
-OpenVINO 快速层和 i9 确定性状态机分别继续拥有候选节奏和告警决策。
+本次验收不记录 topic、token、私网地址、凭据、通知正文或家庭媒体。它证明该次运行中
+Intel i9 服务就绪、双 iPhone 文字通知、鉴权实时查看和事件列表闭环可用；不证明真实
+宝宝姿态识别准确率、持续性能、24/72 小时稳定性或无人照护安全。
 
-## Installed-i9 TestClient dependency closure checkpoint
+## Guardian household synthetic scene acceptance checkpoint
 
-2026-08-14，首次执行 `make alpha-guardian-test` 时，`guardian_focused` 与
-`python_regression` 同时失败。首个紧凑诊断显示当前 Starlette TestClient 要求
-`httpx2`。根因是宽版本 FastAPI 在新环境解析到 Starlette 1.6，而项目开发依赖只有
-旧的 `httpx`；同时 `tools/install_alpha_macos.sh` 只安装主包，没有安装验收所需的
-`[dev]` extras。
+2026-08-15，在 Intel i9 上完成监督式 `make alpha-guardian-scene-test`。固定七类场景
+为空床、玩偶或静态道具、成人入镜、红外夜视、安全模拟镜头遮挡、蚊帐摆动和安全正常
+翻身替代场景。每类完成 10 次操作员确认，聚合结果均为 `correct=10`、
+`false_positive=0`、`missed=0`、`unavailable=0`，最终固定结果为
+`guardian_scene_test=PASS`。
 
-TDD 回归先验证缺失依赖，再在 `pyproject.toml` 同时保留兼容旧 Starlette 的
-`httpx` 并加入 `httpx2>=2,<3`，安装器改为安装 `"$ROOT[dev]"`。全新临时 Python 3.11
-环境验证：部署/API focused `71 passed`、完整 Python `741 passed`、Node `73 passed`、
-`pip check` 无破损依赖；Python 编译、Shell 语法/ASCII/LF、Make dry-run 和
-`git diff --check` 通过。local commit 为 `00e2934`，发布到
-`codex/guardian-live-acceptance` 的 connector commit 为 `c4b2de0`，两者 tree 均为
-`137611024da2e4d02547a4fd35cb4335cfafb32c`。
+本地状态只保存闭合枚举、序号和时间，不包含画面、模型原文、床区坐标、地址、凭据或
+自由文本。本结果是该次固定场景的人工观察记录，不是自动标注数据，不证明真实宝宝姿态
+识别准确率、医疗监护、持续性能或无人照护安全。
 
-这证明软件依赖闭环，不证明 i9 已重新安装或真实服务通过。下一次接管应在 i9 拉取
-发布分支，执行 `make alpha-install`、`make alpha-guardian-start`、
-`make alpha-guardian-test`；自动门通过后，才在无真实婴儿、成人监督且两台手机就绪
-时运行 `make alpha-guardian-test-live`。
+## Guardian Intel i9 realtime performance checkpoint
+
+2026-08-15，在已安装 Guardian 的 Intel i9 上将视觉 LaunchAgent 更新为
+`ProcessType=Interactive` 并完成 10 分钟生产性能门禁。60 个固定间隔样本全部保持
+5 FPS，`processing_p50_ms=100.836`、`processing_p95_ms=130.789`、
+`processing_max_ms=201.529`，模型状态全程为 `available`，最终结果为
+`performance=PASS mode=5fps`。
+
+为定位先前的偶发尖峰，实时分析器新增超过 180ms 才触发、最多每 10 秒一条的固定脱敏
+阶段耗时记录，不记录画面、事件、路径、设备身份或配置。该次门禁只出现一条慢帧记录：
+JPEG 解码 4.416ms、视觉特征 9.333ms、语义模型 187.779ms、总计 201.529ms；尖峰来自
+语义阶段，但未形成持续过载或降帧。新增功能的完整软件门禁为 Python `765 passed`，
+仅保留既有 Starlette/httpx 弃用警告。
+
+本检查点只证明该 10 分钟窗口内的 i9 生产性能，不等同于 24/72 小时稳定性、真实宝宝
+识别准确率、医疗监护或无人照护保证。
+
+## go2rtc health-aware startup recovery checkpoint
+
+2026-08-15，i9 停止与恢复过程中出现两个 go2rtc 进程交叠：旧进程仍占用 loopback
+监听端口时新进程启动，新进程绑定失败但保持存活，PID 文件随后指向这个无监听进程。
+旧进程退出后，原启动脚本只以 `kill -0` 判断健康，因而持续跳过真正的恢复启动。
+
+修复后的启动路径同时验证 loopback API、PID 存活、BSD `ps -ww` 完整命令，以及该
+已验证 PID 对 API 监听端口的实际所有权。只有命令身份匹配但 API 不健康的进程才能
+进入有界停止与单次替换；未知进程、缺失或陈旧 PID、以及不属于该 PID 的健康端口均
+固定失败，且不会按端口选择或终止进程。功能提交为 `c75683f`，严格监听所有权闭环为
+`1b1732d`。
+
+新鲜软件门禁为 Alpha 部署测试 `26 passed`、Guardian/Alpha 联合部署测试
+`54 passed`、完整 Python 套件 `772 passed`，Shell 语法、ASCII/LF、Make dry-run、
+`git diff --check` 与跟踪差异敏感扫描通过，仅保留既有 Starlette/httpx 弃用警告。
+
+随后由实际拥有服务的 `kandysmith` 会话执行运行检查：Xiaomi 源为 `PASS`，使用
+`cs2+udp` 和 H.265，原始尺寸 `2560x1440`，Dashboard live 尺寸 `1280x720`，接收
+字节非零。视觉 worker 为 5 FPS、实时指标与模型可用，Ollama 隧道和桥接正常，
+Dashboard 画面持续更新。本文不记录私网地址、设备标识、凭据、topic 或家庭媒体。
+
+该事件同时确认 macOS 账户边界：`chatgpt-agent` 中的 Codex 可能无法权威观察
+`kandysmith` GUI 域中的监听和 launchd 服务。后续实机操作应从 `kandysmith` SSH
+登录直接启动 Codex；不要通过全盘读取权限或无限制 sudo 绕过账户隔离。
+
+## Project plan reconciliation checkpoint
+
+2026-08-16，按仓库现场状态复核正式规格、计划和交接文档。环境软件与 Guardian
+功能闭环保持已完成，不重新设计。当前未完成工作按依赖固定为：环境 E1–E5 实机门、
+三浏览器高清门、正常照护且不得摆拍危险姿势的真实宝宝 Guardian 观察门、另行批准的
+音频/哭声阶段、Tailscale Serve/ACL 私有远程访问，以及最终 72 小时发布门。
+
+WS2021 旧 schema-v1 标定稿明确标为已被 2026-08-05 批准的 schema-v2 环境规格
+取代。`docs/NEXT.md` 现在为每个阶段记录状态、前置条件、Codex/真人边界、验收、
+验证和下一步；详细行为仍由各自正式规格和计划约束。本检查点只整理文档，没有启动
+实机标定、24/72 小时运行、通知、设备操作或业务代码变更，也没有 push、merge 或
+修改 `main`。
+
+## WS2021 E1 private calibration checkpoint
+
+2026-08-16，在拥有服务的 `kandysmith` 登录会话中完成一次鉴权 Dashboard
+schema-v2 标定。只读验证确认标定模型有效、参考 JPEG 有效且两份文件均为私有权限；
+本文不记录标定 ID、坐标、画面、温湿度值、路径、地址或凭据。Guardian 固定 readiness
+同时全部通过。
+
+该结果只关闭 E1 标定文件门，不证明读针准确率。标定后的首条环境记录引用了新标定，
+但固定高分辨率 `source` 的 MJPEG burst 返回 `frame_source_unavailable`；独立
+`alpha-source-check` 仍确认 H.265 source 健康。E2 必须先修复并验证这一受控帧源边界，
+不能把不可用样本计入 30 组白天对照。
+
+## WS2021 E2 frame-source prerequisite checkpoint
+
+2026-08-16 在不输出家庭画面、标定内容或读数值的前提下，为 go2rtc 增加固定按需
+`gauge` 派生流：2560×1440 MJPEG、2 FPS。环境受控帧源固定消费该流，仍以一个
+连续连接取得五帧。运行配置通过现有 0600 原子备份边界迁移，未改动 Xiaomi source
+参数。
+
+定向软件测试为 73 passed；实机单帧与单连接五帧 burst 均 PASS，尺寸一致。新的
+gauge worker 记录不再是 `frame_source_unavailable`，而是在后续几何门安全拒绝为
+`roi_out_of_bounds`。因此帧源前置阻塞已关闭，但 E2 尚未开始计数；下一步必须在
+不泄露私人坐标的前提下复核 E1 ROI 映射，不能降低质量门或把该样本计入 30 组。
+
+2026-08-16 第二次私人标定复现两只表盘 `geometry_roi_out_of_bounds`，确认不是单个
+点击误差。读针器现根据圆形刻度几何恢复非 16:9 仪表平面比例，并为固定 1.3 倍
+圆搜索窗口增加有界 padding；40 个 gauge 测试通过。私人五帧探测随后通过两只
+表盘 ROI 几何门及温度圆匹配，湿度圆匹配仍严格拒绝为 `calibration_invalid`。
+E2 仍为零组，下一步只需重新标记湿度表盘，不得放宽圆心 5% 或半径 8% 门限。
+
+## WS2021 automatic-localization contract checkpoint
+
+2026-08-16，按已批准的环境规格开始 Task 15。新增 i9 本地定位边界：固定 640×640
+letterbox、单一候选、固定置信度/NMS、最小原图宽度和竖直姿态门；缺失、歧义、越界、
+过小、姿态或模型输出异常均使用稳定代码 fail closed。定位结果只迁移 schema-v2 几何，
+读数仍完全由既有确定性 OpenCV 门禁负责。
+
+新增测试使用合成 JPEG 和数值候选，不含家庭画面、私人坐标、模型权重或运行配置。
+定向扩大门禁为 `53 passed`，Python 编译与 `git diff --check` 通过。本检查点只证明
+定位/迁移软件契约，不证明真实 WS2021 定位率、读针准确率或家庭场景安全。下一步为
+15.2 隐私安全裁剪采集；原始家庭全帧不得持久化。
+
+2026-08-16，Task 15.2 完成隐私安全采集边界。全帧只在内存中提供给隐私候选检查，
+持久化接口只接收裁剪后的 JPEG；成人或皮肤候选框与仪表框相交、隐私后端异常、低清晰
+度、过暗/过亮、越界、重复或存储异常均使用闭合结果拒绝。裁剪与元数据采用摘要文件名、
+0600 原子写入，目录固定为 0700；公开状态只有聚合计数，不返回路径或样本身份。
+
+新增测试均使用合成画面。Task 15 定向门禁为 `17 passed`；扩大后的 monitoring/gauge
+套件在允许绑定临时 loopback 测试端口的环境中为 `124 passed`，Python 编译和
+`git diff --check` 通过。该证据不证明真实成人/皮肤检测召回率，也不证明真实仪表定位；
+下一步为 15.3 确定性数据集划分和有界增强。
+
+2026-08-16，Task 15.3 完成本地数据集构建。私有裁剪先按摘要稳定划分 train/val，再只对
+train 执行固定种子的有界旋转、缩放、亮度和位置增强；val 不增强。所有训练图固定为
+640×640，标签和清单只含相对路径及闭合字段。公共负样本必须提供 HTTPS 来源和许可
+标识；被篡改的摘要、尺寸元数据或疑似全帧来源均 fail closed。命令行只输出状态和聚合
+计数，不输出输入/输出路径或样本身份。
+
+专项数据集门禁为 `12 passed`，WS2021/gauge 相关扩大门禁为 `62 passed`，Python
+编译和 `git diff --check` 通过。测试全部使用合成图；这不证明真实数据分布、检测精度
+或负样本覆盖率。下一步为 15.4 固定 YOLOX 提交的显式本地训练、ONNX 导出和固定
+OpenVINO FP16 转换。
+
+2026-08-16，Task 15.4a 完成显式 i9 本地训练/导出工具。固定训练环境使用 Torch
+2.2.2、独立 venv 和精确 YOLOX commit
+`419778480ab6ec0590e5d3831b3afb3b46ab2aa3`；上游源码保持未修改。由于该提交官方
+trainer 将设备硬编码为 CUDA，项目使用同一 YOLOX-Tiny 模型、损失和优化器的固定
+CPU 循环，并关闭 W&B、远程日志和训练期网络。数据集同时补齐 YOLOX 直接可读的
+COCO train2017/val2017 标注。
+
+固定提交实机模型构造为 5,032,866 参数，合成 640×640 单批次已完成 CPU 前向、有限
+loss 和反向传播。软件相关门禁为 `66 passed`，Python 编译和 `git diff --check`
+通过。真实私有裁剪尚未采集，因此没有训练、导出或批准任何生产权重；随机烟测权重不能
+关闭 15.4b。下一项可自动执行工作是 15.5 worker 集成，真实模型工件随后依赖真人摆放
+仪表完成私有采集。
+
+2026-08-16，Task 15.5 与 15.6a 软件门完成。Gauge source 在每个五帧 burst 的第一帧
+只执行一次固定 640×640 定位，随后从仪表外框四边形和双圆布局细化几何，以透视迁移
+schema-v2 标定，并将同一结果用于整组五帧。模型摘要、XML/BIN 摘要、FP16、输入和
+输出形状均在加载前验证；缺失、歧义、越界、布局或推理异常直接 unavailable，不保存
+或复用上次位置。功能默认关闭，只有私有模型通过后才在本地 settings 启用。
+
+新增短命令覆盖当前标定位置采集、模型定位采集、数据集构建、训练、导出和工件检查。
+采集持久化前使用既有 i9 人体姿态/人脸模型及局部皮肤比例门，任何隐私后端异常同样
+拒绝；命令只输出闭合聚合计数。相关门禁为 `115 passed`，Python 编译、六个 Make
+dry-run 和 `git diff --check` 通过。下一步 15.6b 必须由真人先确认无宝宝入镜，再执行
+首个 30 秒当前标定位置采集；本文不声称已采集家庭资料或训练真实权重。
+
+2026-08-16，在用户明确确认无宝宝入镜后完成 Task 15.6b 白天位置 1/5 的当前
+schema-v2 标定位置采集。私有忽略目录稳定保存 60 组裁剪 JPEG/元数据配对；目录权限
+0700、文件权限 0600，配对、闭合字段和 SHA-256 一致性检查 PASS。未读取、展示或提交
+家庭图像，也未输出文件名、摘要、坐标或绝对路径。
+
+本次运行同时发现 `duration-seconds` 原实现按尝试次数而非真实墙钟计算，实际超过预期
+30 秒。采集循环已改为单调时钟截止并新增回归测试；相关定向门禁 `11 passed`，Python
+编译和 `git diff --check` 通过。位置 1 的 60 组不能代替位置多样性；下一步仍为真人将
+仪表竖直移动到白天位置 2/5，再执行同一 30 秒隐私采集。
+
+2026-08-16，位置 2 已就绪后，位置 1 数据的首轮模型暴露训练增强尺度错误：目标宽度
+45%–80% 与批准的实机约 10%–35% 不符。增强改为 10%–35%，补充固定 20 轮的仅采集
+种子训练入口，并修复上游 YOLOX 导出子进程缺少固定源码路径的问题。重建数据集为
+train 86、val 17、negative 0；20 轮训练、OpenVINO FP16 导出及精确工件检查均完成。
+
+该种子在位置 2 仍严格返回 `gauge_not_found`。连续帧预测未达到 0.75 生产门，较低
+候选还出现越界或不满足尺寸/姿态；位置 1 私有裁剪的 SIFT/边缘模板匹配和全帧圆形搜索
+也没有形成唯一可靠候选。因此未降低生产阈值、未保存猜测裁剪、未把种子声明为最终
+模型。下一步需要一次本地位置 2 框标注，再继续 30 秒隐私采集和后续位置循环。
+
+2026-08-17，WS2021 有效训练期间用户报告 Dashboard 实时影像消失。训练被优先停止，
+有界诊断确认 Dashboard、gauge 和 visual launchd job 仍在，但 source 为 0 字节、
+visual 指标 stale。`alpha-restart` 随后按设计拒绝 `go2rtc pid identity mismatch`；
+只读身份核对确认 1984 监听者确属当前仓库 go2rtc，但运行时 PID 所有权记录缺失。
+
+停止该已确认的孤立进程并以当前固定配置重新启动后，`make alpha-source-check` 返回
+PASS：`cs2+udp`、H.265、2560×1440 source、1280×720 live；visual 指标恢复为
+available、5 FPS。Ollama bridge 仍独立不可达，不影响此次视频恢复结论。操作手册
+新增了 fail-closed 排查和安全接管步骤；未修改摄像头 URI、FFmpeg 参数、隐私门或
+业务代码，也未记录地址、凭据、画面或绝对路径。
+
+2026-08-17，用户批准音频/哭声第一阶段隐私边界：家庭音频仅在有界内存中处理，永不
+持久化，只允许文字事件与聚合指标。新增正式设计及分阶段计划；A1 严格契约和集中设置
+按 TDD 完成。新增闭合 observation/failure 状态、默认关闭的固定 mono 16 kHz PCM
+边界、15 秒内存上限、5/10/30 秒时序设置与相对本地模型路径校验。定向契约门禁
+`37 passed`，Python 编译与 `git diff --check` 通过。该证据不证明真实音轨可用或哭声
+准确率；当前下一项为 A2 有界内存 PCM source，实机音频门仍由上游音轨阻塞。
+
+同日，A2 有界内存 PCM source 按 TDD 完成。固定 loopback-only FFmpeg 命令只选择音轨，
+带 5 秒读取超时并输出 mono 16 kHz s16le；启动失败、EOF、stale、解码异常和畸形半采样
+只返回闭合失败码。frame-aligned ring 严格裁剪到 15 秒上限且没有持久化接口。音频 A1-A2
+定向门禁 `23 passed`，Python 编译和 `git diff --check` 通过。测试仅使用生成字节与 fake
+process，不证明真实 Xiaomi 音轨存在；下一项为 A3 响度和动态底噪。
+
+合并远端依赖闭环证据：干净临时 Python 3.11 环境通过 71 项定向部署/API 测试、741 项
+完整 Python 测试、73 项 Node 测试、`pip check`、编译、Shell、Make dry-run 与
+`git diff --check`。修复为当前 Starlette TestClient 增加 `httpx2`，保留旧兼容依赖，
+并让 `alpha-install` 安装验收 extras。该软件证据与后续 i9 实机证据并存，不倒退或替代
+WS2021、Guardian 或音频阶段的最新状态。
+
+同日，音频 A3 响度与动态底噪按 TDD 完成。生成的静音、变化底噪、音调和响声验证
+s16le RMS/dBFS 有界计算；底噪只在 gate 关闭时按集中设置适应，响声不能抬高基线，
+分类器前输出只允许 `quiet` 或 `sound`。定向门禁 `20 passed`；未读取、保存或提交任何
+家庭音频。下一项为 A4 固定 ONNX 分类器边界，软件测试不能替代真实哭声准确率。
+
+同日，音频 A4 固定 ONNX 分类器软件边界按 TDD 完成。模型必须位于项目本地相对路径，
+SHA-256 在 runtime 创建前流式核对，符号链接逃逸、缺失、摘要不符、异常、非有限或错误
+shape 输出均 fail closed。输入固定为一秒 mono 16 kHz float32 waveform；低于阈值仍为
+`sound` 且不持久化分数。定向门禁 `22 passed`，仅使用合成模型字节和 fake runner。
+生产模型、许可证与实机准确率仍未批准；A5 确定性状态机可继续。
+
+同日完成 Xiaomi 实机音轨发现。固定生产 `source` 同时暴露 HEVC 视频与 Opus 音频，
+新增 loopback-only `audio_analysis` 仅暴露 Opus；两秒音频成功解码为 mono 16 kHz PCM
+后直接丢弃，未保存、播放或输出任何家庭音频。强制 Xiaomi TCP 握手失败，因此继续保持
+现有自动/UDP 传输。实机还确认 launchd 后台上下文会发生 UDP timeout，而当前交互用户
+会话可稳定建立音视频源；这通过了音轨存在性与短时解码门，不替代 A7、持续稳定性或
+家庭哭声准确率验收。
+
+同日，音频 A5 确定性状态机按 TDD 完成。连续 5 秒接受的哭声观察开启 normal，10 秒
+升级 high；连续可用的非哭声输入按固定恢复窗关闭事件，30 秒内重复发作合并为一次 high
+升级。`unavailable` 不推进正向推断或恢复，重复时间幂等，乱序/冲突时间拒绝且不改变
+状态；重启只恢复已开启 normal/high，不恢复短候选计时。新增 9 项状态机测试，音频、
+契约和部署扩大门禁共 `79 passed`，Python 编译与 `git diff --check` 通过。下一项为
+A6 文字事件与通知 outbox 集成；本阶段未保存或读取家庭音频。
+
+同日，音频 A6 文字事件与通知 outbox 集成按 TDD 完成。只有状态机接受的转换可生成
+确定性、幂等的 `audio_cry_candidate` 事件；固定摘要、severity、置信度、规则版本和单个
+闭合 transition 标量与通知队列在同一 SQLite 事务写入。队列保持因果顺序，重复转换不
+重复创建事件或通知，接口不接受音频样本、路径、模型文字或媒体。EventStore schema
+升级为 v4；音频、事件、契约和部署扩大门禁 `93 passed`，Python 编译与
+`git diff --check` 通过。下一项为 A7 独立 worker、launchd 与无副作用软件门。
+
+同日，音频 A7 独立 worker 与安装门完成。worker 组合固定 loopback 解码、动态响度门、
+固定 OpenVINO/ONNX 分类边界、确定性状态机、原子事件 sink 和 mode-0600 闭合状态文件；
+拥有独立 launchd job 与 `alpha-audio-status`/`alpha-audio-test`，音频失败不重启任何同级
+服务。事件持久化失败会回滚状态并只发布 `internal_error`。自动音频门 `59 passed`，
+完整 Python `879 passed`、前端 `73 passed`，编译、Shell、Make dry-run 与 diff 检查
+通过。i9 安装后 job 在 `audio.enabled=false` 下退出 0 并保持停止，没有执行家庭音频分析、
+生成事件或发送通知。A8 仍需批准的生产模型/许可证和真人监督场景。
+
+同日，WS2021 collection-seed 训练闭环修复完成。Intel CPU loop 不再继承 YOLOX warmup
+产生的零学习率，最佳 state 使用独立 clone，避免后续 epoch 覆盖；确定性非均匀背景和
+64 个项目生成负样本替代单色 padding 偏差。修正后的 20-epoch bootstrap、OpenVINO
+FP16 export 和精确工件检查均通过；WS2021/gauge 专项 `78 passed`，完整 Python 门的
+`879 passed` 也包含这些改动。该结果只证明训练/导出链，不能替代实时定位、位置 2–5、
+夜间/IR 或 E2 人工对照。
+
+随后恢复的生产源完成一次无落盘实时定位诊断。20-epoch seed 从旧的无候选提升为 15 个
+阈值候选、NMS 后 3 个，最高聚合置信度 0.862953；但三个候选均 `gauge_box_invalid`，
+严格外框/双圆布局通过数为 0。候选布局验证因此前移到 ambiguity 判定之前：只有唯一
+满足基本框与批准布局的候选才可返回，多候选或全失败继续 fail closed，相关扩大门禁
+`71 passed`。再次使用 schema-v2 固定标定框采集时，11 帧全部被人体/人脸/皮肤隐私门
+拒绝，accepted 0、持久化 0；没有绕过隐私门或降低 0.75 阈值。
+
+2026-08-17，因 WS2021 已确认固定在画面右下角，新增固定 schema-v2 ROI 路径和连续帧
+稳定器。自动定位开启时，固定 ROI 优先于 OpenVINO 检测器；同宽高比的 2560×1440 到
+1280×720 缩放通过，宽高比漂移、无效几何和未稳定帧 fail closed。gauge/environment
+软件回归 95 passed，模型工件检查和实时源检查均 PASS。该证据不替代真实读表、30 组
+白天对照、夜间/红外/反光/遮挡/移动、M2/Ollama 离线、24 小时、三浏览器或 72 小时门。
+
+2026-08-18，实时 5 帧 burst 中有 3 帧达到固定 ROI 稳定阈值；Task 5 的有界内存自适应
+双圆几何已提交为 `c001507`，reader 专项 20 passed、完整 gauge 79 passed。同一 burst
+仍全部以 `calibration_invalid` fail closed。诊断为 humidity 无 0.25R/12% 范围内候选，
+temperature 最近圆心偏差约 0.393R（门限 0.25R）；不是可安全放宽的代码缺陷。
+当前读表门仍未通过，不能把 OCR 接到生产链；下一步必须在当前视角重新执行 schema-v2
+标定。
+
+随后在不改变标定数据的前提下增加 calibrated-center pointer fallback，并在白天红色
+指针掩码较弱时改用 grayscale temperature needle signal。gauge 专项为 `81 passed`；
+实时 5 帧现可得到约 `29.3C / 59.5%RH`、置信度 `0.75` 的 available smoke reading。
+该结果不降低置信度门，也不证明 E2 准确率或 OCR。用户已决定将 30 组白天人工对照
+延后，主线下一项改为 E3 的夜间/红外反光/遮挡/表盘移动 fail-closed 验收。
+
+E3 软件专项已复核：夜间灰度读针、无指针、过暗、反光、遮挡、超界移动和 burst 内
+不一致移动共 `6 passed`。这些测试只证明 fail-closed 合同，不替代真实夜间/红外/反光
+和物理移动实机验收。
+
+主线继续执行 E4 软件独立性复核：WS2021 source、视觉 frame-health/worker、gauge
+worker launchd、Ollama tunnel/visual worker 的离线与独立失败路径共 `64 passed`。
+该结果不替代实际断开 M2/Ollama 后的 i9 实机验收。
+
+随后 i9 readiness 检查 8 项均 PASS，`make alpha-guardian-test` 4 项均 PASS；gauge
+和 visual launchd 当前 running。Ollama tunnel 当前虽被 launchd 保持 running，但最近
+一次退出码为 `255`，因此不能宣称 E4 实机离线门通过；下一步需在不影响 gauge 的前提下
+记录一次受控 M2/Ollama 断开与恢复。
+
+后续一次现场检查发现 go2rtc、Dashboard 和 Ollama bridge 短暂不可用，但各 worker 仍由
+launchd 独立保持；执行既有 `make alpha-start` 恢复后，readiness 8/8、`alpha-source-check`
+恢复 PASS（H265，2560x1440 -> 1280x720），当前 5 帧 WS2021 实读 available，约
+`29.38C / 60.00%RH`、置信度 `0.8333`。这证明可恢复性和独立 worker 行为，不替代受控
+M2/Ollama 断开恢复门。
+
+尝试受控卸载 `com.babymonitor.ollama-tunnel` 后，断开窗口内 gauge 捕获链也短暂不可用，
+随后使用 `make alpha-start` 恢复；readiness 和 source-check 恢复 PASS，WS2021 读数恢复
+available（约 `29.58C / 59.90%RH`、置信度 `0.8333`）。这证明恢复路径，但不能宣称
+“断开期间 gauge 独立”已通过；下次需在真实 i9 终端中隔离 tunnel 进程，避免影响 go2rtc。
+
+E5 短时前置检查：gauge 与 environment-watchdog launchd 均 running、各自 `runs=1` 且
+无退出码；visual realtime 维持 5 FPS（P50 105.5ms、P95 121.7ms、max 129.2ms），
+`alpha-source-check` PASS。Ollama bridge 仍 unreachable，因此 E4 先于 E5 长测继续保持
+未完成，尚未启动 24 小时测试。
+
+最新 tunnel 诊断窗口显示失败根因是配置的 M2 SSH 主机多次 timeout/host down，
+不是 i9 gauge 或固定配置错误。tunnel launchd 仍按 KeepAlive 重试；该外部主机不可达
+期间不再反复重启 Alpha，待 M2 SSH/Ollama 恢复后再执行 E4 断开/恢复门。
+
+2026-08-18 进一步核对发现必须长期避免的转发方向错误：i9 launchd 固定使用 `-L`
+（i9 `127.0.0.1:11435` → M2 `127.0.0.1:11434`），而现场已有的 M2→i9 SSH 登录
+并不等价于该端口转发。旧 ssh 进程曾保持 launchd `running`/监听记录，但 `/api/tags`
+实际为 `http=000`；因此 launchd 状态不能单独证明 bridge 健康。已停止失效旧监听并
+释放 i9 11435。受控恢复可从 M2 重连 `-R 127.0.0.1:11435:127.0.0.1:11434`，再以
+HTTP 200 和 `alpha-visual-status` 的 `reachable` 双重证据确认；恢复后应回到正式
+i9→M2 `-L` 配置。该记录不证明 E4 真实断开/恢复门已通过，E4 仍待完成。
+
+随后用户在实际 `kandysmith` i9 终端完成 E4 受控验证：短暂停止 M2→i9 反向 SSH
+后，Ollama bridge 按预期 fail-closed，而摄像头、go2rtc、gauge、存储/状态链路继续
+正常；恢复 SSH 后 i9 `127.0.0.1:11435/api/tags` 返回 HTTP 200。结合前置 `117 passed`
+软件独立性门，E4 标记 PASS。下一阶段转入 E5 24 小时环境稳定性门；该证据仍不替代
+24 小时持续运行、三浏览器高清验收或最终 72 小时发布门。
+
+E5 于 2026-08-18 在实际 `kandysmith` i9 终端开始。权威基线：Dashboard health
+`status=ok`，Dashboard/go2rtc/gauge/visual workers 均 running，visual 5 FPS、P95
+约 `106.713ms`，`alpha-source-check` PASS（H.265，source `2560x1440`，live
+`1280x720`，接收字节非零）。Ollama tunnel 当前可暂时断开；E4 已证明其不会停止
+环境链路。24 小时窗口尚未完成，期间不得宣称 E5 PASS。
+
+E5 结束检查由实际 i9 终端完成：过去 24 小时 `environment_readings` 共 1,414 条，
+覆盖 `2026-08-18T04:16:35Z` 至 `2026-08-19T04:16:06Z`；最大相邻读数间隔为
+`82.105s`。Dashboard health、go2rtc、gauge/visual worker 与两次 source-check
+均正常，未发现调度积压或 worker 异常退出。按“无积压”而非“每次严格 60 秒”的
+验收定义，E5 标记 PASS；82 秒间隔作为后续性能观察项保留，不降低任何 fail-closed
+门槛。
+
+随后用户完成 P1 三浏览器高清实机检查：M2 Chrome、M2 Safari 与 iPhone 浏览器均可
+打开并查看实时画面。iPhone 排版尚未优化但不影响查看，因此 P1 标记 PASS；移动端
+布局列为后续 UX 改进，不阻塞 Guardian 主线。下一阶段进入 P2 正常照护条件下的真实
+Baby Guardian 观察门，必须有成人持续监督，不得摆拍危险姿势。
+
+用户确认当前没有 Baby，P2 真实 Guardian 观察门暂缓，先推进 P3 音频/哭声阶段。
+音频软件门 `make alpha-audio-test` 通过 `59 passed`；`audio_status=unavailable` 是
+生产音频默认关闭的预期状态。A1–A7 已完成，A8 仍需批准的生产模型/许可证与监督场景；
+任何家庭音频继续只允许有界内存处理，永不持久化，只保存文字事件和聚合指标。
+
+随后由 `kandysmith` i9 实际终端确认反向映射已恢复：访问 i9 本地
+`127.0.0.1:11435/api/tags` 返回 HTTP 200，M2 本机 Ollama 仍保持
+`127.0.0.1:11434`。该证据证明 bridge 可用，但不替代 E4 受控断开、恢复及独立性
+验收；反向 SSH 会话必须保持运行，后续仍应回到正式 i9→M2 `-L` 配置。
+
+随后连续 3 次独立 5 帧 burst 均 available：温度约 `29.32C +/-0.01C`、湿度约
+`59.46%RH +/-0.02`，每次置信度 `0.75`、温湿度各 5 个有效样本。该结果只证明短时
+软件/源流稳定，不替代真人参考温湿度计的 30 组 E2 对照。
+
+分层诊断显示透视校正本身成功；湿度圆的清晰度/圆检测失败，温度圆的 ROI 越界。该
+结果说明当前 schema-v2 双圆几何与实时画面不一致，按 fail-closed 要求先重新标定，
+不绕过几何门禁，也不提前接入 OCR。

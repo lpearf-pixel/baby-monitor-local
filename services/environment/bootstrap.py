@@ -8,7 +8,10 @@ from packages.contracts.settings import AppSettings
 from services.environment.dashboard import LocalEnvironmentDashboardService
 from services.events.environment_state import EnvironmentStatePolicy
 from services.gauge.calibration import GaugeCalibrationStore
+from services.gauge.fixed_roi import FixedRoiLocator, StableFixedRoiLocator
+from services.gauge.locator import GaugeLocator, OpenVinoGaugeBackend
 from services.gauge.reader import Ws2021Reader
+from services.gauge.relocation import refine_calibration
 from services.gauge.source import Ws2021GaugeSource
 from services.gauge.worker import GaugeWorker
 from services.storage.environment import EnvironmentStore
@@ -76,9 +79,15 @@ def build_gauge_worker(
         f"http://{settings.stream.go2rtc_api_host}:"
         f"{settings.stream.go2rtc_api_port}"
     )
+    gauge_calibration_store = calibration_store(settings, project_root)
+    fixed_roi_factory = (
+        _fixed_roi_factory(gauge_calibration_store)
+        if settings.environment.auto_localization
+        else None
+    )
     source = Ws2021GaugeSource(
         frame_source=Go2RtcControlledFrameSource(base_url=base_url),
-        calibration_store=calibration_store(settings, project_root),
+        calibration_store=gauge_calibration_store,
         reader=Ws2021Reader(
             minimum_confidence=settings.environment.minimum_confidence,
             freshness_seconds=settings.environment.freshness_seconds,
@@ -86,9 +95,67 @@ def build_gauge_worker(
         burst_frames=settings.environment.burst_frames,
         burst_interval_ms=settings.environment.burst_interval_ms,
         freshness_seconds=settings.environment.freshness_seconds,
+        fixed_roi_factory=fixed_roi_factory,
+        locator=(
+            GaugeLocator(
+                backend=OpenVinoGaugeBackend(
+                    model_path=_resolve(
+                        project_root,
+                        settings.environment.localization_model_path,
+                    ),
+                    metadata_path=_resolve(
+                        project_root,
+                        settings.environment.localization_model_path,
+                    ).with_name("metadata.json"),
+                ),
+                candidate_validator=lambda frame, location: _layout_valid(
+                    gauge_calibration_store, frame, location
+                ),
+            )
+            if settings.environment.auto_localization and fixed_roi_factory is None
+            else None
+        ),
     )
     return GaugeWorker(
         source=source,
         sink=store,
         interval_seconds=settings.environment.interval_seconds,
     )
+
+
+def _layout_valid(
+    store: GaugeCalibrationStore,
+    frame: object,
+    location: object,
+) -> bool:
+    try:
+        refine_calibration(store.current(), location, frame)
+    except Exception:
+        return False
+    return True
+
+
+def _fixed_roi_factory(
+    store: GaugeCalibrationStore,
+):
+    try:
+        calibration = store.current()
+    except Exception:
+        return None
+    if not _is_lower_right_fixed_roi(calibration):
+        return None
+
+    def build(calibration):
+        return StableFixedRoiLocator(FixedRoiLocator(calibration))
+
+    return build
+
+
+def _is_lower_right_fixed_roi(calibration: object) -> bool:
+    try:
+        rect = calibration.gauge_rect
+        center_x = rect.x + rect.width / 2
+        center_y = rect.y + rect.height / 2
+    except Exception:
+        return False
+    return center_x > 0.5 and center_y > 0.5

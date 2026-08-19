@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import json
 import sqlite3
+from dataclasses import dataclass
 from datetime import datetime
 from pathlib import Path
 
@@ -15,7 +16,15 @@ from packages.contracts.events import (
 )
 
 
-_SCHEMA_VERSION = 3
+_SCHEMA_VERSION = 4
+
+
+@dataclass(frozen=True, slots=True)
+class EventNotification:
+    notification_id: str
+    event_id: str
+    stage: str
+    queued_at: datetime
 
 
 def _iso(value: datetime) -> str:
@@ -99,6 +108,20 @@ class EventStore:
                     PRIMARY KEY (event_id, parent_id),
                     FOREIGN KEY (event_id) REFERENCES events(event_id) ON DELETE CASCADE
                 );
+
+                CREATE TABLE IF NOT EXISTS event_notifications (
+                    notification_id TEXT PRIMARY KEY,
+                    event_id TEXT NOT NULL UNIQUE,
+                    stage TEXT NOT NULL CHECK(stage IN (
+                        'audio_opened', 'audio_escalated',
+                        'audio_merged', 'audio_recovered'
+                    )),
+                    queued_at TEXT NOT NULL,
+                    state TEXT NOT NULL DEFAULT 'pending'
+                        CHECK(state IN ('pending', 'delivered', 'rejected')),
+                    FOREIGN KEY (event_id) REFERENCES events(event_id)
+                        ON DELETE CASCADE
+                );
                 """
             )
             environment_columns = {
@@ -176,6 +199,76 @@ class EventStore:
                 ),
             )
 
+    def add_event_with_notification(
+        self,
+        event: CandidateEvent,
+        *,
+        notification_id: str,
+        stage: str,
+    ) -> None:
+        with self._connect() as connection:
+            row = connection.execute(
+                "SELECT * FROM events WHERE event_id = ?", (event.event_id,)
+            ).fetchone()
+            if row is not None:
+                existing = self._event_from_row(row)
+                if existing != event:
+                    raise ValueError("event id conflicts with stored event")
+                return
+            connection.execute(
+                """
+                INSERT INTO events(
+                    event_id, kind, severity, occurred_at, summary,
+                    confidence, rule_version, metadata_json
+                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+                """,
+                (
+                    event.event_id,
+                    event.kind,
+                    event.severity.value,
+                    _iso(event.occurred_at),
+                    event.summary,
+                    event.confidence,
+                    event.rule_version,
+                    json.dumps(event.metadata, ensure_ascii=False, sort_keys=True),
+                ),
+            )
+            connection.execute(
+                """
+                INSERT INTO event_notifications(
+                    notification_id, event_id, stage, queued_at
+                ) VALUES (?, ?, ?, ?)
+                """,
+                (notification_id, event.event_id, stage, _iso(event.occurred_at)),
+            )
+
+    def list_pending_event_notifications(self) -> tuple[EventNotification, ...]:
+        with self._connect() as connection:
+            rows = connection.execute(
+                """
+                SELECT notification_id, event_id, stage, queued_at
+                FROM event_notifications
+                WHERE state = 'pending'
+                ORDER BY julianday(queued_at), rowid
+                """
+            ).fetchall()
+        return tuple(
+            EventNotification(
+                notification_id=row["notification_id"],
+                event_id=row["event_id"],
+                stage=row["stage"],
+                queued_at=_datetime(row["queued_at"]),
+            )
+            for row in rows
+        )
+
+    def count_events(self, *, kind: str) -> int:
+        with self._connect() as connection:
+            row = connection.execute(
+                "SELECT COUNT(*) AS count FROM events WHERE kind = ?", (kind,)
+            ).fetchone()
+        return int(row["count"])
+
     def get_event(self, event_id: str) -> CandidateEvent | None:
         with self._connect() as connection:
             row = connection.execute(
@@ -184,6 +277,10 @@ class EventStore:
             ).fetchone()
         if row is None:
             return None
+        return self._event_from_row(row)
+
+    @staticmethod
+    def _event_from_row(row: sqlite3.Row) -> CandidateEvent:
         return CandidateEvent(
             event_id=row["event_id"],
             kind=row["kind"],

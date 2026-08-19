@@ -14,7 +14,10 @@ from services.gauge.calibration import (
     CalibrationMissing,
     Ws2021Calibration,
 )
+from services.gauge.locator import GaugeLocation
+from services.gauge.relocation import refine_calibration
 from services.stream.frame_source import (
+    CapturedFrame,
     FrameBurst,
     FrameSourceUnavailable,
 )
@@ -50,6 +53,14 @@ class Ws2021ReadingAlgorithm(Protocol):
     ) -> EnvironmentReading: ...
 
 
+class GaugeLocationAlgorithm(Protocol):
+    def locate(self, frame: CapturedFrame) -> GaugeLocation: ...
+
+
+class StableGaugeLocationAlgorithm(Protocol):
+    def observe(self, frame: CapturedFrame) -> GaugeLocation | None: ...
+
+
 class Ws2021GaugeSource:
     def __init__(
         self,
@@ -61,6 +72,14 @@ class Ws2021GaugeSource:
         burst_interval_ms: int = 500,
         burst_timeout_seconds: float = 8,
         freshness_seconds: int = 90,
+        fixed_roi_factory: Callable[
+            [Ws2021Calibration], StableGaugeLocationAlgorithm | None
+        ]
+        | None = None,
+        locator: GaugeLocationAlgorithm | None = None,
+        relocator: Callable[
+            [Ws2021Calibration, GaugeLocation, CapturedFrame], Ws2021Calibration
+        ] = refine_calibration,
         now: Callable[[], datetime] | None = None,
     ) -> None:
         self._frame_source = frame_source
@@ -70,6 +89,9 @@ class Ws2021GaugeSource:
         self._burst_interval_ms = burst_interval_ms
         self._burst_timeout_seconds = burst_timeout_seconds
         self._freshness_seconds = freshness_seconds
+        self._fixed_roi_factory = fixed_roi_factory
+        self._locator = locator
+        self._relocator = relocator
         self._now = now or (lambda: datetime.now(UTC))
 
     @property
@@ -117,12 +139,41 @@ class Ws2021GaugeSource:
                 calibration_version=calibration.calibration_id,
             )
 
+        localization_selected = False
         try:
+            fixed_roi = (
+                self._fixed_roi_factory(calibration)
+                if self._fixed_roi_factory is not None
+                else None
+            )
+            if fixed_roi is not None:
+                localization_selected = True
+                location: GaugeLocation | None = None
+                location_frame: CapturedFrame | None = None
+                for frame in burst.frames:
+                    location = fixed_roi.observe(frame)
+                    if location is not None:
+                        location_frame = frame
+                        break
+                if location is None or location_frame is None:
+                    raise ValueError("fixed_roi_unstable")
+                calibration = self._relocator(calibration, location, location_frame)
+            elif self._locator is not None:
+                localization_selected = True
+                if not burst.frames:
+                    raise ValueError("gauge_not_found")
+                first_frame = burst.frames[0]
+                location = self._locator.locate(first_frame)
+                calibration = self._relocator(calibration, location, first_frame)
             return self._reader.read(burst, calibration, self._now())
         except Exception:
             return self._unavailable(
                 requested_at,
-                ReadingFailureReason.INTERNAL_ERROR,
+                (
+                    ReadingFailureReason.CALIBRATION_INVALID
+                    if localization_selected
+                    else ReadingFailureReason.INTERNAL_ERROR
+                ),
                 calibration_version=calibration.calibration_id,
                 sample_count=len(burst.frames),
             )

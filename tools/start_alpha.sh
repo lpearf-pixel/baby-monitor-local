@@ -8,12 +8,15 @@ API_PID="$ROOT/runtime/pids/api.pid"
 GAUGE_PID="$ROOT/runtime/pids/gauge.pid"
 WATCHDOG_PID="$ROOT/runtime/pids/environment-watchdog.pid"
 VISUAL_PID="$ROOT/runtime/pids/visual.pid"
+AUDIO_PID="$ROOT/runtime/pids/audio.pid"
 GAUGE_LABEL="com.babymonitor.gauge"
 GAUGE_PLIST="$HOME/Library/LaunchAgents/${GAUGE_LABEL}.plist"
 WATCHDOG_LABEL="com.babymonitor.environment-watchdog"
 WATCHDOG_PLIST="$HOME/Library/LaunchAgents/${WATCHDOG_LABEL}.plist"
 VISUAL_LABEL="com.babymonitor.visual"
 VISUAL_PLIST="$HOME/Library/LaunchAgents/${VISUAL_LABEL}.plist"
+AUDIO_LABEL="com.babymonitor.audio"
+AUDIO_PLIST="$HOME/Library/LaunchAgents/${AUDIO_LABEL}.plist"
 TUNNEL_LABEL="com.babymonitor.ollama-tunnel"
 TUNNEL_PLIST="$HOME/Library/LaunchAgents/${TUNNEL_LABEL}.plist"
 
@@ -58,6 +61,63 @@ start_if_stopped() {
   echo $! >"$pidfile"
 }
 
+go2rtc_api_ready() {
+  curl -fsS --max-time 2 http://127.0.0.1:1984/api >/dev/null 2>&1
+}
+
+go2rtc_pid_matches() {
+  local pid="$1"
+  local command
+  command="$(ps -ww -p "$pid" -o command= 2>/dev/null || true)"
+  [[ "$command" == "$ROOT/.local/bin/go2rtc -config $ROOT/runtime/go2rtc.yaml" ]]
+}
+
+go2rtc_pid_owns_api_listener() {
+  local pid="$1"
+  lsof -nP -a -p "$pid" -iTCP:1984 -sTCP:LISTEN >/dev/null 2>&1
+}
+
+go2rtc_pid_is_verified() {
+  local pid
+  [[ -f "$GO2RTC_PID" ]] || return 1
+  pid="$(cat "$GO2RTC_PID")"
+  kill -0 "$pid" 2>/dev/null && \
+    go2rtc_pid_matches "$pid" && \
+    go2rtc_pid_owns_api_listener "$pid"
+}
+
+ensure_go2rtc_started() {
+  if go2rtc_api_ready; then
+    if go2rtc_pid_is_verified; then
+      return 0
+    fi
+    echo "go2rtc pid identity mismatch" >&2
+    return 1
+  fi
+
+  if [[ -f "$GO2RTC_PID" ]]; then
+    local old_pid
+    old_pid="$(cat "$GO2RTC_PID")"
+    if kill -0 "$old_pid" 2>/dev/null; then
+      if ! go2rtc_pid_matches "$old_pid"; then
+        echo "go2rtc pid identity mismatch" >&2
+        return 1
+      fi
+      kill "$old_pid" 2>/dev/null || true
+      for _ in {1..20}; do
+        kill -0 "$old_pid" 2>/dev/null || break
+        sleep 0.25
+      done
+      kill -9 "$old_pid" 2>/dev/null || true
+    fi
+    rm -f "$GO2RTC_PID"
+  fi
+
+  start_if_stopped "$GO2RTC_PID" \
+    nohup "$ROOT/.local/bin/go2rtc" -config "$ROOT/runtime/go2rtc.yaml" \
+    >"$ROOT/runtime/logs/go2rtc.log" 2>&1
+}
+
 find_lan_ipv4() {
   local interface
   interface="$(route -n get default 2>/dev/null | awk '/interface:/{print $2; exit}')"
@@ -66,18 +126,16 @@ find_lan_ipv4() {
   fi
 }
 
-start_if_stopped "$GO2RTC_PID" \
-  nohup "$ROOT/.local/bin/go2rtc" -config "$ROOT/runtime/go2rtc.yaml" \
-  >"$ROOT/runtime/logs/go2rtc.log" 2>&1
+ensure_go2rtc_started
 
 for _ in {1..30}; do
-  if curl -fsS http://127.0.0.1:1984/api >/dev/null 2>&1; then
+  if go2rtc_api_ready; then
     break
   fi
   sleep 1
 done
 
-if ! curl -fsS http://127.0.0.1:1984/api >/dev/null 2>&1; then
+if ! go2rtc_api_ready; then
   echo "go2rtc did not become ready. Check runtime/logs/go2rtc.log" >&2
   exit 1
 fi
@@ -94,6 +152,11 @@ if [[ "$(uname -s)" == "Darwin" ]] && command -v launchctl >/dev/null 2>&1; then
       launchctl bootstrap "$GAUGE_DOMAIN" "$VISUAL_PLIST"
     fi
   fi
+  if [[ -f "$AUDIO_PLIST" ]]; then
+    if ! launchctl print "${GAUGE_DOMAIN}/${AUDIO_LABEL}" >/dev/null 2>&1; then
+      launchctl bootstrap "$GAUGE_DOMAIN" "$AUDIO_PLIST"
+    fi
+  fi
   if ! launchctl print "${GAUGE_DOMAIN}/${WATCHDOG_LABEL}" >/dev/null 2>&1; then
     launchctl bootstrap "$GAUGE_DOMAIN" "$WATCHDOG_PLIST"
   fi
@@ -105,6 +168,10 @@ else
     nohup "$ROOT/.venv-alpha/bin/python" "$ROOT/tools/run_visual_worker.py" \
     --settings "$BABY_MONITOR_SETTINGS_PATH" --env-file "$ENV_FILE" \
     >"$ROOT/runtime/logs/visual.log" 2>&1
+  start_if_stopped "$AUDIO_PID" \
+    nohup "$ROOT/.venv-alpha/bin/python" "$ROOT/tools/run_audio_worker.py" \
+    --settings "$BABY_MONITOR_SETTINGS_PATH" \
+    >"$ROOT/runtime/logs/audio.log" 2>&1
   start_if_stopped "$WATCHDOG_PID" \
     nohup "$ROOT/.venv-alpha/bin/python" "$ROOT/tools/run_environment_watchdog.py" \
     --settings "$BABY_MONITOR_SETTINGS_PATH" --env-file "$ENV_FILE" \

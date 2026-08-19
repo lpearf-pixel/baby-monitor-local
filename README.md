@@ -4,7 +4,7 @@
 
 ## 当前可试用版本
 
-`codex/basic-usable-alpha` 已提供基础可用闭环：
+当前 Xiaomi Alpha 与 Guardian 功能线已提供基础可用闭环：
 
 - 256GB microSD 全天循环录像；
 - 密码保护的 1× 1280×720、10 FPS MJPEG 网页预览和当前截图；
@@ -14,7 +14,7 @@
 - 网页查看器支持全屏、1×/2×/3× 清晰变焦和鼠标/单指拖动；
 - M2 Mac 通过局域网访问 i9 Dashboard；
 - M2 通过 SSH 隧道访问仅限本机的 go2rtc 配置页；
-- 两台 Android ntfy 测试通知；
+- 两台 iPhone ntfy 文字通知；
 - 后续使用 Tailscale Serve 实现私有外网访问；
 - 米家 App 继续承担声音、双向语音、云台和历史回放。
 
@@ -33,6 +33,7 @@
 make alpha-update
 make alpha-install
 make alpha-start
+make alpha-guardian-scene-test
 make alpha-stop
 make alpha-status
 make alpha-logs
@@ -81,7 +82,7 @@ Intel i9 实机探测已确认 `subtype=3` 通过 `cs2+udp` 提供 `2560×1440 H
 
 - 256GB microSD 负责全天循环录像，写满后覆盖最早内容。
 - Mac 负责低负载智能分析、事件截图/短片、环境读数、网页和告警。
-- 两台 Android 手机可在外网安全查看，并通过 ntfy 与企业微信/微信辅助通道接收通知。
+- 两台 iPhone 后续通过私有远程访问安全查看，并通过 ntfy 接收通知。
 - Mac 故障时，米家 App 与 microSD 基础监控仍继续工作。
 - 智能检测仅提供候选提醒，不承担呼吸、心率、窒息或医疗级告警。
 
@@ -90,10 +91,10 @@ Intel i9 实机探测已确认 `subtype=3` 通过 `cs2+udp` 提供 `2560×1440 H
 - 摄像头：小米智能摄像机 2 云台版，型号 MJSXJ17CM。
 - 主机：Intel i9 Mac，全天运行，由 M2 Mac 通过 SSH 维护。
 - 录像：256GB microSD 全天循环录像。
-- 环境表：WS2021 指针式温湿度计，长期固定在主画面边缘。
+- 环境表：WS2021 指针式温湿度计；自动定位模型通过私有实机门后可在画面内竖直移动。
 - 房间：宝宝与成人同房，宝宝睡独立婴儿床；夜间完全黑暗，可能有蚊帐。
 - 网络：i9、M2 与摄像头位于同一可信局域网；后续需要外出查看。
-- 客户端：M2 Mac 与两台 Android 手机。
+- 客户端：M2 Mac 与两台 iPhone。
 
 ## 文档
 

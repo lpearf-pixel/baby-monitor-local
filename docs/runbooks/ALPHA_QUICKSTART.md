@@ -85,12 +85,15 @@ make alpha-stop
 make alpha-restart
 make alpha-status
 make alpha-visual-status
+make alpha-audio-status
+make alpha-audio-test
 make alpha-logs
 make alpha-quality-info
 make alpha-source-check
 make alpha-go2rtc-info
 make alpha-subtype-probe
 make alpha-subtype-apply
+make alpha-guardian-scene-test
 ```
 
 查看本地账号、密码和 ntfy 主题：
@@ -174,11 +177,15 @@ webrtc:
   listen: "127.0.0.1:8555"
 streams:
   source: "本机生成的 Xiaomi 敏感地址，subtype=hd，传输自动协商"
+  audio_analysis: ffmpeg:source#audio=opus/16000
   live: ffmpeg:source#video=mjpeg#width=1280#height=720#raw=-r 10
   source_compat: ffmpeg:source#video=h264#hardware=videotoolbox#width=2560#height=1440#bitrate=6M
 ```
 
 不要将 go2rtc 端口改成 `0.0.0.0`，也不要把完整 `xiaomi://` 地址贴到聊天、Issue 或公开仓库。
+
+`audio_analysis` 是按需、仅回环的分析别名。它不录音、不提供播放页，音频 worker
+只在有消费者时解码到有界内存。不得把家庭音频、抓包或解码输出保存到仓库。
 
 ## 7. 将现有安装升级到高清预览
 
@@ -409,9 +416,29 @@ make alpha-visual-status
 确定性风险候选；当前仍没有事件截图/视频、ntfy 风险通知或 Dashboard 人工反馈，
 这些属于 R4。它也不是医疗监护，不能替代成人持续照护。
 
-## 11. Android 通知
+### Ollama bridge 方向故障恢复
 
-两台 Android 安装 ntfy，并订阅：
+正常架构是 i9 发起单一 `-L`：`i9 127.0.0.1:11435 → M2 127.0.0.1:11434`。
+M2→i9 的 SSH 登录本身不会建立该转发；即使 launchd 显示 `running`，bridge 也可能
+实际返回 `http=000`。不要开放 Ollama 到局域网或公网。
+
+若 i9→M2 暂时不可达而 M2→i9 可用，先停止旧 tunnel 并确认 11435 已释放，再在 M2
+重新建立带反向转发的连接（不能给已建立会话动态追加）：
+
+```bash
+ssh -N -T -o ExitOnForwardFailure=yes \
+  -o ServerAliveInterval=15 -o ServerAliveCountMax=3 \
+  -R 127.0.0.1:11435:127.0.0.1:11434 <i9用户>@<i9地址>
+```
+
+保持连接后，在 i9 执行 `curl -sS -m 5 -o /dev/null -w
+'ollama_bridge_http=%{http_code}\n' http://127.0.0.1:11435/api/tags` 和
+`make alpha-visual-status`。只有 HTTP 200 且状态为 `reachable` 才算恢复；恢复后
+回到正式 i9→M2 `-L` 配置，反向转发仅作受控故障恢复路径。
+
+## 11. iPhone 通知
+
+两台 iPhone 安装 ntfy，并订阅：
 
 ```bash
 grep '^NTFY_TOPIC=' runtime/alpha.env
@@ -422,7 +449,24 @@ grep '^NTFY_TOPIC=' runtime/alpha.env
 环境异常通知只发送文字、读数、采集时间、稳定原因码和鉴权链接，不上传宝宝
 画面、表盘截图、私网地址或本地路径。
 
-## 12. 后续外部访问
+## 12. Guardian 家庭合成场景验收
+
+只能在无真实婴儿参与危险或模拟风险姿势、且有成人全程监督时运行：
+
+```bash
+make alpha-guardian-scene-test
+```
+
+命令固定检查空床、玩偶或静态道具、成人入镜、红外夜视、安全模拟镜头遮挡、
+蚊帐摆动和安全正常翻身替代场景，每类需要 10 次。每次只输入
+`correct`、`false_positive`、`missed` 或 `unavailable`。中断后可以重新运行并
+继续未完成试次。
+
+结果只写入被 Git 忽略的本地 `runtime/` 状态，不保存画面、模型原文、地址、
+凭据或床区坐标，不发送 ntfy，也不写生产事件或证据数据库。该门禁仅证明本次
+固定场景表现，不是医疗准确率或无人照护证明。
+
+## 13. 后续外部访问
 
 外部访问由 Issue #5 跟踪。目标命令为：
 
@@ -439,7 +483,7 @@ tailscale funnel 8080
 
 也禁止路由器转发 `1984`、`8080`、`8554`、`8555`。
 
-## 13. 视频和功能边界
+## 14. 视频和功能边界
 
 1× 模式继续使用 1280×720、10 FPS MJPEG；2×/3× 会按需申请绑定 profile 的
 一次性票据，通过 Dashboard 的同源 WebSocket 中继连接仅限本机的 go2rtc。
@@ -553,7 +597,58 @@ microSD 回放继续使用米家 App。
 
 本系统不是呼吸、心率、血氧、窒息或医疗监护设备。
 
-## 14. 已验证故障案例
+## 15. 已验证故障案例
+
+### Dashboard 仍在线但实时影像消失
+
+2026-08-17 已验证过一种独立故障：Dashboard、gauge 和 visual launchd job 仍显示
+运行，但 go2rtc 源为 0 字节，visual 指标随之变为 `stale`。先停止占满 CPU 的本地
+WS2021 训练，再运行：
+
+```bash
+make alpha-source-check
+make alpha-status
+```
+
+若第一条返回 `SOURCE_OFFLINE`，不要修改 Dashboard、摄像头 URI、FFmpeg 参数或
+质量门。先执行现有幂等恢复：
+
+```bash
+make alpha-restart
+```
+
+若恢复命令返回 `go2rtc pid identity mismatch`，说明 1984 监听进程与
+`runtime/pids/go2rtc.pid` 的所有权记录不一致。启动脚本会 fail closed，避免停止
+无关进程。不要直接删除 PID 文件，也不要凭 PID 猜测后强杀。先在 i9 本机核对：
+
+```bash
+lsof -nP -iTCP:1984 -sTCP:LISTEN
+ps -ww -p <PID> -o command=
+```
+
+只有命令精确属于当前仓库的 `.local/bin/go2rtc`，且参数是当前仓库的
+`runtime/go2rtc.yaml` 时，才停止该已确认的孤立进程并重新启动：
+
+```bash
+kill <PID>
+make alpha-start
+```
+
+不要把 `alpha-start` 输出的局域网地址或任何完整命令路径粘贴到聊天、Issue 或 PR。
+恢复后必须重新验证：
+
+```bash
+make alpha-source-check
+make alpha-visual-status
+```
+
+本次恢复证据为：`SOURCE PASS`、`cs2+udp`、H.265、2560×1440 source、
+1280×720 live，以及 visual 指标恢复为 `available`、5 FPS。该结果证明本地摄像头
+源和分析画面恢复，不证明 M2/Ollama 可用；Ollama bridge 可独立保持不可用。
+
+根因不是 Dashboard 页面代码，也不是 WS2021 模型。它是一个已确认属于本项目、
+但失去 PID 所有权记录的 go2rtc 监听进程；安全启动脚本因此拒绝接管。恢复过程中
+不得降低源检查、隐私或 fail-closed 门限。
 
 Intel macOS 上遇到以下现象时：
 

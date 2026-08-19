@@ -83,7 +83,7 @@ def test_one_burst_uses_one_continuous_mjpeg_response() -> None:
     assert len(burst.frames) == 5
     assert response.enter_count == 1
     assert response.exit_count == 1
-    assert opener.requests == [("http://127.0.0.1:1984/api/stream.mjpeg?src=source", 8)]
+    assert opener.requests == [("http://127.0.0.1:1984/api/stream.mjpeg?src=gauge", 8)]
     assert all(frame.captured_at.tzinfo is UTC for frame in burst.frames)
 
 

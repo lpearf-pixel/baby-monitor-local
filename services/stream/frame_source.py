@@ -56,7 +56,7 @@ def _default_opener(request: Request, timeout: float) -> AbstractContextManager[
 
 
 class Go2RtcControlledFrameSource:
-    """Captures a bounded burst from the fixed local go2rtc `source` stream."""
+    """Captures a bounded burst from the fixed local go2rtc `gauge` stream."""
 
     def __init__(
         self,
@@ -115,7 +115,7 @@ class Go2RtcControlledFrameSource:
             raise ValueError("timeout_seconds must be between 0 and 8")
 
         request = Request(
-            f"{self._base_url}/api/stream.mjpeg?{urlencode({'src': 'source'})}",
+            f"{self._base_url}/api/stream.mjpeg?{urlencode({'src': 'gauge'})}",
             headers={"Accept": "multipart/x-mixed-replace"},
         )
         started = self._monotonic()

@@ -170,7 +170,16 @@ def test_make_status_calls_metrics_reader_only_for_running_worker(
         encoding="utf-8",
     )
     fake_python.chmod(0o700)
-    environment = {**os.environ, "METRICS_MARKER": str(marker)}
+    fake_bin = tmp_path / "bin"
+    fake_bin.mkdir()
+    fake_uname = fake_bin / "uname"
+    fake_uname.write_text("#!/bin/sh\necho Linux\n", encoding="ascii")
+    fake_uname.chmod(0o700)
+    environment = {
+        **os.environ,
+        "METRICS_MARKER": str(marker),
+        "PATH": f"{fake_bin}:{os.environ['PATH']}",
+    }
 
     offline = subprocess.run(
         [

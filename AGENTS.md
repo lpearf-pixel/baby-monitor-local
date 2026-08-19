@@ -3,7 +3,7 @@
 ## Project Mission and Boundaries
 
 - Build a local-first, privacy-preserving Baby Guardian for the confirmed Xiaomi
-  MJSXJ17CM camera, Intel i9 Mac, M2 Mac, WS2021 dial gauge and two Android phones.
+  MJSXJ17CM camera, Intel i9 Mac, M2 Mac, WS2021 dial gauge and two iPhones.
 - The system may observe, summarize and raise candidate safety events. It is not a
   medical device, does not diagnose, and never replaces direct adult supervision.
 - Keep live viewing independent of AI availability. A model, tunnel or analysis
@@ -152,8 +152,17 @@
    boundary.
 5. Continue the highest approved unfinished slice. Do not restart completed milestones
    or let deferred performance work block the guardian feature sequence.
-6. Ask only for missing decisions that materially change behavior, privacy, safety,
+6. For ordinary implementation problems, test failures and recoverable local errors,
+   diagnose the first actionable cause, fix it within the approved slice and rerun the
+   same gate. Do not stop merely because a planned step needs routine debugging.
+7. After a slice passes its required gate, update the owning plan checkbox/status and
+   the authoritative handoff documents before moving to the next slice.
+8. Ask only for missing decisions that materially change behavior, privacy, safety,
    deployment or irreversible remote operations.
+
+Stop and request direction when progress requires new permissions or credentials, an
+irreversible external operation, access to private household data not already supplied
+through an approved local workflow, or a material conflict with the approved architecture.
 
 ## Required Delivery Report
 
