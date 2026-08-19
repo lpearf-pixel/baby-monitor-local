@@ -70,8 +70,9 @@ stage and must be completed before the final release gate.
 
 ## P1 — Three-browser HD real-device acceptance
 
-**Status:** Next. Installed source/codec and Guardian live-view checks have passed;
-the browser matrix has not.
+**Status:** PASS (user-confirmed). M2 Chrome, M2 Safari and iPhone browser all opened
+the live view and remained viewable at the checked scales. iPhone layout is usable but
+not fully optimized; retain that as a UX follow-up, not a live-view blocker.
 
 **Prerequisites:** P0 complete; i9 source and Dashboard healthy.
 

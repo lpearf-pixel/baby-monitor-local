@@ -691,6 +691,11 @@ E5 结束检查由实际 i9 终端完成：过去 24 小时 `environment_reading
 验收定义，E5 标记 PASS；82 秒间隔作为后续性能观察项保留，不降低任何 fail-closed
 门槛。
 
+随后用户完成 P1 三浏览器高清实机检查：M2 Chrome、M2 Safari 与 iPhone 浏览器均可
+打开并查看实时画面。iPhone 排版尚未优化但不影响查看，因此 P1 标记 PASS；移动端
+布局列为后续 UX 改进，不阻塞 Guardian 主线。下一阶段进入 P2 正常照护条件下的真实
+Baby Guardian 观察门，必须有成人持续监督，不得摆拍危险姿势。
+
 随后由 `kandysmith` i9 实际终端确认反向映射已恢复：访问 i9 本地
 `127.0.0.1:11435/api/tags` 返回 HTTP 200，M2 本机 Ollama 仍保持
 `127.0.0.1:11434`。该证据证明 bridge 可用，但不替代 E4 受控断开、恢复及独立性

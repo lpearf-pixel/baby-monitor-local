@@ -294,7 +294,8 @@ legacy branch into this line without a separate integration decision.
   darkness/infrared/glare/occlusion/gauge-movement fail-closed checks, M2/Ollama outage
   isolation and the independent 24-hour environment gate. E3 real-scene checks are
   intentionally deferred; the current next task is three-browser HD acceptance.
-- Complete three-browser HD acceptance and the final 72-hour camera, i9, M2, network,
+- Three-browser HD acceptance is user-confirmed PASS; iPhone layout remains a UX follow-up.
+  Complete the final 72-hour camera, i9, M2, network,
   storage and two-phone release gate before tagging `v0.1.0`.
 
 ## Known Limitations
@@ -324,7 +325,8 @@ legacy branch into this line without a separate integration decision.
    pinned i9-local training/OpenVINO export. Resume E2–E5 with 30 daylight comparisons,
    fail-closed scene checks, M2/Ollama isolation and 24-hour stability. E1 and the
    native-resolution continuous frame source are complete.
-2. Complete three-browser HD acceptance on the installed i9.
+2. Complete normal-care-only real-Baby Guardian observation on the installed i9; the
+   three-browser HD gate is already user-confirmed PASS.
 3. Complete the supervised, normal-care-only real-Baby Guardian observation gate;
    never stage a hazardous pose or persist household media/model prose.
 4. Continue the approved audio/cry plan at Stage A8 only after a production model and
