@@ -72,7 +72,7 @@ def convert_whisper_bundle(
                 str(bundle),
                 "--copy_files",
                 "tokenizer.json",
-                "vocabulary.txt",
+                "preprocessor_config.json",
             ),
             check=True,
         )

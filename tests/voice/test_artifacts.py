@@ -17,6 +17,28 @@ from services.voice.artifacts import (
 from tools.voice_models import collect_voice_artifact, convert_whisper_bundle, install_voice_artifact
 
 
+WHISPER_TRANSFORMERS_SOURCE_FILES = (
+    "added_tokens.json",
+    "config.json",
+    "generation_config.json",
+    "merges.txt",
+    "model.safetensors",
+    "normalizer.json",
+    "preprocessor_config.json",
+    "special_tokens_map.json",
+    "tokenizer.json",
+    "tokenizer_config.json",
+    "vocab.json",
+)
+WHISPER_FASTER_WHISPER_RUNTIME_FILES = (
+    "config.json",
+    "model.bin",
+    "preprocessor_config.json",
+    "tokenizer.json",
+    "vocabulary.json",
+)
+
+
 def canonical_manifest(
     spec: VoiceArtifactSpec,
     files: dict[str, bytes],
@@ -114,16 +136,78 @@ def test_registry_is_closed_and_uses_full_immutable_provenance() -> None:
 
     assert tuple(spec.artifact_id for spec in specs) == VOICE_ARTIFACT_IDS
     assert specs[0].source_revision == "be95df9152c0d7618fa1edfeb296fc3dae32376f"
-    assert specs[1].source_revision == "31243bad24cc746f07d4c8bfdd2d974872cb1803"
-    assert specs[2].source_revision == "31243bad24cc746f07d4c8bfdd2d974872cb1803"
+    assert specs[1].upstream_project == "https://huggingface.co/openai/whisper-base"
+    assert specs[1].source_revision == "e37978b90ca9030d5170a5c07aadb050351a65bb"
+    assert specs[2].upstream_project == "https://huggingface.co/openai/whisper-small"
+    assert specs[2].source_revision == "973afd24965f72e36ca33b3055d56a652f456b4d"
     assert specs[3].source_revision == "0f99f2d0ebe89ac095bcc5903c4dd8f72b367286"
     assert all(len(spec.source_revision) == 40 for spec in specs)
     assert all(spec.spdx_license in {"MIT", "Apache-2.0"} for spec in specs)
+    for spec in specs[1:3]:
+        assert spec.spdx_license == "Apache-2.0"
+        assert spec.source_files == WHISPER_TRANSFORMERS_SOURCE_FILES
+        assert spec.required_files == WHISPER_FASTER_WHISPER_RUNTIME_FILES
+        assert "model.pt" not in spec.source_files
+        assert "vocabulary.txt" not in spec.required_files
     assert all(
         spec.bundle_relative_path
         == Path("runtime/models/voice-care") / spec.artifact_id / spec.manifest_sha256
         for spec in specs
     )
+
+
+@pytest.mark.parametrize("artifact_id", ("openai-whisper-base", "openai-whisper-small"))
+def test_whisper_converter_uses_validated_transformers_bundle_and_runtime_assets(
+    tmp_path: Path, artifact_id: str
+) -> None:
+    provisional, _runtime_files = spec_and_files(artifact_id)
+    source_files = {
+        name: b"synthetic source " + name.encode("ascii")
+        for name in WHISPER_TRANSFORMERS_SOURCE_FILES
+    }
+    source, source_manifest, source_manifest_sha256 = write_source(
+        tmp_path, provisional, source_files
+    )
+    output_files = {
+        name: b"converted " + name.encode("ascii")
+        for name in WHISPER_FASTER_WHISPER_RUNTIME_FILES
+    }
+    spec = spec_for_runtime(provisional, output_files, source_manifest_sha256)
+    commands: list[tuple[str, ...]] = []
+
+    def converter(command: tuple[str, ...], *, check: bool) -> None:
+        assert check is True
+        commands.append(command)
+        output = Path(command[command.index("--output_dir") + 1])
+        output.mkdir()
+        for name, payload in output_files.items():
+            (output / name).write_bytes(payload)
+
+    result = convert_whisper_bundle(
+        spec,
+        source_dir=source,
+        source_manifest=source_manifest,
+        source_manifest_sha256=source_manifest_sha256,
+        project_root=tmp_path,
+        runner=converter,
+    )
+
+    assert len(commands) == 1
+    command = commands[0]
+    assert command[:3] == (
+        "ct2-transformers-converter",
+        "--model",
+        str(source.resolve()),
+    )
+    assert command[3] == "--output_dir"
+    assert Path(command[4]).name == "bundle"
+    assert command[5:] == (
+        "--copy_files",
+        "tokenizer.json",
+        "preprocessor_config.json",
+    )
+    assert result == tmp_path / spec.bundle_relative_path
+    assert validate_voice_artifact(spec, tmp_path) == result
 
 
 def test_valid_bundle_returns_absolute_fixed_runtime_directory(tmp_path: Path) -> None:
@@ -340,7 +424,7 @@ def test_acquisition_rejects_bad_source_digest_license_layout_and_converter_fail
         )
 
     manifest = json.loads(source_manifest.read_text(encoding="ascii"))
-    manifest["spdx_license"] = "Apache-2.0"
+    manifest["spdx_license"] = "MIT"
     source_manifest.write_text(
         json.dumps(manifest, separators=(",", ":"), sort_keys=True) + "\n",
         encoding="ascii",
