@@ -1,14 +1,14 @@
 # Baby Monitor Local Project Summary
 
-Updated: 2026-08-20
+Updated: 2026-08-21
 
 ## Snapshot
 
 - Repository: `lpearf-pixel/baby-monitor-local` (public).
 - Stable Xiaomi line: `stable/xiaomi-alpha` at `0df20ae`.
-- Active feature line: `codex/voice-care-v1-design`; the published remote includes
-  the prior recovery checkpoint through `10f3466`, with the current stable-identity
-  correction pending publication from this working tree.
+- Active implementation line: `codex/voice-care-v1-gate-v1`, based on the approved
+  `codex/voice-care-v1-design` checkpoint. Gate V1 Task 1 is local and has not been
+  pushed from this worktree.
 - The evidence-retention line is based on the published Dashboard snapshot `69e2d5b`;
   the Dashboard remains complete and its published branch is not rewritten.
 - Remote branch `codex/baby-guardian-event-loop` remains at its earlier squash snapshot
@@ -342,9 +342,13 @@ legacy branch into this line without a separate integration decision.
   **Gate V0** and the approved dual-repository Gate V1 sequence. Gate V1 uses Silero
   VAD, a local OpenAI Whisper `base`/`small` i9 bake-off, exact normalized `小小` wake
   prefix, SpeechBrain ECAPA speaker verification and fixed macOS speech responses.
-  Baby Local Tasks 1–3 may proceed independently while Baby Care finishes its current
-  M4 exact-head gate; the Baby Care-owned contract begins only after M4 closes. No raw
-  household audio was persisted and no Voice Care record path is enabled yet.
+  Baby Local Task 1 is complete through `1cc1f51`: strict settings, closed model
+  registry, canonical source/runtime manifests and atomic ignored-runtime installation
+  are independently reviewed. Whisper conversion now accepts only pinned local
+  Transformers bundles and validates the faster-whisper layout. Fresh focused evidence
+  is 61 passed. Real model materialization/conversion and accuracy remain operator gates;
+  no model, raw household audio or Voice Care record path is enabled. Task 2 bounded
+  memory-only VAD/utterance capture is next while Baby Care continues M4.
 - Remote private viewing and the 72-hour release gate remain unfinished.
 - This system does not detect breathing, heart rate, suffocation or medical emergencies.
 
@@ -361,8 +365,8 @@ legacy branch into this line without a separate integration decision.
 4. Continue the approved audio/cry plan at Stage A8; a production model and
    license are still required before enablement; household audio remains
    memory-only.
-5. Execute Voice Care Gate V1 Task 0 and Baby Local Tasks 1–3 (closed artifact registry,
-   bounded VAD/utterance capture, local Whisper exact-wake bake-off). In parallel,
+5. Execute Voice Care Gate V1 Baby Local Task 2, then Task 3 (bounded VAD/utterance
+   capture, local Whisper exact-wake bake-off); Task 1 is complete. In parallel,
    finish Baby Care M4; create its Voice Care contract branch only from the verified M4
    exact head. Do not enable caregiver identity or Baby Care writes during Tasks 1–3.
 6. Complete authenticated private remote access using Tailscale Serve/ACL only.

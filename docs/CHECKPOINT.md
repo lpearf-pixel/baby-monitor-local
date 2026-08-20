@@ -782,3 +782,13 @@ Silero VAD 打开最长 8 秒、500 ms pre-roll、800 ms 终止静音的内存 u
 Voice Care 计划因此允许 Baby Local Tasks 1–3 与 Baby Care M4 并行，但 Baby Care
 contract/pairing/write 分支只能从 M4 完成且 exact-head CI 通过的提交创建；两项目不得
 互相直接写数据库，也不得借此修改或合并 `main`。
+
+2026-08-21 完成 Voice Care Gate V1 Baby Local Task 1。提交序列从 `8f9044b` 到
+`1cc1f51` 建立严格 disabled-by-default 设置、四项封闭模型注册表、canonical source/
+runtime manifest、固定 ignored runtime 路径与原子安装边界。三轮定向复核最终关闭了
+任意路径、伪造来源、错误通用 tar 处理以及不可转换 OpenAI `model.pt` 输入：Whisper
+现固定到两个独立 Hugging Face Transformers revision，使用 manifest 校验后的完整本地
+目录转换，并验证包含 `vocabulary.json` 的 faster-whisper 布局。控制端新鲜验证为
+61 passed、Python compile 与 `git diff --check` PASS。没有下载、生成或启用真实模型；
+真实 source manifest 记录、i9 CTranslate2 转换和准确率仍是后续明确门禁。下一项为
+Task 2 的纯内存 VAD 与最长 8 秒 utterance collector。

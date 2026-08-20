@@ -61,7 +61,8 @@ audio persistence, no ASR/care logic enablement, and no production behavior chan
 beyond the fixed decoder timeout/cleanup lifecycle required by the probe gate.
 
 **Overall status:** Gate V0 completed on 2026-08-20. Gate V1 local model architecture was
-approved on 2026-08-20 and is planned below; no Gate V1 implementation is complete.
+approved on 2026-08-20. Baby Local Task 1 is complete and independently reviewed;
+Task 2 is next. No production Voice Care path is enabled.
 Gate V0 proves only inbound audio and the bounded receive/decode boundary. It does not
 approve household ASR/speaker accuracy or Baby Care writes.
 
@@ -218,7 +219,7 @@ schema and golden fixtures.
 - Produces: one exact Baby Local head and, after M4 completion, one exact Baby Care
   head from which independent Voice Care feature branches are created.
 
-- [ ] **Step 1: Verify Baby Local baseline and preserve unrelated files**
+- [x] **Step 1: Verify Baby Local baseline and preserve unrelated files**
 
 Run:
 
@@ -231,7 +232,7 @@ git status --short
 Expected: feature branch `codex/voice-care-v1-design`; existing ignored/untracked local
 runtime files remain unstaged.
 
-- [ ] **Step 2: Create the Baby Local Gate V1 feature branch**
+- [x] **Step 2: Create the Baby Local Gate V1 feature branch**
 
 Run after the Baby Local baseline check and this planning checkpoint commit:
 
@@ -269,6 +270,10 @@ nested inside the other.
 
 ### Task 1: Baby Local Voice Settings And Artifact Registry
 
+**Status:** Complete through `1cc1f51` (`fix: correct whisper conversion bundles`);
+independent review approved after three bounded fix rounds. Real pinned source-manifest
+recording and i9 model conversion remain explicit operator gates for Task 3.
+
 **Files:**
 - Create: `services/voice/__init__.py`
 - Create: `services/voice/artifacts.py`
@@ -284,7 +289,7 @@ nested inside the other.
 - Consumes: existing strict Pydantic settings and the relative-path/SHA-256 pattern used
   by `AudioSettings` and `CryClassifier`.
 
-- [ ] **Step 1: Write strict settings and artifact RED tests**
+- [x] **Step 1: Write strict settings and artifact RED tests**
 
 ```python
 def test_voice_defaults_are_disabled_and_bounded() -> None:
@@ -301,13 +306,13 @@ def test_enabled_voice_rejects_missing_artifact_digests() -> None:
         VoiceCareSettings(enabled=True)
 ```
 
-- [ ] **Step 2: Run RED tests**
+- [x] **Step 2: Run RED tests**
 
 Run: `.venv-alpha/bin/python -m pytest -q tests/contracts/test_voice_settings.py tests/voice/test_artifacts.py`
 
 Expected: FAIL because `VoiceCareSettings` and `services.voice.artifacts` do not exist.
 
-- [ ] **Step 3: Implement the minimum closed configuration**
+- [x] **Step 3: Implement the minimum closed configuration**
 
 Define literal artifact IDs `silero-vad-v6.2`, `openai-whisper-base`,
 `openai-whisper-small` and `speechbrain-ecapa-voxceleb`; each spec contains a relative
@@ -322,7 +327,7 @@ validated local model directory into faster-whisper so its implicit Hub download
 cannot run. Set the structured outbox limit to 128 intents with a 1,800-second retention
 ceiling.
 
-- [ ] **Step 4: Run GREEN tests and static checks**
+- [x] **Step 4: Run GREEN tests and static checks**
 
 Run:
 
@@ -334,7 +339,7 @@ git diff --check
 
 Expected: all focused tests pass; no model file is created or downloaded.
 
-- [ ] **Step 5: Commit Task 1**
+- [x] **Step 5: Commit Task 1**
 
 ```bash
 git add packages/contracts/settings.py services/voice/__init__.py services/voice/artifacts.py tools/voice_models.py pyproject.toml tests/contracts/test_voice_settings.py tests/voice/test_artifacts.py

@@ -266,12 +266,15 @@
   approved Gate V1 implementation sequence. Gate V0 completed on 2026-08-20: source
   HEVC+Opus and alias Opus were confirmed, actual 60-second and 10-minute
   receive/discard windows passed, synthetic Opus compatibility passed, and
-  cleanup/isolation checks left visual, gauge and watchdog PIDs unchanged. Gate V1 is
-  planned but not implemented: Baby Local first adds a closed artifact registry,
-  memory-only Silero VAD/utterance capture, and an installed-i9 OpenAI Whisper
-  `base`/`small` bake-off with exact normalized `小小` prefix. SpeechBrain ECAPA and
-  Baby Care intent delivery remain later tasks. Baby Care owns the shared contract and
-  may start that work only after its current M4 exact-head gate closes.
+  cleanup/isolation checks left visual, gauge and watchdog PIDs unchanged. Gate V1
+  Baby Local Task 1 is software-complete and independently reviewed: strict disabled-
+  by-default settings, a closed four-artifact registry, canonical source/runtime
+  manifests, fixed ignored runtime paths and atomic local install/conversion boundaries
+  now exist. Whisper conversion consumes only pinned manifest-validated local
+  Transformers bundles and validates the faster-whisper layout. Fresh focused evidence
+  is 61 passed. No model was downloaded or enabled; real source-manifest recording and
+  i9 conversion remain operator gates. Task 2 memory-only VAD/utterance capture is next.
+  SpeechBrain execution and Baby Care intent delivery remain later tasks.
 - Installed-i9 audio-source discovery now verifies that the Xiaomi source exposes HEVC
   video plus Opus audio and that the fixed loopback `audio_analysis` alias exposes only
   Opus. The real input is supported 48 kHz stereo Opus; the fixed FFmpeg boundary
