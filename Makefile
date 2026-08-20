@@ -3,7 +3,7 @@ PYTHON := ./.venv-alpha/bin/python
 BASH ?= /bin/bash
 .DEFAULT_GOAL := help
 
-.PHONY: help alpha-update alpha-install alpha-start alpha-stop alpha-restart alpha-go2rtc-restart alpha-status alpha-guardian-start alpha-guardian-test alpha-guardian-test-live alpha-guardian-scene-test alpha-audio-status alpha-audio-test alpha-voice-v0-test alpha-voice-v0-probe alpha-voice-v0-stability alpha-visual-status alpha-visual-performance alpha-visual-diagnostic alpha-visual-launchd-update alpha-logs alpha-quality-hd alpha-quality-info alpha-quality-rollback alpha-source-check alpha-subtype-probe alpha-subtype-apply alpha-go2rtc-info alpha-go2rtc-rebuild alpha-go2rtc-rollback alpha-realtime-models-check alpha-realtime-models-install alpha-ws2021-collect-calibrated alpha-ws2021-collect-model alpha-ws2021-dataset alpha-ws2021-model-train-bootstrap alpha-ws2021-model-train alpha-ws2021-model-export alpha-ws2021-model-check
+.PHONY: help alpha-update alpha-install alpha-start alpha-stop alpha-restart alpha-go2rtc-restart alpha-status alpha-guardian-start alpha-guardian-test alpha-guardian-test-live alpha-guardian-scene-test alpha-audio-status alpha-audio-test alpha-voice-v0-test alpha-voice-v0-probe alpha-voice-v0-stability alpha-voice-model-benchmark alpha-visual-status alpha-visual-performance alpha-visual-diagnostic alpha-visual-launchd-update alpha-logs alpha-quality-hd alpha-quality-info alpha-quality-rollback alpha-source-check alpha-subtype-probe alpha-subtype-apply alpha-go2rtc-info alpha-go2rtc-rebuild alpha-go2rtc-rollback alpha-realtime-models-check alpha-realtime-models-install alpha-ws2021-collect-calibrated alpha-ws2021-collect-model alpha-ws2021-dataset alpha-ws2021-model-train-bootstrap alpha-ws2021-model-train alpha-ws2021-model-export alpha-ws2021-model-check
 
 help:
 	@echo "Baby Monitor Local Alpha commands:"
@@ -23,6 +23,7 @@ help:
 	@echo "  make alpha-voice-v0-test     Run synthetic Voice Care V0 software gate"
 	@echo "  make alpha-voice-v0-probe    Run 60-second non-persistent audio probe"
 	@echo "  make alpha-voice-v0-stability Run 10-minute non-persistent audio probe"
+	@echo "  make alpha-voice-model-benchmark Run generated local Whisper base/small gate"
 	@echo "  make alpha-visual-status     Show redacted visual worker and M2 bridge health"
 	@echo "  make alpha-visual-performance Run the 10-minute redacted performance gate"
 	@echo "  make alpha-visual-diagnostic Measure redacted realtime stage timings"
@@ -131,6 +132,9 @@ alpha-voice-v0-probe:
 
 alpha-voice-v0-stability:
 	@$(PYTHON) tools/voice_audio_probe.py live --duration 600
+
+alpha-voice-model-benchmark:
+	@$(PYTHON) tools/voice_model_benchmark.py
 
 alpha-status:
 	@if git rev-parse --is-inside-work-tree >/dev/null 2>&1; then \
