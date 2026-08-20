@@ -713,3 +713,20 @@ Baby Guardian 观察门，必须有成人持续监督，不得摆拍危险姿势
 分层诊断显示透视校正本身成功；湿度圆的清晰度/圆检测失败，温度圆的 ROI 越界。该
 结果说明当前 schema-v2 双圆几何与实时画面不一致，按 fail-closed 要求先重新标定，
 不绕过几何门禁，也不提前接入 OCR。
+
+2026-08-19 在文档面更新交接：新增 `docs/superpowers/plans/2026-08-19-voice-care-v1.md`，
+用于将 Voice Care v1 Gate V0 拆分为可独立交付的小阶段（音频源可行性、独立探针、
+OPUS 合成兼容、停止清理与服务隔离）。本阶段未执行额外代码变更或实机验证；
+仅补齐计划体系与状态引用，确保 `docs/NEXT.md`、`docs/STATUS.md`、`SUMMARY.md`
+的顺序与依赖保持一致：在 A8 真场景前先完成 Gate V0 前置可行性与离线隔离验证。
+
+2026-08-20 完成 Voice Care v1 Gate V0。新增固定 loopback 的脱敏媒体/接收探针，
+真实 Xiaomi source 为 HEVC+Opus，`audio_analysis` 为 Opus；入站 48 kHz 双声道由
+固定 FFmpeg 边界归一化为 mono 16 kHz s16le。60 秒门解码 1,920,000 字节，10 分钟
+门解码 19,200,000 字节，均立即丢弃且退出后无 `audio_analysis` ffmpeg 残留。
+合成 Opus 软件门 `61 passed` 并完成一次真实内存 encode/decode PASS；既有音频门
+`69 passed`；完整 Python `919 passed`、Dashboard Node `73 passed`。FFmpeg 8 的
+RTSP 输入使用已实测支持的 `-timeout`，worker 在停止或异常
+路径显式释放 decoder。前后 visual、gauge、environment-watchdog PID 不变，Dashboard
+health 保持 OK，realtime visual 保持 5 FPS/available。该证据不批准生产 cry/ASR 模型、
+说话人身份、家庭准确率或 Baby Care 写入；A8 仍等待模型/许可证与真人监督场景。

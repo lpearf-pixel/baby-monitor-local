@@ -21,9 +21,13 @@ NOW = datetime(2026, 8, 17, 14, tzinfo=UTC)
 class Decoder:
     def __init__(self, result: DecoderRead) -> None:
         self.result = result
+        self.closed = False
 
     def read(self, _max_bytes: int) -> DecoderRead:
         return self.result
+
+    def close(self) -> None:
+        self.closed = True
 
 
 class Gate:
@@ -168,3 +172,33 @@ def test_event_persistence_failure_rolls_back_and_publishes_closed_status(
     payload = json.loads((tmp_path / "status.json").read_text())
     assert payload["worker_state"] == "degraded"
     assert payload["failure_reason"] == "internal_error"
+
+
+class OneStepStop:
+    def __init__(self) -> None:
+        self.checks = 0
+
+    def is_set(self) -> bool:
+        self.checks += 1
+        return self.checks > 1
+
+    def wait(self, _timeout: float) -> bool:
+        return False
+
+
+def test_worker_run_closes_decoder_after_stop(tmp_path: Path) -> None:
+    decoder = Decoder(DecoderRead(b"\x00\x00" * 16_000))
+    worker = AudioWorker(
+        settings=AudioSettings(),
+        decoder=decoder,
+        gate=Gate(available(AudioObservationState.QUIET)),
+        classifier=Classifier(available(AudioObservationState.CRY_CANDIDATE)),
+        state_machine=AudioStateMachine(AudioSettings()),
+        event_sink=Sink(),
+        status_writer=AudioStatusWriter(tmp_path / "status.json"),
+        clock=lambda: NOW,
+    )
+
+    worker.run(OneStepStop())
+
+    assert decoder.closed is True

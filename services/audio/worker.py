@@ -20,6 +20,8 @@ from services.audio.state import AudioStateMachine, AudioStateTransition
 class Decoder(Protocol):
     def read(self, max_bytes: int) -> DecoderRead: ...
 
+    def close(self) -> None: ...
+
 
 class LoudnessGate(Protocol):
     def observe(self, pcm: bytes, *, observed_at: datetime) -> AudioObservation: ...
@@ -139,6 +141,9 @@ class AudioWorker:
 
     def run(self, stop_event: StopEvent) -> None:
         stride_seconds = self._settings.stride_ms / 1_000
-        while not stop_event.is_set():
-            self.step()
-            stop_event.wait(stride_seconds)
+        try:
+            while not stop_event.is_set():
+                self.step()
+                stop_event.wait(stride_seconds)
+        finally:
+            self._decoder.close()

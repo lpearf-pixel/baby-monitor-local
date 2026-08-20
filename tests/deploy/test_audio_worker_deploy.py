@@ -48,6 +48,37 @@ def test_audio_make_targets_are_bounded_and_do_not_run_guardian_acceptance() -> 
     assert "test_guardian_live" not in test.stdout
 
 
+def test_voice_v0_make_targets_separate_software_and_live_probes() -> None:
+    software = subprocess.run(
+        ["make", "-n", "alpha-voice-v0-test"],
+        cwd=ROOT,
+        check=False,
+        capture_output=True,
+        text=True,
+    )
+    live = subprocess.run(
+        ["make", "-n", "alpha-voice-v0-probe"],
+        cwd=ROOT,
+        check=False,
+        capture_output=True,
+        text=True,
+    )
+    stability = subprocess.run(
+        ["make", "-n", "alpha-voice-v0-stability"],
+        cwd=ROOT,
+        check=False,
+        capture_output=True,
+        text=True,
+    )
+
+    assert software.returncode == 0
+    assert "tests/audio" in software.stdout
+    assert "voice_audio_probe.py synthetic" in software.stdout
+    assert "voice_audio_probe.py live --duration 60" in live.stdout
+    assert "voice_audio_probe.py live --duration 600" in stability.stdout
+    assert "alpha-restart" not in live.stdout + stability.stdout
+
+
 def test_install_start_and_stop_manage_only_the_audio_sibling_job() -> None:
     installer = (ROOT / "tools/install_alpha_macos.sh").read_text()
     start = (ROOT / "tools/start_alpha.sh").read_text()

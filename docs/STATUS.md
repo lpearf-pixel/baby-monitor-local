@@ -244,13 +244,19 @@
   waveform and a finite `(1, 1)` probability, and maps missing, malformed or failing
   models to closed unavailable reasons. Tests use a fake runner and synthetic bytes;
   no production model, license or household accuracy is approved by this result.
+
+- Voice Care cross-product scope is split from current audio/cry work:
+  `docs/superpowers/plans/2026-08-19-voice-care-v1.md` owns Gate V0. Gate V0 completed
+  on 2026-08-20: source HEVC+Opus and alias Opus were confirmed, actual 60-second and
+  10-minute receive/discard windows passed, synthetic Opus compatibility passed, and
+  cleanup/isolation checks left visual, gauge and watchdog PIDs unchanged.
 - Installed-i9 audio-source discovery now verifies that the Xiaomi source exposes HEVC
   video plus Opus audio and that the fixed loopback `audio_analysis` alias exposes only
-  Opus. A bounded two-second decode to mono 16 kHz PCM passed with output discarded;
-  no household audio was persisted. The camera requires the existing automatic/UDP
-  Xiaomi transport. In this macOS installation the source works from the interactive
-  user session but timed out under launchd, so sustained service stability and A8
-  household accuracy remain unaccepted.
+  Opus. The real input is supported 48 kHz stereo Opus; the fixed FFmpeg boundary
+  normalizes it to mono 16 kHz PCM. The 600-second gate decoded 19,200,000 bytes with
+  output discarded and no residual consumer. No household audio was persisted. The
+  camera still requires the existing interactive-user macOS local-network context;
+  A8 model/license and household accuracy remain unaccepted.
 - Audio Stage A5 adds a deterministic restart-safe state machine. Five continuous
   accepted cry seconds open a normal transition, ten escalate it to high, sustained
   available non-cry input recovers, and a repeat within 30 seconds becomes one merged

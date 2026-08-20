@@ -1,6 +1,6 @@
 # Voice Care v1 Cross-Product Design
 
-Status: draft for user review
+Status: approved for staged implementation on 2026-08-19
 Date: 2026-08-19
 Products: `baby-monitor-local` and `baby-care`
 

@@ -3,7 +3,7 @@ PYTHON := ./.venv-alpha/bin/python
 BASH ?= /bin/bash
 .DEFAULT_GOAL := help
 
-.PHONY: help alpha-update alpha-install alpha-start alpha-stop alpha-restart alpha-status alpha-guardian-start alpha-guardian-test alpha-guardian-test-live alpha-guardian-scene-test alpha-audio-status alpha-audio-test alpha-visual-status alpha-visual-performance alpha-visual-diagnostic alpha-visual-launchd-update alpha-logs alpha-quality-hd alpha-quality-info alpha-quality-rollback alpha-source-check alpha-subtype-probe alpha-subtype-apply alpha-go2rtc-info alpha-go2rtc-rebuild alpha-go2rtc-rollback alpha-realtime-models-check alpha-realtime-models-install alpha-ws2021-collect-calibrated alpha-ws2021-collect-model alpha-ws2021-dataset alpha-ws2021-model-train-bootstrap alpha-ws2021-model-train alpha-ws2021-model-export alpha-ws2021-model-check
+.PHONY: help alpha-update alpha-install alpha-start alpha-stop alpha-restart alpha-status alpha-guardian-start alpha-guardian-test alpha-guardian-test-live alpha-guardian-scene-test alpha-audio-status alpha-audio-test alpha-voice-v0-test alpha-voice-v0-probe alpha-voice-v0-stability alpha-visual-status alpha-visual-performance alpha-visual-diagnostic alpha-visual-launchd-update alpha-logs alpha-quality-hd alpha-quality-info alpha-quality-rollback alpha-source-check alpha-subtype-probe alpha-subtype-apply alpha-go2rtc-info alpha-go2rtc-rebuild alpha-go2rtc-rollback alpha-realtime-models-check alpha-realtime-models-install alpha-ws2021-collect-calibrated alpha-ws2021-collect-model alpha-ws2021-dataset alpha-ws2021-model-train-bootstrap alpha-ws2021-model-train alpha-ws2021-model-export alpha-ws2021-model-check
 
 help:
 	@echo "Baby Monitor Local Alpha commands:"
@@ -19,6 +19,9 @@ help:
 	@echo "  make alpha-guardian-scene-test Run supervised household scene acceptance"
 	@echo "  make alpha-audio-status      Show bounded audio worker status"
 	@echo "  make alpha-audio-test        Run side-effect-free audio software gate"
+	@echo "  make alpha-voice-v0-test     Run synthetic Voice Care V0 software gate"
+	@echo "  make alpha-voice-v0-probe    Run 60-second non-persistent audio probe"
+	@echo "  make alpha-voice-v0-stability Run 10-minute non-persistent audio probe"
 	@echo "  make alpha-visual-status     Show redacted visual worker and M2 bridge health"
 	@echo "  make alpha-visual-performance Run the 10-minute redacted performance gate"
 	@echo "  make alpha-visual-diagnostic Measure redacted realtime stage timings"
@@ -114,6 +117,16 @@ alpha-audio-status:
 
 alpha-audio-test:
 	@$(PYTHON) -m pytest -q tests/audio tests/contracts/test_audio.py tests/contracts/test_audio_settings.py tests/deploy/test_audio_worker_deploy.py
+
+alpha-voice-v0-test:
+	@$(PYTHON) -m pytest -q tests/audio tests/stream/test_probe.py tests/tools/test_voice_audio_probe.py tests/deploy/test_audio_worker_deploy.py
+	@$(PYTHON) tools/voice_audio_probe.py synthetic
+
+alpha-voice-v0-probe:
+	@$(PYTHON) tools/voice_audio_probe.py live --duration 60
+
+alpha-voice-v0-stability:
+	@$(PYTHON) tools/voice_audio_probe.py live --duration 600
 
 alpha-status:
 	@if git rev-parse --is-inside-work-tree >/dev/null 2>&1; then \

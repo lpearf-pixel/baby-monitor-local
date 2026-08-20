@@ -75,7 +75,7 @@ class FixedAudioDecoder:
             "error",
             "-rtsp_transport",
             "tcp",
-            "-rw_timeout",
+            "-timeout",
             "5000000",
             "-i",
             "rtsp://127.0.0.1:8554/audio_analysis",
@@ -122,3 +122,32 @@ class FixedAudioDecoder:
         if self._process.poll() is None:
             return DecoderRead(b"", AudioFailureReason.AUDIO_STALE)
         return DecoderRead(b"", AudioFailureReason.DECODER_FAILED)
+
+    def close(self) -> None:
+        process = self._process
+        self._process = None
+        if process is None:
+            return
+        stdout = getattr(process, "stdout", None)
+        if stdout is not None:
+            try:
+                stdout.close()
+            except OSError:
+                pass
+        if process.poll() is not None:
+            return
+        try:
+            process.terminate()
+            process.wait(timeout=2.0)
+        except (OSError, subprocess.TimeoutExpired):
+            try:
+                process.kill()
+                process.wait(timeout=2.0)
+            except (OSError, subprocess.TimeoutExpired):
+                pass
+
+    def __enter__(self) -> "FixedAudioDecoder":
+        return self
+
+    def __exit__(self, *_exc: object) -> None:
+        self.close()

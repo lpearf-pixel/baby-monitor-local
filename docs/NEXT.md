@@ -112,23 +112,33 @@ preflight; household audio remains disabled and memory-only.
 
 ## P3 — Audio and cry candidates
 
-**Status:** Current next stage. Separately approved and resequenced for parallel software work on
+**Status:** Gate V0 complete; A8 remains blocked. Separately approved and resequenced for parallel software work on
 2026-08-17. Stages A1-A2 strict contracts/settings and bounded in-memory PCM source are
 complete; Stage A3 loudness/dynamic noise floor is complete and Stage A4 pinned ONNX
 classifier boundary is software-complete, with production artifact approval pending;
 Stages A5-A7 deterministic state, text-only event/outbox integration, independent worker
 and installed software gate are complete. The installed job is verified disabled by
 default. The installed source and fixed audio-only
-alias now expose Opus and passed a bounded no-persistence decode. A7 remains required
-before the supervised A8 stability and accuracy gate. A8 now awaits a production
-model/license decision and supervised household scenarios.
+alias now expose Opus and passed a bounded no-persistence decode.
+
+A Voice Care cross-product Gate V0 has its own plan:
+`docs/superpowers/plans/2026-08-19-voice-care-v1.md`.
+It completed on 2026-08-20 with:
+
+- source HEVC+Opus and audio-alias Opus feasibility,
+- independent 60-second and 10-minute receive-only windows,
+- synthetic Opus encode/decode compatibility,
+- explicit decoder stop cleanup and unchanged sibling-service PIDs.
+
+No raw household audio was persisted. This clears only the audio-ingest prerequisite;
+it does not clear A8 production-model/license or household-scenario requirements.
 
 **Prerequisites:** The current design approval permits synthetic/public-media software
 work before P0–P2 complete. P0–P2 and A7 remain prerequisites for household
 real-device acceptance; the source-track prerequisite is verified.
 
-**Codex can:** reconcile V1 Task 10 with current architecture, draft the focused spec
-and plan, implement against synthetic/public audio and run focused/full software gates.
+**Codex can:** prepare public/synthetic model evaluation after a redistributable model
+and license are approved; it cannot truthfully complete household accuracy alone.
 
 **Human required:** approve the design and later conduct private household acceptance;
 never provide household audio for Git or chat.
@@ -138,7 +148,8 @@ never provide household audio for Git or chat.
 Test timing, deduplication, quiet/adult-speech negatives and privacy using generated or
 explicitly public media. Software tests do not prove household accuracy.
 
-**Next:** P4 authenticated private remote access.
+**Next:** Decide the production cry/ASR model and license, then execute A8 only with
+supervised household scenarios. P4 remains the next independent product stage.
 
 ## P4 — Authenticated private remote access
 

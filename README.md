@@ -78,6 +78,20 @@ Intel i9 实机探测已确认 `subtype=3` 通过 `cs2+udp` 提供 `2560×1440 H
 
 `make alpha-update` 会在当前仓库设置 `core.fileMode=false`，避免 macOS 上脚本权限位变化形成无意义的 Git 冲突。
 
+Voice Care v1 的 Gate V0 只验证本机入站音频能力，不启用哭声分类、护理记录
+写入或摄像头反向语音：
+
+```bash
+make alpha-voice-v0-test
+make alpha-voice-v0-probe
+make alpha-voice-v0-stability
+```
+
+软件门只使用内存中的合成 Opus；两个实机门分别接收 60 秒和 10 分钟的固定
+loopback 音频流，将解码后的 PCM 立即丢弃，并在退出时释放独立 ffmpeg
+消费者。命令只输出 codec、采样率、声道、时长和字节计数等有界指标，不输出
+流地址、凭据或音频内容。
+
 ## 项目目标
 
 - 256GB microSD 负责全天循环录像，写满后覆盖最早内容。

@@ -1,6 +1,6 @@
 # Baby Monitor Local Project Summary
 
-Updated: 2026-08-17
+Updated: 2026-08-20
 
 ## Snapshot
 
@@ -251,7 +251,7 @@ window, not 24/72-hour stability or unattended-care safety.
 | PR/merge | No guardian PR; not merged |
 | Protected branches | `main` and `stable/xiaomi-alpha`; unchanged |
 
-The latest pre-documentation Git check found `6d711ba` on
+The latest pre-Gate-V0 Git check found `c989fff` on
 `codex/voice-care-v1-design`, up to date with its upstream.
 Nothing from this recovery slice was pushed, merged or opened as a PR. Untracked `.local/`,
 `Interactive` and `test.sh` were deliberately preserved.
@@ -314,8 +314,15 @@ legacy branch into this line without a separate integration decision.
   production cry model has been approved or enabled; A8 awaits that decision and
   supervised scenarios.
   The installed Xiaomi source and fixed loopback audio alias now expose Opus, and a
-  bounded mono 16 kHz decode passed without persistence. Sustained stability and
-  household cry accuracy remain unaccepted.
+  bounded mono 16 kHz decode passed without persistence. Gate V0's 60-second and
+  10-minute receive/discard windows now pass with explicit decoder cleanup; household
+  cry/ASR accuracy remains unaccepted.
+- Voice Care v1 is active under `docs/superpowers/specs/2026-08-19-voice-care-v1-design.md`.
+  A dedicated `docs/superpowers/plans/2026-08-19-voice-care-v1.md` now defines
+  **Gate V0**. It completed on 2026-08-20: source/alias Opus feasibility, synthetic
+  Opus compatibility, 60-second and 10-minute receive windows, and isolation/cleanup
+  checks passed. No raw household audio was persisted and no Voice Care record path
+  was enabled.
 - Remote private viewing and the 72-hour release gate remain unfinished.
 - This system does not detect breathing, heart rate, suffocation or medical emergencies.
 
@@ -331,14 +338,16 @@ legacy branch into this line without a separate integration decision.
    never stage a hazardous pose or persist household media/model prose.
 4. Continue the approved audio/cry plan at Stage A8; a production model and
    license are still required before enablement; household audio remains
-   memory-only. The real source-track prerequisite passes, while A7 and the supervised
-   A8 stability/accuracy gate remain.
-5. Complete authenticated private remote access using Tailscale Serve/ACL only.
-6. Complete the final 72-hour release gate before any release/tag decision.
-7. Define per-parent acknowledgement and false-positive feedback only through a future
+   memory-only.
+5. Gate V0 is complete. Choose approved local ASR/wake/speaker models and licenses,
+   then write the next Voice Care implementation plan before enabling any caregiver
+   identity or Baby Care intent delivery.
+6. Complete authenticated private remote access using Tailscale Serve/ACL only.
+7. Complete the final 72-hour release gate before any release/tag decision.
+8. Define per-parent acknowledgement and false-positive feedback only through a future
    contract where Baby Care consumes Guardian's read-only feed and owns identity/write
    state; do not create a second identity model inside Guardian.
-8. Consider the FFmpeg ring-buffer upgrade after the functional and real-device gates.
+9. Consider the FFmpeg ring-buffer upgrade after the functional and real-device gates.
 
 ## Operating Commands
 
