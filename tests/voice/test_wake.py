@@ -10,7 +10,16 @@ def test_exact_xiaoxiao_prefix_is_accepted(text: str) -> None:
     assert validate_wake_prefix(text).accepted is True
 
 
-@pytest.mark.parametrize("text", ["嘿，小小，我是爸爸", "晓晓，我是爸爸", "我叫小小"])
+@pytest.mark.parametrize(
+    "text",
+    [
+        "嘿，小小，我是爸爸",
+        "晓晓，我是爸爸",
+        "我叫小小",
+        "小小鸟飞走了",
+        "小小小心一点",
+    ],
+)
 def test_non_exact_prefix_fails_closed(text: str) -> None:
     result = validate_wake_prefix(text)
 

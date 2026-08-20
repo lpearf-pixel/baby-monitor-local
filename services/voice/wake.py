@@ -24,7 +24,10 @@ def validate_wake_prefix(text: str) -> WakeResult:
     normalized = _strip_boundary_characters(text)
     if not normalized.startswith(WAKE_PREFIX):
         return WakeResult(False, None, WAKE_NOT_DETECTED)
-    command = _strip_boundary_characters(normalized[len(WAKE_PREFIX) :])
+    remainder = normalized[len(WAKE_PREFIX) :]
+    if remainder and not _is_boundary_character(remainder[0]):
+        return WakeResult(False, None, WAKE_NOT_DETECTED)
+    command = _strip_boundary_characters(remainder)
     if not command:
         return WakeResult(False, None, WAKE_COMMAND_MISSING)
     return WakeResult(True, command, None)

@@ -3,7 +3,7 @@ PYTHON := ./.venv-alpha/bin/python
 BASH ?= /bin/bash
 .DEFAULT_GOAL := help
 
-.PHONY: help alpha-update alpha-install alpha-start alpha-stop alpha-restart alpha-go2rtc-restart alpha-status alpha-guardian-start alpha-guardian-test alpha-guardian-test-live alpha-guardian-scene-test alpha-audio-status alpha-audio-test alpha-voice-v0-test alpha-voice-v0-probe alpha-voice-v0-stability alpha-voice-model-benchmark alpha-visual-status alpha-visual-performance alpha-visual-diagnostic alpha-visual-launchd-update alpha-logs alpha-quality-hd alpha-quality-info alpha-quality-rollback alpha-source-check alpha-subtype-probe alpha-subtype-apply alpha-go2rtc-info alpha-go2rtc-rebuild alpha-go2rtc-rollback alpha-realtime-models-check alpha-realtime-models-install alpha-ws2021-collect-calibrated alpha-ws2021-collect-model alpha-ws2021-dataset alpha-ws2021-model-train-bootstrap alpha-ws2021-model-train alpha-ws2021-model-export alpha-ws2021-model-check
+.PHONY: help alpha-update alpha-install alpha-start alpha-stop alpha-restart alpha-go2rtc-restart alpha-status alpha-guardian-start alpha-guardian-test alpha-guardian-test-live alpha-guardian-scene-test alpha-audio-status alpha-audio-test alpha-voice-v0-test alpha-voice-v0-probe alpha-voice-v0-stability alpha-voice-models-install alpha-voice-model-benchmark alpha-visual-status alpha-visual-performance alpha-visual-diagnostic alpha-visual-launchd-update alpha-logs alpha-quality-hd alpha-quality-info alpha-quality-rollback alpha-source-check alpha-subtype-probe alpha-subtype-apply alpha-go2rtc-info alpha-go2rtc-rebuild alpha-go2rtc-rollback alpha-realtime-models-check alpha-realtime-models-install alpha-ws2021-collect-calibrated alpha-ws2021-collect-model alpha-ws2021-dataset alpha-ws2021-model-train-bootstrap alpha-ws2021-model-train alpha-ws2021-model-export alpha-ws2021-model-check
 
 help:
 	@echo "Baby Monitor Local Alpha commands:"
@@ -23,6 +23,7 @@ help:
 	@echo "  make alpha-voice-v0-test     Run synthetic Voice Care V0 software gate"
 	@echo "  make alpha-voice-v0-probe    Run 60-second non-persistent audio probe"
 	@echo "  make alpha-voice-v0-stability Run 10-minute non-persistent audio probe"
+	@echo "  make alpha-voice-models-install Install verified local Whisper base/small models"
 	@echo "  make alpha-voice-model-benchmark Run generated local Whisper base/small gate"
 	@echo "  make alpha-visual-status     Show redacted visual worker and M2 bridge health"
 	@echo "  make alpha-visual-performance Run the 10-minute redacted performance gate"
@@ -132,6 +133,27 @@ alpha-voice-v0-probe:
 
 alpha-voice-v0-stability:
 	@$(PYTHON) tools/voice_audio_probe.py live --duration 600
+
+alpha-voice-models-install:
+	@set -eu; \
+	settings="runtime/config/voice-care-models.json"; \
+	base_source="runtime/models/voice-care-sources/openai-whisper-base/source"; \
+	base_manifest="runtime/models/voice-care-sources/openai-whisper-base/source-manifest.json"; \
+	small_source="runtime/models/voice-care-sources/openai-whisper-small/source"; \
+	small_manifest="runtime/models/voice-care-sources/openai-whisper-small/source-manifest.json"; \
+	if [[ ! -f "$$settings" || -L "$$settings" || ! -d "$$base_source" || -L "$$base_source" || ! -f "$$base_manifest" || -L "$$base_manifest" || ! -d "$$small_source" || -L "$$small_source" || ! -f "$$small_manifest" || -L "$$small_manifest" ]]; then \
+		echo "voice_models_install=unavailable"; \
+		exit 1; \
+	fi; \
+	base_sha=$$(/usr/bin/shasum -a 256 "$$base_manifest" 2>/dev/null | /usr/bin/awk '{print $$1}') || { echo "voice_models_install=unavailable"; exit 1; }; \
+	small_sha=$$(/usr/bin/shasum -a 256 "$$small_manifest" 2>/dev/null | /usr/bin/awk '{print $$1}') || { echo "voice_models_install=unavailable"; exit 1; }; \
+	if [[ ! "$$base_sha" =~ ^[0-9a-f]{64}$$ || ! "$$small_sha" =~ ^[0-9a-f]{64}$$ ]]; then \
+		echo "voice_models_install=unavailable"; \
+		exit 1; \
+	fi; \
+	$(PYTHON) tools/voice_models.py --settings "$$settings" --artifact "openai-whisper-base" --operation convert-whisper --source-dir "$$base_source" --source-manifest "$$base_manifest" --source-manifest-sha256 "$$base_sha" --project-root . >/dev/null 2>&1 || { echo "voice_models_install=failed"; exit 1; }; \
+	$(PYTHON) tools/voice_models.py --settings "$$settings" --artifact "openai-whisper-small" --operation convert-whisper --source-dir "$$small_source" --source-manifest "$$small_manifest" --source-manifest-sha256 "$$small_sha" --project-root . >/dev/null 2>&1 || { echo "voice_models_install=failed"; exit 1; }; \
+	echo "voice_models_install=ready"
 
 alpha-voice-model-benchmark:
 	@$(PYTHON) tools/voice_model_benchmark.py

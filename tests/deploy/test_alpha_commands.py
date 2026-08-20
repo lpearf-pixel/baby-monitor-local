@@ -478,6 +478,69 @@ def test_makefile_exposes_stable_alpha_commands() -> None:
     assert "bash tools/stop_alpha.sh" in content
 
 
+def test_voice_model_install_make_target_is_phony_closed_and_local(
+    tmp_path: Path,
+) -> None:
+    shutil.copy2(ROOT / "Makefile", tmp_path / "Makefile")
+    (tmp_path / "alpha-voice-models-install").touch()
+
+    dry_run = subprocess.run(
+        ["make", "-n", "alpha-voice-models-install"],
+        cwd=tmp_path,
+        check=False,
+        capture_output=True,
+        text=True,
+    )
+    help_result = subprocess.run(
+        ["make", "help"],
+        cwd=ROOT,
+        check=False,
+        capture_output=True,
+        text=True,
+    )
+
+    assert dry_run.returncode == 0, dry_run.stderr
+    assert dry_run.stdout.count("tools/voice_models.py") == 2
+    assert "runtime/config/voice-care-models.json" in dry_run.stdout
+    assert (
+        "runtime/models/voice-care-sources/openai-whisper-base/source"
+        in dry_run.stdout
+    )
+    assert (
+        "runtime/models/voice-care-sources/openai-whisper-small/source"
+        in dry_run.stdout
+    )
+    assert "source-manifest.json" in dry_run.stdout
+    assert "curl" not in dry_run.stdout
+    assert "wget" not in dry_run.stdout
+    assert "http://" not in dry_run.stdout
+    assert "https://" not in dry_run.stdout
+    assert help_result.returncode == 0
+    assert "make alpha-voice-models-install" in help_result.stdout
+
+
+def test_voice_model_install_fails_closed_before_installer_when_inputs_are_absent(
+    tmp_path: Path,
+) -> None:
+    shutil.copy2(ROOT / "Makefile", tmp_path / "Makefile")
+    fake_python = tmp_path / ".venv-alpha/bin/python"
+    marker = tmp_path / "installer-called"
+    fake_python.parent.mkdir(parents=True)
+    _write_executable(fake_python, f"#!/bin/sh\n: > '{marker}'\n")
+
+    result = subprocess.run(
+        ["make", "alpha-voice-models-install"],
+        cwd=tmp_path,
+        check=False,
+        capture_output=True,
+        text=True,
+    )
+
+    assert result.returncode != 0
+    assert result.stdout.strip() == "voice_models_install=unavailable"
+    assert not marker.exists()
+
+
 def test_makefile_exposes_hd_quality_commands() -> None:
     content = (ROOT / "Makefile").read_text(encoding="utf-8")
 

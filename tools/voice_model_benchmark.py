@@ -9,7 +9,7 @@ import wave
 from collections.abc import Mapping
 from dataclasses import asdict, dataclass
 from pathlib import Path
-from typing import Protocol
+from typing import Literal, Protocol
 
 from packages.contracts.settings import VoiceCareSettings
 from services.voice.artifacts import voice_artifact_specs
@@ -26,13 +26,45 @@ _ARTIFACT_BY_CANDIDATE = {
     "base": "openai-whisper-base",
     "small": "openai-whisper-small",
 }
+_SLOT_VALUES = frozenset(
+    {
+        ("speaker_claim", "dad"),
+        ("speaker_claim", "mom"),
+        ("feeding_action", "start"),
+        ("feeding_action", "complete"),
+        ("feeding_action", "continue"),
+        ("feeding_action", "end"),
+    }
+)
+
+
+@dataclass(frozen=True)
+class BenchmarkSlot:
+    """Benchmark-only classification; not a VoiceCareIntentV1 care fact."""
+
+    kind: Literal["speaker_claim", "feeding_action"]
+    value: Literal["dad", "mom", "start", "complete", "continue", "end"]
+
+    def __post_init__(self) -> None:
+        if (self.kind, self.value) not in _SLOT_VALUES:
+            raise ValueError(BENCHMARK_INVALID)
+
+
+_SLOT_BY_COMMAND = {
+    "我是爸爸": BenchmarkSlot("speaker_claim", "dad"),
+    "我是妈妈": BenchmarkSlot("speaker_claim", "mom"),
+    "我要开始喂奶": BenchmarkSlot("feeding_action", "start"),
+    "我喂完奶了": BenchmarkSlot("feeding_action", "complete"),
+    "我要继续喂奶": BenchmarkSlot("feeding_action", "continue"),
+    "我要结束喂奶": BenchmarkSlot("feeding_action", "end"),
+}
 
 
 @dataclass(frozen=True)
 class BenchmarkSample:
     pcm: bytes
     expected_wake: bool
-    expected_command: str | None
+    expected_slot: BenchmarkSlot | None
 
 
 @dataclass(frozen=True)
@@ -78,6 +110,14 @@ class _Engine(Protocol):
 class _UnavailableEngine:
     def transcribe(self, _pcm: bytes) -> AsrResult:
         raise ValueError("voice_model_unavailable")
+
+
+def parse_benchmark_slot(command: str) -> BenchmarkSlot | None:
+    """Classify only the six generated Task 3 command families."""
+
+    if not isinstance(command, str):
+        return None
+    return _SLOT_BY_COMMAND.get(command)
 
 
 def load_benchmark_manifest(manifest_path: Path) -> BenchmarkManifest:
@@ -135,17 +175,18 @@ def evaluate_candidates(
 def _load_sample(root: Path, payload: object) -> BenchmarkSample:
     if (
         not isinstance(payload, dict)
-        or set(payload) != {"audio_file", "expected_wake", "expected_command"}
+        or set(payload) != {"audio_file", "expected_wake", "expected_slot"}
         or type(payload["expected_wake"]) is not bool
     ):
         raise ValueError(BENCHMARK_INVALID)
     expected_wake = payload["expected_wake"]
-    expected_command = payload["expected_command"]
+    expected_slot_payload = payload["expected_slot"]
     if expected_wake:
-        if not isinstance(expected_command, str) or not expected_command:
-            raise ValueError(BENCHMARK_INVALID)
-    elif expected_command is not None:
+        expected_slot = _load_expected_slot(expected_slot_payload)
+    elif expected_slot_payload is not None:
         raise ValueError(BENCHMARK_INVALID)
+    else:
+        expected_slot = None
     audio_file = payload["audio_file"]
     if not isinstance(audio_file, str):
         raise ValueError(BENCHMARK_INVALID)
@@ -172,8 +213,19 @@ def _load_sample(root: Path, payload: object) -> BenchmarkSample:
     return BenchmarkSample(
         pcm=pcm,
         expected_wake=expected_wake,
-        expected_command=expected_command,
+        expected_slot=expected_slot,
     )
+
+
+def _load_expected_slot(payload: object) -> BenchmarkSlot:
+    if (
+        not isinstance(payload, dict)
+        or set(payload) != {"kind", "value"}
+        or not isinstance(payload["kind"], str)
+        or not isinstance(payload["value"], str)
+    ):
+        raise ValueError(BENCHMARK_INVALID)
+    return BenchmarkSlot(payload["kind"], payload["value"])
 
 
 def _evaluate_candidate(
@@ -197,7 +249,9 @@ def _evaluate_candidate(
             if sample.expected_wake:
                 wake_correct += int(wake.accepted)
                 slots_correct += int(
-                    wake.accepted and wake.command == sample.expected_command
+                    wake.accepted
+                    and wake.command is not None
+                    and parse_benchmark_slot(wake.command) == sample.expected_slot
                 )
             else:
                 false_wakes += int(wake.accepted)
@@ -290,7 +344,7 @@ def _generate_macos_corpus(root: Path) -> Path:
                 {
                     "audio_file": relative.as_posix(),
                     "expected_wake": True,
-                    "expected_command": command,
+                    "expected_slot": asdict(_SLOT_BY_COMMAND[command]),
                 }
             )
             index += 1
@@ -302,7 +356,7 @@ def _generate_macos_corpus(root: Path) -> Path:
                 {
                     "audio_file": relative.as_posix(),
                     "expected_wake": False,
-                    "expected_command": None,
+                    "expected_slot": None,
                 }
             )
             index += 1
@@ -341,7 +395,7 @@ def _synthesize(text: str, rate: int, destination: Path) -> None:
     )
 
 
-def main() -> int:
+def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(description="Run the closed local Voice Care ASR gate")
     parser.add_argument(
         "--settings",
@@ -349,7 +403,7 @@ def main() -> int:
         default=Path("runtime/config/voice-care-models.json"),
     )
     parser.add_argument("--manifest", type=Path)
-    arguments = parser.parse_args()
+    arguments = parser.parse_args(argv)
     try:
         settings = VoiceCareSettings.model_validate_json(
             arguments.settings.read_text(encoding="utf-8")

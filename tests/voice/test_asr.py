@@ -77,10 +77,13 @@ class _Runner:
         )
 
 
+@pytest.mark.parametrize(
+    "artifact_id", ("openai-whisper-base", "openai-whisper-small")
+)
 def test_engine_uses_only_validated_absolute_local_whisper_and_chinese_transcribe(
-    tmp_path: Path,
+    tmp_path: Path, artifact_id: str
 ) -> None:
-    spec, bundle = _whisper_spec_and_bundle(tmp_path)
+    spec, bundle = _whisper_spec_and_bundle(tmp_path, artifact_id)
     runner = _Runner()
     factory_calls: list[dict[str, object]] = []
 
