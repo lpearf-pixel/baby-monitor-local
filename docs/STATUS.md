@@ -273,8 +273,13 @@
   now exist. Whisper conversion consumes only pinned manifest-validated local
   Transformers bundles and validates the faster-whisper layout. Fresh focused evidence
   is 61 passed. No model was downloaded or enabled; real source-manifest recording and
-  i9 conversion remain operator gates. Task 2 memory-only VAD/utterance capture is next.
-  SpeechBrain execution and Baby Care intent delivery remain later tasks.
+  i9 conversion remain operator gates. Task 2 is now also complete and reviewed: the
+  VAD boundary maps malformed/model output to a stable unavailable result, and the
+  collector enforces exact 500 ms pre-roll, 800 ms terminal silence and 8-second limits
+  in bounded bytearrays. Reset, close, validation failure and terminal return have
+  non-vacuous overwrite-before-clear tests. Fresh evidence is 23 passed. Task 3 local
+  ASR/exact-wake benchmark is next. SpeechBrain execution and Baby Care intent delivery
+  remain later tasks.
 - Installed-i9 audio-source discovery now verifies that the Xiaomi source exposes HEVC
   video plus Opus audio and that the fixed loopback `audio_analysis` alias exposes only
   Opus. The real input is supported 48 kHz stereo Opus; the fixed FFmpeg boundary

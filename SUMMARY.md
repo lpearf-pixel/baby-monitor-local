@@ -347,8 +347,11 @@ legacy branch into this line without a separate integration decision.
   are independently reviewed. Whisper conversion now accepts only pinned local
   Transformers bundles and validates the faster-whisper layout. Fresh focused evidence
   is 61 passed. Real model materialization/conversion and accuracy remain operator gates;
-  no model, raw household audio or Voice Care record path is enabled. Task 2 bounded
-  memory-only VAD/utterance capture is next while Baby Care continues M4.
+  no model, raw household audio or Voice Care record path is enabled. Task 2 is complete
+  through `d750f05`: bounded bytearray-only VAD/utterance capture enforces exact 500 ms
+  pre-roll, 800 ms terminal silence and 8-second limits, with fail-closed model errors
+  and overwrite-before-clear evidence. Fresh Task 2 evidence is 23 passed. Task 3 local
+  ASR/exact-wake benchmark is next while Baby Care continues M4.
 - Remote private viewing and the 72-hour release gate remain unfinished.
 - This system does not detect breathing, heart rate, suffocation or medical emergencies.
 
@@ -365,8 +368,8 @@ legacy branch into this line without a separate integration decision.
 4. Continue the approved audio/cry plan at Stage A8; a production model and
    license are still required before enablement; household audio remains
    memory-only.
-5. Execute Voice Care Gate V1 Baby Local Task 2, then Task 3 (bounded VAD/utterance
-   capture, local Whisper exact-wake bake-off); Task 1 is complete. In parallel,
+5. Execute Voice Care Gate V1 Baby Local Task 3 (local Whisper exact-wake bake-off);
+   Tasks 1–2 are complete. In parallel,
    finish Baby Care M4; create its Voice Care contract branch only from the verified M4
    exact head. Do not enable caregiver identity or Baby Care writes during Tasks 1–3.
 6. Complete authenticated private remote access using Tailscale Serve/ACL only.

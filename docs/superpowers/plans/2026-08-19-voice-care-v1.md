@@ -62,7 +62,8 @@ beyond the fixed decoder timeout/cleanup lifecycle required by the probe gate.
 
 **Overall status:** Gate V0 completed on 2026-08-20. Gate V1 local model architecture was
 approved on 2026-08-20. Baby Local Task 1 is complete and independently reviewed;
-Task 2 is next. No production Voice Care path is enabled.
+Tasks 1–2 are complete and independently reviewed; Task 3 is next. No production Voice
+Care path is enabled.
 Gate V0 proves only inbound audio and the bounded receive/decode boundary. It does not
 approve household ASR/speaker accuracy or Baby Care writes.
 
@@ -348,6 +349,9 @@ git commit -m "feat: add closed voice artifact registry"
 
 ### Task 2: Baby Local VAD And Eight-Second Utterance Collector
 
+**Status:** Complete through `d750f05` (`test: prove voice buffer zeroization`);
+independent review approved after one bounded fix round.
+
 **Files:**
 - Create: `services/voice/vad.py`
 - Create: `services/voice/capture.py`
@@ -360,7 +364,7 @@ git commit -m "feat: add closed voice artifact registry"
   `UtteranceCollector.push(frame: bytes, vad: VadResult) -> UtteranceResult | None`.
 - Consumes: 16 kHz mono s16le frames from the existing fixed audio decoder.
 
-- [ ] **Step 1: Write collector RED tests**
+- [x] **Step 1: Write collector RED tests**
 
 ```python
 def test_collector_closes_at_eight_seconds_and_discards_after_take() -> None:
@@ -376,20 +380,20 @@ def test_collector_closes_at_eight_seconds_and_discards_after_take() -> None:
 Also cover 500 ms pre-roll, 800 ms terminal silence, malformed frame rejection, VAD
 non-finite output and close/reset zeroization.
 
-- [ ] **Step 2: Run RED tests**
+- [x] **Step 2: Run RED tests**
 
 Run: `.venv-alpha/bin/python -m pytest -q tests/voice/test_vad.py tests/voice/test_capture.py`
 
 Expected: FAIL because the collector and VAD boundary do not exist.
 
-- [ ] **Step 3: Implement bounded memory-only capture**
+- [x] **Step 3: Implement bounded memory-only capture**
 
 Use `bytearray` buffers only. Reject non-frame-aligned PCM, cap memory before append,
 copy one terminal utterance to the caller and overwrite/clear internal buffers in a
 `finally` path. The VAD runner receives fixed 16 kHz float32 frames and maps every model
 error to `voice_model_unavailable`.
 
-- [ ] **Step 4: Run GREEN tests**
+- [x] **Step 4: Run GREEN tests**
 
 Run:
 
@@ -401,7 +405,7 @@ git diff --check
 
 Expected: focused voice and existing audio-source tests pass; no persistence API exists.
 
-- [ ] **Step 5: Commit Task 2**
+- [x] **Step 5: Commit Task 2**
 
 ```bash
 git add services/voice/vad.py services/voice/capture.py tests/voice/test_vad.py tests/voice/test_capture.py

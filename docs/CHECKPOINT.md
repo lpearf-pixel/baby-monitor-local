@@ -792,3 +792,12 @@ runtime manifest、固定 ignored runtime 路径与原子安装边界。三轮�
 61 passed、Python compile 与 `git diff --check` PASS。没有下载、生成或启用真实模型；
 真实 source manifest 记录、i9 CTranslate2 转换和准确率仍是后续明确门禁。下一项为
 Task 2 的纯内存 VAD 与最长 8 秒 utterance collector。
+
+2026-08-21 完成 Voice Care Gate V1 Baby Local Task 2。`ce13d83` 添加固定帧
+16 kHz mono s16le VAD 边界与 bytearray-only collector，精确执行 500 ms pre-roll、
+800 ms terminal silence 和 8 秒上限；模型异常、非有限/越界/错误 cardinality 与 malformed
+frame 均 fail closed。独立复核发现原 zeroization 测试在 clear 后检查空数组而无效，
+`d750f05` 用 clear 时快照证明 reset、close、validation-error 与 terminal-take 均先覆盖为
+零再清空，同时返回的 immutable PCM copy 保持完整。控制端新鲜验证为 23 passed、Python
+compile 与 `git diff --check` PASS。测试仅使用生成 PCM，不证明真实 Silero、家庭语音
+准确率或生产 worker；Task 3 的本地 Whisper/exact-wake 门是下一项。

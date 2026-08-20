@@ -121,7 +121,7 @@ preflight; household audio remains disabled and memory-only.
 ## P3 — Audio and cry candidates
 
 **Status:** Gate V0 complete; A8 remains blocked. Voice Care Gate V1 architecture and
-dual-repository implementation order are approved. Baby Local Task 1 is complete and
+dual-repository implementation order are approved. Baby Local Tasks 1–2 are complete and
 reviewed; production Voice Care remains disabled.
 Audio/cry was separately approved and resequenced for parallel software work on
 2026-08-17. Stages A1-A2 strict contracts/settings and bounded in-memory PCM source are
@@ -145,9 +145,9 @@ No raw household audio was persisted. This clears only the audio-ingest prerequi
 it does not clear A8 production-model/license or household-scenario requirements.
 
 The same plan now owns Gate V1. Task 1 delivered closed model artifacts/settings with
-validated local source and runtime manifests. The next executable Baby Local slices are
-Task 2 bounded Silero VAD/utterance capture and Task 3 local Whisper `base`/`small`
-exact-wake bake-off. These may proceed while Baby Care finishes M4. Baby Care
+validated local source and runtime manifests. Task 2 delivered bounded memory-only VAD
+and exact 500 ms/800 ms/8-second capture. The next executable Baby Local slice is Task 3
+local Whisper `base`/`small` exact-wake bake-off. It may proceed while Baby Care finishes M4. Baby Care
 contract/pairing/write tasks must start only from its verified M4 exact head and remain
 in the Baby Care repository.
 
@@ -166,7 +166,7 @@ never provide household audio for Git or chat.
 Test timing, deduplication, quiet/adult-speech negatives and privacy using generated or
 explicitly public media. Software tests do not prove household accuracy.
 
-**Next:** Execute Voice Care Gate V1 Task 2, then Task 3, without enabling production
+**Next:** Execute Voice Care Gate V1 Task 3 without enabling production
 Voice Care or persisting household audio. Keep cry A8 disabled until its separate production-model
 and supervised household acceptance requirements are met. P4 remains the next
 independent product stage.
