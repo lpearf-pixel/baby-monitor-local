@@ -771,3 +771,14 @@ syntax、plist 解析、Make dry-run、
 `git diff --check`、新增 diff 敏感字面量扫描和状态冲突扫描均 PASS。安装态
 `make alpha-guardian-test` 的 repository/software/installation/service/media/isolation
 共 19 个阶段全部 PASS，未发送真实通知、未生成风险事件、未写生产 evidence。
+
+2026-08-20 批准 Voice Care v1 本地模型架构并完成实施计划拆分。Gate V1 固定使用
+Silero VAD 打开最长 8 秒、500 ms pre-roll、800 ms 终止静音的内存 utterance；在 i9
+上对官方 OpenAI Whisper `base`/`small` 做合成普通话门禁，且 ASR 结果必须以规范化的
+精确 `小小` 开头；说话人候选为 SpeechBrain ECAPA，响应使用固定 macOS 系统语音。
+家庭原始音频和普通 transcript 仍不得持久化。Baby Care 当前累计开发线经只读核对为
+`codex/m4-birth-ready-operations`，规划时 head 为
+`53997b9c24de75b4850b4e193ef89ff755be9913`，M0–M3 完成、M4 Task 3 待执行。
+Voice Care 计划因此允许 Baby Local Tasks 1–3 与 Baby Care M4 并行，但 Baby Care
+contract/pairing/write 分支只能从 M4 完成且 exact-head CI 通过的提交创建；两项目不得
+互相直接写数据库，也不得借此修改或合并 `main`。

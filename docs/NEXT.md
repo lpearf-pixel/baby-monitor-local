@@ -120,7 +120,9 @@ preflight; household audio remains disabled and memory-only.
 
 ## P3 — Audio and cry candidates
 
-**Status:** Gate V0 complete; A8 remains blocked. Separately approved and resequenced for parallel software work on
+**Status:** Gate V0 complete; A8 remains blocked. Voice Care Gate V1 architecture and
+dual-repository implementation order are approved, but no Gate V1 code is complete.
+Audio/cry was separately approved and resequenced for parallel software work on
 2026-08-17. Stages A1-A2 strict contracts/settings and bounded in-memory PCM source are
 complete; Stage A3 loudness/dynamic noise floor is complete and Stage A4 pinned ONNX
 classifier boundary is software-complete, with production artifact approval pending;
@@ -141,6 +143,12 @@ It completed on 2026-08-20 with:
 No raw household audio was persisted. This clears only the audio-ingest prerequisite;
 it does not clear A8 production-model/license or household-scenario requirements.
 
+The same plan now owns Gate V1. Its next executable Baby Local slices are Tasks 1–3:
+closed model artifacts/settings, bounded Silero VAD/utterance capture, then the local
+OpenAI Whisper `base`/`small` exact-wake bake-off. These may proceed while Baby Care
+finishes M4. Baby Care contract/pairing/write tasks must start only from its verified M4
+exact head and remain in the Baby Care repository.
+
 **Prerequisites:** The current design approval permits synthetic/public-media software
 work before P0–P2 complete. P0–P2 and A7 remain prerequisites for household
 real-device acceptance; the source-track prerequisite is verified.
@@ -156,8 +164,10 @@ never provide household audio for Git or chat.
 Test timing, deduplication, quiet/adult-speech negatives and privacy using generated or
 explicitly public media. Software tests do not prove household accuracy.
 
-**Next:** Decide the production cry/ASR model and license, then execute A8 only with
-supervised household scenarios. P4 remains the next independent product stage.
+**Next:** Execute Voice Care Gate V1 Tasks 0–3 without enabling production Voice Care
+or persisting household audio. Keep cry A8 disabled until its separate production-model
+and supervised household acceptance requirements are met. P4 remains the next
+independent product stage.
 
 ## P4 — Authenticated private remote access
 

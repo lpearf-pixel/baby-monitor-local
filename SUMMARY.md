@@ -338,11 +338,13 @@ legacy branch into this line without a separate integration decision.
   10-minute receive/discard windows now pass with explicit decoder cleanup; household
   cry/ASR accuracy remains unaccepted.
 - Voice Care v1 is active under `docs/superpowers/specs/2026-08-19-voice-care-v1-design.md`.
-  A dedicated `docs/superpowers/plans/2026-08-19-voice-care-v1.md` now defines
-  **Gate V0**. It completed on 2026-08-20: source/alias Opus feasibility, synthetic
-  Opus compatibility, 60-second and 10-minute receive windows, and isolation/cleanup
-  checks passed. No raw household audio was persisted and no Voice Care record path
-  was enabled.
+  Its dedicated `docs/superpowers/plans/2026-08-19-voice-care-v1.md` records completed
+  **Gate V0** and the approved dual-repository Gate V1 sequence. Gate V1 uses Silero
+  VAD, a local OpenAI Whisper `base`/`small` i9 bake-off, exact normalized `小小` wake
+  prefix, SpeechBrain ECAPA speaker verification and fixed macOS speech responses.
+  Baby Local Tasks 1–3 may proceed independently while Baby Care finishes its current
+  M4 exact-head gate; the Baby Care-owned contract begins only after M4 closes. No raw
+  household audio was persisted and no Voice Care record path is enabled yet.
 - Remote private viewing and the 72-hour release gate remain unfinished.
 - This system does not detect breathing, heart rate, suffocation or medical emergencies.
 
@@ -359,9 +361,10 @@ legacy branch into this line without a separate integration decision.
 4. Continue the approved audio/cry plan at Stage A8; a production model and
    license are still required before enablement; household audio remains
    memory-only.
-5. Gate V0 is complete. Choose approved local ASR/wake/speaker models and licenses,
-   then write the next Voice Care implementation plan before enabling any caregiver
-   identity or Baby Care intent delivery.
+5. Execute Voice Care Gate V1 Task 0 and Baby Local Tasks 1–3 (closed artifact registry,
+   bounded VAD/utterance capture, local Whisper exact-wake bake-off). In parallel,
+   finish Baby Care M4; create its Voice Care contract branch only from the verified M4
+   exact head. Do not enable caregiver identity or Baby Care writes during Tasks 1–3.
 6. Complete authenticated private remote access using Tailscale Serve/ACL only.
 7. Complete the final 72-hour release gate before any release/tag decision.
 8. Define per-parent acknowledgement and false-positive feedback only through a future

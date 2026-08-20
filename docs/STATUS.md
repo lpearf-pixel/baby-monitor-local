@@ -244,8 +244,9 @@
 - Audio/cry software work has a separately approved current design with household PCM
   limited to bounded memory and no audio persistence. Stage A1 adds closed observation
   and failure contracts plus fixed mono 16 kHz, 15-second-buffer settings; focused
-  contract tests pass. No decoder, classifier, worker or real-device audio acceptance
-  is claimed yet, and an unavailable source track must fail closed.
+  contract tests pass. Later A2–A7 slices below add the decoder, classifier boundary,
+  state machine and disabled-by-default worker; household accuracy and production model
+  approval remain unaccepted, and an unavailable source track must fail closed.
 - Audio Stage A2 adds a fixed loopback-only FFmpeg audio command with a bounded read
   timeout, closed source/stale/decoder failures and a frame-aligned 15-second in-memory
   PCM ring. EOF, process failure and malformed partial samples cannot produce an audio
@@ -261,10 +262,16 @@
   no production model, license or household accuracy is approved by this result.
 
 - Voice Care cross-product scope is split from current audio/cry work:
-  `docs/superpowers/plans/2026-08-19-voice-care-v1.md` owns Gate V0. Gate V0 completed
-  on 2026-08-20: source HEVC+Opus and alias Opus were confirmed, actual 60-second and
-  10-minute receive/discard windows passed, synthetic Opus compatibility passed, and
-  cleanup/isolation checks left visual, gauge and watchdog PIDs unchanged.
+  `docs/superpowers/plans/2026-08-19-voice-care-v1.md` records completed Gate V0 and the
+  approved Gate V1 implementation sequence. Gate V0 completed on 2026-08-20: source
+  HEVC+Opus and alias Opus were confirmed, actual 60-second and 10-minute
+  receive/discard windows passed, synthetic Opus compatibility passed, and
+  cleanup/isolation checks left visual, gauge and watchdog PIDs unchanged. Gate V1 is
+  planned but not implemented: Baby Local first adds a closed artifact registry,
+  memory-only Silero VAD/utterance capture, and an installed-i9 OpenAI Whisper
+  `base`/`small` bake-off with exact normalized `小小` prefix. SpeechBrain ECAPA and
+  Baby Care intent delivery remain later tasks. Baby Care owns the shared contract and
+  may start that work only after its current M4 exact-head gate closes.
 - Installed-i9 audio-source discovery now verifies that the Xiaomi source exposes HEVC
   video plus Opus audio and that the fixed loopback `audio_analysis` alias exposes only
   Opus. The real input is supported 48 kHz stereo Opus; the fixed FFmpeg boundary
