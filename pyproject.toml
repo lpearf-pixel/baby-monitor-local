@@ -8,7 +8,10 @@ version = "0.1.0.dev0"
 description = "Local-first baby monitor services for Intel macOS"
 requires-python = ">=3.11"
 dependencies = [
+  "cryptography==50.0.0",
+  "ctranslate2==4.8.1; sys_platform == 'darwin' and platform_machine == 'x86_64'",
   "fastapi>=0.116,<1",
+  "faster-whisper==1.2.1",
   "numpy>=2.0,<3",
   "opencv-python-headless>=4.10,<5",
   "openvino==2025.4.1; sys_platform == 'darwin' and platform_machine == 'x86_64'",

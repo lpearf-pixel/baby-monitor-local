@@ -199,6 +199,36 @@ class AudioSettings(StrictSettingsModel):
         return self
 
 
+class VoiceCareSettings(StrictSettingsModel):
+    """Closed local-only configuration for the separately supervised Voice Care worker."""
+
+    enabled: bool = False
+    stream_name: Literal["audio_analysis"] = "audio_analysis"
+    max_utterance_ms: Literal[8_000] = 8_000
+    pre_roll_ms: Literal[500] = 500
+    terminal_silence_ms: Literal[800] = 800
+    silero_vad_sha256: str | None = Field(default=None, pattern=r"^[0-9a-f]{64}$")
+    whisper_base_sha256: str | None = Field(default=None, pattern=r"^[0-9a-f]{64}$")
+    whisper_small_sha256: str | None = Field(default=None, pattern=r"^[0-9a-f]{64}$")
+    speechbrain_ecapa_sha256: str | None = Field(default=None, pattern=r"^[0-9a-f]{64}$")
+    outbox_max_intents: Literal[128] = 128
+    outbox_retention_seconds: Literal[1_800] = 1_800
+
+    @model_validator(mode="after")
+    def require_artifact_digests_when_enabled(self) -> "VoiceCareSettings":
+        if self.enabled and any(
+            digest is None
+            for digest in (
+                self.silero_vad_sha256,
+                self.whisper_base_sha256,
+                self.whisper_small_sha256,
+                self.speechbrain_ecapa_sha256,
+            )
+        ):
+            raise ValueError("VOICE_ARTIFACT_DIGEST_REQUIRED")
+        return self
+
+
 class VisualSettings(StrictSettingsModel):
     enabled: bool = False
     model: Literal["qwen3-vl:8b-instruct-q4_K_M"] = VISUAL_MODEL_NAME
@@ -283,6 +313,7 @@ class AppSettings(StrictSettingsModel):
     thresholds: ThresholdSettings = ThresholdSettings()
     environment: EnvironmentSettings = EnvironmentSettings()
     audio: AudioSettings = AudioSettings()
+    voice_care: VoiceCareSettings = VoiceCareSettings()
     visual: VisualSettings = VisualSettings()
     notifications: NotificationSettings
     security: SecuritySettings
