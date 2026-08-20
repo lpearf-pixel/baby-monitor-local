@@ -24,8 +24,9 @@ class _ArtifactDefinition:
     upstream_project: str
     source_revision: str
     spdx_license: str
+    acquisition: str
+    source_files: tuple[str, ...]
     required_files: tuple[str, ...]
-    source_url: str
 
 
 _REGISTRY = (
@@ -34,30 +35,41 @@ _REGISTRY = (
         upstream_project="https://github.com/snakers4/silero-vad",
         source_revision="be95df9152c0d7618fa1edfeb296fc3dae32376f",
         spdx_license="MIT",
+        acquisition="collect",
+        source_files=("silero_vad.onnx",),
         required_files=("silero_vad.onnx",),
-        source_url="https://github.com/snakers4/silero-vad/archive/be95df9152c0d7618fa1edfeb296fc3dae32376f.tar.gz",
     ),
     _ArtifactDefinition(
         artifact_id="openai-whisper-base",
         upstream_project="https://github.com/openai/whisper",
         source_revision="31243bad24cc746f07d4c8bfdd2d974872cb1803",
         spdx_license="MIT",
+        acquisition="convert-whisper",
+        source_files=("model.pt", "tokenizer.json", "vocabulary.txt"),
         required_files=("config.json", "model.bin", "tokenizer.json", "vocabulary.txt"),
-        source_url="https://github.com/openai/whisper/archive/31243bad24cc746f07d4c8bfdd2d974872cb1803.tar.gz",
     ),
     _ArtifactDefinition(
         artifact_id="openai-whisper-small",
         upstream_project="https://github.com/openai/whisper",
         source_revision="31243bad24cc746f07d4c8bfdd2d974872cb1803",
         spdx_license="MIT",
+        acquisition="convert-whisper",
+        source_files=("model.pt", "tokenizer.json", "vocabulary.txt"),
         required_files=("config.json", "model.bin", "tokenizer.json", "vocabulary.txt"),
-        source_url="https://github.com/openai/whisper/archive/31243bad24cc746f07d4c8bfdd2d974872cb1803.tar.gz",
     ),
     _ArtifactDefinition(
         artifact_id="speechbrain-ecapa-voxceleb",
         upstream_project="https://huggingface.co/speechbrain/spkrec-ecapa-voxceleb",
         source_revision="0f99f2d0ebe89ac095bcc5903c4dd8f72b367286",
         spdx_license="Apache-2.0",
+        acquisition="collect",
+        source_files=(
+            "classifier.ckpt",
+            "embedding_model.ckpt",
+            "hyperparams.yaml",
+            "label_encoder.txt",
+            "mean_var_norm_emb.ckpt",
+        ),
         required_files=(
             "classifier.ckpt",
             "embedding_model.ckpt",
@@ -65,7 +77,6 @@ _REGISTRY = (
             "label_encoder.txt",
             "mean_var_norm_emb.ckpt",
         ),
-        source_url="https://huggingface.co/speechbrain/spkrec-ecapa-voxceleb/resolve/0f99f2d0ebe89ac095bcc5903c4dd8f72b367286/embedding_model.ckpt",
     ),
 )
 _DEFINITIONS = {definition.artifact_id: definition for definition in _REGISTRY}
@@ -79,8 +90,9 @@ class VoiceArtifactSpec:
     upstream_project: str
     source_revision: str
     spdx_license: str
+    acquisition: str
+    source_files: tuple[str, ...]
     required_files: tuple[str, ...]
-    source_url: str
     manifest_sha256: str
     bundle_relative_path: Path
 
@@ -92,8 +104,9 @@ class VoiceArtifactSpec:
             or self.upstream_project != definition.upstream_project
             or self.source_revision != definition.source_revision
             or self.spdx_license != definition.spdx_license
+            or self.acquisition != definition.acquisition
+            or self.source_files != definition.source_files
             or self.required_files != definition.required_files
-            or self.source_url != definition.source_url
             or len(self.source_revision) != 40
             or any(character not in "0123456789abcdef" for character in self.source_revision)
             or not _is_sha256(self.manifest_sha256)
@@ -146,7 +159,47 @@ def validate_voice_artifact_bundle(spec: VoiceArtifactSpec, bundle: Path) -> Pat
     return bundle.resolve(strict=True)
 
 
-def write_canonical_manifest(spec: VoiceArtifactSpec, bundle: Path) -> None:
+def validate_voice_source(
+    spec: VoiceArtifactSpec,
+    source_dir: Path,
+    source_manifest: Path,
+    source_manifest_sha256: str,
+) -> Path:
+    """Validate immutable source provenance and every fixed conversion input."""
+
+    try:
+        if not _is_sha256(source_manifest_sha256):
+            raise ValueError("VOICE_ARTIFACT_INVALID")
+        if source_dir.is_symlink() or not source_dir.is_dir() or source_manifest.is_symlink():
+            raise ValueError("VOICE_ARTIFACT_INVALID")
+        manifest_bytes = source_manifest.read_bytes()
+        if hashlib.sha256(manifest_bytes).hexdigest() != source_manifest_sha256:
+            raise ValueError("VOICE_ARTIFACT_INVALID")
+        manifest = json.loads(manifest_bytes.decode("ascii"))
+        if not isinstance(manifest, dict) or manifest_bytes != _canonical_json(manifest):
+            raise ValueError("VOICE_ARTIFACT_INVALID")
+        if (
+            set(manifest)
+            != {"artifact_id", "files", "source_revision", "spdx_license", "upstream_project"}
+            or manifest["artifact_id"] != spec.artifact_id
+            or manifest["upstream_project"] != spec.upstream_project
+            or manifest["source_revision"] != spec.source_revision
+            or manifest["spdx_license"] != spec.spdx_license
+            or not isinstance(manifest["files"], dict)
+            or set(manifest["files"]) != set(spec.source_files)
+        ):
+            raise ValueError("VOICE_ARTIFACT_INVALID")
+        _validate_exact_files(source_dir, spec.source_files, manifest["files"])
+    except (OSError, ValueError, UnicodeDecodeError, json.JSONDecodeError) as exc:
+        if str(exc) == "VOICE_ARTIFACT_INVALID":
+            raise
+        raise ValueError("VOICE_ARTIFACT_INVALID") from exc
+    return source_dir.resolve(strict=True)
+
+
+def write_canonical_manifest(
+    spec: VoiceArtifactSpec, bundle: Path, source_manifest_sha256: str
+) -> None:
     """Write the canonical manifest after an explicit conversion has created all files."""
 
     files = {}
@@ -158,6 +211,7 @@ def write_canonical_manifest(spec: VoiceArtifactSpec, bundle: Path) -> None:
     payload = {
         "artifact_id": spec.artifact_id,
         "files": files,
+        "source_manifest_sha256": source_manifest_sha256,
         "source_revision": spec.source_revision,
         "spdx_license": spec.spdx_license,
     }
@@ -175,8 +229,9 @@ def _spec_from_definition(
         upstream_project=definition.upstream_project,
         source_revision=definition.source_revision,
         spdx_license=definition.spdx_license,
+        acquisition=definition.acquisition,
+        source_files=definition.source_files,
         required_files=definition.required_files,
-        source_url=definition.source_url,
         manifest_sha256=manifest_sha256,
         bundle_relative_path=RUNTIME_PREFIX / definition.artifact_id / manifest_sha256,
     )
@@ -207,10 +262,19 @@ def _validate_bundle(spec: VoiceArtifactSpec, bundle: Path) -> None:
     if not isinstance(manifest, dict) or manifest_bytes != _canonical_json(manifest):
         raise ValueError("VOICE_ARTIFACT_INVALID")
     if (
-        set(manifest) != {"artifact_id", "files", "source_revision", "spdx_license"}
+        set(manifest)
+        != {
+            "artifact_id",
+            "files",
+            "source_manifest_sha256",
+            "source_revision",
+            "spdx_license",
+        }
         or manifest["artifact_id"] != spec.artifact_id
         or manifest["source_revision"] != spec.source_revision
         or manifest["spdx_license"] != spec.spdx_license
+        or not isinstance(manifest["source_manifest_sha256"], str)
+        or not _is_sha256(manifest["source_manifest_sha256"])
         or not isinstance(manifest["files"], dict)
         or set(manifest["files"]) != set(spec.required_files)
     ):
@@ -221,6 +285,29 @@ def _validate_bundle(spec: VoiceArtifactSpec, bundle: Path) -> None:
         if not isinstance(expected, str) or not _is_sha256(expected):
             raise ValueError("VOICE_ARTIFACT_INVALID")
         if _sha256_file(artifact_file) != expected:
+            raise ValueError("VOICE_ARTIFACT_INVALID")
+
+
+def _validate_exact_files(
+    root: Path, required_files: tuple[str, ...], digests: object
+) -> None:
+    if not isinstance(digests, dict):
+        raise ValueError("VOICE_ARTIFACT_INVALID")
+    actual_files: set[str] = set()
+    for entry in root.rglob("*"):
+        if entry.is_symlink():
+            raise ValueError("VOICE_ARTIFACT_INVALID")
+        if entry.is_file():
+            actual_files.add(entry.relative_to(root).as_posix())
+        elif not entry.is_dir():
+            raise ValueError("VOICE_ARTIFACT_INVALID")
+    if actual_files != set(required_files) or set(digests) != set(required_files):
+        raise ValueError("VOICE_ARTIFACT_INVALID")
+    for relative_path in required_files:
+        expected = digests[relative_path]
+        if not isinstance(expected, str) or not _is_sha256(expected):
+            raise ValueError("VOICE_ARTIFACT_INVALID")
+        if _sha256_file(root / relative_path) != expected:
             raise ValueError("VOICE_ARTIFACT_INVALID")
 
 

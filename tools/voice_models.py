@@ -4,7 +4,7 @@ import argparse
 import shutil
 import subprocess
 import tempfile
-import urllib.request
+from collections.abc import Callable
 from pathlib import Path
 
 from packages.contracts.settings import VoiceCareSettings
@@ -12,9 +12,99 @@ from services.voice.artifacts import (
     VoiceArtifactSpec,
     validate_voice_artifact,
     validate_voice_artifact_bundle,
+    validate_voice_source,
     voice_artifact_specs,
     write_canonical_manifest,
 )
+
+
+Runner = Callable[..., object]
+
+
+def collect_voice_artifact(
+    spec: VoiceArtifactSpec,
+    *,
+    source_dir: Path,
+    source_manifest: Path,
+    source_manifest_sha256: str,
+    project_root: Path,
+) -> Path:
+    """Collect a registry-fixed source set into its runtime bundle without network I/O."""
+
+    if spec.acquisition != "collect":
+        raise ValueError("VOICE_ARTIFACT_INVALID")
+    source = validate_voice_source(
+        spec, source_dir, source_manifest, source_manifest_sha256
+    )
+    with tempfile.TemporaryDirectory(prefix="voice-collect-") as temporary:
+        bundle = Path(temporary) / "bundle"
+        bundle.mkdir()
+        for relative_path in spec.required_files:
+            shutil.copyfile(source / relative_path, bundle / relative_path)
+        write_canonical_manifest(spec, bundle, source_manifest_sha256)
+        return install_voice_artifact(spec, source_bundle=bundle, project_root=project_root)
+
+
+def convert_whisper_bundle(
+    spec: VoiceArtifactSpec,
+    *,
+    source_dir: Path,
+    source_manifest: Path,
+    source_manifest_sha256: str,
+    project_root: Path,
+    runner: Runner = subprocess.run,
+) -> Path:
+    """Explicitly convert only a verified Whisper source into a CTranslate2 bundle."""
+
+    if spec.acquisition != "convert-whisper":
+        raise ValueError("VOICE_ARTIFACT_INVALID")
+    source = validate_voice_source(
+        spec, source_dir, source_manifest, source_manifest_sha256
+    )
+    with tempfile.TemporaryDirectory(prefix="voice-whisper-convert-") as temporary:
+        bundle = Path(temporary) / "bundle"
+        runner(
+            (
+                "ct2-transformers-converter",
+                "--model",
+                str(source),
+                "--output_dir",
+                str(bundle),
+                "--copy_files",
+                "tokenizer.json",
+                "vocabulary.txt",
+            ),
+            check=True,
+        )
+        write_canonical_manifest(spec, bundle, source_manifest_sha256)
+        return install_voice_artifact(spec, source_bundle=bundle, project_root=project_root)
+
+
+def acquire_voice_artifact(
+    spec: VoiceArtifactSpec,
+    *,
+    source_dir: Path,
+    source_manifest: Path,
+    source_manifest_sha256: str,
+    project_root: Path,
+) -> Path:
+    """Run the only registry-authorized acquisition path for one artifact."""
+
+    if spec.acquisition == "collect":
+        return collect_voice_artifact(
+            spec,
+            source_dir=source_dir,
+            source_manifest=source_manifest,
+            source_manifest_sha256=source_manifest_sha256,
+            project_root=project_root,
+        )
+    return convert_whisper_bundle(
+        spec,
+        source_dir=source_dir,
+        source_manifest=source_manifest,
+        source_manifest_sha256=source_manifest_sha256,
+        project_root=project_root,
+    )
 
 
 def install_voice_artifact(
@@ -40,59 +130,14 @@ def install_voice_artifact(
         shutil.rmtree(staging, ignore_errors=True)
 
 
-def download_and_install_voice_artifact(
-    spec: VoiceArtifactSpec, *, project_root: Path
-) -> Path:
-    """Download only the registry-bound provenance archive on explicit invocation."""
-
-    with tempfile.TemporaryDirectory(prefix="voice-artifact-download-") as temporary:
-        archive = Path(temporary) / "source.tar.gz"
-        with urllib.request.urlopen(spec.source_url, timeout=60) as response, archive.open(
-            "wb"
-        ) as target:
-            shutil.copyfileobj(response, target)
-        unpacked = Path(temporary) / "unpacked"
-        shutil.unpack_archive(str(archive), str(unpacked))
-        children = tuple(unpacked.iterdir())
-        source_bundle = children[0] if len(children) == 1 and children[0].is_dir() else unpacked
-        return install_voice_artifact(spec, source_bundle=source_bundle, project_root=project_root)
-
-
-def convert_whisper_bundle(
-    spec: VoiceArtifactSpec, *, source_model: Path, project_root: Path
-) -> Path:
-    """Explicitly convert a local Whisper source into a complete CTranslate2 bundle."""
-
-    if spec.artifact_id not in {"openai-whisper-base", "openai-whisper-small"}:
-        raise ValueError("VOICE_ARTIFACT_INVALID")
-    source = source_model.resolve(strict=True)
-    if not source.is_dir() or source.is_symlink():
-        raise ValueError("VOICE_ARTIFACT_INVALID")
-    with tempfile.TemporaryDirectory(prefix="voice-whisper-convert-") as temporary:
-        bundle = Path(temporary) / "bundle"
-        subprocess.run(
-            (
-                "ct2-transformers-converter",
-                "--model",
-                str(source),
-                "--output_dir",
-                str(bundle),
-                "--copy_files",
-                "tokenizer.json",
-                "vocabulary.txt",
-            ),
-            check=True,
-        )
-        write_canonical_manifest(spec, bundle)
-        return install_voice_artifact(spec, source_bundle=bundle, project_root=project_root)
-
-
 def main() -> int:
-    parser = argparse.ArgumentParser(description="Install a pinned Voice Care model bundle")
+    parser = argparse.ArgumentParser(description="Acquire a pinned Voice Care model bundle")
     parser.add_argument("--settings", type=Path, required=True)
     parser.add_argument("--artifact", required=True)
-    parser.add_argument("--operation", choices=("source", "download", "convert-whisper"), required=True)
-    parser.add_argument("--source", type=Path)
+    parser.add_argument("--operation", choices=("acquire", "convert-whisper"), required=True)
+    parser.add_argument("--source-dir", type=Path, required=True)
+    parser.add_argument("--source-manifest", type=Path, required=True)
+    parser.add_argument("--source-manifest-sha256", required=True)
     parser.add_argument("--project-root", type=Path, default=Path.cwd())
     arguments = parser.parse_args()
     settings = VoiceCareSettings.model_validate_json(arguments.settings.read_text("utf-8"))
@@ -100,16 +145,24 @@ def main() -> int:
     spec = specs.get(arguments.artifact)
     if spec is None:
         parser.error("unknown Voice Care artifact")
-    if arguments.operation == "download":
-        download_and_install_voice_artifact(spec, project_root=arguments.project_root)
-    elif arguments.operation == "convert-whisper":
-        if arguments.source is None:
-            parser.error("--source is required for convert-whisper")
-        convert_whisper_bundle(spec, source_model=arguments.source, project_root=arguments.project_root)
+    if arguments.operation == "convert-whisper" and spec.acquisition != "convert-whisper":
+        parser.error("convert-whisper is only valid for Whisper artifacts")
+    if arguments.operation == "acquire":
+        acquire_voice_artifact(
+            spec,
+            source_dir=arguments.source_dir,
+            source_manifest=arguments.source_manifest,
+            source_manifest_sha256=arguments.source_manifest_sha256,
+            project_root=arguments.project_root,
+        )
     else:
-        if arguments.source is None:
-            parser.error("--source is required for source installation")
-        install_voice_artifact(spec, source_bundle=arguments.source, project_root=arguments.project_root)
+        convert_whisper_bundle(
+            spec,
+            source_dir=arguments.source_dir,
+            source_manifest=arguments.source_manifest,
+            source_manifest_sha256=arguments.source_manifest_sha256,
+            project_root=arguments.project_root,
+        )
     return 0
 
 

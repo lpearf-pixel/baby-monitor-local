@@ -14,10 +14,14 @@ from services.voice.artifacts import (
     validate_voice_artifact,
     voice_artifact_specs,
 )
-from tools.voice_models import install_voice_artifact
+from tools.voice_models import collect_voice_artifact, convert_whisper_bundle, install_voice_artifact
 
 
-def canonical_manifest(spec: VoiceArtifactSpec, files: dict[str, bytes]) -> bytes:
+def canonical_manifest(
+    spec: VoiceArtifactSpec,
+    files: dict[str, bytes],
+    source_manifest_sha256: str = "a" * 64,
+) -> bytes:
     return (
         json.dumps(
             {
@@ -26,6 +30,7 @@ def canonical_manifest(spec: VoiceArtifactSpec, files: dict[str, bytes]) -> byte
                     name: hashlib.sha256(payload).hexdigest()
                     for name, payload in sorted(files.items())
                 },
+                "source_manifest_sha256": source_manifest_sha256,
                 "source_revision": spec.source_revision,
                 "spdx_license": spec.spdx_license,
             },
@@ -53,6 +58,23 @@ def settings_for_manifest(artifact_id: str, manifest_sha256: str) -> VoiceCareSe
     return VoiceCareSettings(enabled=True, **fields)
 
 
+def spec_for_runtime(
+    provisional: VoiceArtifactSpec,
+    files: dict[str, bytes],
+    source_manifest_sha256: str,
+) -> VoiceArtifactSpec:
+    manifest_sha256 = hashlib.sha256(
+        canonical_manifest(provisional, files, source_manifest_sha256)
+    ).hexdigest()
+    return next(
+        candidate
+        for candidate in voice_artifact_specs(
+            settings_for_manifest(provisional.artifact_id, manifest_sha256)
+        )
+        if candidate.artifact_id == provisional.artifact_id
+    )
+
+
 def spec_and_files(artifact_id: str, payload: bytes = b"synthetic voice model") -> tuple[VoiceArtifactSpec, dict[str, bytes]]:
     provisional = next(
         spec
@@ -60,23 +82,24 @@ def spec_and_files(artifact_id: str, payload: bytes = b"synthetic voice model") 
         if spec.artifact_id == artifact_id
     )
     files = {name: payload + name.encode("ascii") for name in provisional.required_files}
-    manifest = canonical_manifest(provisional, files)
-    manifest_sha256 = hashlib.sha256(manifest).hexdigest()
-    spec = next(
-        candidate
-        for candidate in voice_artifact_specs(settings_for_manifest(artifact_id, manifest_sha256))
-        if candidate.artifact_id == artifact_id
-    )
+    spec = spec_for_runtime(provisional, files, "a" * 64)
     return spec, files
 
 
-def write_bundle(path: Path, spec: VoiceArtifactSpec, files: dict[str, bytes]) -> None:
+def write_bundle(
+    path: Path,
+    spec: VoiceArtifactSpec,
+    files: dict[str, bytes],
+    source_manifest_sha256: str = "a" * 64,
+) -> None:
     path.mkdir(parents=True, exist_ok=True)
     for name, payload in files.items():
         target = path / name
         target.parent.mkdir(parents=True, exist_ok=True)
         target.write_bytes(payload)
-    (path / "manifest.json").write_bytes(canonical_manifest(spec, files))
+    (path / "manifest.json").write_bytes(
+        canonical_manifest(spec, files, source_manifest_sha256)
+    )
 
 
 def test_registry_is_closed_and_uses_full_immutable_provenance() -> None:
@@ -201,3 +224,158 @@ def test_installer_rejects_symlinked_runtime_prefix_before_staging(tmp_path: Pat
         install_voice_artifact(spec, source_bundle=source, project_root=tmp_path)
 
     assert not (outside / "models").exists()
+
+
+def canonical_source_manifest(spec: VoiceArtifactSpec, files: dict[str, bytes]) -> bytes:
+    return (
+        json.dumps(
+            {
+                "artifact_id": spec.artifact_id,
+                "files": {
+                    name: hashlib.sha256(payload).hexdigest()
+                    for name, payload in sorted(files.items())
+                },
+                "source_revision": spec.source_revision,
+                "spdx_license": spec.spdx_license,
+                "upstream_project": spec.upstream_project,
+            },
+            separators=(",", ":"),
+            sort_keys=True,
+        )
+        + "\n"
+    ).encode("ascii")
+
+
+def write_source(
+    root: Path, spec: VoiceArtifactSpec, files: dict[str, bytes]
+) -> tuple[Path, Path, str]:
+    source = root / "source"
+    source.mkdir()
+    for name, payload in files.items():
+        (source / name).write_bytes(payload)
+    manifest = root / "source-manifest.json"
+    manifest_bytes = canonical_source_manifest(spec, files)
+    manifest.write_bytes(manifest_bytes)
+    return source, manifest, hashlib.sha256(manifest_bytes).hexdigest()
+
+
+@pytest.mark.parametrize(
+    "artifact_id",
+    (
+        "silero-vad-v6.2",
+        "openai-whisper-base",
+        "openai-whisper-small",
+        "speechbrain-ecapa-voxceleb",
+    ),
+)
+def test_closed_acquisition_requires_verified_source_manifest_without_network(
+    tmp_path: Path, artifact_id: str
+) -> None:
+    provisional, _runtime_files = spec_and_files(artifact_id)
+    source_files = {
+        name: b"synthetic source " + name.encode("ascii")
+        for name in provisional.source_files
+    }
+    source, source_manifest, source_manifest_sha256 = write_source(
+        tmp_path, provisional, source_files
+    )
+    output_files = {
+        name: (
+            source_files[name]
+            if provisional.acquisition == "collect"
+            else b"converted " + name.encode("ascii")
+        )
+        for name in provisional.required_files
+    }
+    spec = spec_for_runtime(provisional, output_files, source_manifest_sha256)
+    expected = {"calls": 0}
+
+    def converter(command: tuple[str, ...], *, check: bool) -> None:
+        expected["calls"] += 1
+        output = Path(command[command.index("--output_dir") + 1])
+        output.mkdir()
+        for name in provisional.required_files:
+            (output / name).write_bytes(output_files[name])
+
+    if provisional.acquisition == "collect":
+        result = collect_voice_artifact(
+            spec,
+            source_dir=source,
+            source_manifest=source_manifest,
+            source_manifest_sha256=source_manifest_sha256,
+            project_root=tmp_path,
+        )
+        assert expected["calls"] == 0
+    else:
+        result = convert_whisper_bundle(
+            spec,
+            source_dir=source,
+            source_manifest=source_manifest,
+            source_manifest_sha256=source_manifest_sha256,
+            project_root=tmp_path,
+            runner=converter,
+        )
+        assert expected["calls"] == 1
+    assert result == tmp_path / spec.bundle_relative_path
+    assert validate_voice_artifact(spec, tmp_path) == result
+
+
+def test_acquisition_rejects_bad_source_digest_license_layout_and_converter_failure(
+    tmp_path: Path,
+) -> None:
+    provisional, _runtime_files = spec_and_files("openai-whisper-base")
+    spec = provisional
+    source_files = {name: b"source " + name.encode("ascii") for name in spec.source_files}
+    source, source_manifest, source_manifest_sha256 = write_source(
+        tmp_path, spec, source_files
+    )
+    with pytest.raises(ValueError, match="VOICE_ARTIFACT_INVALID"):
+        convert_whisper_bundle(
+            spec,
+            source_dir=source,
+            source_manifest=source_manifest,
+            source_manifest_sha256="0" * 64,
+            project_root=tmp_path,
+            runner=lambda *_args, **_kwargs: pytest.fail("converter must not run"),
+        )
+
+    manifest = json.loads(source_manifest.read_text(encoding="ascii"))
+    manifest["spdx_license"] = "Apache-2.0"
+    source_manifest.write_text(
+        json.dumps(manifest, separators=(",", ":"), sort_keys=True) + "\n",
+        encoding="ascii",
+    )
+    with pytest.raises(ValueError, match="VOICE_ARTIFACT_INVALID"):
+        convert_whisper_bundle(
+            spec,
+            source_dir=source,
+            source_manifest=source_manifest,
+            source_manifest_sha256=hashlib.sha256(source_manifest.read_bytes()).hexdigest(),
+            project_root=tmp_path,
+            runner=lambda *_args, **_kwargs: pytest.fail("converter must not run"),
+        )
+
+    source_manifest.write_bytes(canonical_source_manifest(spec, source_files))
+    source_manifest_sha256 = hashlib.sha256(source_manifest.read_bytes()).hexdigest()
+    (source / "extra.bin").write_bytes(b"extra")
+    with pytest.raises(ValueError, match="VOICE_ARTIFACT_INVALID"):
+        convert_whisper_bundle(
+            spec,
+            source_dir=source,
+            source_manifest=source_manifest,
+            source_manifest_sha256=source_manifest_sha256,
+            project_root=tmp_path,
+            runner=lambda *_args, **_kwargs: pytest.fail("converter must not run"),
+        )
+    (source / "extra.bin").unlink()
+
+    with pytest.raises(RuntimeError, match="converter failed"):
+        convert_whisper_bundle(
+            spec,
+            source_dir=source,
+            source_manifest=source_manifest,
+            source_manifest_sha256=source_manifest_sha256,
+            project_root=tmp_path,
+            runner=lambda *_args, **_kwargs: (_ for _ in ()).throw(RuntimeError("converter failed")),
+        )
+    assert not (tmp_path / spec.bundle_relative_path).exists()
