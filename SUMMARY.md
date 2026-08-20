@@ -14,8 +14,15 @@ Updated: 2026-08-20
 - The feature branch has not been merged into `stable/xiaomi-alpha` or `main`. No PR
   was created for the squash publication.
 - The functional guardian event loop and installed-i9 10-minute performance gate are
-  complete. The go2rtc startup recovery defect found during the 2026-08-15 operator
-  session is fixed locally. WS2021 E1 private schema-v2 calibration passed on
+  complete. On 2026-08-20 the recurring go2rtc restart defect was traced to mixed
+  launchd/PID-file ownership: a launchd listener and a direct fallback could coexist,
+  while the PID file named the non-listening process. macOS now uses one user-level
+  launchd owner, has no direct fallback or port-selected kill path, and verifies the
+  exact launchd process plus listener before accepting the API. Two idempotent starts
+  kept one stable process, and the full software gate passed. The camera remains
+  reachable on the LAN but its current CS2/UDP session still times out; a camera-side
+  restart and fresh `alpha-source-check` remain the real-device recovery gate.
+  WS2021 E1 private schema-v2 calibration passed on
   2026-08-16. Its fixed 2560×1440 five-frame gauge burst is operational, and corrected
   non-16:9 rectification now passes both ROI geometry gates plus the temperature circle
   match. Humidity remains fail-closed as `calibration_invalid`. The approved i9-local

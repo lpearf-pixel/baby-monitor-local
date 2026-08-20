@@ -730,3 +730,17 @@ RTSP 输入使用已实测支持的 `-timeout`，worker 在停止或异常
 路径显式释放 decoder。前后 visual、gauge、environment-watchdog PID 不变，Dashboard
 health 保持 OK，realtime visual 保持 5 FPS/available。该证据不批准生产 cry/ASR 模型、
 说话人身份、家庭准确率或 Baby Care 写入；A8 仍等待模型/许可证与真人监督场景。
+2026-08-20，反复无画面与 `Bootstrap failed: 5` 被拆成两个独立故障。进程证据显示
+launchd 管理的 go2rtc 持有 1984/8554，而旧启动回退又创建第二个不能监听的 go2rtc，
+PID 文件因此指向错误进程。macOS 启停现改为唯一用户级 launchd 所有者：已加载但 API
+不健康时只 kickstart；bootstrap 失败直接闭合失败；不再直启回退、不按端口杀进程，且
+API 只有在 launchd PID 的精确命令和监听所有权同时匹配时才被接受。非 macOS 路径保留
+原精确 PID 身份契约。
+
+TDD 回归先稳定重现 3 个错误，修复后生命周期测试 6 项、原启停测试 30 项通过；完整
+Python 门为 925 项，前端 73 项、Shell/plist/Make/diff 检查
+均通过。安装到 i9 后，完整停止/启动与第二次幂等启动无 sudo、无 I/O error、无身份
+错误，PID 保持不变且精确进程数为 1。摄像头主机可达、防火墙允许当前二进制，停止
+visual/gauge/audio 消费者后单独探测仍为 `SOURCE_OFFLINE`，日志只显示 CS2 UDP 超时。
+因此软件所有权缺陷已关闭，但画面恢复仍要求摄像头本体重启后重新通过 source gate；
+不得以 Dashboard 健康或进程运行替代真实字节、编码和尺寸证据。

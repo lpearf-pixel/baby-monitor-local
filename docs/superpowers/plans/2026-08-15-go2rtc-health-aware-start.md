@@ -153,6 +153,20 @@
   git commit -m "fix: recover unhealthy go2rtc startup"
   ```
 
-  Report branch, local HEAD, upstream divergence, verification counts, no
-  push/merge/PR, preserved unrelated files, remaining real-device source gate,
-  and the next product slice.
+Report branch, local HEAD, upstream divergence, verification counts, no
+push/merge/PR, preserved unrelated files, remaining real-device source gate,
+and the next product slice.
+
+---
+
+### 2026-08-20 follow-up: macOS single launchd owner
+
+- [x] Reproduce bootstrap failure followed by a second direct go2rtc process.
+- [x] Add RED tests for no direct fallback, kickstart-only recovery and no
+  port/PID-selected stop.
+- [x] Add and install a project-owned user launchd definition.
+- [x] Preserve the exact process/listener identity check without weakening the
+  non-macOS PID path.
+- [x] Verify one stable process across restart and a second idempotent start.
+- [ ] After restarting the camera itself, require `make alpha-source-check` PASS and
+  record codec, dimensions and positive bytes without private source details.

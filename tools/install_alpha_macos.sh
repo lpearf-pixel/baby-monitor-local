@@ -36,6 +36,9 @@ if [[ ! -f "$ROOT/runtime/settings.yaml" ]]; then
 fi
 
 sed "s|__PROJECT_ROOT__|$ROOT|g" \
+  "$ROOT/deploy/launchd/com.babymonitor.go2rtc.plist.example" \
+  >"$ROOT/runtime/launchd/com.babymonitor.go2rtc.plist"
+sed "s|__PROJECT_ROOT__|$ROOT|g" \
   "$ROOT/deploy/launchd/com.babymonitor.gauge.plist.example" \
   >"$ROOT/runtime/launchd/com.babymonitor.gauge.plist"
 sed "s|__PROJECT_ROOT__|$ROOT|g" \
@@ -48,6 +51,8 @@ sed "s|__PROJECT_ROOT__|$ROOT|g" \
   "$ROOT/deploy/launchd/com.babymonitor.audio.plist.example" \
   >"$ROOT/runtime/launchd/com.babymonitor.audio.plist"
 mkdir -p "$HOME/Library/LaunchAgents"
+cp "$ROOT/runtime/launchd/com.babymonitor.go2rtc.plist" \
+  "$HOME/Library/LaunchAgents/com.babymonitor.go2rtc.plist"
 cp "$ROOT/runtime/launchd/com.babymonitor.gauge.plist" \
   "$HOME/Library/LaunchAgents/com.babymonitor.gauge.plist"
 cp "$ROOT/runtime/launchd/com.babymonitor.environment-watchdog.plist" \

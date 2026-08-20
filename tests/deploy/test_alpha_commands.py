@@ -114,7 +114,6 @@ def _go2rtc_start_fixture(
     )
     for label in labels:
         (agents / f"{label}.plist").write_text("synthetic plist\n", encoding="ascii")
-
     fake_bin = tmp_path / "bin"
     fake_bin.mkdir()
     state_dir = tmp_path / "launchctl-state"
@@ -132,7 +131,7 @@ def _go2rtc_start_fixture(
     )
     _write_executable(fake_bin / "route", "#!/bin/sh\nexit 0\n")
     _write_executable(fake_bin / "sleep", "#!/bin/sh\n/bin/sleep 0.01\n")
-    _write_executable(fake_bin / "uname", "#!/bin/sh\necho Darwin\n")
+    _write_executable(fake_bin / "uname", "#!/bin/sh\necho Linux\n")
     _write_executable(
         fake_bin / "ps",
         """#!/bin/sh
@@ -327,11 +326,15 @@ def test_alpha_start_does_not_kickstart_freshly_bootstrapped_agents(
     )
     for label in labels:
         (agents / f"{label}.plist").write_text("synthetic plist\n", encoding="ascii")
+    (agents / "com.babymonitor.go2rtc.plist").write_text(
+        "synthetic plist\n", encoding="ascii"
+    )
 
     fake_bin = tmp_path / "bin"
     fake_bin.mkdir()
     state_dir = tmp_path / "launchctl-state"
     state_dir.mkdir()
+    (state_dir / "com.babymonitor.go2rtc").touch()
     _write_executable(fake_bin / "uname", "#!/bin/sh\necho Darwin\n")
     _write_executable(fake_bin / "id", "#!/bin/sh\necho 501\n")
     _write_executable(fake_bin / "curl", "#!/bin/sh\nexit 0\n")
@@ -355,7 +358,10 @@ state=$FAKE_LAUNCHCTL_STATE_DIR/$label
 case $command in
   print)
     printf 'print %s\n' "$label" >> "$FAKE_LAUNCHCTL_STATE_DIR/calls"
-    test -f "$state"
+    test -f "$state" || exit 1
+    if test "$label" = com.babymonitor.go2rtc; then
+      echo "pid = $FAKE_GO2RTC_PID"
+    fi
     ;;
   bootstrap)
     plist=$3
@@ -385,6 +391,7 @@ esac
             "GO2RTC_EXPECTED_COMMAND": (
                 f"{project}/.local/bin/go2rtc -config {project}/runtime/go2rtc.yaml"
             ),
+            "FAKE_GO2RTC_PID": str(go2rtc.pid),
         }
     )
     result = subprocess.run(

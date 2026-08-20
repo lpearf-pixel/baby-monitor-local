@@ -9,6 +9,8 @@ GAUGE_PID="$ROOT/runtime/pids/gauge.pid"
 WATCHDOG_PID="$ROOT/runtime/pids/environment-watchdog.pid"
 VISUAL_PID="$ROOT/runtime/pids/visual.pid"
 AUDIO_PID="$ROOT/runtime/pids/audio.pid"
+GO2RTC_LABEL="com.babymonitor.go2rtc"
+GO2RTC_PLIST="$HOME/Library/LaunchAgents/${GO2RTC_LABEL}.plist"
 GAUGE_LABEL="com.babymonitor.gauge"
 GAUGE_PLIST="$HOME/Library/LaunchAgents/${GAUGE_LABEL}.plist"
 WATCHDOG_LABEL="com.babymonitor.environment-watchdog"
@@ -86,7 +88,7 @@ go2rtc_pid_is_verified() {
     go2rtc_pid_owns_api_listener "$pid"
 }
 
-ensure_go2rtc_started() {
+ensure_direct_go2rtc_started() {
   if go2rtc_api_ready; then
     if go2rtc_pid_is_verified; then
       return 0
@@ -118,6 +120,49 @@ ensure_go2rtc_started() {
     >"$ROOT/runtime/logs/go2rtc.log" 2>&1
 }
 
+ensure_launchd_go2rtc_started() {
+  local domain="gui/$(id -u)"
+  local pid=""
+
+  if launchctl print "${domain}/${GO2RTC_LABEL}" >/dev/null 2>&1; then
+    pid="$(launchctl print "${domain}/${GO2RTC_LABEL}" 2>/dev/null | \
+      awk '/^[[:space:]]*pid = [0-9]+/{print $3; exit}')"
+    if [[ -n "$pid" ]] && ! go2rtc_pid_matches "$pid"; then
+      echo "go2rtc launchd identity mismatch" >&2
+      return 1
+    fi
+    if go2rtc_api_ready; then
+      if [[ -n "$pid" ]] && go2rtc_pid_owns_api_listener "$pid"; then
+        return 0
+      fi
+      echo "go2rtc launchd identity mismatch" >&2
+      return 1
+    fi
+    if ! launchctl kickstart -k "${domain}/${GO2RTC_LABEL}" >/dev/null 2>&1; then
+      echo "go2rtc launchd start failed" >&2
+      return 1
+    fi
+    return 0
+  fi
+
+  if [[ ! -f "$GO2RTC_PLIST" ]]; then
+    echo "go2rtc launchd service missing. Run make alpha-install." >&2
+    return 1
+  fi
+  if ! launchctl bootstrap "$domain" "$GO2RTC_PLIST" >/dev/null 2>&1; then
+    echo "go2rtc launchd start failed" >&2
+    return 1
+  fi
+}
+
+ensure_go2rtc_started() {
+  if [[ "$(uname -s)" == "Darwin" ]] && command -v launchctl >/dev/null 2>&1; then
+    ensure_launchd_go2rtc_started
+  else
+    ensure_direct_go2rtc_started
+  fi
+}
+
 find_lan_ipv4() {
   local interface
   interface="$(route -n get default 2>/dev/null | awk '/interface:/{print $2; exit}')"
@@ -138,6 +183,18 @@ done
 if ! go2rtc_api_ready; then
   echo "go2rtc did not become ready. Check runtime/logs/go2rtc.log" >&2
   exit 1
+fi
+
+if [[ "$(uname -s)" == "Darwin" ]] && command -v launchctl >/dev/null 2>&1; then
+  GO2RTC_DOMAIN="gui/$(id -u)"
+  GO2RTC_LAUNCHD_PID="$(launchctl print "${GO2RTC_DOMAIN}/${GO2RTC_LABEL}" 2>/dev/null | \
+    awk '/^[[:space:]]*pid = [0-9]+/{print $3; exit}')"
+  if [[ -z "$GO2RTC_LAUNCHD_PID" ]] || \
+    ! go2rtc_pid_matches "$GO2RTC_LAUNCHD_PID" || \
+    ! go2rtc_pid_owns_api_listener "$GO2RTC_LAUNCHD_PID"; then
+    echo "go2rtc launchd identity mismatch" >&2
+    exit 1
+  fi
 fi
 
 if [[ "$(uname -s)" == "Darwin" ]] && command -v launchctl >/dev/null 2>&1; then

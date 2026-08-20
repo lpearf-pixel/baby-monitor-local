@@ -7,6 +7,14 @@
 - Environment monitoring design and implementation plan: approved on 2026-08-05.
 - Stable Xiaomi Alpha commit: `0df20ae` on `stable/xiaomi-alpha`.
 - Active local development branch: `codex/voice-care-v1-design`.
+- 2026-08-20 go2rtc lifecycle correction: the installed macOS path now has one
+  user-level launchd owner. `alpha-start` bootstraps a missing job, kickstarts only a
+  loaded unhealthy job, never falls back to a second direct process, and verifies the
+  exact launchd PID owns the loopback API listener. `alpha-stop` unloads that job and
+  never selects a process by port or legacy PID file. Two consecutive installed starts
+  retained one PID and one process. The camera is ping-reachable, but the current
+  Xiaomi producer remains `SOURCE_OFFLINE` with a UDP timeout even without sibling
+  consumers; camera-side restart plus a fresh source check is still pending.
 - WS2021 current localization path: fixed lower-right schema-v2 ROI with bounded
   consecutive-frame stabilization; the trained OpenVINO detector remains fallback
   only when fixed-ROI mode is not selected. Same-aspect resolution scaling is accepted;

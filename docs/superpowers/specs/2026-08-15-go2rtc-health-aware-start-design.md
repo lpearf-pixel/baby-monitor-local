@@ -95,3 +95,18 @@ availability or Guardian accuracy.
 Deliver the design and implementation as separate focused local commits on the
 current feature branch. Do not push, merge, create a PR, modify protected
 branches, or stage the unrelated `.local/`, `Interactive`, or `test.sh` files.
+
+## 2026-08-20 macOS ownership amendment
+
+Fresh installed evidence supersedes the PID-file ownership mechanism only on macOS.
+A manually added launchd job and the direct fallback could run together: launchd owned
+the listeners while the PID file named the non-listening fallback. This reproduced the
+same failure the original design intended to prevent.
+
+On macOS, `com.babymonitor.go2rtc` is now the sole user-level launchd owner. Startup
+bootstraps a missing job, kickstarts a loaded unhealthy job and has no direct fallback.
+Acceptance requires the exact project command and listener ownership for the launchd
+PID. Stop unloads the label and does not inspect or kill port-selected processes or a
+legacy PID file. Non-macOS direct startup retains the original exact PID identity
+contract. This amendment changes process ownership only; source URI, transport,
+quality, ports and sibling-worker independence remain unchanged.

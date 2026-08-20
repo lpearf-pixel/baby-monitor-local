@@ -617,25 +617,26 @@ make alpha-status
 make alpha-restart
 ```
 
-若恢复命令返回 `go2rtc pid identity mismatch`，说明 1984 监听进程与
-`runtime/pids/go2rtc.pid` 的所有权记录不一致。启动脚本会 fail closed，避免停止
-无关进程。不要直接删除 PID 文件，也不要凭 PID 猜测后强杀。先在 i9 本机核对：
+macOS 安装现在只允许用户级 `com.babymonitor.go2rtc` launchd 作业拥有 go2rtc。
+不要手工后台运行第二个 go2rtc，不要按端口找 PID 后强杀，也不要依赖旧
+`runtime/pids/go2rtc.pid`。先在 i9 本机核对：
 
 ```bash
+launchctl print "gui/$(id -u)/com.babymonitor.go2rtc"
 lsof -nP -iTCP:1984 -sTCP:LISTEN
-ps -ww -p <PID> -o command=
 ```
 
-只有命令精确属于当前仓库的 `.local/bin/go2rtc`，且参数是当前仓库的
-`runtime/go2rtc.yaml` 时，才停止该已确认的孤立进程并重新启动：
+正常恢复只使用：
 
 ```bash
-kill <PID>
-make alpha-start
+make alpha-restart
 ```
 
 不要把 `alpha-start` 输出的局域网地址或任何完整命令路径粘贴到聊天、Issue 或 PR。
-恢复后必须重新验证：
+该命令不需要 sudo。若重启后摄像头主机可达，但 `alpha-source-check` 仍报告
+`SOURCE_OFFLINE` 且日志为 CS2 UDP timeout，先通过米家 App 重启摄像头；若没有重启
+入口，断电 10 秒后再通电。不要修改 URI、subtype、transport 或 FFmpeg 参数。
+摄像头上线后必须重新验证：
 
 ```bash
 make alpha-source-check
@@ -646,9 +647,11 @@ make alpha-visual-status
 1280×720 live，以及 visual 指标恢复为 `available`、5 FPS。该结果证明本地摄像头
 源和分析画面恢复，不证明 M2/Ollama 可用；Ollama bridge 可独立保持不可用。
 
-根因不是 Dashboard 页面代码，也不是 WS2021 模型。它是一个已确认属于本项目、
-但失去 PID 所有权记录的 go2rtc 监听进程；安全启动脚本因此拒绝接管。恢复过程中
-不得降低源检查、隐私或 fail-closed 门限。
+根因不是 Dashboard 页面代码，也不是 WS2021 模型。2026-08-20 已确认的软件根因是
+launchd 监听者与直接回退进程并存，PID 文件却记录了不能监听的回退进程；单一 launchd
+所有权已消除这条路径。若单实例和网络可达均通过但 CS2 UDP 仍超时，剩余故障在摄像头
+会话侧，按上面的摄像头重启边界处理。恢复过程中不得降低源检查、隐私或 fail-closed
+门限。
 
 Intel macOS 上遇到以下现象时：
 
