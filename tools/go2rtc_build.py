@@ -13,9 +13,11 @@ from pathlib import Path
 
 from packages.monitoring.go2rtc_build import (
     GO2RTC_COMMIT,
+    GO2RTC_DESIGNATED_REQUIREMENT,
     BuildMetadata,
     Go2RTCBuildError,
     install_candidate,
+    install_macos_app_bundle,
     metadata_matches,
     read_metadata,
     rollback_latest,
@@ -112,6 +114,38 @@ def _installed_build_is_current(
     )
 
 
+def _install_app_bundle(root: Path, binary: Path) -> Path:
+    app_bundle = root.resolve() / ".local/Go2RTC.app"
+    executable = install_macos_app_bundle(
+        binary,
+        app_bundle,
+        signer=lambda path: _run(
+            [
+                "codesign",
+                "--force",
+                "--deep",
+                "--sign",
+                "-",
+                "--requirements",
+                GO2RTC_DESIGNATED_REQUIREMENT,
+                str(path),
+            ]
+        ),
+    )
+    _run(
+        [
+            "codesign",
+            "--verify",
+            "--deep",
+            "--strict",
+            "--requirements",
+            GO2RTC_DESIGNATED_REQUIREMENT,
+            str(app_bundle),
+        ]
+    )
+    return executable
+
+
 def _build(root: Path, *, force: bool) -> None:
     _platform_guard()
     binary, metadata_path, backups, patch = _paths(root)
@@ -121,6 +155,7 @@ def _build(root: Path, *, force: bool) -> None:
     if not force and _installed_build_is_current(
         binary, metadata_path, patch_sha256=patch_sha256
     ):
+        _install_app_bundle(root, binary)
         print("go2rtc_build=UNCHANGED")
         return
 
@@ -164,6 +199,7 @@ def _build(root: Path, *, force: bool) -> None:
             metadata,
             datetime.now(timezone.utc),
         )
+    _install_app_bundle(root, binary)
     print("go2rtc_build=UPDATED")
 
 
@@ -186,6 +222,7 @@ def _rollback(root: Path) -> None:
     _platform_guard()
     binary, metadata_path, backups, _patch = _paths(root)
     rollback_latest(binary, backups, metadata_path, datetime.now(timezone.utc))
+    _install_app_bundle(root, binary)
     print("go2rtc_build=ROLLED_BACK")
 
 

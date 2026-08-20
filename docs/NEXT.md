@@ -4,12 +4,13 @@ The repository baseline, environment software and functional Guardian loop are
 complete. Do not restart completed milestones. Execute the following stages in order;
 the detailed approved specs and plans remain authoritative for behavior.
 
-**Operational recovery gate (2026-08-20):** before any further real-scene stage, restart
-the camera itself and require `make alpha-source-check` to return PASS. The i9 software
-lifecycle defect is fixed and verified with one stable launchd-owned go2rtc process;
-the remaining failure is a camera-side CS2/UDP timeout. Do not change source parameters,
-restart unrelated workers or accept Dashboard health as proof of video recovery. Use
-`make alpha-go2rtc-restart` for the bounded software recovery attempt.
+**Operational recovery gate (2026-08-20): PASS.** The i9 now has one launchd-owned
+go2rtc app with a stable macOS Local Network designated requirement. A fresh source
+check and a later unchanged app refresh plus single-component restart both returned
+`cs2+udp`, H.265, native/live dimensions and positive bytes. Visual returned to 5 FPS;
+gauge and Dashboard remained healthy. Keep `make alpha-go2rtc-restart` as the bounded
+recovery path; do not reintroduce direct fallback, change source parameters or accept
+Dashboard health alone as proof of video.
 
 ## P0 — Environment real-device acceptance (current)
 

@@ -3,6 +3,9 @@ set -u
 
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 PYTHON="$ROOT/.venv-alpha/bin/python"
+GO2RTC_APP="$ROOT/.local/Go2RTC.app"
+GO2RTC_EXECUTABLE="$GO2RTC_APP/Contents/MacOS/go2rtc"
+GO2RTC_REQUIREMENT='designated => identifier "com.babymonitor.go2rtc"'
 PASS_COUNT=0
 FAIL_COUNT=0
 
@@ -107,11 +110,22 @@ check_python_regression() {
 check_required_binaries() {
   command -v bash >/dev/null 2>&1 && \
     command -v curl >/dev/null 2>&1 && \
+    command -v codesign >/dev/null 2>&1 && \
     command -v git >/dev/null 2>&1 && \
     command -v make >/dev/null 2>&1 && \
     [[ -x "$PYTHON" ]] && \
     [[ -x "$ROOT/.venv-alpha/bin/uvicorn" ]] && \
-    [[ -x "$ROOT/.local/bin/go2rtc" ]]
+    [[ -x "$ROOT/.local/bin/go2rtc" ]] && \
+    [[ -x "$GO2RTC_EXECUTABLE" ]] || return 1
+
+  codesign --verify --deep --strict \
+    --requirements "=$GO2RTC_REQUIREMENT" "$GO2RTC_APP" || return 1
+  local requirement
+  requirement="$(codesign -d -r- "$GO2RTC_APP" 2>&1)" || return 1
+  if [[ "$requirement" == *cdhash* ]]; then
+    return 1
+  fi
+  [[ "$requirement" == *"$GO2RTC_REQUIREMENT"* ]]
 }
 
 check_runtime_config() {
@@ -128,9 +142,14 @@ check_launchd_definitions() {
     return 1
   fi
   local agents="$HOME/Library/LaunchAgents"
-  [[ -r "$agents/com.babymonitor.visual.plist" ]] && \
+  local go2rtc_plist="$agents/com.babymonitor.go2rtc.plist"
+  [[ -r "$go2rtc_plist" ]] && \
+    [[ -r "$agents/com.babymonitor.visual.plist" ]] && \
     [[ -r "$agents/com.babymonitor.environment-watchdog.plist" ]] && \
-    [[ -r "$agents/com.babymonitor.gauge.plist" ]]
+    [[ -r "$agents/com.babymonitor.gauge.plist" ]] && \
+    "$PYTHON" -c \
+      'import plistlib,sys; payload=plistlib.load(open(sys.argv[1], "rb")); expected=[sys.argv[2], "-config", sys.argv[3]]; raise SystemExit(0 if payload["Label"] == "com.babymonitor.go2rtc" and payload["ProgramArguments"] == expected else 1)' \
+      "$go2rtc_plist" "$GO2RTC_EXECUTABLE" "$ROOT/runtime/go2rtc.yaml"
 }
 
 check_realtime_models() {

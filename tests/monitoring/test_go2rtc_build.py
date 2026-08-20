@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import hashlib
 import json
+import plistlib
 import subprocess
 import sys
 from datetime import datetime, timezone
@@ -17,6 +18,8 @@ from packages.monitoring.go2rtc_build import (
     rollback_latest,
     verify_and_apply_patch,
 )
+from packages.monitoring import go2rtc_build as go2rtc_build_module
+from tools import go2rtc_build as go2rtc_build_cli
 
 
 ROOT = Path(__file__).resolve().parents[2]
@@ -38,7 +41,21 @@ def _source_repo(tmp_path: Path) -> tuple[Path, str]:
     (source / "pkg/xiaomi/miss/cs2").mkdir(parents=True)
     (source / "pkg/iso").mkdir(parents=True)
     (source / "pkg/xiaomi/miss/cs2/conn.go").write_text(
-        'conn, err := net.ListenUDP("udp", nil)\n',
+        """func newUDPConn(host string, port int) (net.Conn, error) {
+\t// We using raw net.UDPConn, because RemoteAddr should be changed during handshake.
+\tconn, err := net.ListenUDP("udp", nil)
+\tif err != nil {
+\t\treturn nil, err
+\t}
+
+\taddr, err := net.ResolveUDPAddr("udp", fmt.Sprintf("%s:%d", host, port))
+\tif err != nil {
+\t\treturn nil, err
+\t}
+
+\treturn &udpConn{UDPConn: conn, addr: addr}, nil
+}
+""",
         encoding="utf-8",
     )
     (source / "pkg/iso/codecs.go").write_text(
@@ -57,9 +74,14 @@ def _compat_patch(path: Path, *, extra_file: bool = False) -> Path:
     content = """diff --git a/pkg/xiaomi/miss/cs2/conn.go b/pkg/xiaomi/miss/cs2/conn.go
 --- a/pkg/xiaomi/miss/cs2/conn.go
 +++ b/pkg/xiaomi/miss/cs2/conn.go
-@@ -1 +1 @@
--conn, err := net.ListenUDP(\"udp\", nil)
-+conn, err := net.ListenUDP(\"udp4\", nil)
+@@ -1,6 +1,6 @@
+ func newUDPConn(host string, port int) (net.Conn, error) {
+ \t// We using raw net.UDPConn, because RemoteAddr should be changed during handshake.
+-\tconn, err := net.ListenUDP(\"udp\", nil)
++\tconn, err := net.ListenUDP(\"udp4\", nil)
+ \tif err != nil {
+ \t\treturn nil, err
+ \t}
 diff --git a/pkg/iso/codecs.go b/pkg/iso/codecs.go
 --- a/pkg/iso/codecs.go
 +++ b/pkg/iso/codecs.go
@@ -88,9 +110,10 @@ def test_verify_and_apply_patch_changes_only_udp_socket_and_hevc_sample_entry(
     result = verify_and_apply_patch(source, patch, expected_commit=head)
 
     assert result == head
-    assert 'ListenUDP("udp4", nil)' in (
-        source / "pkg/xiaomi/miss/cs2/conn.go"
-    ).read_text(encoding="utf-8")
+    cs2 = (source / "pkg/xiaomi/miss/cs2/conn.go").read_text(encoding="utf-8")
+    assert 'ListenUDP("udp4", nil)' in cs2
+    assert 'ListenUDP("udp", nil)' not in cs2
+    assert 'ResolveUDPAddr("udp",' in cs2
     assert 'StartAtom("hvc1")' in (source / "pkg/iso/codecs.go").read_text(
         encoding="utf-8"
     )
@@ -149,6 +172,95 @@ def _metadata(candidate: Path, **overrides: str) -> BuildMetadata:
     }
     values.update(overrides)
     return BuildMetadata(**values)
+
+
+def test_install_macos_app_bundle_gives_launchd_a_stable_network_identity(
+    tmp_path: Path,
+) -> None:
+    binary = _executable(tmp_path / "bin/go2rtc", b"go2rtc-binary")
+    app_bundle = tmp_path / "Go2RTC.app"
+    signed: list[Path] = []
+
+    executable = go2rtc_build_module.install_macos_app_bundle(
+        binary,
+        app_bundle,
+        signer=signed.append,
+    )
+
+    assert executable == app_bundle / "Contents/MacOS/go2rtc"
+    assert executable.read_bytes() == b"go2rtc-binary"
+    assert executable.stat().st_mode & 0o777 == 0o755
+    with (app_bundle / "Contents/Info.plist").open("rb") as handle:
+        info = plistlib.load(handle)
+    assert info == {
+        "CFBundleDevelopmentRegion": "en",
+        "CFBundleExecutable": "go2rtc",
+        "CFBundleIdentifier": "com.babymonitor.go2rtc",
+        "CFBundleInfoDictionaryVersion": "6.0",
+        "CFBundleName": "Baby Monitor go2rtc",
+        "CFBundlePackageType": "APPL",
+        "CFBundleShortVersionString": "1.0",
+        "CFBundleVersion": "1",
+        "LSUIElement": True,
+        "NSLocalNetworkUsageDescription": (
+            "Baby Monitor Local connects to the configured camera on your private network."
+        ),
+    }
+    assert signed == [app_bundle]
+
+
+def test_unchanged_build_still_refreshes_signed_macos_app_bundle(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    binary = _executable(tmp_path / ".local/bin/go2rtc", b"current-binary")
+    patch = tmp_path / "patches/go2rtc-macos-hybrid-hd.patch"
+    patch.parent.mkdir(parents=True)
+    patch.write_bytes(b"pinned-patch")
+    metadata = BuildMetadata(
+        upstream_commit=go2rtc_build_module.GO2RTC_COMMIT,
+        go_version="go1.24.5",
+        patch_sha256=hashlib.sha256(patch.read_bytes()).hexdigest(),
+        binary_sha256=hashlib.sha256(binary.read_bytes()).hexdigest(),
+        build_time="2026-08-20T18:00:00+00:00",
+        platform="darwin/amd64",
+    )
+    metadata_path = tmp_path / "runtime/build/go2rtc.json"
+    metadata_path.parent.mkdir(parents=True)
+    metadata_path.write_text(json.dumps(metadata.as_dict()), encoding="utf-8")
+    commands: list[list[str]] = []
+    monkeypatch.setattr(go2rtc_build_cli.platform, "system", lambda: "Darwin")
+    monkeypatch.setattr(go2rtc_build_cli.platform, "machine", lambda: "x86_64")
+    monkeypatch.setattr(
+        go2rtc_build_cli,
+        "_run",
+        lambda args, **_kwargs: commands.append(args) or "",
+    )
+
+    go2rtc_build_cli._build(tmp_path, force=False)
+
+    app_bundle = tmp_path / ".local/Go2RTC.app"
+    assert (app_bundle / "Contents/MacOS/go2rtc").read_bytes() == b"current-binary"
+    assert commands == [
+        [
+            "codesign",
+            "--force",
+            "--deep",
+            "--sign",
+            "-",
+            "--requirements",
+            '=designated => identifier "com.babymonitor.go2rtc"',
+            str(app_bundle),
+        ],
+        [
+            "codesign",
+            "--verify",
+            "--deep",
+            "--strict",
+            "--requirements",
+            '=designated => identifier "com.babymonitor.go2rtc"',
+            str(app_bundle),
+        ],
+    ]
 
 
 def test_install_candidate_backs_up_old_binary_and_writes_verified_metadata(

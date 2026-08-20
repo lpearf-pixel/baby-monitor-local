@@ -110,3 +110,25 @@ PID. Stop unloads the label and does not inspect or kill port-selected processes
 legacy PID file. Non-macOS direct startup retains the original exact PID identity
 contract. This amendment changes process ownership only; source URI, transport,
 quality, ports and sibling-worker independence remain unchanged.
+
+## 2026-08-20 macOS Local Network identity amendment
+
+Installed comparison probes showed that an already permitted binary could receive the
+CS2 LAN-search response while newly built probes timed out at the first UDP stage. The
+camera address, firewall allow state and request bytes were the same. The project app
+used default ad-hoc signing, whose designated requirement was its changing code hash;
+therefore a rebuild did not provide a durable Local Network identity.
+
+On macOS, packaging now installs the pinned binary at
+`.local/Go2RTC.app/Contents/MacOS/go2rtc`, uses the fixed bundle identifier
+`com.babymonitor.go2rtc`, declares the Local Network purpose string and signs with the
+explicit requirement `designated => identifier "com.babymonitor.go2rtc"`. Verification
+must test that same requirement. launchd and exact process-identity checks use the app
+executable. A newly installed identity may require one LaunchServices start and one
+interactive macOS Local Network approval; subsequent rebuilds and install refreshes
+must preserve the designated requirement.
+
+This amendment does not change the Xiaomi URI, token, CS2 handshake, fixed `udp4`
+compatibility patch, source quality, ports or worker ownership. Acceptance requires a
+real `alpha-source-check` with positive bytes and fixed codec/dimensions after an app
+refresh and launchd-only restart. Software tests and process liveness are insufficient.

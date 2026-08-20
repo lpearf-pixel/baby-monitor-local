@@ -157,24 +157,29 @@ Go 二进制 / macOS 应用防火墙 / UDP Socket 行为
 处理原则：
 
 - 不使用 `go run` 的临时随机二进制做防火墙验证；
-- 编译到固定路径；
-- 对固定二进制做本机临时签名；
-- 加入 macOS 应用防火墙允许列表；
+- 只使用安装器生成的固定 `Go2RTC.app`；
+- 由安装器写入并验证固定 bundle identifier designated requirement；
+- 将 app bundle（不是裸二进制）加入 macOS 应用防火墙允许列表；
 - go2rtc 的 CS2 Socket 强制使用 `udp4`。
 
 典型命令：
 
 ```bash
-codesign --force --sign - .local/bin/go2rtc
+env -u GOROOT PATH="/usr/local/opt/go@1.24/bin:$PATH" \
+  .venv-alpha/bin/python tools/go2rtc_build.py ensure
+
+codesign --verify --deep --strict .local/Go2RTC.app
+codesign -d -r- .local/Go2RTC.app
 
 sudo /usr/libexec/ApplicationFirewall/socketfilterfw \
-  --add "$PWD/.local/bin/go2rtc" || true
+  --add "$PWD/.local/Go2RTC.app" || true
 
 sudo /usr/libexec/ApplicationFirewall/socketfilterfw \
-  --unblockapp "$PWD/.local/bin/go2rtc"
+  --unblockapp "$PWD/.local/Go2RTC.app"
 ```
 
-不要为了排查而永久关闭整个系统防火墙。
+预期 requirement 是固定 identifier，不是 `cdhash`。不要手工重新签名裸
+`.local/bin/go2rtc`，也不要为了排查而永久关闭整个系统防火墙。
 
 ## 6. CS2 两阶段握手定位
 
@@ -251,6 +256,22 @@ net.ListenUDP("udp", nil)
 ```go
 net.ListenUDP("udp4", nil)
 ```
+
+### 固定 Local Network 代码身份
+
+macOS 的 Local Network 许可不能只依赖 app 目录名。默认 ad-hoc 签名的 designated
+requirement 是 `cdhash`；二进制重建后哈希变化，系统可能把它视为新的网络身份并静默
+丢弃 CS2 UDP。项目安装器因此使用固定 `Go2RTC.app`、固定 bundle identifier，并在
+签名与验证时都要求：
+
+```text
+designated => identifier "com.babymonitor.go2rtc"
+```
+
+首次登记可通过 LaunchServices 启动 app，并在 macOS 提示时允许“本地网络”。此后
+`ensure`、重建和 launchd 单组件重启必须保持相同 requirement。不要把裸二进制、临时
+探针或每次变化的 `cdhash` 当成生产身份，也不要用放宽防火墙、修改摄像头 URI 或改为
+公网暴露来绕过权限。
 
 ## 8. Go 工具链附带问题
 

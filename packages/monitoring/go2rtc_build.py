@@ -3,18 +3,23 @@ from __future__ import annotations
 import hashlib
 import json
 import os
+import plistlib
 import shutil
 import subprocess
 from dataclasses import asdict, dataclass
 from datetime import datetime
 from pathlib import Path
-from typing import Any
+from typing import Any, Callable
 
 
 GO2RTC_COMMIT = "b465651a94c1f637d566a8c660b4fad102b35153"
-ALLOWED_PATCH_FILES = {
-    "pkg/iso/codecs.go",
-    "pkg/xiaomi/miss/cs2/conn.go",
+GO2RTC_BUNDLE_IDENTIFIER = "com.babymonitor.go2rtc"
+GO2RTC_DESIGNATED_REQUIREMENT = (
+    f'=designated => identifier "{GO2RTC_BUNDLE_IDENTIFIER}"'
+)
+ALLOWED_PATCH_CHANGES = {
+    "pkg/iso/codecs.go": (1, 1),
+    "pkg/xiaomi/miss/cs2/conn.go": (1, 1),
 }
 
 
@@ -36,6 +41,42 @@ class BuildMetadata:
 
 
 METADATA_FIELDS = frozenset(BuildMetadata.__dataclass_fields__)
+
+
+def install_macos_app_bundle(
+    binary: Path,
+    app_bundle: Path,
+    *,
+    signer: Callable[[Path], object],
+) -> Path:
+    binary = binary.resolve()
+    app_bundle = app_bundle.resolve()
+    if not binary.is_file() or not os.access(binary, os.X_OK):
+        raise Go2RTCBuildError("GO2RTC_BUILD_NOT_FOUND")
+
+    contents = app_bundle / "Contents"
+    executable = contents / "MacOS/go2rtc"
+    executable.parent.mkdir(parents=True, exist_ok=True)
+    shutil.copy2(binary, executable)
+    executable.chmod(0o755)
+    info = {
+        "CFBundleDevelopmentRegion": "en",
+        "CFBundleExecutable": "go2rtc",
+        "CFBundleIdentifier": GO2RTC_BUNDLE_IDENTIFIER,
+        "CFBundleInfoDictionaryVersion": "6.0",
+        "CFBundleName": "Baby Monitor go2rtc",
+        "CFBundlePackageType": "APPL",
+        "CFBundleShortVersionString": "1.0",
+        "CFBundleVersion": "1",
+        "LSUIElement": True,
+        "NSLocalNetworkUsageDescription": (
+            "Baby Monitor Local connects to the configured camera on your private network."
+        ),
+    }
+    with (contents / "Info.plist").open("wb") as handle:
+        plistlib.dump(info, handle, fmt=plistlib.FMT_XML, sort_keys=True)
+    signer(app_bundle)
+    return executable
 
 
 def sha256_file(path: Path) -> str:
@@ -233,9 +274,7 @@ def verify_and_apply_patch(
         raise Go2RTCBuildError("UPSTREAM_NOT_CLEAN")
 
     numstat = _patch_numstat(source_dir, patch_path)
-    if set(numstat) != ALLOWED_PATCH_FILES or any(
-        changes != (1, 1) for changes in numstat.values()
-    ):
+    if numstat != ALLOWED_PATCH_CHANGES:
         raise Go2RTCBuildError("PATCH_SCOPE_INVALID")
 
     cs2_path = source_dir / "pkg/xiaomi/miss/cs2/conn.go"

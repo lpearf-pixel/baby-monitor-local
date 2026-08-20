@@ -13,6 +13,7 @@ ROOT = Path(__file__).resolve().parents[2]
 
 
 def _write_executable(path: Path, content: str) -> None:
+    path.parent.mkdir(parents=True, exist_ok=True)
     path.write_text(content, encoding="ascii")
     path.chmod(0o755)
 
@@ -25,7 +26,7 @@ def test_go2rtc_launchd_template_has_single_project_owned_command() -> None:
 
     assert plist["Label"] == "com.babymonitor.go2rtc"
     assert plist["ProgramArguments"] == [
-        "__PROJECT_ROOT__/.local/bin/go2rtc",
+        "__PROJECT_ROOT__/.local/Go2RTC.app/Contents/MacOS/go2rtc",
         "-config",
         "__PROJECT_ROOT__/runtime/go2rtc.yaml",
     ]
@@ -72,6 +73,10 @@ def _launchd_project(
     _write_executable(
         project / ".local/bin/go2rtc",
         "#!/bin/sh\n: > \"$DIRECT_GO2RTC_MARKER\"\n",
+    )
+    _write_executable(
+        project / ".local/Go2RTC.app/Contents/MacOS/go2rtc",
+        "#!/bin/sh\nexit 0\n",
     )
     (project / ".venv-alpha/bin").mkdir(parents=True)
     _write_executable(project / ".venv-alpha/bin/uvicorn", "#!/bin/sh\nexit 0\n")
@@ -191,7 +196,7 @@ esac
             "FAKE_BOOTSTRAP_FAILS": "1" if bootstrap_fails else "0",
             "FAKE_PS_IDENTITY": "expected",
             "GO2RTC_EXPECTED_COMMAND": (
-                f"{project}/.local/bin/go2rtc -config "
+                f"{project}/.local/Go2RTC.app/Contents/MacOS/go2rtc -config "
                 f"{project}/runtime/go2rtc.yaml"
             ),
             "DIRECT_GO2RTC_MARKER": str(direct_marker),

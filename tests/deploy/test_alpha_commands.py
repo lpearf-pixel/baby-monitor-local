@@ -296,8 +296,13 @@ def test_alpha_start_does_not_kickstart_freshly_bootstrapped_agents(
         encoding="ascii",
     )
     (project / ".local/bin").mkdir(parents=True)
+    (project / ".local/Go2RTC.app/Contents/MacOS").mkdir(parents=True)
     (project / ".venv-alpha/bin").mkdir(parents=True)
     _write_executable(project / ".local/bin/go2rtc", "#!/bin/sh\nexit 0\n")
+    _write_executable(
+        project / ".local/Go2RTC.app/Contents/MacOS/go2rtc",
+        "#!/bin/sh\nexit 0\n",
+    )
     _write_executable(project / ".venv-alpha/bin/uvicorn", "#!/bin/sh\nexit 0\n")
     go2rtc = subprocess.Popen([shutil.which("sleep") or "/bin/sleep", "60"])
 
@@ -389,7 +394,8 @@ esac
             "PATH": f"{fake_bin}:{env['PATH']}",
             "FAKE_LAUNCHCTL_STATE_DIR": str(state_dir),
             "GO2RTC_EXPECTED_COMMAND": (
-                f"{project}/.local/bin/go2rtc -config {project}/runtime/go2rtc.yaml"
+                f"{project}/.local/Go2RTC.app/Contents/MacOS/go2rtc "
+                f"-config {project}/runtime/go2rtc.yaml"
             ),
             "FAKE_GO2RTC_PID": str(go2rtc.pid),
         }

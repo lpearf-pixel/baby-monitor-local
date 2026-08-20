@@ -280,6 +280,25 @@ def test_guardian_sensitive_scan_does_not_match_its_own_rules(tmp_path: Path) ->
     assert result.stdout.splitlines()[-1] == "guardian_test=PASS"
 
 
+def test_guardian_installation_gate_requires_stable_go2rtc_app_identity() -> None:
+    script = (ROOT / "tools/test_guardian.sh").read_text(encoding="ascii")
+
+    assert 'GO2RTC_APP="$ROOT/.local/Go2RTC.app"' in script
+    assert 'GO2RTC_EXECUTABLE="$GO2RTC_APP/Contents/MacOS/go2rtc"' in script
+    assert 'codesign --verify --deep --strict' in script
+    assert 'codesign -d -r-' in script
+    assert 'designated => identifier "com.babymonitor.go2rtc"' in script
+    assert '"$requirement" == *cdhash*' in script
+
+
+def test_guardian_launchd_gate_requires_exact_go2rtc_app_command() -> None:
+    script = (ROOT / "tools/test_guardian.sh").read_text(encoding="ascii")
+
+    assert 'com.babymonitor.go2rtc.plist' in script
+    assert 'payload["Label"] == "com.babymonitor.go2rtc"' in script
+    assert 'payload["ProgramArguments"] == expected' in script
+
+
 def test_makefile_exposes_guardian_commands_without_starting_services() -> None:
     start = subprocess.run(
         ["make", "-n", "alpha-guardian-start"],

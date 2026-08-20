@@ -12,6 +12,10 @@ AUDIO_PID="$ROOT/runtime/pids/audio.pid"
 GO2RTC_ONLY_RESTART=0
 GO2RTC_LABEL="com.babymonitor.go2rtc"
 GO2RTC_PLIST="$HOME/Library/LaunchAgents/${GO2RTC_LABEL}.plist"
+GO2RTC_EXECUTABLE="$ROOT/.local/bin/go2rtc"
+if [[ "$(uname -s)" == "Darwin" ]] && command -v launchctl >/dev/null 2>&1; then
+  GO2RTC_EXECUTABLE="$ROOT/.local/Go2RTC.app/Contents/MacOS/go2rtc"
+fi
 GAUGE_LABEL="com.babymonitor.gauge"
 GAUGE_PLIST="$HOME/Library/LaunchAgents/${GAUGE_LABEL}.plist"
 WATCHDOG_LABEL="com.babymonitor.environment-watchdog"
@@ -30,7 +34,7 @@ elif [[ "$#" -ne 0 ]]; then
   exit 2
 fi
 
-if [[ ! -f "$ENV_FILE" || ! -x "$ROOT/.local/bin/go2rtc" || ! -x "$ROOT/.venv-alpha/bin/uvicorn" ]]; then
+if [[ ! -f "$ENV_FILE" || ! -x "$GO2RTC_EXECUTABLE" || ! -x "$ROOT/.venv-alpha/bin/uvicorn" ]]; then
   echo "Alpha is not installed. Run tools/install_alpha_macos.sh first." >&2
   exit 1
 fi
@@ -79,7 +83,7 @@ go2rtc_pid_matches() {
   local pid="$1"
   local command
   command="$(ps -ww -p "$pid" -o command= 2>/dev/null || true)"
-  [[ "$command" == "$ROOT/.local/bin/go2rtc -config $ROOT/runtime/go2rtc.yaml" ]]
+  [[ "$command" == "$GO2RTC_EXECUTABLE -config $ROOT/runtime/go2rtc.yaml" ]]
 }
 
 go2rtc_pid_owns_api_listener() {

@@ -634,9 +634,10 @@ make alpha-go2rtc-restart
 
 不要把 `alpha-start` 输出的局域网地址或任何完整命令路径粘贴到聊天、Issue 或 PR。
 该命令不需要 sudo。若重启后摄像头主机可达，但 `alpha-source-check` 仍报告
-`SOURCE_OFFLINE` 且日志为 CS2 UDP timeout，先通过米家 App 重启摄像头；若没有重启
-入口，断电 10 秒后再通电。不要修改 URI、subtype、transport 或 FFmpeg 参数。
-摄像头上线后必须重新验证：
+`SOURCE_OFFLINE` 且日志为 CS2 UDP timeout，先确认 launchd 的命令指向固定
+`Go2RTC.app`，并验证 app 的 designated requirement 是固定 bundle identifier，
+不是 `cdhash`。新安装只需一次 LaunchServices 登记和 macOS“本地网络”允许；不要
+反复重签为新的哈希身份。之后再次执行：
 
 ```bash
 make alpha-source-check
@@ -647,11 +648,11 @@ make alpha-visual-status
 1280×720 live，以及 visual 指标恢复为 `available`、5 FPS。该结果证明本地摄像头
 源和分析画面恢复，不证明 M2/Ollama 可用；Ollama bridge 可独立保持不可用。
 
-根因不是 Dashboard 页面代码，也不是 WS2021 模型。2026-08-20 已确认的软件根因是
-launchd 监听者与直接回退进程并存，PID 文件却记录了不能监听的回退进程；单一 launchd
-所有权已消除这条路径。若单实例和网络可达均通过但 CS2 UDP 仍超时，剩余故障在摄像头
-会话侧，按上面的摄像头重启边界处理。恢复过程中不得降低源检查、隐私或 fail-closed
-门限。
+根因不是 Dashboard 页面代码，也不是 WS2021 模型。2026-08-20 已确认两个软件根因：
+launchd 与直接回退的双所有者，以及随每次构建变化的 ad-hoc `cdhash` Local Network
+身份。单一 launchd 所有权和固定 designated requirement 已分别关闭这两条路径。若
+它们均正确但 CS2 UDP 仍超时，再按上面的摄像头重启边界处理。恢复过程中不得降低源
+检查、隐私或 fail-closed 门限。
 
 Intel macOS 上遇到以下现象时：
 

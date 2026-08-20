@@ -6,8 +6,9 @@ Updated: 2026-08-20
 
 - Repository: `lpearf-pixel/baby-monitor-local` (public).
 - Stable Xiaomi line: `stable/xiaomi-alpha` at `0df20ae`.
-- Active feature line: `codex/voice-care-v1-design`; remote and local both include
-  the go2rtc lifecycle recovery through `cea8636`.
+- Active feature line: `codex/voice-care-v1-design`; the published remote includes
+  the prior recovery checkpoint through `10f3466`, with the current stable-identity
+  correction pending publication from this working tree.
 - The evidence-retention line is based on the published Dashboard snapshot `69e2d5b`;
   the Dashboard remains complete and its published branch is not rewritten.
 - Remote branch `codex/baby-guardian-event-loop` remains at its earlier squash snapshot
@@ -20,11 +21,16 @@ Updated: 2026-08-20
   while the PID file named the non-listening process. macOS now uses one user-level
   launchd owner, has no direct fallback or port-selected kill path, and verifies the
   exact launchd process plus listener before accepting the API. Two idempotent starts
-  kept one stable process, and `make alpha-go2rtc-restart` now restarts only go2rtc
-  while Dashboard, visual, gauge and audio PIDs stay unchanged. The full software gate
-  passed. The camera remains
-  reachable on the LAN but its current CS2/UDP session still times out; a camera-side
-  restart and fresh `alpha-source-check` remain the real-device recovery gate.
+  kept one stable process, and `make alpha-go2rtc-restart` now restarts only go2rtc.
+  A second cause was then isolated: ad-hoc signing gave every rebuilt go2rtc app a
+  hash-based designated requirement, so macOS could treat each build as a new Local
+  Network identity and silently drop CS2 UDP. The installed app now has the fixed
+  bundle identifier and an explicit stable designated requirement. After one
+  LaunchServices registration, an unchanged install refresh plus launchd-only restart
+  passed the real source gate: `cs2+udp`, H.265, native `2560x1440`, live `1280x720`
+  and positive received bytes. Visual returned to 5 FPS; gauge and Dashboard remained
+  healthy. The correction passed the full Python `931 passed`, Dashboard Node
+  `73 passed` and installed Guardian `19/19` automatic gates before commit.
   WS2021 E1 private schema-v2 calibration passed on
   2026-08-16. Its fixed 2560×1440 five-frame gauge burst is operational, and corrected
   non-16:9 rectification now passes both ROI geometry gates plus the temperature circle
@@ -212,13 +218,17 @@ Important ownership boundaries:
 
 The latest complete software gate, including Guardian live-acceptance coverage, was:
 
-- Python repository suite: `772 passed` on the installed Intel i9;
+- Python repository suite: `931 passed` on the installed Intel i9;
 - Dashboard Node suite: `73 passed`;
 - Python compilation: passed;
 - all tracked shell syntax, ASCII and LF checks: passed;
 - Make dry-run and `git diff --check`: passed;
 - tracked runtime/media/SQLite and sensitive-literal checks: passed;
 - one existing Starlette/httpx deprecation warning remained.
+
+The installed side-effect-bounded `make alpha-guardian-test` additionally passed all
+19 repository, software, installation, service, media and isolation stages after the
+go2rtc stable-identity correction.
 
 The remote dependency-closure checkpoint additionally verified a clean temporary
 Python 3.11 environment with `741 passed` after adding the current Starlette
@@ -261,9 +271,9 @@ window, not 24/72-hour stability or unattended-care safety.
 | PR/merge | No guardian PR; not merged |
 | Protected branches | `main` and `stable/xiaomi-alpha`; unchanged |
 
-The latest pre-Gate-V0 Git check found `c989fff` on
-`codex/voice-care-v1-design`, up to date with its upstream.
-Nothing from this recovery slice was pushed, merged or opened as a PR. Untracked `.local/`,
+The current recovery started from `10f3466` on `codex/voice-care-v1-design`, equal to
+its upstream before local edits. Nothing from this recovery slice had been pushed,
+merged or opened as a PR at this checkpoint. Untracked `.local/`,
 `Interactive` and `test.sh` were deliberately preserved.
 
 ## Latest Installed-i9 Runtime Evidence
@@ -300,13 +310,13 @@ legacy branch into this line without a separate integration decision.
 
 - Complete private bed-zone acceptance and real Baby posture/face/bed-exit accuracy;
   the restricted i9-to-M2 bridge and supervised seven-scene synthetic gate have passed.
-- Complete WS2021 schema-v2 calibration, 30 daylight comparisons,
-  darkness/infrared/glare/occlusion/gauge-movement fail-closed checks, M2/Ollama outage
-  isolation and the independent 24-hour environment gate. E3 real-scene checks are
-  intentionally deferred; the current next task is three-browser HD acceptance.
-- Three-browser HD acceptance is user-confirmed PASS; iPhone layout remains a UX follow-up.
-  Complete the final 72-hour camera, i9, M2, network,
-  storage and two-phone release gate before tagging `v0.1.0`.
+- Complete the deferred WS2021 30 daylight comparisons and the darkness/infrared,
+  glare, occlusion and gauge-movement fail-closed checks. M2/Ollama isolation, the
+  independent 24-hour environment gate and three-browser HD acceptance are already
+  user-confirmed PASS; iPhone layout remains a UX follow-up.
+- Complete the deferred real-Baby normal-care observation, audio/cry A8 model/license
+  decision, authenticated private remote access and final 72-hour release gate before
+  any `v0.1.0` tag decision.
 
 ## Known Limitations
 

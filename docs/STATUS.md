@@ -12,11 +12,16 @@
   loaded unhealthy job, never falls back to a second direct process, and verifies the
   exact launchd PID owns the loopback API listener. `alpha-stop` unloads that job and
   never selects a process by port or legacy PID file. Two consecutive installed starts
-  retained one PID and one process. `alpha-go2rtc-restart` restarted only go2rtc while
-  Dashboard, visual, gauge and audio PIDs remained unchanged. The camera is
-  ping-reachable, but the current
-  Xiaomi producer remains `SOURCE_OFFLINE` with a UDP timeout even without sibling
-  consumers; camera-side restart plus a fresh source check is still pending.
+  retained one PID and one process. `alpha-go2rtc-restart` restarts only go2rtc.
+  The remaining UDP timeout was traced to an unstable macOS Local Network code
+  identity: default ad-hoc signing used a designated requirement based on the changing
+  code hash. go2rtc now runs from a fixed app bundle whose explicit designated
+  requirement is the stable bundle identifier. After LaunchServices registration,
+  both a launchd-only restart and an unchanged app refresh passed `alpha-source-check`
+  with `cs2+udp`, H.265, native `2560x1440`, live `1280x720` and positive bytes.
+  Visual returned to 5 FPS; gauge and Dashboard remained healthy. A deliberately rapid
+  back-to-back consumer teardown can still produce one transient camera-session miss;
+  the normal persistent-worker path and bounded single-component restart are green.
 - WS2021 current localization path: fixed lower-right schema-v2 ROI with bounded
   consecutive-frame stabilization; the trained OpenVINO detector remains fallback
   only when fixed-ROI mode is not selected. Same-aspect resolution scaling is accepted;

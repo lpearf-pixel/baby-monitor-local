@@ -29,7 +29,7 @@
 - Consumes: `GO2RTC_PID`, `$ROOT/.local/bin/go2rtc`, `$ROOT/runtime/go2rtc.yaml`, and loopback `http://127.0.0.1:1984/api`.
 - Produces: shell function `ensure_go2rtc_started`; fixed failure text `go2rtc pid identity mismatch`.
 
-- [ ] **Step 1: Add a subprocess fixture for go2rtc startup states**
+- [x] **Step 1: Add a subprocess fixture for go2rtc startup states**
 
   Add a focused helper beside `_write_executable` that constructs the minimum
   temporary Alpha tree, starts a real disposable `sleep` process for the live
@@ -38,7 +38,7 @@
   fake `curl` returns unhealthy until the replacement marker exists and healthy
   afterward. Register cleanup that terminates only the disposable sleep child.
 
-- [ ] **Step 2: Write the live-but-unhealthy failing regression test**
+- [x] **Step 2: Write the live-but-unhealthy failing regression test**
 
   Add a test with this behavioral contract:
 
@@ -52,7 +52,7 @@
       assert not fixture.original_pid_is_alive()
   ```
 
-- [ ] **Step 3: Run the regression test and verify RED**
+- [x] **Step 3: Run the regression test and verify RED**
 
   Run:
 
@@ -63,7 +63,7 @@
   Expected: FAIL because the current `start_if_stopped` accepts the live PID,
   skips the replacement, and the API readiness check times out.
 
-- [ ] **Step 4: Add the unrelated-live-PID fail-closed test**
+- [x] **Step 4: Add the unrelated-live-PID fail-closed test**
 
   Add a second test using the same fixture with `ps_identity="unrelated"`:
 
@@ -81,7 +81,7 @@
   Run it and verify that it fails for the expected missing identity check, not
   because of fixture setup.
 
-- [ ] **Step 5: Implement the minimum health-aware startup guard**
+- [x] **Step 5: Implement the minimum health-aware startup guard**
 
   In `tools/start_alpha.sh`, add small helpers with these responsibilities:
 
@@ -115,7 +115,7 @@
   `ensure_go2rtc_started`. Reuse `go2rtc_api_ready` in the existing bounded
   readiness loop and final check.
 
-- [ ] **Step 6: Verify GREEN for focused startup behavior**
+- [x] **Step 6: Verify GREEN for focused startup behavior**
 
   Run:
 
@@ -128,7 +128,7 @@
   unrelated endpoint, an API listener not owned by the verified PID, and a
   long-command BSD `ps -ww` identity case.
 
-- [ ] **Step 7: Run shell and repository verification**
+- [x] **Step 7: Run shell and repository verification**
 
   Run:
 
@@ -146,7 +146,7 @@
   prove camera availability, household-scene accuracy, notifications, or safe
   unattended care.
 
-- [ ] **Step 8: Commit only the implementation slice**
+- [x] **Step 8: Commit only the implementation slice**
 
   ```bash
   git add tools/start_alpha.sh tests/deploy/test_alpha_commands.py
@@ -169,5 +169,10 @@ and the next product slice.
   non-macOS PID path.
 - [x] Verify one stable process across restart and a second idempotent start.
 - [x] Add and verify `make alpha-go2rtc-restart` without restarting sibling services.
-- [ ] After restarting the camera itself, require `make alpha-source-check` PASS and
-  record codec, dimensions and positive bytes without private source details.
+- [x] Package the macOS executable in a fixed app bundle and use it from launchd and
+  exact process-identity checks.
+- [x] Replace the changing ad-hoc hash requirement with the fixed bundle-identifier
+  designated requirement and verify it during every install refresh.
+- [x] Require `make alpha-source-check` PASS after an unchanged app refresh and
+  launchd-only restart; record codec, dimensions and positive bytes without private
+  source details.

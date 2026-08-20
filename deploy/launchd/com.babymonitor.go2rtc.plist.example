@@ -6,7 +6,7 @@
   <string>com.babymonitor.go2rtc</string>
   <key>ProgramArguments</key>
   <array>
-    <string>__PROJECT_ROOT__/.local/bin/go2rtc</string>
+    <string>__PROJECT_ROOT__/.local/Go2RTC.app/Contents/MacOS/go2rtc</string>
     <string>-config</string>
     <string>__PROJECT_ROOT__/runtime/go2rtc.yaml</string>
   </array>

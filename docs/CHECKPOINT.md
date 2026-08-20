@@ -749,3 +749,25 @@ visual/gauge/audio 消费者后单独探测仍为 `SOURCE_OFFLINE`，日志只�
 `go2rtc_restart=PASS`，go2rtc PID 已变化，而 Dashboard、visual、gauge、audio PID
 全部保持不变；再次 source check 仍为 `SOURCE_OFFLINE`。这证明恢复命令的服务隔离，
 不证明摄像头源已恢复。
+
+随后继续分离摄像头、路由与进程身份。已获系统许可的最小 CS2 探针能收到 24 字节
+LAN-search 响应，而新编译的等价两阶段探针在第一阶段超时；摄像头地址、请求字节和
+应用防火墙均一致。签名检查确认原 app 的 designated requirement 是随重建变化的
+`cdhash`。安装器现生成固定 `Go2RTC.app`，以 bundle identifier
+`com.babymonitor.go2rtc` 作为显式 designated requirement，并在签名后以相同 requirement
+验证。launchd 与精确命令检查均使用 app 内 executable。
+
+实机先通过 LaunchServices 完成稳定身份登记；随后 `alpha-source-check` 返回 PASS：
+`cs2+udp`、H.265、source `2560x1440`、live `1280x720`、接收字节非零。恢复完整 Alpha
+后 visual 为 5 FPS/available，gauge 与 Dashboard 正常，Ollama bridge reachable。
+一次 `alpha-go2rtc-restart` 后同一源门再次 PASS。最后执行不重编译的 `ensure` 刷新
+app 签名，再做 launchd-only restart，第三次源门仍 PASS，证明固定 requirement 跨安装
+刷新保留。生产音频仍按批准设置 disabled；launchd 未运行且上次退出码 0 是预期，
+不是本次恢复故障。以上证据不证明家庭场景准确率、WS2021 E2/E3 或最终 72 小时门。
+
+提交前完整验证为：Python `931 passed`，Dashboard Node `73 passed`，相关 go2rtc/
+launchd 文件 `50 passed`，新增 Guardian 安装身份门 `2 passed`，Python 编译、Shell
+syntax、plist 解析、Make dry-run、
+`git diff --check`、新增 diff 敏感字面量扫描和状态冲突扫描均 PASS。安装态
+`make alpha-guardian-test` 的 repository/software/installation/service/media/isolation
+共 19 个阶段全部 PASS，未发送真实通知、未生成风险事件、未写生产 evidence。
