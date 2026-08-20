@@ -1,6 +1,7 @@
 # Voice Care v1 Cross-Product Design
 
-Status: approved for staged implementation on 2026-08-19
+Status: approved for staged implementation on 2026-08-19; local V1 model architecture
+approved on 2026-08-20
 Date: 2026-08-19
 Products: `baby-monitor-local` and `baby-care`
 
@@ -145,17 +146,61 @@ The worker performs:
 ```text
 audio frames
 -> voice activity detection
--> wake phrase detection
 -> bounded utterance capture
 -> ASR
+-> exact wake-prefix validation
 -> explicit identity-claim extraction
 -> local speaker verification
 -> structured intent
 ```
 
-Normal audio stays in a small memory ring. Once an utterance reaches a terminal result,
-its raw samples are discarded. Debug audio persistence is disabled in production and
-cannot be enabled through a public API.
+V1 does not add a separately trained keyword model. Silero VAD may open one bounded
+utterance window only after speech is observed. The window includes at most 500 ms of
+pre-roll, closes after 800 ms of terminal silence and never exceeds eight seconds. The
+local multilingual Whisper result must begin with the exact normalized prefix `小小`;
+normalization removes only surrounding whitespace and punctuation and does not accept
+homophones or fuzzy matches. A missing prefix returns `wake_not_detected`, produces no
+intent and cannot establish a caregiver session.
+
+Normal audio stays in the existing 15-second memory ring. Raw samples for an utterance
+are discarded as soon as it reaches a terminal result. ASR text is held only long enough
+to derive one closed intent and is then discarded; it is not written to status, logs,
+SQLite, Baby Care or diagnostics. Debug audio or transcript persistence is disabled in
+production and cannot be enabled through a public API.
+
+### 4.2.1 Approved local model and runtime boundary
+
+The first V1 implementation uses this fixed local stack:
+
+- Silero VAD ONNX at 16 kHz mono for speech activity. The artifact and MIT license are
+  installed locally, pinned by source revision and SHA-256 and never downloaded by a
+  running worker.
+- Official OpenAI multilingual Whisper `base` and `small` are the only ASR bake-off
+  candidates. Both code and weights use the upstream MIT license. An installed-i9 gate
+  selects the smallest candidate that passes the same public/synthetic Mandarin command
+  corpus, latency and closed-wake tests. The selected artifact, conversion metadata and
+  SHA-256 become fixed runtime configuration before V1 can be enabled.
+- SpeechBrain `spkrec-ecapa-voxceleb` is the first speaker-embedding candidate. Its
+  upstream model card declares Apache-2.0. It is used only for local adult enrollment
+  and verification; the exact source revision, files and digests are pinned before use.
+- macOS `AVSpeechSynthesizer` is the first response engine. It speaks only allow-listed
+  semantic templates and typed confirmed values. It does not receive raw model prose,
+  credentials, internal identifiers, private diagnostics or a Baby name.
+
+Every model is optional at runtime and fail-closed. Missing files, digest mismatch,
+unsupported tensor shape, non-finite output, timeout or runner failure returns a stable
+unavailable reason and creates no wake, identity, intent, care record or success phrase.
+No model artifact is committed to Git, fetched at worker startup or sent to Ollama or a
+cloud API.
+
+The `sherpa-onnx` runtime and its Chinese keyword models are not approved for V1. The
+runtime source is Apache-2.0, but the selected KWS weights do not currently carry an
+explicit model-specific redistribution license. A later replacement requires a new
+recorded model/license review and the same acceptance gates; it is not a silent runtime
+configuration change.
+
+Guardian cry classification remains a separate A8 gate. Voice Care V1 neither enables
+cry analysis nor treats speech, ASR or speaker output as evidence of crying.
 
 ### 4.3 Device pairing
 
@@ -213,7 +258,7 @@ explicit claim
 The first command in a care period is an explicit takeover, for example:
 
 ```text
-"嘿，小小，我是爸爸，现在我来照顾香香。"
+"小小，我是爸爸，现在我来照顾香香。"
 ```
 
 Baby Local verifies that the claim and enrolled profile agree. Baby Care then creates
@@ -317,7 +362,7 @@ is selected. A default is never silently committed as consumed milk.
 Example:
 
 ```text
-Caregiver: "嘿，小小，我要喂奶了。"
+Caregiver: "小小，我要喂奶了。"
 System: "爸爸，好的，已经开始记录，结束后我会再确认。"
 ```
 
@@ -507,12 +552,12 @@ original fact invisibly.
 
 Known unknowns:
 
-- real MJSXJ17CM audio format and long-run timestamp behavior on the pinned patched
-  go2rtc build;
+- sustained MJSXJ17CM audio timestamp behavior beyond the completed bounded V0 gate;
 - camera backchannel quality and model-specific noise behavior;
 - acceptable night false-reject rate without lowering false-accept protection;
 - speaker verification under illness, whispering and microphone distance;
-- the best fully local ASR/TTS packages for Intel i9 performance;
+- whether Whisper `base` or `small` is the smallest model that passes the installed-i9
+  Mandarin command and latency gate;
 - LAN/TLS deployment details between the two independently deployable products.
 
 Reversible choices:
@@ -537,9 +582,11 @@ worker isolation pass. No ASR or care write is required.
 ### Gate V1: synthetic Voice Care contract
 
 Entry: V0 evidence and approved cross-product contracts.
-Exit: synthetic audio drives wake, ASR, explicit identity, signed intent, pending
-feeding, confirmation and final Baby Care write with complete security and privacy
-tests.
+Exit: pinned local artifacts and licenses pass validation; public/synthetic audio drives
+VAD, exact `小小` wake validation, ASR, explicit identity, signed intent, pending feeding,
+confirmation and final Baby Care write with complete security and privacy tests. Missing
+or failing models, fuzzy wake text and uncertain identity create no care write or success
+phrase.
 
 ### Gate V2: supervised Dad/Mom feeding pilot
 
@@ -592,3 +639,16 @@ uncertainty gates pass. Each fact gets an independent RED-GREEN slice.
   timestamp risks. These are feasibility evidence, not a substitute for the V0 i9
   gate: <https://github.com/AlexxIT/go2rtc/issues/1982> and
   <https://github.com/AlexxIT/go2rtc/releases/>.
+- Silero VAD documents its MIT license, local ONNX runtime and 8/16 kHz support:
+  <https://github.com/snakers4/silero-vad>.
+- OpenAI documents Whisper's multilingual model sizes, limitations and MIT license for
+  code and model weights: <https://github.com/openai/whisper/blob/main/model-card.md>
+  and <https://github.com/openai/whisper/blob/main/LICENSE>.
+- SpeechBrain publishes the selected ECAPA-TDNN model card under Apache-2.0:
+  <https://huggingface.co/speechbrain/spkrec-ecapa-voxceleb>.
+- Apple documents bounded speech synthesis and explicit stop/control through
+  `AVSpeechSynthesizer`:
+  <https://developer.apple.com/documentation/avfaudio/avspeechsynthesizer>.
+- The unresolved model-specific licensing question for official sherpa-onnx keyword
+  weights is recorded upstream and is why that KWS artifact is excluded from V1:
+  <https://github.com/k2-fsa/sherpa-onnx/issues/3760>.
