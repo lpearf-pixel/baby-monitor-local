@@ -6,7 +6,8 @@ Updated: 2026-08-20
 
 - Repository: `lpearf-pixel/baby-monitor-local` (public).
 - Stable Xiaomi line: `stable/xiaomi-alpha` at `0df20ae`.
-- Active feature line: `codex/voice-care-v1-design`.
+- Active feature line: `codex/voice-care-v1-design`; remote and local both include
+  the go2rtc lifecycle recovery through `cea8636`.
 - The evidence-retention line is based on the published Dashboard snapshot `69e2d5b`;
   the Dashboard remains complete and its published branch is not rewritten.
 - Remote branch `codex/baby-guardian-event-loop` remains at its earlier squash snapshot
