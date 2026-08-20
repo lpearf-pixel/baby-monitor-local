@@ -49,6 +49,20 @@ def test_vad_rejects_non_finite_or_out_of_range_model_output_fail_closed() -> No
         assert result.reason == "voice_model_unavailable"
 
 
+@pytest.mark.parametrize(
+    "output",
+    [np.array([], dtype=np.float32), np.array([0.1, 0.2], dtype=np.float32)],
+)
+def test_vad_rejects_empty_or_multi_value_model_output_fail_closed(
+    output: np.ndarray,
+) -> None:
+    result = VoiceActivityDetector(lambda _waveform: output).observe(FRAME_100MS)
+
+    assert result.speech is False
+    assert result.probability == 0.0
+    assert result.reason == "voice_model_unavailable"
+
+
 def test_vad_rejects_malformed_or_changed_pcm_frame_fail_closed() -> None:
     detector = VoiceActivityDetector(lambda _waveform: 0.9)
 

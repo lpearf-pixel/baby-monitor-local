@@ -5,6 +5,7 @@ import math
 import pytest
 
 from packages.contracts.settings import VoiceCareSettings
+from services.voice import capture
 from services.voice.capture import UtteranceCollector
 from services.voice.vad import VadResult
 
@@ -12,6 +13,23 @@ from services.voice.vad import VadResult
 SAMPLE_RATE_HZ = 16_000
 BYTES_PER_SAMPLE = 2
 FRAME_100MS = b"\x01\x00" * 1_600
+
+
+class SnapshotBytearray(bytearray):
+    """Records bytes at the moment production calls ``clear``."""
+
+    def __init__(self) -> None:
+        super().__init__()
+        self.clear_snapshots: list[bytes] = []
+
+    def clear(self) -> None:
+        self.clear_snapshots.append(bytes(self))
+        super().clear()
+
+
+def inspectable_collector(monkeypatch: pytest.MonkeyPatch) -> UtteranceCollector:
+    monkeypatch.setattr(capture, "PcmBuffer", SnapshotBytearray)
+    return UtteranceCollector(VoiceCareSettings())
 
 
 def test_collector_closes_at_eight_seconds_and_discards_after_take() -> None:
@@ -84,8 +102,10 @@ def test_collector_rejects_malformed_or_timing_inexact_frames_fail_closed() -> N
     assert collector.buffered_bytes == 0
 
 
-def test_collector_rejects_non_finite_vad_and_zeroizes_active_buffers() -> None:
-    collector = UtteranceCollector(VoiceCareSettings())
+def test_collector_validation_error_zeroizes_active_buffer_before_clear(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    collector = inspectable_collector(monkeypatch)
     collector.push(FRAME_100MS, VadResult(speech=True, probability=0.9))
     utterance = collector._utterance
 
@@ -93,23 +113,47 @@ def test_collector_rejects_non_finite_vad_and_zeroizes_active_buffers() -> None:
         collector.push(FRAME_100MS, VadResult(speech=True, probability=math.nan))
 
     assert collector.buffered_bytes == 0
-    assert all(value == 0 for value in utterance)
+    assert utterance.clear_snapshots == [b"\x00" * len(FRAME_100MS)]
 
 
-def test_collector_reset_and_close_overwrite_memory_before_clearing() -> None:
-    collector = UtteranceCollector(VoiceCareSettings())
+def test_collector_reset_zeroizes_pre_roll_before_clear(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    collector = inspectable_collector(monkeypatch)
     collector.push(FRAME_100MS, VadResult(speech=False, probability=0.1))
     pre_roll = collector._pre_roll
     collector.reset()
 
     assert collector.buffered_bytes == 0
-    assert all(value == 0 for value in pre_roll)
+    assert pre_roll.clear_snapshots == [b"\x00" * len(FRAME_100MS)]
+
+
+def test_collector_close_zeroizes_active_buffer_before_clear(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    collector = inspectable_collector(monkeypatch)
 
     collector.push(FRAME_100MS, VadResult(speech=True, probability=0.9))
     utterance = collector._utterance
     collector.close()
 
     assert collector.buffered_bytes == 0
-    assert all(value == 0 for value in utterance)
+    assert utterance.clear_snapshots == [b"\x00" * len(FRAME_100MS)]
     with pytest.raises(RuntimeError, match="closed"):
         collector.push(FRAME_100MS, VadResult(speech=True, probability=0.9))
+
+
+def test_collector_terminal_take_zeroizes_internal_buffer_and_keeps_pcm_copy(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    collector = inspectable_collector(monkeypatch)
+    collector.push(FRAME_100MS, VadResult(speech=True, probability=0.9))
+    utterance = collector._utterance
+
+    result = None
+    for _ in range(8):
+        result = collector.push(FRAME_100MS, VadResult(speech=False, probability=0.1))
+
+    assert result is not None
+    assert result.pcm == FRAME_100MS * 9
+    assert utterance.clear_snapshots == [b"\x00" * len(result.pcm)]

@@ -11,6 +11,7 @@ SAMPLE_RATE_HZ = 16_000
 CHANNELS = 1
 SAMPLE_WIDTH_BYTES = 2
 BYTES_PER_SECOND = SAMPLE_RATE_HZ * CHANNELS * SAMPLE_WIDTH_BYTES
+PcmBuffer = bytearray
 
 
 @dataclass(frozen=True)
@@ -27,8 +28,8 @@ class UtteranceCollector:
         self._terminal_silence_limit = _duration_bytes(settings.terminal_silence_ms)
         self._max_utterance_limit = _duration_bytes(settings.max_utterance_ms)
         self._frame_bytes: int | None = None
-        self._pre_roll = bytearray()
-        self._utterance = bytearray()
+        self._pre_roll = PcmBuffer()
+        self._utterance = PcmBuffer()
         self._terminal_silence_bytes = 0
         self._closed = False
 
