@@ -207,10 +207,18 @@ class VoiceCareSettings(StrictSettingsModel):
     max_utterance_ms: Literal[8_000] = 8_000
     pre_roll_ms: Literal[500] = 500
     terminal_silence_ms: Literal[800] = 800
-    silero_vad_sha256: str | None = Field(default=None, pattern=r"^[0-9a-f]{64}$")
-    whisper_base_sha256: str | None = Field(default=None, pattern=r"^[0-9a-f]{64}$")
-    whisper_small_sha256: str | None = Field(default=None, pattern=r"^[0-9a-f]{64}$")
-    speechbrain_ecapa_sha256: str | None = Field(default=None, pattern=r"^[0-9a-f]{64}$")
+    silero_vad_manifest_sha256: str | None = Field(
+        default=None, pattern=r"^[0-9a-f]{64}$"
+    )
+    whisper_base_manifest_sha256: str | None = Field(
+        default=None, pattern=r"^[0-9a-f]{64}$"
+    )
+    whisper_small_manifest_sha256: str | None = Field(
+        default=None, pattern=r"^[0-9a-f]{64}$"
+    )
+    speechbrain_ecapa_manifest_sha256: str | None = Field(
+        default=None, pattern=r"^[0-9a-f]{64}$"
+    )
     outbox_max_intents: Literal[128] = 128
     outbox_retention_seconds: Literal[1_800] = 1_800
 
@@ -219,10 +227,10 @@ class VoiceCareSettings(StrictSettingsModel):
         if self.enabled and any(
             digest is None
             for digest in (
-                self.silero_vad_sha256,
-                self.whisper_base_sha256,
-                self.whisper_small_sha256,
-                self.speechbrain_ecapa_sha256,
+                self.silero_vad_manifest_sha256,
+                self.whisper_base_manifest_sha256,
+                self.whisper_small_manifest_sha256,
+                self.speechbrain_ecapa_manifest_sha256,
             )
         ):
             raise ValueError("VOICE_ARTIFACT_DIGEST_REQUIRED")
