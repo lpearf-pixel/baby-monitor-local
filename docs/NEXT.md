@@ -8,7 +8,8 @@ the detailed approved specs and plans remain authoritative for behavior.
 the camera itself and require `make alpha-source-check` to return PASS. The i9 software
 lifecycle defect is fixed and verified with one stable launchd-owned go2rtc process;
 the remaining failure is a camera-side CS2/UDP timeout. Do not change source parameters,
-restart unrelated workers or accept Dashboard health as proof of video recovery.
+restart unrelated workers or accept Dashboard health as proof of video recovery. Use
+`make alpha-go2rtc-restart` for the bounded software recovery attempt.
 
 ## P0 — Environment real-device acceptance (current)
 

@@ -168,5 +168,6 @@ and the next product slice.
 - [x] Preserve the exact process/listener identity check without weakening the
   non-macOS PID path.
 - [x] Verify one stable process across restart and a second idempotent start.
+- [x] Add and verify `make alpha-go2rtc-restart` without restarting sibling services.
 - [ ] After restarting the camera itself, require `make alpha-source-check` PASS and
   record codec, dimensions and positive bytes without private source details.

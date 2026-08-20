@@ -200,9 +200,14 @@ esac
     return project, environment, state_dir, direct_marker
 
 
-def _run(script: str, project: Path, environment: dict[str, str]) -> subprocess.CompletedProcess[str]:
+def _run(
+    script: str,
+    project: Path,
+    environment: dict[str, str],
+    *arguments: str,
+) -> subprocess.CompletedProcess[str]:
     return subprocess.run(
-        ["bash", script],
+        ["bash", script, *arguments],
         cwd=project,
         env=environment,
         check=False,
@@ -256,6 +261,37 @@ def test_alpha_start_rejects_healthy_api_from_unrelated_loaded_job(
     assert result.returncode != 0
     assert result.stderr.strip() == "go2rtc launchd identity mismatch"
     assert not direct_marker.exists()
+
+
+def test_go2rtc_only_restart_kickstarts_no_sibling_service(
+    tmp_path: Path,
+) -> None:
+    project, environment, state_dir, direct_marker = _launchd_project(
+        tmp_path, go2rtc_loaded=True, api_ready=True
+    )
+
+    result = _run(
+        "tools/start_alpha.sh", project, environment, "--go2rtc-only-restart"
+    )
+
+    assert result.returncode == 0, result.stderr
+    assert result.stdout.splitlines() == ["go2rtc_restart=PASS"]
+    calls = (state_dir / "calls").read_text(encoding="ascii").splitlines()
+    assert calls == ["kickstart com.babymonitor.go2rtc"]
+    assert not direct_marker.exists()
+
+
+def test_make_exposes_go2rtc_only_restart() -> None:
+    result = subprocess.run(
+        ["make", "-n", "alpha-go2rtc-restart"],
+        cwd=ROOT,
+        check=False,
+        capture_output=True,
+        text=True,
+    )
+
+    assert result.returncode == 0, result.stderr
+    assert "tools/start_alpha.sh --go2rtc-only-restart" in result.stdout
 
 
 def test_alpha_stop_does_not_kill_listener_or_stale_pid_on_macos(

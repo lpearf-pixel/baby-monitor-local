@@ -611,10 +611,10 @@ make alpha-status
 ```
 
 若第一条返回 `SOURCE_OFFLINE`，不要修改 Dashboard、摄像头 URI、FFmpeg 参数或
-质量门。先执行现有幂等恢复：
+质量门。先执行单组件幂等恢复：
 
 ```bash
-make alpha-restart
+make alpha-go2rtc-restart
 ```
 
 macOS 安装现在只允许用户级 `com.babymonitor.go2rtc` launchd 作业拥有 go2rtc。
@@ -629,7 +629,7 @@ lsof -nP -iTCP:1984 -sTCP:LISTEN
 正常恢复只使用：
 
 ```bash
-make alpha-restart
+make alpha-go2rtc-restart
 ```
 
 不要把 `alpha-start` 输出的局域网地址或任何完整命令路径粘贴到聊天、Issue 或 PR。

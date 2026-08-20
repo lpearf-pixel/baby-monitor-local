@@ -12,7 +12,9 @@
   loaded unhealthy job, never falls back to a second direct process, and verifies the
   exact launchd PID owns the loopback API listener. `alpha-stop` unloads that job and
   never selects a process by port or legacy PID file. Two consecutive installed starts
-  retained one PID and one process. The camera is ping-reachable, but the current
+  retained one PID and one process. `alpha-go2rtc-restart` restarted only go2rtc while
+  Dashboard, visual, gauge and audio PIDs remained unchanged. The camera is
+  ping-reachable, but the current
   Xiaomi producer remains `SOURCE_OFFLINE` with a UDP timeout even without sibling
   consumers; camera-side restart plus a fresh source check is still pending.
 - WS2021 current localization path: fixed lower-right schema-v2 ROI with bounded

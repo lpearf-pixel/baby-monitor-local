@@ -3,7 +3,7 @@ PYTHON := ./.venv-alpha/bin/python
 BASH ?= /bin/bash
 .DEFAULT_GOAL := help
 
-.PHONY: help alpha-update alpha-install alpha-start alpha-stop alpha-restart alpha-status alpha-guardian-start alpha-guardian-test alpha-guardian-test-live alpha-guardian-scene-test alpha-audio-status alpha-audio-test alpha-voice-v0-test alpha-voice-v0-probe alpha-voice-v0-stability alpha-visual-status alpha-visual-performance alpha-visual-diagnostic alpha-visual-launchd-update alpha-logs alpha-quality-hd alpha-quality-info alpha-quality-rollback alpha-source-check alpha-subtype-probe alpha-subtype-apply alpha-go2rtc-info alpha-go2rtc-rebuild alpha-go2rtc-rollback alpha-realtime-models-check alpha-realtime-models-install alpha-ws2021-collect-calibrated alpha-ws2021-collect-model alpha-ws2021-dataset alpha-ws2021-model-train-bootstrap alpha-ws2021-model-train alpha-ws2021-model-export alpha-ws2021-model-check
+.PHONY: help alpha-update alpha-install alpha-start alpha-stop alpha-restart alpha-go2rtc-restart alpha-status alpha-guardian-start alpha-guardian-test alpha-guardian-test-live alpha-guardian-scene-test alpha-audio-status alpha-audio-test alpha-voice-v0-test alpha-voice-v0-probe alpha-voice-v0-stability alpha-visual-status alpha-visual-performance alpha-visual-diagnostic alpha-visual-launchd-update alpha-logs alpha-quality-hd alpha-quality-info alpha-quality-rollback alpha-source-check alpha-subtype-probe alpha-subtype-apply alpha-go2rtc-info alpha-go2rtc-rebuild alpha-go2rtc-rollback alpha-realtime-models-check alpha-realtime-models-install alpha-ws2021-collect-calibrated alpha-ws2021-collect-model alpha-ws2021-dataset alpha-ws2021-model-train-bootstrap alpha-ws2021-model-train alpha-ws2021-model-export alpha-ws2021-model-check
 
 help:
 	@echo "Baby Monitor Local Alpha commands:"
@@ -12,6 +12,7 @@ help:
 	@echo "  make alpha-start             Start go2rtc and the dashboard"
 	@echo "  make alpha-stop              Stop Alpha services"
 	@echo "  make alpha-restart           Restart Alpha services"
+	@echo "  make alpha-go2rtc-restart    Restart only go2rtc on macOS"
 	@echo "  make alpha-status            Show branch, listeners and health"
 	@echo "  make alpha-guardian-start    Start and verify the complete guardian chain"
 	@echo "  make alpha-guardian-test     Run complete automatic guardian acceptance"
@@ -99,6 +100,9 @@ alpha-stop:
 	@bash tools/stop_alpha.sh
 
 alpha-restart: alpha-stop alpha-start
+
+alpha-go2rtc-restart:
+	@bash tools/start_alpha.sh --go2rtc-only-restart
 
 alpha-guardian-start:
 	@$(BASH) tools/start_guardian.sh

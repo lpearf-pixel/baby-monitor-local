@@ -9,6 +9,7 @@ GAUGE_PID="$ROOT/runtime/pids/gauge.pid"
 WATCHDOG_PID="$ROOT/runtime/pids/environment-watchdog.pid"
 VISUAL_PID="$ROOT/runtime/pids/visual.pid"
 AUDIO_PID="$ROOT/runtime/pids/audio.pid"
+GO2RTC_ONLY_RESTART=0
 GO2RTC_LABEL="com.babymonitor.go2rtc"
 GO2RTC_PLIST="$HOME/Library/LaunchAgents/${GO2RTC_LABEL}.plist"
 GAUGE_LABEL="com.babymonitor.gauge"
@@ -21,6 +22,13 @@ AUDIO_LABEL="com.babymonitor.audio"
 AUDIO_PLIST="$HOME/Library/LaunchAgents/${AUDIO_LABEL}.plist"
 TUNNEL_LABEL="com.babymonitor.ollama-tunnel"
 TUNNEL_PLIST="$HOME/Library/LaunchAgents/${TUNNEL_LABEL}.plist"
+
+if [[ "$#" -eq 1 && "$1" == "--go2rtc-only-restart" ]]; then
+  GO2RTC_ONLY_RESTART=1
+elif [[ "$#" -ne 0 ]]; then
+  echo "Usage: bash tools/start_alpha.sh [--go2rtc-only-restart]" >&2
+  exit 2
+fi
 
 if [[ ! -f "$ENV_FILE" || ! -x "$ROOT/.local/bin/go2rtc" || ! -x "$ROOT/.venv-alpha/bin/uvicorn" ]]; then
   echo "Alpha is not installed. Run tools/install_alpha_macos.sh first." >&2
@@ -155,6 +163,27 @@ ensure_launchd_go2rtc_started() {
   fi
 }
 
+restart_launchd_go2rtc() {
+  local domain="gui/$(id -u)"
+
+  if launchctl print "${domain}/${GO2RTC_LABEL}" >/dev/null 2>&1; then
+    if ! launchctl kickstart -k "${domain}/${GO2RTC_LABEL}" >/dev/null 2>&1; then
+      echo "go2rtc launchd start failed" >&2
+      return 1
+    fi
+    return 0
+  fi
+
+  if [[ ! -f "$GO2RTC_PLIST" ]]; then
+    echo "go2rtc launchd service missing. Run make alpha-install." >&2
+    return 1
+  fi
+  if ! launchctl bootstrap "$domain" "$GO2RTC_PLIST" >/dev/null 2>&1; then
+    echo "go2rtc launchd start failed" >&2
+    return 1
+  fi
+}
+
 ensure_go2rtc_started() {
   if [[ "$(uname -s)" == "Darwin" ]] && command -v launchctl >/dev/null 2>&1; then
     ensure_launchd_go2rtc_started
@@ -171,7 +200,15 @@ find_lan_ipv4() {
   fi
 }
 
-ensure_go2rtc_started
+if [[ "$GO2RTC_ONLY_RESTART" -eq 1 ]]; then
+  if [[ "$(uname -s)" != "Darwin" ]] || ! command -v launchctl >/dev/null 2>&1; then
+    echo "go2rtc-only restart requires macOS launchd" >&2
+    exit 1
+  fi
+  restart_launchd_go2rtc
+else
+  ensure_go2rtc_started
+fi
 
 for _ in {1..30}; do
   if go2rtc_api_ready; then
@@ -195,6 +232,11 @@ if [[ "$(uname -s)" == "Darwin" ]] && command -v launchctl >/dev/null 2>&1; then
     echo "go2rtc launchd identity mismatch" >&2
     exit 1
   fi
+fi
+
+if [[ "$GO2RTC_ONLY_RESTART" -eq 1 ]]; then
+  echo "go2rtc_restart=PASS"
+  exit 0
 fi
 
 if [[ "$(uname -s)" == "Darwin" ]] && command -v launchctl >/dev/null 2>&1; then

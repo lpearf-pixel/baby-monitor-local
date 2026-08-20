@@ -19,7 +19,9 @@ Updated: 2026-08-20
   while the PID file named the non-listening process. macOS now uses one user-level
   launchd owner, has no direct fallback or port-selected kill path, and verifies the
   exact launchd process plus listener before accepting the API. Two idempotent starts
-  kept one stable process, and the full software gate passed. The camera remains
+  kept one stable process, and `make alpha-go2rtc-restart` now restarts only go2rtc
+  while Dashboard, visual, gauge and audio PIDs stay unchanged. The full software gate
+  passed. The camera remains
   reachable on the LAN but its current CS2/UDP session still times out; a camera-side
   restart and fresh `alpha-source-check` remain the real-device recovery gate.
   WS2021 E1 private schema-v2 calibration passed on

@@ -737,10 +737,15 @@ PID 文件因此指向错误进程。macOS 启停现改为唯一用户级 launch
 API 只有在 launchd PID 的精确命令和监听所有权同时匹配时才被接受。非 macOS 路径保留
 原精确 PID 身份契约。
 
-TDD 回归先稳定重现 3 个错误，修复后生命周期测试 6 项、原启停测试 30 项通过；完整
-Python 门为 925 项，前端 73 项、Shell/plist/Make/diff 检查
+TDD 回归先稳定重现 3 个错误，修复后生命周期测试 8 项、原启停测试 30 项通过；完整
+Python 门为 927 项，前端 73 项、Shell/plist/Make/diff 检查
 均通过。安装到 i9 后，完整停止/启动与第二次幂等启动无 sudo、无 I/O error、无身份
 错误，PID 保持不变且精确进程数为 1。摄像头主机可达、防火墙允许当前二进制，停止
 visual/gauge/audio 消费者后单独探测仍为 `SOURCE_OFFLINE`，日志只显示 CS2 UDP 超时。
 因此软件所有权缺陷已关闭，但画面恢复仍要求摄像头本体重启后重新通过 source gate；
 不得以 Dashboard 健康或进程运行替代真实字节、编码和尺寸证据。
+
+同一切片随后增加 `make alpha-go2rtc-restart` 单组件入口。实机运行返回
+`go2rtc_restart=PASS`，go2rtc PID 已变化，而 Dashboard、visual、gauge、audio PID
+全部保持不变；再次 source check 仍为 `SOURCE_OFFLINE`。这证明恢复命令的服务隔离，
+不证明摄像头源已恢复。
