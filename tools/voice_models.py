@@ -1,8 +1,10 @@
 from __future__ import annotations
 
 import argparse
+import os
 import shutil
 import subprocess
+import sys
 import tempfile
 from collections.abc import Callable
 from pathlib import Path
@@ -19,6 +21,20 @@ from services.voice.artifacts import (
 
 
 Runner = Callable[..., object]
+
+
+def _same_environment_converter() -> Path:
+    python = Path(sys.executable)
+    if not python.is_absolute():
+        raise ValueError("VOICE_CONVERTER_UNAVAILABLE")
+    converter = python.parent / "ct2-transformers-converter"
+    if (
+        not converter.is_file()
+        or converter.is_symlink()
+        or not os.access(converter, os.X_OK)
+    ):
+        raise ValueError("VOICE_CONVERTER_UNAVAILABLE")
+    return converter
 
 
 def collect_voice_artifact(
@@ -61,11 +77,12 @@ def convert_whisper_bundle(
     source = validate_voice_source(
         spec, source_dir, source_manifest, source_manifest_sha256
     )
+    converter = _same_environment_converter()
     with tempfile.TemporaryDirectory(prefix="voice-whisper-convert-") as temporary:
         bundle = Path(temporary) / "bundle"
         runner(
             (
-                "ct2-transformers-converter",
+                str(converter),
                 "--model",
                 str(source),
                 "--output_dir",

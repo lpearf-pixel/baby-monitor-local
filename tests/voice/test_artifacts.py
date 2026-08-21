@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import hashlib
 import json
+import sys
 from dataclasses import replace
 from pathlib import Path
 
@@ -37,6 +38,20 @@ WHISPER_FASTER_WHISPER_RUNTIME_FILES = (
     "tokenizer.json",
     "vocabulary.json",
 )
+
+
+@pytest.fixture
+def converter_environment(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> Path:
+    executable_dir = tmp_path / ".test-voice-venv/bin"
+    executable_dir.mkdir(parents=True)
+    python = executable_dir / "python"
+    python.write_text("#!/bin/sh\nexit 0\n", encoding="ascii")
+    python.chmod(0o700)
+    converter = executable_dir / "ct2-transformers-converter"
+    converter.write_text("#!/bin/sh\nexit 0\n", encoding="ascii")
+    converter.chmod(0o700)
+    monkeypatch.setattr(sys, "executable", str(python))
+    return converter
 
 
 def canonical_manifest(
@@ -158,7 +173,7 @@ def test_registry_is_closed_and_uses_full_immutable_provenance() -> None:
 
 @pytest.mark.parametrize("artifact_id", ("openai-whisper-base", "openai-whisper-small"))
 def test_whisper_converter_uses_validated_transformers_bundle_and_runtime_assets(
-    tmp_path: Path, artifact_id: str
+    tmp_path: Path, artifact_id: str, converter_environment: Path
 ) -> None:
     provisional, _runtime_files = spec_and_files(artifact_id)
     source_files = {
@@ -195,7 +210,7 @@ def test_whisper_converter_uses_validated_transformers_bundle_and_runtime_assets
     assert len(commands) == 1
     command = commands[0]
     assert command[:3] == (
-        "ct2-transformers-converter",
+        str(converter_environment),
         "--model",
         str(source.resolve()),
     )
@@ -208,6 +223,34 @@ def test_whisper_converter_uses_validated_transformers_bundle_and_runtime_assets
     )
     assert result == tmp_path / spec.bundle_relative_path
     assert validate_voice_artifact(spec, tmp_path) == result
+
+
+def test_whisper_converter_fails_closed_when_same_environment_tool_is_missing(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    executable_dir = tmp_path / ".test-voice-venv/bin"
+    executable_dir.mkdir(parents=True)
+    python = executable_dir / "python"
+    python.write_text("#!/bin/sh\nexit 0\n", encoding="ascii")
+    python.chmod(0o700)
+    monkeypatch.setattr(sys, "executable", str(python))
+    provisional, _runtime_files = spec_and_files("openai-whisper-base")
+    source_files = {
+        name: b"synthetic source " + name.encode("ascii")
+        for name in WHISPER_TRANSFORMERS_SOURCE_FILES
+    }
+    source, source_manifest, source_manifest_sha256 = write_source(
+        tmp_path, provisional, source_files
+    )
+
+    with pytest.raises(ValueError, match="^VOICE_CONVERTER_UNAVAILABLE$"):
+        convert_whisper_bundle(
+            provisional,
+            source_dir=source,
+            source_manifest=source_manifest,
+            source_manifest_sha256=source_manifest_sha256,
+            project_root=tmp_path,
+        )
 
 
 def test_valid_bundle_returns_absolute_fixed_runtime_directory(tmp_path: Path) -> None:
@@ -353,7 +396,7 @@ def write_source(
     ),
 )
 def test_closed_acquisition_requires_verified_source_manifest_without_network(
-    tmp_path: Path, artifact_id: str
+    tmp_path: Path, artifact_id: str, converter_environment: Path
 ) -> None:
     provisional, _runtime_files = spec_and_files(artifact_id)
     source_files = {
@@ -406,6 +449,7 @@ def test_closed_acquisition_requires_verified_source_manifest_without_network(
 
 def test_acquisition_rejects_bad_source_digest_license_layout_and_converter_failure(
     tmp_path: Path,
+    converter_environment: Path,
 ) -> None:
     provisional, _runtime_files = spec_and_files("openai-whisper-base")
     spec = provisional

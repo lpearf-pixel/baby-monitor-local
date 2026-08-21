@@ -541,6 +541,42 @@ def test_voice_model_install_fails_closed_before_installer_when_inputs_are_absen
     assert not marker.exists()
 
 
+def test_voice_model_install_runs_both_fixed_local_conversions(
+    tmp_path: Path,
+) -> None:
+    shutil.copy2(ROOT / "Makefile", tmp_path / "Makefile")
+    settings = tmp_path / "runtime/config/voice-care-models.json"
+    settings.parent.mkdir(parents=True)
+    settings.write_text("{}\n", encoding="ascii")
+    for artifact_id in ("openai-whisper-base", "openai-whisper-small"):
+        source_root = tmp_path / "runtime/models/voice-care-sources" / artifact_id
+        (source_root / "source").mkdir(parents=True)
+        (source_root / "source-manifest.json").write_text("{}\n", encoding="ascii")
+    calls = tmp_path / "installer-calls"
+    fake_python = tmp_path / ".test-bin/python"
+    fake_python.parent.mkdir()
+    _write_executable(
+        fake_python,
+        '#!/bin/sh\nprintf "%s\\n" "$*" >> "$VOICE_TEST_CALLS"\n',
+    )
+
+    result = subprocess.run(
+        ["make", "alpha-voice-models-install", f"PYTHON={fake_python}"],
+        cwd=tmp_path,
+        env={**os.environ, "VOICE_TEST_CALLS": str(calls)},
+        check=False,
+        capture_output=True,
+        text=True,
+    )
+
+    assert result.returncode == 0, result.stderr
+    assert result.stdout.strip() == "voice_models_install=ready"
+    recorded = calls.read_text(encoding="ascii")
+    assert recorded.count("tools/voice_models.py") == 2
+    assert '--artifact openai-whisper-base --operation convert-whisper' in recorded
+    assert '--artifact openai-whisper-small --operation convert-whisper' in recorded
+
+
 def test_makefile_exposes_hd_quality_commands() -> None:
     content = (ROOT / "Makefile").read_text(encoding="utf-8")
 
