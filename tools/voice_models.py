@@ -4,7 +4,6 @@ import argparse
 import os
 import shutil
 import subprocess
-import sys
 import tempfile
 from collections.abc import Callable
 from pathlib import Path
@@ -23,18 +22,36 @@ from services.voice.artifacts import (
 Runner = Callable[..., object]
 
 
-def _same_environment_converter() -> Path:
-    python = Path(sys.executable)
-    if not python.is_absolute():
-        raise ValueError("VOICE_CONVERTER_UNAVAILABLE")
-    converter = python.parent / "ct2-transformers-converter"
+def _isolated_converter(project_root: Path) -> tuple[Path, Path]:
+    environment = project_root / "runtime/voice-converter-venv"
+    python = environment / "bin/python"
+    configuration = environment / "pyvenv.cfg"
+    adapter = Path(__file__).with_name("voice_whisper_converter.py")
+    try:
+        _reject_symlink_destination(
+            project_root, Path("runtime/voice-converter-venv")
+        )
+        configuration_values = {
+            key.strip(): value.strip()
+            for line in configuration.read_text(encoding="ascii").splitlines()
+            if "=" in line
+            for key, value in (line.split("=", 1),)
+        }
+    except (OSError, UnicodeDecodeError):
+        raise ValueError("VOICE_CONVERTER_UNAVAILABLE") from None
     if (
-        not converter.is_file()
-        or converter.is_symlink()
-        or not os.access(converter, os.X_OK)
+        environment.is_symlink()
+        or not environment.is_dir()
+        or not configuration.is_file()
+        or configuration.is_symlink()
+        or not python.is_file()
+        or not os.access(python, os.X_OK)
+        or not adapter.is_file()
+        or adapter.is_symlink()
+        or configuration_values.get("include-system-site-packages") != "false"
     ):
         raise ValueError("VOICE_CONVERTER_UNAVAILABLE")
-    return converter
+    return python, adapter
 
 
 def collect_voice_artifact(
@@ -77,12 +94,17 @@ def convert_whisper_bundle(
     source = validate_voice_source(
         spec, source_dir, source_manifest, source_manifest_sha256
     )
-    converter = _same_environment_converter()
+    converter_python, converter_adapter = _isolated_converter(
+        project_root.resolve(strict=True)
+    )
     with tempfile.TemporaryDirectory(prefix="voice-whisper-convert-") as temporary:
         bundle = Path(temporary) / "bundle"
         runner(
             (
-                str(converter),
+                str(converter_python),
+                str(converter_adapter),
+                "--expected-prefix",
+                str(project_root.resolve(strict=True) / "runtime/voice-converter-venv"),
                 "--model",
                 str(source),
                 "--output_dir",

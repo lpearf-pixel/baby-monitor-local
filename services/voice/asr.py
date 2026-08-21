@@ -19,6 +19,7 @@ INVALID_PCM_REASON = "voice_pcm_invalid"
 _WHISPER_ARTIFACT_IDS = frozenset(
     {"openai-whisper-base", "openai-whisper-small"}
 )
+_VOICE_HOTWORDS = "喂奶 开始 喂完 继续 结束 爸爸 妈妈"
 
 
 @dataclass(frozen=True)
@@ -97,6 +98,7 @@ class AsrEngine:
                 condition_on_previous_text=False,
                 vad_filter=False,
                 without_timestamps=True,
+                hotwords=_VOICE_HOTWORDS,
             )
             parts: list[str] = []
             for segment in segments:

@@ -2,7 +2,6 @@ from __future__ import annotations
 
 import hashlib
 import json
-import sys
 from dataclasses import replace
 from pathlib import Path
 
@@ -41,17 +40,16 @@ WHISPER_FASTER_WHISPER_RUNTIME_FILES = (
 
 
 @pytest.fixture
-def converter_environment(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> Path:
-    executable_dir = tmp_path / ".test-voice-venv/bin"
+def converter_environment(tmp_path: Path) -> Path:
+    executable_dir = tmp_path / "runtime/voice-converter-venv/bin"
     executable_dir.mkdir(parents=True)
     python = executable_dir / "python"
     python.write_text("#!/bin/sh\nexit 0\n", encoding="ascii")
     python.chmod(0o700)
-    converter = executable_dir / "ct2-transformers-converter"
-    converter.write_text("#!/bin/sh\nexit 0\n", encoding="ascii")
-    converter.chmod(0o700)
-    monkeypatch.setattr(sys, "executable", str(python))
-    return converter
+    (executable_dir.parent / "pyvenv.cfg").write_text(
+        "include-system-site-packages = false\n", encoding="ascii"
+    )
+    return python
 
 
 def canonical_manifest(
@@ -209,14 +207,19 @@ def test_whisper_converter_uses_validated_transformers_bundle_and_runtime_assets
 
     assert len(commands) == 1
     command = commands[0]
-    assert command[:3] == (
+    assert command[:4] == (
         str(converter_environment),
+        str(Path(convert_whisper_bundle.__code__.co_filename).with_name("voice_whisper_converter.py")),
+        "--expected-prefix",
+        str(converter_environment.parent.parent),
+    )
+    assert command[4:6] == (
         "--model",
         str(source.resolve()),
     )
-    assert command[3] == "--output_dir"
-    assert Path(command[4]).name == "bundle"
-    assert command[5:] == (
+    assert command[6] == "--output_dir"
+    assert Path(command[7]).name == "bundle"
+    assert command[8:] == (
         "--copy_files",
         "tokenizer.json",
         "preprocessor_config.json",
@@ -225,15 +228,34 @@ def test_whisper_converter_uses_validated_transformers_bundle_and_runtime_assets
     assert validate_voice_artifact(spec, tmp_path) == result
 
 
-def test_whisper_converter_fails_closed_when_same_environment_tool_is_missing(
-    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+def test_whisper_converter_fails_closed_when_isolated_environment_is_missing(
+    tmp_path: Path,
 ) -> None:
-    executable_dir = tmp_path / ".test-voice-venv/bin"
-    executable_dir.mkdir(parents=True)
-    python = executable_dir / "python"
-    python.write_text("#!/bin/sh\nexit 0\n", encoding="ascii")
-    python.chmod(0o700)
-    monkeypatch.setattr(sys, "executable", str(python))
+    provisional, _runtime_files = spec_and_files("openai-whisper-base")
+    source_files = {
+        name: b"synthetic source " + name.encode("ascii")
+        for name in WHISPER_TRANSFORMERS_SOURCE_FILES
+    }
+    source, source_manifest, source_manifest_sha256 = write_source(
+        tmp_path, provisional, source_files
+    )
+
+    with pytest.raises(ValueError, match="^VOICE_CONVERTER_UNAVAILABLE$"):
+        convert_whisper_bundle(
+            provisional,
+            source_dir=source,
+            source_manifest=source_manifest,
+            source_manifest_sha256=source_manifest_sha256,
+            project_root=tmp_path,
+        )
+
+
+def test_whisper_converter_rejects_system_site_packages(
+    tmp_path: Path, converter_environment: Path
+) -> None:
+    (converter_environment.parent.parent / "pyvenv.cfg").write_text(
+        "include-system-site-packages = true\n", encoding="ascii"
+    )
     provisional, _runtime_files = spec_and_files("openai-whisper-base")
     source_files = {
         name: b"synthetic source " + name.encode("ascii")

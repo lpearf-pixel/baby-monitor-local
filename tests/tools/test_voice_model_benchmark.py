@@ -97,6 +97,31 @@ class _Engine:
         )
 
 
+def test_macos_synthesizer_uses_the_installed_mandarin_voice_name(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    commands: list[tuple[str, ...]] = []
+
+    def run(command: tuple[str, ...], **_options: object) -> None:
+        commands.append(command)
+
+    monkeypatch.setattr(benchmark.subprocess, "run", run)
+    destination = tmp_path / "sample.wav"
+
+    benchmark._synthesize("小小，我是爸爸", 170, destination)
+
+    assert commands == [
+        (
+            "say",
+            "--voice=Tingting",
+            "--rate=170",
+            "--file-format=WAVE",
+            "--data-format=LEI16@16000",
+            f"--output-file={destination}",
+            "小小，我是爸爸",
+        )
+    ]
+
 def _passing_transcripts() -> list[str]:
     return [f"小小，{command}" for command in POSITIVE_COMMANDS * 4] + [
         "嘿，小小，我是爸爸"
@@ -112,6 +137,8 @@ def _passing_transcripts() -> list[str]:
         ("我喂完奶了", BenchmarkSlot(kind="feeding_action", value="complete")),
         ("我要继续喂奶", BenchmarkSlot(kind="feeding_action", value="continue")),
         ("我要结束喂奶", BenchmarkSlot(kind="feeding_action", value="end")),
+        ("我要结束 喂奶", BenchmarkSlot(kind="feeding_action", value="end")),
+        ("我要\t继续喂奶", BenchmarkSlot(kind="feeding_action", value="continue")),
     ],
 )
 def test_benchmark_parser_returns_only_closed_typed_slots(
@@ -122,6 +149,7 @@ def test_benchmark_parser_returns_only_closed_typed_slots(
 
 def test_benchmark_parser_rejects_non_corpus_command() -> None:
     assert parse_benchmark_slot("我是父亲") is None
+    assert parse_benchmark_slot("我要结束未来") is None
 
 
 def test_explicit_public_manifest_is_accepted(tmp_path: Path) -> None:

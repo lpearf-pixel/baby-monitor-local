@@ -117,7 +117,7 @@ def parse_benchmark_slot(command: str) -> BenchmarkSlot | None:
 
     if not isinstance(command, str):
         return None
-    return _SLOT_BY_COMMAND.get(command)
+    return _SLOT_BY_COMMAND.get("".join(command.split()))
 
 
 def load_benchmark_manifest(manifest_path: Path) -> BenchmarkManifest:
@@ -382,7 +382,7 @@ def _synthesize(text: str, rate: int, destination: Path) -> None:
     subprocess.run(
         (
             "say",
-            "--voice=Ting-Ting",
+            "--voice=Tingting",
             f"--rate={rate}",
             "--file-format=WAVE",
             "--data-format=LEI16@16000",

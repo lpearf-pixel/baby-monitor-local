@@ -733,6 +733,35 @@ def test_dev_dependencies_cover_supported_starlette_test_clients() -> None:
     assert any(item.startswith("httpx2>=") for item in dependencies)
 
 
+def test_intel_voice_converter_dependencies_are_isolated_and_fully_pinned() -> None:
+    project = tomllib.loads((ROOT / "pyproject.toml").read_text(encoding="utf-8"))
+    dependencies = project["project"]["dependencies"]
+    requirements = (
+        ROOT / "config/voice-converter-requirements.txt"
+    ).read_text(encoding="ascii").splitlines()
+
+    assert not any(item.startswith("torch") for item in dependencies)
+    assert not any(item.startswith("transformers") for item in dependencies)
+    assert requirements == [
+        "ctranslate2==4.8.1",
+        "numpy==1.26.4",
+        "pydantic==2.13.4",
+        "torch==2.2.2",
+        "transformers==4.56.2",
+    ]
+    makefile = (ROOT / "Makefile").read_text(encoding="utf-8")
+    startup = (ROOT / "tools/start_alpha.sh").read_text(encoding="utf-8")
+    assert "alpha-voice-converter-install:" in makefile
+    assert "runtime/voice-converter-venv" in makefile
+    assert "config/voice-converter-requirements.txt" in makefile
+    assert "-m venv" in makefile
+    assert "alpha-voice-converter-install" not in startup
+    path_gate = "tools/voice_converter_environment.py --project-root ."
+    assert path_gate in makefile
+    assert makefile.index(path_gate) < makefile.index('"$(PYTHON311)" -m venv')
+    assert makefile.index(path_gate) < makefile.index("-m pip install --requirement")
+
+
 def test_installer_installs_acceptance_test_dependencies() -> None:
     content = (ROOT / "tools/install_alpha_macos.sh").read_text(encoding="utf-8")
 

@@ -1,9 +1,10 @@
 SHELL := /bin/bash
 PYTHON := ./.venv-alpha/bin/python
+PYTHON311 ?= /usr/local/bin/python3.11
 BASH ?= /bin/bash
 .DEFAULT_GOAL := help
 
-.PHONY: help alpha-update alpha-install alpha-start alpha-stop alpha-restart alpha-go2rtc-restart alpha-status alpha-guardian-start alpha-guardian-test alpha-guardian-test-live alpha-guardian-scene-test alpha-audio-status alpha-audio-test alpha-voice-v0-test alpha-voice-v0-probe alpha-voice-v0-stability alpha-voice-models-install alpha-voice-model-benchmark alpha-visual-status alpha-visual-performance alpha-visual-diagnostic alpha-visual-launchd-update alpha-logs alpha-quality-hd alpha-quality-info alpha-quality-rollback alpha-source-check alpha-subtype-probe alpha-subtype-apply alpha-go2rtc-info alpha-go2rtc-rebuild alpha-go2rtc-rollback alpha-realtime-models-check alpha-realtime-models-install alpha-ws2021-collect-calibrated alpha-ws2021-collect-model alpha-ws2021-dataset alpha-ws2021-model-train-bootstrap alpha-ws2021-model-train alpha-ws2021-model-export alpha-ws2021-model-check
+.PHONY: help alpha-update alpha-install alpha-start alpha-stop alpha-restart alpha-go2rtc-restart alpha-status alpha-guardian-start alpha-guardian-test alpha-guardian-test-live alpha-guardian-scene-test alpha-audio-status alpha-audio-test alpha-voice-v0-test alpha-voice-v0-probe alpha-voice-v0-stability alpha-voice-converter-install alpha-voice-models-install alpha-voice-model-benchmark alpha-visual-status alpha-visual-performance alpha-visual-diagnostic alpha-visual-launchd-update alpha-logs alpha-quality-hd alpha-quality-info alpha-quality-rollback alpha-source-check alpha-subtype-probe alpha-subtype-apply alpha-go2rtc-info alpha-go2rtc-rebuild alpha-go2rtc-rollback alpha-realtime-models-check alpha-realtime-models-install alpha-ws2021-collect-calibrated alpha-ws2021-collect-model alpha-ws2021-dataset alpha-ws2021-model-train-bootstrap alpha-ws2021-model-train alpha-ws2021-model-export alpha-ws2021-model-check
 
 help:
 	@echo "Baby Monitor Local Alpha commands:"
@@ -23,6 +24,7 @@ help:
 	@echo "  make alpha-voice-v0-test     Run synthetic Voice Care V0 software gate"
 	@echo "  make alpha-voice-v0-probe    Run 60-second non-persistent audio probe"
 	@echo "  make alpha-voice-v0-stability Run 10-minute non-persistent audio probe"
+	@echo "  make alpha-voice-converter-install Install the isolated Whisper converter"
 	@echo "  make alpha-voice-models-install Install verified local Whisper base/small models"
 	@echo "  make alpha-voice-model-benchmark Run generated local Whisper base/small gate"
 	@echo "  make alpha-visual-status     Show redacted visual worker and M2 bridge health"
@@ -133,6 +135,23 @@ alpha-voice-v0-probe:
 
 alpha-voice-v0-stability:
 	@$(PYTHON) tools/voice_audio_probe.py live --duration 600
+
+alpha-voice-converter-install:
+	@set -eu; \
+	"$(PYTHON311)" tools/voice_converter_environment.py --project-root . >/dev/null 2>&1 || { echo "voice_converter_install=unavailable"; exit 1; }; \
+	environment="runtime/voice-converter-venv"; \
+	if [[ "$$(uname -s)" != "Darwin" || "$$(uname -m)" != "x86_64" || ! -x "$(PYTHON311)" || -L "$$environment" ]]; then \
+		echo "voice_converter_install=unavailable"; \
+		exit 1; \
+	fi; \
+	if [[ ! -x "$$environment/bin/python" ]]; then \
+		"$(PYTHON311)" -m venv "$$environment" >/dev/null 2>&1 || { echo "voice_converter_install=failed"; exit 1; }; \
+	else \
+		"$(PYTHON311)" -m venv --upgrade "$$environment" >/dev/null 2>&1 || { echo "voice_converter_install=failed"; exit 1; }; \
+	fi; \
+	"$$environment/bin/python" -m pip install --requirement config/voice-converter-requirements.txt >/dev/null 2>&1 || { echo "voice_converter_install=failed"; exit 1; }; \
+	"$$environment/bin/python" tools/voice_whisper_converter.py --check --expected-prefix "$$PWD/$$environment" >/dev/null 2>&1 || { echo "voice_converter_install=failed"; exit 1; }; \
+	echo "voice_converter_install=ready"
 
 alpha-voice-models-install:
 	@set -eu; \
