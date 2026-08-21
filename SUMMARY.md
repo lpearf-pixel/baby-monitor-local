@@ -350,8 +350,13 @@ legacy branch into this line without a separate integration decision.
   no model, raw household audio or Voice Care record path is enabled. Task 2 is complete
   through `d750f05`: bounded bytearray-only VAD/utterance capture enforces exact 500 ms
   pre-roll, 800 ms terminal silence and 8-second limits, with fail-closed model errors
-  and overwrite-before-clear evidence. Fresh Task 2 evidence is 23 passed. Task 3 local
-  ASR/exact-wake benchmark is next while Baby Care continues M4.
+  and overwrite-before-clear evidence. Fresh Task 2 evidence is 23 passed. Task 3's
+  software slice is complete through `8de7b7b`: local-only base/small ASR, exact wake,
+  closed benchmark slots and a fail-closed installer are independently reviewed. Fresh
+  evidence is 90 focused and 136 adjacent tests passed. The installer binds the
+  CTranslate2 converter to the active Voice venv instead of ambient `PATH`. Real pinned
+  model materialization plus the installed-i9 bake-off remain the next gate; no model
+  or production Voice Care worker is enabled while Baby Care continues M4.
 - Remote private viewing and the 72-hour release gate remain unfinished.
 - This system does not detect breathing, heart rate, suffocation or medical emergencies.
 
@@ -368,8 +373,8 @@ legacy branch into this line without a separate integration decision.
 4. Continue the approved audio/cry plan at Stage A8; a production model and
    license are still required before enablement; household audio remains
    memory-only.
-5. Execute Voice Care Gate V1 Baby Local Task 3 (local Whisper exact-wake bake-off);
-   Tasks 1–2 are complete. In parallel,
+5. Complete Voice Care Gate V1 Baby Local Task 3's installed-i9 Whisper base/small
+   exact-wake bake-off; Tasks 1–2 and Task 3 software are complete. In parallel,
    finish Baby Care M4; create its Voice Care contract branch only from the verified M4
    exact head. Do not enable caregiver identity or Baby Care writes during Tasks 1–3.
 6. Complete authenticated private remote access using Tailscale Serve/ACL only.

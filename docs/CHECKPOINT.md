@@ -801,3 +801,12 @@ frame 均 fail closed。独立复核发现原 zeroization 测试在 clear 后检
 零再清空，同时返回的 immutable PCM copy 保持完整。控制端新鲜验证为 23 passed、Python
 compile 与 `git diff --check` PASS。测试仅使用生成 PCM，不证明真实 Silero、家庭语音
 准确率或生产 worker；Task 3 的本地 Whisper/exact-wake 门是下一项。
+
+2026-08-21 完成 Voice Care Gate V1 Baby Local Task 3 软件切片。`4dc87cf` 添加只读
+本地 base/small ASR、精确 `小小` 唤醒与生成/公开语料聚合门；`7ef10c2` 补齐固定 ignored
+布局的无下载安装入口、六类 benchmark-only typed slots、近似唤醒和坏 WAV/symlink/
+aggregate-only 覆盖；`8de7b7b` 将 CTranslate2 converter 固定到当前 Voice venv Python
+同目录并对缺失、symlink、不可执行 fail closed。两轮独立复审最终 clean。控制端新鲜
+验证为 90 focused、136 adjacent passed，Make dry-run、Python compile 与 diff check
+PASS。真实 pinned 模型尚未物化，installed-i9 24/48 合成语料准确率与 p95 延迟门尚未
+执行，因此 Task 3 总体仍在 Step 5，Voice Care 保持 disabled。

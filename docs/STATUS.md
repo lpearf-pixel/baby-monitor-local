@@ -277,9 +277,14 @@
   VAD boundary maps malformed/model output to a stable unavailable result, and the
   collector enforces exact 500 ms pre-roll, 800 ms terminal silence and 8-second limits
   in bounded bytearrays. Reset, close, validation failure and terminal return have
-  non-vacuous overwrite-before-clear tests. Fresh evidence is 23 passed. Task 3 local
-  ASR/exact-wake benchmark is next. SpeechBrain execution and Baby Care intent delivery
-  remain later tasks.
+  non-vacuous overwrite-before-clear tests. Fresh evidence is 23 passed. Task 3's
+  software slice is complete and independently reviewed: local-only base/small ASR,
+  exact wake matching, closed benchmark-only typed slots, aggregate-only reports and a
+  fail-closed local installer now exist. The converter is resolved only beside the
+  active Voice venv Python and rejects missing, symlinked or non-executable tools.
+  Fresh evidence is 90 focused and 136 adjacent tests passed. Real pinned model
+  materialization and the installed-i9 accuracy/latency bake-off remain pending;
+  SpeechBrain execution and Baby Care intent delivery remain later tasks.
 - Installed-i9 audio-source discovery now verifies that the Xiaomi source exposes HEVC
   video plus Opus audio and that the fixed loopback `audio_analysis` alias exposes only
   Opus. The real input is supported 48 kHz stereo Opus; the fixed FFmpeg boundary

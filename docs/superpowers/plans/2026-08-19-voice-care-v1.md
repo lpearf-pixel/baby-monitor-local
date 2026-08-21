@@ -414,6 +414,10 @@ git commit -m "feat: collect bounded voice utterances"
 
 ### Task 3: Local Whisper Adapter, Exact Wake Gate And Public Benchmark
 
+**Status:** Software slice complete through `8de7b7b` and independently reviewed;
+Step 5 installed-i9 model materialization and bake-off remain pending. Voice Care stays
+disabled until that gate passes.
+
 **Files:**
 - Create: `services/voice/asr.py`
 - Create: `services/voice/wake.py`
@@ -430,7 +434,7 @@ git commit -m "feat: collect bounded voice utterances"
 - Wake success returns only the post-prefix command text. Failure returns a stable code
   and does not expose the transcript.
 
-- [ ] **Step 1: Write exact wake RED tests**
+- [x] **Step 1: Write exact wake RED tests**
 
 ```python
 @pytest.mark.parametrize("text", ["小小，我是爸爸", "  小小 我要喂奶了。"])
@@ -445,13 +449,13 @@ def test_non_exact_prefix_fails_closed(text: str) -> None:
     assert result.reason == "wake_not_detected"
 ```
 
-- [ ] **Step 2: Run RED tests**
+- [x] **Step 2: Run RED tests**
 
 Run: `.venv-alpha/bin/python -m pytest -q tests/voice/test_asr.py tests/voice/test_wake.py tests/tools/test_voice_model_benchmark.py`
 
 Expected: FAIL because the ASR/wake modules do not exist.
 
-- [ ] **Step 3: Implement runner isolation and benchmark contract**
+- [x] **Step 3: Implement runner isolation and benchmark contract**
 
 The ASR adapter accepts only validated local `base` or `small` artifacts, language
 `zh`, no translation and no network. The benchmark consumes an explicitly public or
@@ -459,7 +463,7 @@ generated manifest, reports aggregate wake/slot accuracy and p50/p95 latency, an
 prints transcript text or paths. `base` wins only if it meets the same gate as `small`;
 otherwise `small` wins. If neither passes, Voice Care remains disabled.
 
-- [ ] **Step 4: Run GREEN tests**
+- [x] **Step 4: Run GREEN tests**
 
 Run:
 
@@ -490,7 +494,7 @@ eight seconds. `base` is selected only if it passes all four gates; otherwise `s
 must pass them. Neither passing leaves Voice Care disabled. This synthetic gate does not
 prove household adult accuracy.
 
-- [ ] **Step 6: Commit Task 3**
+- [x] **Step 6: Commit Task 3 software slice**
 
 ```bash
 git add services/voice/asr.py services/voice/wake.py tools/voice_model_benchmark.py tests/voice/test_asr.py tests/voice/test_wake.py tests/tools/test_voice_model_benchmark.py Makefile
