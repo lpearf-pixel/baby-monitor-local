@@ -61,9 +61,10 @@ audio persistence, no ASR/care logic enablement, and no production behavior chan
 beyond the fixed decoder timeout/cleanup lifecycle required by the probe gate.
 
 **Overall status:** Gate V0 completed on 2026-08-20. Gate V1 local model architecture was
-approved on 2026-08-20. Baby Local Task 1 is complete and independently reviewed;
-Tasks 1–2 are complete and independently reviewed; Task 3 is next. No production Voice
-Care path is enabled.
+approved on 2026-08-20. Baby Local Tasks 1–3 are complete and independently reviewed;
+Task 3 selected Whisper `base` on the installed i9 synthetic gate on 2026-08-21. Task 4
+must wait for the Baby Care M4 exact-head prerequisite. No production Voice Care path is
+enabled.
 Gate V0 proves only inbound audio and the bounded receive/decode boundary. It does not
 approve household ASR/speaker accuracy or Baby Care writes.
 
@@ -414,9 +415,9 @@ git commit -m "feat: collect bounded voice utterances"
 
 ### Task 3: Local Whisper Adapter, Exact Wake Gate And Public Benchmark
 
-**Status:** Software slice complete through `8de7b7b` and independently reviewed;
-Step 5 installed-i9 model materialization and bake-off remain pending. Voice Care stays
-disabled until that gate passes.
+**Status:** Complete through `99eb8f7` and independently reviewed. The installed-i9
+synthetic bake-off selected Whisper `base`; production Voice Care remains disabled until
+the later worker, identity, Baby Care integration and supervised household gates pass.
 
 **Files:**
 - Create: `services/voice/asr.py`
@@ -476,7 +477,7 @@ git diff --check
 
 Expected: fake-runner and generated-signal tests pass without downloading models.
 
-- [ ] **Step 5: Run the installed-i9 model bake-off**
+- [x] **Step 5: Run the installed-i9 model bake-off**
 
 Before committing, explicitly install the ignored local artifacts and run the i9
 bake-off:
@@ -493,6 +494,13 @@ results and p95 ASR latency no greater than 3,000 ms for an utterance no longer 
 eight seconds. `base` is selected only if it passes all four gates; otherwise `small`
 must pass them. Neither passing leaves Voice Care disabled. This synthetic gate does not
 prove household adult accuracy.
+
+Fresh installed-i9 evidence: both pinned local sources converted in the isolated
+NumPy/PyTorch conversion environment, the exact runtime bundles installed, and a clean
+Torch-free runtime evaluated all 72 generated samples. `base` passed with 24/24 wake,
+0/48 false wakes, 24/24 typed slots and p95 2,196 ms. `small` was rejected with one
+false wake and p95 5,772 ms. Generated WAV files were held only in a temporary directory
+and discarded; no household audio was used or persisted.
 
 - [x] **Step 6: Commit Task 3 software slice**
 

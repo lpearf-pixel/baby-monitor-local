@@ -278,13 +278,15 @@
   collector enforces exact 500 ms pre-roll, 800 ms terminal silence and 8-second limits
   in bounded bytearrays. Reset, close, validation failure and terminal return have
   non-vacuous overwrite-before-clear tests. Fresh evidence is 23 passed. Task 3's
-  software slice is complete and independently reviewed: local-only base/small ASR,
-  exact wake matching, closed benchmark-only typed slots, aggregate-only reports and a
-  fail-closed local installer now exist. The converter is resolved only beside the
-  active Voice venv Python and rejects missing, symlinked or non-executable tools.
-  Fresh evidence is 90 focused and 136 adjacent tests passed. Real pinned model
-  materialization and the installed-i9 accuracy/latency bake-off remain pending;
-  SpeechBrain execution and Baby Care intent delivery remain later tasks.
+  software slice and installed-i9 gate are complete and independently reviewed:
+  local-only base/small ASR, exact wake matching, closed benchmark-only typed slots,
+  aggregate-only reports and a fail-closed isolated converter now exist. Both pinned
+  model bundles were materialized. The 72-sample generated Mandarin gate selected
+  `base`: 24/24 wake, 0/48 false wakes, 24/24 typed slots and p95 2,196 ms. `small`
+  failed closed with one false wake and p95 5,772 ms. Fresh focused evidence is 114
+  passed and the full Python suite is 1,024 passed. SpeechBrain execution, household
+  adult accuracy, the production worker and Baby Care intent delivery remain later
+  gates.
 - Installed-i9 audio-source discovery now verifies that the Xiaomi source exposes HEVC
   video plus Opus audio and that the fixed loopback `audio_analysis` alias exposes only
   Opus. The real input is supported 48 kHz stereo Opus; the fixed FFmpeg boundary

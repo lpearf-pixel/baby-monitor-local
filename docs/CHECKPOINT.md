@@ -810,3 +810,17 @@ aggregate-only 覆盖；`8de7b7b` 将 CTranslate2 converter 固定到当前 Voic
 验证为 90 focused、136 adjacent passed，Make dry-run、Python compile 与 diff check
 PASS。真实 pinned 模型尚未物化，installed-i9 24/48 合成语料准确率与 p95 延迟门尚未
 执行，因此 Task 3 总体仍在 Step 5，Voice Care 保持 disabled。
+
+2026-08-21 完成 Voice Care Gate V1 Baby Local Task 3 installed-i9 门。`99eb8f7`
+新增可重建的隔离 Whisper 转换环境、固定依赖、安装前 symlink 路径门和仓库自有
+NumPy 转换适配器，避开 Intel macOS 上 CTranslate2 与转换期 PyTorch 的同进程冲突；
+运行期不加载 PyTorch，也未把转换依赖放入生产 worker 启动路径。两个固定 revision
+均从已验证本地 source manifest 转换并安装到 ignored runtime。最终四速率 72 条 macOS
+生成普通话门中，`base` 为 24/24 exact wake、0/48 false wake、24/24 typed slots，p50
+1,873 ms、p95 2,196 ms并被选中；`small` 虽为 24/24 wake/slots，但有 1/48 false wake，
+p95 5,772 ms，按 fail-closed 拒绝。生成 WAV 仅存在于临时目录并立即丢弃，未使用或
+持久化家庭音频。新鲜 focused 门为 114 passed，完整 Python 为 1,024 passed，转换器
+安装/check、pip check、Python compile、三个 Make dry-run 与 `git diff --check` 均 PASS。
+该证据只证明本机合成语音，不证明家庭成人、距离、噪声或说话人身份准确率；生产
+Voice worker 仍 disabled。下一项 Voice Care 产品切片为 Baby Care-owned Task 4，但须
+等待 Baby Care M4 的 verified exact head。

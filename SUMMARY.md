@@ -351,12 +351,14 @@ legacy branch into this line without a separate integration decision.
   through `d750f05`: bounded bytearray-only VAD/utterance capture enforces exact 500 ms
   pre-roll, 800 ms terminal silence and 8-second limits, with fail-closed model errors
   and overwrite-before-clear evidence. Fresh Task 2 evidence is 23 passed. Task 3's
-  software slice is complete through `8de7b7b`: local-only base/small ASR, exact wake,
-  closed benchmark slots and a fail-closed installer are independently reviewed. Fresh
-  evidence is 90 focused and 136 adjacent tests passed. The installer binds the
-  CTranslate2 converter to the active Voice venv instead of ambient `PATH`. Real pinned
-  model materialization plus the installed-i9 bake-off remain the next gate; no model
-  or production Voice Care worker is enabled while Baby Care continues M4.
+  software slice and installed-i9 gate are complete through `99eb8f7`: local-only
+  base/small ASR, exact wake, closed benchmark slots and an isolated, pinned CTranslate2
+  conversion environment are independently reviewed. Both local model bundles were
+  materialized. The final 72-sample generated Mandarin gate selected `base` with 24/24
+  wake, 0/48 false wakes, 24/24 typed slots and p95 2,196 ms; `small` failed closed.
+  Fresh focused evidence is 114 passed and the full Python suite is 1,024 passed. This
+  synthetic result does not prove household adult accuracy; no production Voice Care
+  worker is enabled while Baby Care continues M4.
 - Remote private viewing and the 72-hour release gate remain unfinished.
 - This system does not detect breathing, heart rate, suffocation or medical emergencies.
 
@@ -373,10 +375,10 @@ legacy branch into this line without a separate integration decision.
 4. Continue the approved audio/cry plan at Stage A8; a production model and
    license are still required before enablement; household audio remains
    memory-only.
-5. Complete Voice Care Gate V1 Baby Local Task 3's installed-i9 Whisper base/small
-   exact-wake bake-off; Tasks 1–2 and Task 3 software are complete. In parallel,
-   finish Baby Care M4; create its Voice Care contract branch only from the verified M4
-   exact head. Do not enable caregiver identity or Baby Care writes during Tasks 1–3.
+5. Finish Baby Care M4 and establish its verified exact head; Voice Care Baby Local
+   Tasks 1–3, including the installed-i9 `base` bake-off, are complete. Then execute
+   Voice Care Task 4 contract work from that exact head. Do not enable caregiver
+   identity, a production Voice worker or Baby Care writes before their later gates.
 6. Complete authenticated private remote access using Tailscale Serve/ACL only.
 7. Complete the final 72-hour release gate before any release/tag decision.
 8. Define per-parent acknowledgement and false-positive feedback only through a future

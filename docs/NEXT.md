@@ -121,9 +121,9 @@ preflight; household audio remains disabled and memory-only.
 ## P3 — Audio and cry candidates
 
 **Status:** Gate V0 complete; A8 remains blocked. Voice Care Gate V1 architecture and
-dual-repository implementation order are approved. Baby Local Tasks 1–2 and Task 3's
-software slice are complete and reviewed; Task 3's installed-i9 bake-off is pending and
-production Voice Care remains disabled.
+dual-repository implementation order are approved. Baby Local Tasks 1–3 are complete
+and reviewed; the installed-i9 gate selected Whisper `base`, while production Voice
+Care remains disabled.
 Audio/cry was separately approved and resequenced for parallel software work on
 2026-08-17. Stages A1-A2 strict contracts/settings and bounded in-memory PCM source are
 complete; Stage A3 loudness/dynamic noise floor is complete and Stage A4 pinned ONNX
@@ -147,12 +147,11 @@ it does not clear A8 production-model/license or household-scenario requirements
 
 The same plan now owns Gate V1. Task 1 delivered closed model artifacts/settings with
 validated local source and runtime manifests. Task 2 delivered bounded memory-only VAD
-and exact 500 ms/800 ms/8-second capture. Task 3 software delivered local-only ASR,
-exact wake, closed typed benchmark slots and a fail-closed installer. The next executable
-Baby Local slice is Task 3's real pinned model materialization and installed-i9 Whisper
-`base`/`small` exact-wake bake-off. It may proceed while Baby Care finishes M4. Baby Care
-contract/pairing/write tasks must start only from its verified M4 exact head and remain
-in the Baby Care repository.
+and exact 500 ms/800 ms/8-second capture. Task 3 delivered local-only ASR, exact wake,
+closed typed benchmark slots, an isolated fail-closed converter and the installed-i9
+gate. Whisper `base` passed all four generated-speech thresholds; `small` failed closed.
+The next executable cross-repository slice is Task 4, but it must start only after Baby
+Care M4 has a verified exact head and must remain in the Baby Care repository.
 
 **Prerequisites:** The current design approval permits synthetic/public-media software
 work before P0–P2 complete. P0–P2 and A7 remain prerequisites for household
@@ -169,10 +168,10 @@ never provide household audio for Git or chat.
 Test timing, deduplication, quiet/adult-speech negatives and privacy using generated or
 explicitly public media. Software tests do not prove household accuracy.
 
-**Next:** Execute Voice Care Gate V1 Task 3's installed-i9 bake-off without enabling production
-Voice Care or persisting household audio. Keep cry A8 disabled until its separate production-model
-and supervised household acceptance requirements are met. P4 remains the next
-independent product stage.
+**Next:** Finish Baby Care M4 and verify its exact head, then execute Voice Care Gate V1
+Task 4's Baby Care-owned contract corpus. Keep production Voice Care and cry A8 disabled
+until their separate model, identity, integration and supervised household gates pass.
+P4 remains the next independent product stage.
 
 ## P4 — Authenticated private remote access
 
