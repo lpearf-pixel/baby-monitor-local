@@ -16,7 +16,7 @@ idempotent final writes, revision/undo and audit. The shared contract is publish
 Baby Care and vendored into Baby Local at an exact source commit and SHA-256.
 
 **Tech Stack:** Python 3.11, NumPy, OpenVINO/ONNX, faster-whisper 1.2.1,
-CTranslate2 4.8.1, cryptography 50.0.0, FFmpeg, macOS Keychain and launchd on Baby
+CTranslate2 4.8.1, cryptography 48.0.1, FFmpeg, macOS Keychain and launchd on Baby
 Local; Node.js 24, TypeScript 5.9, Zod, Fastify, PostgreSQL/Drizzle and Vitest on Baby
 Care.
 
@@ -324,7 +324,7 @@ before creating any runner. Keep all digest fields required only when `enabled=T
 The explicit installer downloads/converts into ignored runtime storage, validates every
 digest and license record before atomic placement and never runs from worker startup.
 Pin `faster-whisper==1.2.1` and Intel macOS `ctranslate2==4.8.1` for local ASR, and
-`cryptography==50.0.0` for later Ed25519/AES-GCM boundaries. Load only an absolute
+`cryptography==48.0.1` for later Ed25519/AES-GCM boundaries. Load only an absolute
 validated local model directory into faster-whisper so its implicit Hub download path
 cannot run. Set the structured outbox limit to 128 intents with a 1,800-second retention
 ceiling.
