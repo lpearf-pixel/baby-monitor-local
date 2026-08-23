@@ -1,0 +1,691 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "oneOf": [
+    {
+      "type": "object",
+      "properties": {
+        "schemaVersion": {
+          "$ref": "#/$defs/__schema0"
+        },
+        "requestId": {
+          "$ref": "#/$defs/__schema1"
+        },
+        "deviceId": {
+          "$ref": "#/$defs/__schema2"
+        },
+        "leaseId": {
+          "$ref": "#/$defs/__schema3"
+        },
+        "issuedAt": {
+          "$ref": "#/$defs/__schema4"
+        },
+        "occurredAt": {
+          "$ref": "#/$defs/__schema4"
+        },
+        "deliveryMode": {
+          "$ref": "#/$defs/__schema5"
+        },
+        "speakerState": {
+          "$ref": "#/$defs/__schema6"
+        },
+        "source": {
+          "$ref": "#/$defs/__schema7"
+        },
+        "modelVersion": {
+          "$ref": "#/$defs/__schema8"
+        },
+        "signature": {
+          "$ref": "#/$defs/__schema9"
+        },
+        "intentType": {
+          "type": "string",
+          "const": "feeding_start"
+        },
+        "careSessionId": {
+          "type": "null"
+        },
+        "payload": {
+          "type": "object",
+          "properties": {
+            "mode": {
+              "type": "string",
+              "enum": [
+                "unknown",
+                "bottle",
+                "direct_breastfeeding"
+              ]
+            },
+            "startedAt": {
+              "$ref": "#/$defs/__schema4"
+            }
+          },
+          "required": [
+            "mode",
+            "startedAt"
+          ],
+          "additionalProperties": false
+        }
+      },
+      "required": [
+        "schemaVersion",
+        "requestId",
+        "deviceId",
+        "leaseId",
+        "issuedAt",
+        "occurredAt",
+        "deliveryMode",
+        "speakerState",
+        "source",
+        "modelVersion",
+        "signature",
+        "intentType",
+        "careSessionId",
+        "payload"
+      ],
+      "additionalProperties": false
+    },
+    {
+      "type": "object",
+      "properties": {
+        "schemaVersion": {
+          "$ref": "#/$defs/__schema0"
+        },
+        "requestId": {
+          "$ref": "#/$defs/__schema1"
+        },
+        "deviceId": {
+          "$ref": "#/$defs/__schema2"
+        },
+        "leaseId": {
+          "$ref": "#/$defs/__schema3"
+        },
+        "issuedAt": {
+          "$ref": "#/$defs/__schema4"
+        },
+        "occurredAt": {
+          "$ref": "#/$defs/__schema4"
+        },
+        "deliveryMode": {
+          "$ref": "#/$defs/__schema5"
+        },
+        "speakerState": {
+          "$ref": "#/$defs/__schema6"
+        },
+        "source": {
+          "$ref": "#/$defs/__schema7"
+        },
+        "modelVersion": {
+          "$ref": "#/$defs/__schema8"
+        },
+        "signature": {
+          "$ref": "#/$defs/__schema9"
+        },
+        "intentType": {
+          "type": "string",
+          "const": "feeding_update"
+        },
+        "careSessionId": {
+          "type": "string",
+          "format": "uuid",
+          "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+        },
+        "payload": {
+          "type": "object",
+          "properties": {
+            "expectedVersion": {
+              "$ref": "#/$defs/__schema10"
+            },
+            "proposal": {
+              "oneOf": [
+                {
+                  "type": "object",
+                  "properties": {
+                    "mode": {
+                      "type": "string",
+                      "const": "unknown"
+                    },
+                    "startedAt": {
+                      "$ref": "#/$defs/__schema4"
+                    },
+                    "endedAt": {
+                      "type": "null"
+                    }
+                  },
+                  "required": [
+                    "mode",
+                    "startedAt",
+                    "endedAt"
+                  ],
+                  "additionalProperties": false
+                },
+                {
+                  "type": "object",
+                  "properties": {
+                    "mode": {
+                      "type": "string",
+                      "const": "bottle"
+                    },
+                    "startedAt": {
+                      "$ref": "#/$defs/__schema4"
+                    },
+                    "endedAt": {
+                      "anyOf": [
+                        {
+                          "$ref": "#/$defs/__schema4"
+                        },
+                        {
+                          "type": "null"
+                        }
+                      ]
+                    },
+                    "liquidType": {
+                      "anyOf": [
+                        {
+                          "$ref": "#/$defs/__schema11"
+                        },
+                        {
+                          "type": "null"
+                        }
+                      ]
+                    },
+                    "amountMl": {
+                      "$ref": "#/$defs/__schema12"
+                    },
+                    "bottleCapacityMl": {
+                      "$ref": "#/$defs/__schema12"
+                    }
+                  },
+                  "required": [
+                    "mode",
+                    "startedAt",
+                    "endedAt",
+                    "liquidType",
+                    "amountMl",
+                    "bottleCapacityMl"
+                  ],
+                  "additionalProperties": false
+                },
+                {
+                  "type": "object",
+                  "properties": {
+                    "mode": {
+                      "type": "string",
+                      "const": "direct_breastfeeding"
+                    },
+                    "startedAt": {
+                      "$ref": "#/$defs/__schema4"
+                    },
+                    "endedAt": {
+                      "anyOf": [
+                        {
+                          "$ref": "#/$defs/__schema4"
+                        },
+                        {
+                          "type": "null"
+                        }
+                      ]
+                    },
+                    "durationMinutes": {
+                      "$ref": "#/$defs/__schema12"
+                    }
+                  },
+                  "required": [
+                    "mode",
+                    "startedAt",
+                    "endedAt",
+                    "durationMinutes"
+                  ],
+                  "additionalProperties": false
+                }
+              ]
+            }
+          },
+          "required": [
+            "expectedVersion",
+            "proposal"
+          ],
+          "additionalProperties": false
+        }
+      },
+      "required": [
+        "schemaVersion",
+        "requestId",
+        "deviceId",
+        "leaseId",
+        "issuedAt",
+        "occurredAt",
+        "deliveryMode",
+        "speakerState",
+        "source",
+        "modelVersion",
+        "signature",
+        "intentType",
+        "careSessionId",
+        "payload"
+      ],
+      "additionalProperties": false
+    },
+    {
+      "type": "object",
+      "properties": {
+        "schemaVersion": {
+          "$ref": "#/$defs/__schema0"
+        },
+        "requestId": {
+          "$ref": "#/$defs/__schema1"
+        },
+        "deviceId": {
+          "$ref": "#/$defs/__schema2"
+        },
+        "leaseId": {
+          "$ref": "#/$defs/__schema3"
+        },
+        "issuedAt": {
+          "$ref": "#/$defs/__schema4"
+        },
+        "occurredAt": {
+          "$ref": "#/$defs/__schema4"
+        },
+        "deliveryMode": {
+          "$ref": "#/$defs/__schema5"
+        },
+        "speakerState": {
+          "$ref": "#/$defs/__schema6"
+        },
+        "source": {
+          "$ref": "#/$defs/__schema7"
+        },
+        "modelVersion": {
+          "$ref": "#/$defs/__schema8"
+        },
+        "signature": {
+          "$ref": "#/$defs/__schema9"
+        },
+        "intentType": {
+          "type": "string",
+          "const": "feeding_end"
+        },
+        "careSessionId": {
+          "type": "string",
+          "format": "uuid",
+          "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+        },
+        "payload": {
+          "type": "object",
+          "properties": {
+            "expectedVersion": {
+              "$ref": "#/$defs/__schema10"
+            },
+            "finalProposal": {
+              "oneOf": [
+                {
+                  "type": "object",
+                  "properties": {
+                    "mode": {
+                      "type": "string",
+                      "const": "bottle"
+                    },
+                    "startedAt": {
+                      "$ref": "#/$defs/__schema4"
+                    },
+                    "endedAt": {
+                      "$ref": "#/$defs/__schema4"
+                    },
+                    "liquidType": {
+                      "$ref": "#/$defs/__schema11"
+                    },
+                    "amountMl": {
+                      "$ref": "#/$defs/__schema10"
+                    },
+                    "bottleCapacityMl": {
+                      "$ref": "#/$defs/__schema12"
+                    }
+                  },
+                  "required": [
+                    "mode",
+                    "startedAt",
+                    "endedAt",
+                    "liquidType",
+                    "amountMl",
+                    "bottleCapacityMl"
+                  ],
+                  "additionalProperties": false
+                },
+                {
+                  "type": "object",
+                  "properties": {
+                    "mode": {
+                      "type": "string",
+                      "const": "direct_breastfeeding"
+                    },
+                    "startedAt": {
+                      "$ref": "#/$defs/__schema4"
+                    },
+                    "endedAt": {
+                      "$ref": "#/$defs/__schema4"
+                    },
+                    "durationMinutes": {
+                      "$ref": "#/$defs/__schema10"
+                    }
+                  },
+                  "required": [
+                    "mode",
+                    "startedAt",
+                    "endedAt",
+                    "durationMinutes"
+                  ],
+                  "additionalProperties": false
+                }
+              ]
+            }
+          },
+          "required": [
+            "expectedVersion",
+            "finalProposal"
+          ],
+          "additionalProperties": false
+        }
+      },
+      "required": [
+        "schemaVersion",
+        "requestId",
+        "deviceId",
+        "leaseId",
+        "issuedAt",
+        "occurredAt",
+        "deliveryMode",
+        "speakerState",
+        "source",
+        "modelVersion",
+        "signature",
+        "intentType",
+        "careSessionId",
+        "payload"
+      ],
+      "additionalProperties": false
+    },
+    {
+      "type": "object",
+      "properties": {
+        "schemaVersion": {
+          "$ref": "#/$defs/__schema0"
+        },
+        "requestId": {
+          "$ref": "#/$defs/__schema1"
+        },
+        "deviceId": {
+          "$ref": "#/$defs/__schema2"
+        },
+        "leaseId": {
+          "$ref": "#/$defs/__schema3"
+        },
+        "issuedAt": {
+          "$ref": "#/$defs/__schema4"
+        },
+        "occurredAt": {
+          "$ref": "#/$defs/__schema4"
+        },
+        "deliveryMode": {
+          "$ref": "#/$defs/__schema5"
+        },
+        "speakerState": {
+          "$ref": "#/$defs/__schema6"
+        },
+        "source": {
+          "$ref": "#/$defs/__schema7"
+        },
+        "modelVersion": {
+          "$ref": "#/$defs/__schema8"
+        },
+        "signature": {
+          "$ref": "#/$defs/__schema9"
+        },
+        "intentType": {
+          "type": "string",
+          "const": "care_confirm"
+        },
+        "careSessionId": {
+          "type": "string",
+          "format": "uuid",
+          "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+        },
+        "payload": {
+          "type": "object",
+          "properties": {
+            "proposalDigest": {
+              "$ref": "#/$defs/__schema13"
+            },
+            "expectedVersion": {
+              "$ref": "#/$defs/__schema10"
+            },
+            "warningDigest": {
+              "$ref": "#/$defs/__schema14"
+            },
+            "confirmedWarningCodes": {
+              "$ref": "#/$defs/__schema15"
+            }
+          },
+          "required": [
+            "proposalDigest",
+            "expectedVersion",
+            "warningDigest",
+            "confirmedWarningCodes"
+          ],
+          "additionalProperties": false
+        }
+      },
+      "required": [
+        "schemaVersion",
+        "requestId",
+        "deviceId",
+        "leaseId",
+        "issuedAt",
+        "occurredAt",
+        "deliveryMode",
+        "speakerState",
+        "source",
+        "modelVersion",
+        "signature",
+        "intentType",
+        "careSessionId",
+        "payload"
+      ],
+      "additionalProperties": false
+    },
+    {
+      "type": "object",
+      "properties": {
+        "schemaVersion": {
+          "$ref": "#/$defs/__schema0"
+        },
+        "requestId": {
+          "$ref": "#/$defs/__schema1"
+        },
+        "deviceId": {
+          "$ref": "#/$defs/__schema2"
+        },
+        "leaseId": {
+          "$ref": "#/$defs/__schema3"
+        },
+        "issuedAt": {
+          "$ref": "#/$defs/__schema4"
+        },
+        "occurredAt": {
+          "$ref": "#/$defs/__schema4"
+        },
+        "deliveryMode": {
+          "$ref": "#/$defs/__schema5"
+        },
+        "speakerState": {
+          "$ref": "#/$defs/__schema6"
+        },
+        "source": {
+          "$ref": "#/$defs/__schema7"
+        },
+        "modelVersion": {
+          "$ref": "#/$defs/__schema8"
+        },
+        "signature": {
+          "$ref": "#/$defs/__schema9"
+        },
+        "intentType": {
+          "type": "string",
+          "const": "care_cancel"
+        },
+        "careSessionId": {
+          "type": "string",
+          "format": "uuid",
+          "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+        },
+        "payload": {
+          "type": "object",
+          "properties": {
+            "expectedVersion": {
+              "$ref": "#/$defs/__schema10"
+            },
+            "reason": {
+              "type": "string",
+              "enum": [
+                "caregiver_cancelled",
+                "duplicate",
+                "incorrect_intent",
+                "stale"
+              ]
+            }
+          },
+          "required": [
+            "expectedVersion",
+            "reason"
+          ],
+          "additionalProperties": false
+        }
+      },
+      "required": [
+        "schemaVersion",
+        "requestId",
+        "deviceId",
+        "leaseId",
+        "issuedAt",
+        "occurredAt",
+        "deliveryMode",
+        "speakerState",
+        "source",
+        "modelVersion",
+        "signature",
+        "intentType",
+        "careSessionId",
+        "payload"
+      ],
+      "additionalProperties": false
+    }
+  ],
+  "$defs": {
+    "__schema0": {
+      "type": "number",
+      "const": 1
+    },
+    "__schema1": {
+      "type": "string",
+      "format": "uuid",
+      "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+    },
+    "__schema2": {
+      "type": "string",
+      "format": "uuid",
+      "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+    },
+    "__schema3": {
+      "type": "string",
+      "format": "uuid",
+      "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+    },
+    "__schema4": {
+      "type": "string",
+      "format": "date-time",
+      "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d(?::[0-5]\\d(?:\\.\\d+)?)?(?:Z|([+-](?:[01]\\d|2[0-3]):[0-5]\\d)))$"
+    },
+    "__schema5": {
+      "type": "string",
+      "enum": [
+        "live",
+        "replay"
+      ]
+    },
+    "__schema6": {
+      "type": "string",
+      "enum": [
+        "verified",
+        "uncertain",
+        "mismatch",
+        "not_enrolled",
+        "unavailable"
+      ]
+    },
+    "__schema7": {
+      "type": "string",
+      "const": "voice"
+    },
+    "__schema8": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 64,
+      "pattern": "^[A-Za-z0-9._-]+$"
+    },
+    "__schema9": {
+      "type": "string",
+      "pattern": "^[A-Za-z0-9_-]{85}[AQgw]$"
+    },
+    "__schema10": {
+      "type": "integer",
+      "exclusiveMinimum": 0,
+      "maximum": 9007199254740991
+    },
+    "__schema11": {
+      "type": "string",
+      "enum": [
+        "expressed_breast_milk",
+        "formula"
+      ]
+    },
+    "__schema12": {
+      "anyOf": [
+        {
+          "$ref": "#/$defs/__schema10"
+        },
+        {
+          "type": "null"
+        }
+      ]
+    },
+    "__schema13": {
+      "type": "string",
+      "pattern": "^[a-f0-9]{64}$"
+    },
+    "__schema14": {
+      "anyOf": [
+        {
+          "$ref": "#/$defs/__schema13"
+        },
+        {
+          "type": "null"
+        }
+      ]
+    },
+    "__schema15": {
+      "maxItems": 4,
+      "type": "array",
+      "items": {
+        "$ref": "#/$defs/__schema16"
+      }
+    },
+    "__schema16": {
+      "type": "string",
+      "enum": [
+        "possible_duplicate",
+        "unusual_value",
+        "sleep_overlap",
+        "old_backfill"
+      ]
+    }
+  }
+}
