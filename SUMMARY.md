@@ -368,7 +368,11 @@ legacy branch into this line without a separate integration decision.
   only verified/uncertain/mismatch/not-enrolled outcomes. Fresh evidence is 18 focused,
   121 adjacent and 1,061 full Python tests. Voice Care remains disabled; converted
   ECAPA runtime installation, real adult enrollment/accuracy and real Keychain mutation
-  remain later gates. Baby Local Task 9 signed delivery and bounded outbox is next.
+  remain later gates. Task 9 is complete at `b8f0002`: Ed25519 intent/pairing signing,
+  strict semantic response parsing and a restart-safe AES-GCM SQLite outbox pass 27
+  focused, 108 adjacent and 1,088 full Python tests. The shared signing vector also
+  passes 53 Baby Care contract tests at `9b4f150`. No real endpoint, Keychain mutation,
+  household audio or Baby Care write was used. Task 10 worker/TTS/deployment is next.
 - Remote private viewing and the 72-hour release gate remain unfinished.
 - This system does not detect breathing, heart rate, suffocation or medical emergencies.
 
@@ -385,9 +389,9 @@ legacy branch into this line without a separate integration decision.
 4. Continue the approved audio/cry plan at Stage A8; a production model and
    license are still required before enablement; household audio remains
    memory-only.
-5. Continue Voice Care Gate V1 Baby Local Task 9 signed intent delivery and bounded
-   outbox. Baby Care M5 through its feeding pilot and Baby Local Tasks 1–3, 6 and the
-   Task 7 software boundary are locally complete; contract parity is `CONTRACT_OK`.
+5. Continue Voice Care Gate V1 Baby Local Task 10 fixed TTS, independent worker and
+   disabled-by-default deployment gate. Baby Care M5 through its feeding pilot and Baby
+   Local Tasks 1–3, 6, 7 and 9 are locally complete; contract parity is `CONTRACT_OK`.
    Keep Voice Care disabled; ECAPA installation and household adult accuracy remain
    installed/human gates.
 6. Complete authenticated private remote access using Tailscale Serve/ACL only.

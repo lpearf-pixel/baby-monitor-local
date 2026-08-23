@@ -836,25 +836,25 @@ git commit -m "feat: commit confirmed voice feeding sessions"
   structured-intent queue.
 - Consumes: Task 5 pairing endpoints and Task 8 intent endpoint.
 
-- [ ] **Step 1: Write RED signature/outbox tests**
+- [x] **Step 1: Write RED signature/outbox tests**
 
 Use the same fixed Ed25519 golden vector in Python and TypeScript. Test retry, duplicate,
 expired intent, Baby Care outage, stale ambiguous intent and process restart. Assert the
 SQLite queue contains only signed structured fields and never PCM, transcript, embedding
 or endpoint credentials.
 
-- [ ] **Step 2: Run RED tests**
+- [x] **Step 2: Run RED tests**
 
 Run: `.venv-alpha/bin/python -m pytest -q tests/voice/test_signing.py tests/voice/test_client.py tests/voice/test_outbox.py`
 
-- [ ] **Step 3: Implement closed delivery**
+- [x] **Step 3: Implement closed delivery**
 
 Store the Ed25519 private key through Task 7 Keychain support. Canonicalize only the
 closed contract fields and exclude `signature`. Use request ID idempotency, bounded
 timeouts and a short structured queue retention. Never say saved while queued; stale or
 ambiguous pending confirmations require reconciliation rather than auto-commit.
 
-- [ ] **Step 4: Run GREEN gates**
+- [x] **Step 4: Run GREEN gates**
 
 Run:
 
@@ -864,12 +864,21 @@ Run:
 git diff --check
 ```
 
-- [ ] **Step 5: Commit Task 9**
+- [x] **Step 5: Commit Task 9**
 
 ```bash
 git add services/voice/signing.py services/voice/client.py services/voice/outbox.py tests/voice/test_signing.py tests/voice/test_client.py tests/voice/test_outbox.py
 git commit -m "feat: deliver signed voice care intents"
 ```
+
+Completed 2026-08-24 at `b8f0002`. The i9 device seed remains behind the Task 7
+Keychain boundary; canonical Ed25519 intent and pairing signatures match the fixed
+Baby Care vector recorded at Baby Care commit `9b4f150`. The mode-0600 SQLite outbox
+stores only AES-GCM ciphertext plus bounded delivery metadata, retries the exact signed
+request ID across restart, and moves expired or unresolved delivery to reconciliation
+without claiming a save. Fresh evidence: 27 focused, 108 adjacent Voice Care and 1,088
+full Python tests passed; compile and diff checks passed. No real Keychain mutation,
+Baby Care write, endpoint credential, household audio or production worker was used.
 
 ### Task 10: Fixed TTS, Independent Voice Worker And Deployment Gate
 

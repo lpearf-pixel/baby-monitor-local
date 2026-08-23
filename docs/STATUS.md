@@ -300,7 +300,15 @@
   four closed identity states. Fresh evidence is 18 focused, 121 adjacent and 1,061
   full Python tests. A real Keychain write/delete was deliberately not performed by the
   software gate; converted ECAPA installation, adult enrollment and household accuracy
-  remain pending while Voice Care stays disabled. Task 9 signed delivery/outbox is next.
+  remain pending while Voice Care stays disabled.
+- Voice Care Task 9 is complete at `b8f0002`. A Keychain-backed Ed25519 identity signs
+  the exact canonical Baby Care envelope and one-time pairing challenge; the strict
+  client exposes only closed semantic responses. A bounded mode-0600 SQLite outbox
+  encrypts signed intent bytes with a separate Keychain-backed AES-GCM key, preserves
+  request-ID idempotency across restart, retries only while fresh and converts expired
+  ambiguity to reconciliation. Fresh evidence is 27 focused, 108 adjacent and 1,088
+  full Python tests; the matching Baby Care vector passes 53 contract tests at
+  `9b4f150`. No production endpoint or care write was exercised. Task 10 is next.
 - Installed-i9 audio-source discovery now verifies that the Xiaomi source exposes HEVC
   video plus Opus audio and that the fixed loopback `audio_analysis` alias exposes only
   Opus. The real input is supported 48 kHz stereo Opus; the fixed FFmpeg boundary

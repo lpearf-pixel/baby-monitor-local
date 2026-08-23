@@ -845,3 +845,13 @@ verified/uncertain/mismatch/not-enrolled 四种闭合状态。短、静、噪声
 导致独立 `pip check` 不一致，此项不属于生产 Voice runner，未通过删除包掩盖。Voice
 Care 仍 disabled；ECAPA 安全转换/安装、真实成人 enrollment 与家庭准确率未验收。下一
 软件切片为 Baby Local Task 9 signed delivery 与 bounded structured outbox。
+
+2026-08-24 完成 Voice Care Gate V1 Baby Local Task 9 软件边界。`b8f0002` 新增
+Keychain-backed Ed25519 设备身份、与 Baby Care 完全相同的 canonical 签名字节、一次性
+pairing challenge 签名、严格封闭语义响应客户端，以及 mode-0600/AES-GCM 加密的有界
+SQLite outbox。重复 request ID、断网、重启、密文篡改、过期临界点和 ambiguous delivery
+均有 fail-closed 回归；过期或不明确状态只进入 reconciliation，queued 永不冒充 saved。
+新鲜门禁为 27 focused、108 adjacent Voice Care、1,088 完整 Python 测试，compile/diff
+checks PASS；同一固定签名向量在 Baby Care `9b4f150` 的 53 项合同测试通过。未写真实
+Keychain、未访问生产 endpoint、未写 Baby Care、未使用家庭音频。Voice Care 仍
+disabled；下一软件切片为 Task 10 fixed TTS、独立 worker 与部署门。
