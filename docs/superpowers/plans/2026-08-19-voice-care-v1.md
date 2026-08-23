@@ -903,7 +903,7 @@ Baby Care write, endpoint credential, household audio or production worker was u
   `alpha-voice-stop`.
 - Consumes: Tasks 1–3 and 6–9.
 
-- [ ] **Step 1: Write RED worker/TTS tests**
+- [x] **Step 1: Write RED worker/TTS tests**
 
 Assert exact response mapping, including `saved -> 好的，已经记录。` and
 `temporarily_unavailable -> 我听到了，但还没有保存，请稍后确认。`. Feed text to the
@@ -911,11 +911,11 @@ macOS synthesizer through stdin, never argv. Test capture ducking before speech,
 post-playback guard, bounded volume, cancellation and unavailable output. Worker/model
 failure must not restart go2rtc, Dashboard, visual, gauge, environment or cry workers.
 
-- [ ] **Step 2: Run RED tests**
+- [x] **Step 2: Run RED tests**
 
 Run: `.venv-alpha/bin/python -m pytest -q tests/voice/test_tts.py tests/voice/test_worker.py tests/deploy/test_voice_worker_deploy.py`
 
-- [ ] **Step 3: Implement minimum worker and launchd ownership**
+- [x] **Step 3: Implement minimum worker and launchd ownership**
 
 Compose the fixed audio decoder, VAD/capture, ASR/wake, parser, speaker verifier, signed
 client and TTS. Keep `voice.enabled=false` by default. Status contains only stable state,
@@ -939,12 +939,24 @@ git diff --check
 Expected: software gates pass with Voice disabled, no real notification/care write and
 no household audio access.
 
-- [ ] **Step 5: Commit Task 10**
+- [x] **Step 5: Commit Task 10**
 
 ```bash
 git add services/voice/tts.py services/voice/worker.py tools/run_voice_worker.py tools/voice_status.py deploy/launchd/com.babymonitor.voice.plist.example tools/install_alpha_macos.sh tools/start_alpha.sh tools/stop_alpha.sh tools/test_guardian.sh Makefile tests/voice/test_tts.py tests/voice/test_worker.py tests/deploy/test_voice_worker_deploy.py
 git commit -m "feat: run independent local voice care worker"
 ```
+
+Software boundary committed 2026-08-24 at `31e8332`. Fixed semantic phrases, stdin-only
+macOS synthesis, 0.35 playback volume, capture ducking/guard, cancellation, the in-memory
+ASR/wake/claim/speaker/parser/sign/outbox composition, bounded status and one independent
+interactive launchd job are implemented. Fresh evidence: Voice 140 passed, frontend 73
+passed, deployment/Guardian focused 133 passed and full Python 1,106 passed; shell syntax,
+plist lint, Make dry-run, compile and diff checks passed. The exact installed
+`make alpha-guardian-test` was also run and reported 13 PASS / 6 FAIL because this
+isolated worktree intentionally has no `.local` go2rtc app, private runtime settings,
+installed launchd definitions or realtime-model bundle. Source and sibling services
+passed. Step 4 remains open until this exact head is deployed to the actual i9 checkout
+and that installed gate is rerun; Voice remains disabled and no real TTS/care write ran.
 
 ### Task 11: Cross-Repository Synthetic Gate V1
 

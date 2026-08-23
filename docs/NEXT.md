@@ -155,9 +155,12 @@ complete. Baby Local Task 6 vendors that exact contract and its closed parser pa
 cross-repository verifier. Baby Local Task 7 now supplies the fail-closed Keychain,
 encrypted-profile, enrollment and hybrid-identity software boundary. Baby Local Task 9
 now supplies canonical Ed25519 pairing/intent signatures, strict semantic parsing and a
-bounded encrypted restart-safe outbox. The next executable slice is Task 10 fixed TTS,
-independent worker and disabled-by-default deployment; Voice Care remains disabled, and
-real ECAPA/adult accuracy remains an installed/human gate.
+bounded encrypted restart-safe outbox. Task 10 now supplies fixed TTS, an in-memory
+closed command pipeline, bounded status and an independent disabled-by-default job. Its
+software gates pass, while exact-head installed Guardian acceptance remains pending on
+the actual i9 checkout. The next executable slice is Task 11 cross-repository synthetic
+Gate V1; Voice Care remains disabled, and real ECAPA/adult accuracy remains an
+installed/human gate.
 
 **Prerequisites:** The current design approval permits synthetic/public-media software
 work before P0–P2 complete. P0–P2 and A7 remain prerequisites for household
@@ -174,7 +177,7 @@ never provide household audio for Git or chat.
 Test timing, deduplication, quiet/adult-speech negatives and privacy using generated or
 explicitly public media. Software tests do not prove household accuracy.
 
-**Next:** Execute Voice Care Gate V1 Baby Local Task 10. Keep production Voice Care and
+**Next:** Execute Voice Care Gate V1 Task 11 synthetic closed loop. Keep production Voice Care and
 cry A8 disabled until their separate model, identity, integration and supervised
 household gates pass. P4 remains the next independent product stage.
 

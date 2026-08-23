@@ -308,7 +308,16 @@
   request-ID idempotency across restart, retries only while fresh and converts expired
   ambiguity to reconciliation. Fresh evidence is 27 focused, 108 adjacent and 1,088
   full Python tests; the matching Baby Care vector passes 53 contract tests at
-  `9b4f150`. No production endpoint or care write was exercised. Task 10 is next.
+  `9b4f150`. No production endpoint or care write was exercised in that slice.
+- Voice Care Task 10's software boundary is committed at `31e8332`. It adds only one
+  separately supervised interactive Voice job, fixed semantic TTS through stdin,
+  bounded playback/cancellation/ducking, a transcript-free in-memory command pipeline
+  and redacted status. Fresh evidence is 140 Voice, 73 frontend, 133 Guardian-focused
+  and 1,106 full Python tests. The isolated worktree's installed Guardian gate is not
+  accepted: 13 checks passed and 6 installation/realtime checks failed because private
+  runtime and installed assets are deliberately absent there. Voice stays disabled;
+  deploy this exact head to the real i9 checkout and rerun that gate later. Task 11 is
+  the next automatic software slice.
 - Installed-i9 audio-source discovery now verifies that the Xiaomi source exposes HEVC
   video plus Opus audio and that the fixed loopback `audio_analysis` alias exposes only
   Opus. The real input is supported 48 kHz stereo Opus; the fixed FFmpeg boundary

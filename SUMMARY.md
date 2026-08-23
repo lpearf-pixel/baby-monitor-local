@@ -372,7 +372,13 @@ legacy branch into this line without a separate integration decision.
   strict semantic response parsing and a restart-safe AES-GCM SQLite outbox pass 27
   focused, 108 adjacent and 1,088 full Python tests. The shared signing vector also
   passes 53 Baby Care contract tests at `9b4f150`. No real endpoint, Keychain mutation,
-  household audio or Baby Care write was used. Task 10 worker/TTS/deployment is next.
+  household audio or Baby Care write was used. Task 10's software boundary is committed
+  at `31e8332`: fixed stdin-only TTS, capture ducking/guard, the in-memory closed command
+  pipeline, bounded status and an independent launchd job pass 140 Voice, 73 frontend,
+  133 Guardian-focused and 1,106 full Python tests. The isolated worktree installed gate
+  remains 13 PASS / 6 FAIL only because its `.local`/private runtime/launchd/model assets
+  are absent; it must be rerun after deployment to the actual i9 checkout. Task 11
+  cross-repository synthetic Gate V1 is the next automatic slice.
 - Remote private viewing and the 72-hour release gate remain unfinished.
 - This system does not detect breathing, heart rate, suffocation or medical emergencies.
 
@@ -389,11 +395,11 @@ legacy branch into this line without a separate integration decision.
 4. Continue the approved audio/cry plan at Stage A8; a production model and
    license are still required before enablement; household audio remains
    memory-only.
-5. Continue Voice Care Gate V1 Baby Local Task 10 fixed TTS, independent worker and
-   disabled-by-default deployment gate. Baby Care M5 through its feeding pilot and Baby
-   Local Tasks 1–3, 6, 7 and 9 are locally complete; contract parity is `CONTRACT_OK`.
-   Keep Voice Care disabled; ECAPA installation and household adult accuracy remain
-   installed/human gates.
+5. Continue Voice Care Gate V1 Task 11 cross-repository synthetic closed loop. Baby
+   Local Task 10 software is committed, while its installed `alpha-guardian-test` must
+   be rerun after exact-head deployment to the actual i9 checkout. Keep Voice Care
+   disabled; ECAPA installation and household adult accuracy remain installed/human
+   gates.
 6. Complete authenticated private remote access using Tailscale Serve/ACL only.
 7. Complete the final 72-hour release gate before any release/tag decision.
 8. Define per-parent acknowledgement and false-positive feedback only through a future

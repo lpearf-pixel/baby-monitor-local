@@ -855,3 +855,15 @@ SQLite outbox。重复 request ID、断网、重启、密文篡改、过期临�
 checks PASS；同一固定签名向量在 Baby Care `9b4f150` 的 53 项合同测试通过。未写真实
 Keychain、未访问生产 endpoint、未写 Baby Care、未使用家庭音频。Voice Care 仍
 disabled；下一软件切片为 Task 10 fixed TTS、独立 worker 与部署门。
+
+2026-08-24 完成 Voice Care Gate V1 Baby Local Task 10 软件边界并提交 `31e8332`。
+固定八种 Baby Care 语义短句只通过 stdin 进入 macOS `say`，播放音量固定 0.35，采集在
+播放前 duck、播放后守卫 0.5 秒，取消或输出失败只降级 Voice。内存流水线组合 ASR、精确
+唤醒、成人声明、speaker state、封闭喂奶 grammar、Ed25519 签名、加密 outbox 与 Baby
+Care response；状态不含 transcript、profile、分数、路径或配置。新鲜证据为 Voice 140、
+frontend 73、Guardian-focused 133、完整 Python 1,106 passed，shell/plist/Make/compile/diff
+checks PASS。隔离 worktree 的 `make alpha-guardian-test` 为 13 PASS / 6 FAIL：缺失该
+worktree 自己的 `.local` go2rtc app、private runtime、installed launchd 和 realtime model，
+不是软件回归；source 和 sibling services 通过。Voice 仍 disabled，真实 TTS/Keychain/
+护理写入未执行；部署到真实 i9 checkout 后须重跑 installed 门。下一自动切片为 Task 11
+cross-repository synthetic Gate V1。
