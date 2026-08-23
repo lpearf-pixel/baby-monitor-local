@@ -287,6 +287,13 @@
   passed and the full Python suite is 1,024 passed. SpeechBrain execution, household
   adult accuracy, the production worker and Baby Care intent delivery remain later
   gates.
+- Voice Care Task 6 is complete at `84e9a17`. Baby Local vendors the exact schema and
+  combined valid/invalid corpus from Baby Care commit
+  `bb1337226c1948695159d14199c9bb73cdaf115a`, verifies fixed SHA-256 values, rejects
+  noncanonical/private envelope content and maps only a closed feeding grammar into
+  typed payloads. Fresh evidence is 19 focused and 103 adjacent tests; Baby Care's
+  read-only verifier returns `CONTRACT_OK`. No speaker profile, household audio,
+  signed delivery, production worker or Baby Care write is enabled. Task 7 is next.
 - Installed-i9 audio-source discovery now verifies that the Xiaomi source exposes HEVC
   video plus Opus audio and that the fixed loopback `audio_analysis` alias exposes only
   Opus. The real input is supported 48 kHz stereo Opus; the fixed FFmpeg boundary

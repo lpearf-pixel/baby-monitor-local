@@ -652,13 +652,13 @@ git commit -m "feat: pair voice care devices"
   `parse_feeding_command(command: str, state: DialogueState) -> ParsedIntent`.
 - Consumes: exact Task 4 Baby Care commit and SHA-256 recorded beside the vendored files.
 
-- [ ] **Step 1: Vendor exact contract files**
+- [x] **Step 1: Vendor exact contract files**
 
 Copy only the committed JSON Schema and golden corpora from Task 4. Record repository,
 full source commit and SHA-256 in module constants. Do not dynamically import another
 checkout or download at runtime.
 
-- [ ] **Step 2: Write RED parity/parser tests**
+- [x] **Step 2: Write RED parity/parser tests**
 
 ```python
 def test_formula_finish_requires_actual_consumed_ml() -> None:
@@ -671,13 +671,13 @@ def test_ambiguous_amount_fails_closed() -> None:
     assert parse_feeding_command("喂完了，喝了一些", feeding_state).reason == "intent_uncertain"
 ```
 
-- [ ] **Step 3: Implement a closed deterministic grammar**
+- [x] **Step 3: Implement a closed deterministic grammar**
 
 Support only the approved feeding phrases and Chinese integers in a bounded range.
 Reject free-form notes, medication, unknown units, inferred values and command/state
 conflicts. The parser receives only the post-wake command and returns no model prose.
 
-- [ ] **Step 4: Run GREEN gates**
+- [x] **Step 4: Run GREEN gates**
 
 Run:
 
@@ -687,12 +687,19 @@ Run:
 git diff --check
 ```
 
-- [ ] **Step 5: Commit Task 6**
+- [x] **Step 5: Commit Task 6**
 
 ```bash
 git add packages/contracts/vendor packages/contracts/voice_care.py services/voice/intent.py tests/contracts/test_voice_care.py tests/voice/test_intent.py
 git commit -m "feat: parse closed voice feeding intents"
 ```
+
+Completed 2026-08-23 at `84e9a17`. The authoritative Baby Care M5 corpus now combines
+valid and invalid examples in `packages/contracts/voice-care/voice-care-v1.json`; that
+newer committed layout supersedes this task's earlier split-corpus path examples. Exact
+source bytes and SHA-256 match Baby Care commit `bb1337226c1948695159d14199c9bb73cdaf115a`.
+Fresh evidence: 19 focused tests and 103 adjacent Voice Care tests passed, compilation
+and diff checks passed, and the Baby Care read-only verifier returned `CONTRACT_OK`.
 
 ### Task 7: Local Speaker Enrollment, Keychain Storage And Hybrid Identity
 

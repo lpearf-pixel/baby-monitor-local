@@ -150,8 +150,10 @@ validated local source and runtime manifests. Task 2 delivered bounded memory-on
 and exact 500 ms/800 ms/8-second capture. Task 3 delivered local-only ASR, exact wake,
 closed typed benchmark slots, an isolated fail-closed converter and the installed-i9
 gate. Whisper `base` passed all four generated-speech thresholds; `small` failed closed.
-The next executable cross-repository slice is Task 4, but it must start only after Baby
-Care M4 has a verified exact head and must remain in the Baby Care repository.
+Baby Care M5 contract/device/write work and its synthetic feeding pilot are now locally
+complete. Baby Local Task 6 vendors that exact contract and its closed parser passes the
+cross-repository verifier. The next executable slice is Task 7 local speaker enrollment
+and Keychain-backed hybrid identity; Voice Care remains disabled.
 
 **Prerequisites:** The current design approval permits synthetic/public-media software
 work before P0–P2 complete. P0–P2 and A7 remain prerequisites for household
@@ -168,10 +170,9 @@ never provide household audio for Git or chat.
 Test timing, deduplication, quiet/adult-speech negatives and privacy using generated or
 explicitly public media. Software tests do not prove household accuracy.
 
-**Next:** Finish Baby Care M4 and verify its exact head, then execute Voice Care Gate V1
-Task 4's Baby Care-owned contract corpus. Keep production Voice Care and cry A8 disabled
-until their separate model, identity, integration and supervised household gates pass.
-P4 remains the next independent product stage.
+**Next:** Execute Voice Care Gate V1 Task 7. Keep production Voice Care and cry A8
+disabled until their separate identity, integration and supervised household gates
+pass. P4 remains the next independent product stage.
 
 ## P4 — Authenticated private remote access
 

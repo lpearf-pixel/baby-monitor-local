@@ -358,7 +358,12 @@ legacy branch into this line without a separate integration decision.
   wake, 0/48 false wakes, 24/24 typed slots and p95 2,196 ms; `small` failed closed.
   Fresh focused evidence is 114 passed and the full Python suite is 1,024 passed. This
   synthetic result does not prove household adult accuracy; no production Voice Care
-  worker is enabled while Baby Care continues M4.
+  worker is enabled. Task 6 is complete at `84e9a17`: the exact Baby Care M5 schema and
+  combined golden corpus are vendored from `bb1337226c1948695159d14199c9bb73cdaf115a`,
+  strict canonical envelope validation and a closed feeding grammar now pass 19 focused
+  and 103 adjacent tests, and Baby Care's read-only cross-repository verifier returns
+  `CONTRACT_OK`. This does not enable speaker identity, delivery or Baby Care writes;
+  Task 7 local speaker enrollment and Keychain-backed identity is next.
 - Remote private viewing and the 72-hour release gate remain unfinished.
 - This system does not detect breathing, heart rate, suffocation or medical emergencies.
 
@@ -375,10 +380,10 @@ legacy branch into this line without a separate integration decision.
 4. Continue the approved audio/cry plan at Stage A8; a production model and
    license are still required before enablement; household audio remains
    memory-only.
-5. Finish Baby Care M4 and establish its verified exact head; Voice Care Baby Local
-   Tasks 1–3, including the installed-i9 `base` bake-off, are complete. Then execute
-   Voice Care Task 4 contract work from that exact head. Do not enable caregiver
-   identity, a production Voice worker or Baby Care writes before their later gates.
+5. Continue Voice Care Gate V1 Task 7. Baby Care M5 through its feeding pilot and Baby
+   Local Tasks 1–3 and 6 are locally complete; contract parity is `CONTRACT_OK`. Keep
+   Voice Care disabled while implementing Keychain-backed speaker enrollment and the
+   later signed delivery/worker gates; household adult accuracy remains a human gate.
 6. Complete authenticated private remote access using Tailscale Serve/ACL only.
 7. Complete the final 72-hour release gate before any release/tag decision.
 8. Define per-parent acknowledgement and false-positive feedback only through a future

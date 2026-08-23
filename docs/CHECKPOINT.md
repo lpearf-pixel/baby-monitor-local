@@ -824,3 +824,12 @@ p95 5,772 ms，按 fail-closed 拒绝。生成 WAV 仅存在于临时目录并�
 该证据只证明本机合成语音，不证明家庭成人、距离、噪声或说话人身份准确率；生产
 Voice worker 仍 disabled。下一项 Voice Care 产品切片为 Baby Care-owned Task 4，但须
 等待 Baby Care M4 的 verified exact head。
+
+2026-08-23 完成 Voice Care Gate V1 Baby Local Task 6。`84e9a17` 从 Baby Care
+合同提交 `bb1337226c1948695159d14199c9bb73cdaf115a` 逐字节 vendored schema 与合并
+golden corpus，并固定 SHA-256；Python 合同拒绝非 canonical JSON、重复键、额外身份、
+transcript/audio 字段及无时区时间。确定性 grammar 只接受批准的喂奶开始、更新、结束、
+确认与取消短语；未知单位、自由文本、畸形中文数字与状态冲突均 fail closed。新鲜门禁为
+19 focused、103 adjacent passed，compile/diff checks PASS；Baby Care 只读 verifier
+返回 `CONTRACT_OK`。该证据不证明家庭成人说话人识别或真实交付，Voice worker 仍
+disabled；下一项为 Task 7 本地说话人 enrollment 与 Keychain-backed hybrid identity。
