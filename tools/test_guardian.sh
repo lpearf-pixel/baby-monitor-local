@@ -173,7 +173,8 @@ check_guardian_focused() {
     tests/vision/test_notification_config.py \
     tests/vision/test_risk_event_pipeline.py \
     tests/tools/test_send_guardian_live_notification.py \
-    tests/tools/test_run_visual_worker.py
+    tests/tools/test_run_visual_worker.py \
+    tests/deploy/test_voice_worker_deploy.py
 }
 
 run_service_readiness() {

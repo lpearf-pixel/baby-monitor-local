@@ -7,7 +7,16 @@ GAUGE_LABEL="com.babymonitor.gauge"
 WATCHDOG_LABEL="com.babymonitor.environment-watchdog"
 VISUAL_LABEL="com.babymonitor.visual"
 AUDIO_LABEL="com.babymonitor.audio"
+VOICE_LABEL="com.babymonitor.voice"
 TUNNEL_LABEL="com.babymonitor.ollama-tunnel"
+VOICE_ONLY_STOP=0
+
+if [[ "$#" -eq 1 && "$1" == "--voice-only" ]]; then
+  VOICE_ONLY_STOP=1
+elif [[ "$#" -ne 0 ]]; then
+  echo "Usage: bash tools/stop_alpha.sh [--voice-only]" >&2
+  exit 2
+fi
 
 stop_pidfile() {
   local pidfile="$1"
@@ -27,6 +36,19 @@ stop_pidfile() {
   rm -f "$pidfile"
 }
 
+if [[ "$VOICE_ONLY_STOP" -eq 1 ]]; then
+  if [[ "$(uname -s)" == "Darwin" ]] && command -v launchctl >/dev/null 2>&1; then
+    VOICE_DOMAIN="gui/$(id -u)"
+    if launchctl print "${VOICE_DOMAIN}/${VOICE_LABEL}" >/dev/null 2>&1; then
+      launchctl bootout "${VOICE_DOMAIN}/${VOICE_LABEL}" >/dev/null
+    fi
+  else
+    stop_pidfile "$ROOT/runtime/pids/voice.pid"
+  fi
+  echo "voice_stop=PASS"
+  exit 0
+fi
+
 stop_pidfile "$ROOT/runtime/pids/api.pid"
 if [[ "$(uname -s)" == "Darwin" ]] && command -v launchctl >/dev/null 2>&1; then
   GAUGE_DOMAIN="gui/$(id -u)"
@@ -38,6 +60,9 @@ if [[ "$(uname -s)" == "Darwin" ]] && command -v launchctl >/dev/null 2>&1; then
   fi
   if launchctl print "${GAUGE_DOMAIN}/${AUDIO_LABEL}" >/dev/null 2>&1; then
     launchctl bootout "${GAUGE_DOMAIN}/${AUDIO_LABEL}"
+  fi
+  if launchctl print "${GAUGE_DOMAIN}/${VOICE_LABEL}" >/dev/null 2>&1; then
+    launchctl bootout "${GAUGE_DOMAIN}/${VOICE_LABEL}"
   fi
   if launchctl print "${GAUGE_DOMAIN}/${TUNNEL_LABEL}" >/dev/null 2>&1; then
     launchctl bootout "${GAUGE_DOMAIN}/${TUNNEL_LABEL}"
@@ -51,6 +76,7 @@ if [[ "$(uname -s)" == "Darwin" ]] && command -v launchctl >/dev/null 2>&1; then
 fi
 stop_pidfile "$ROOT/runtime/pids/visual.pid"
 stop_pidfile "$ROOT/runtime/pids/audio.pid"
+stop_pidfile "$ROOT/runtime/pids/voice.pid"
 stop_pidfile "$ROOT/runtime/pids/gauge.pid"
 stop_pidfile "$ROOT/runtime/pids/environment-watchdog.pid"
 if [[ "$(uname -s)" != "Darwin" ]] || ! command -v launchctl >/dev/null 2>&1; then

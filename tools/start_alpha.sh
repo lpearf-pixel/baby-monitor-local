@@ -9,7 +9,9 @@ GAUGE_PID="$ROOT/runtime/pids/gauge.pid"
 WATCHDOG_PID="$ROOT/runtime/pids/environment-watchdog.pid"
 VISUAL_PID="$ROOT/runtime/pids/visual.pid"
 AUDIO_PID="$ROOT/runtime/pids/audio.pid"
+VOICE_PID="$ROOT/runtime/pids/voice.pid"
 GO2RTC_ONLY_RESTART=0
+VOICE_ONLY_START=0
 GO2RTC_LABEL="com.babymonitor.go2rtc"
 GO2RTC_PLIST="$HOME/Library/LaunchAgents/${GO2RTC_LABEL}.plist"
 GO2RTC_EXECUTABLE="$ROOT/.local/bin/go2rtc"
@@ -24,14 +26,33 @@ VISUAL_LABEL="com.babymonitor.visual"
 VISUAL_PLIST="$HOME/Library/LaunchAgents/${VISUAL_LABEL}.plist"
 AUDIO_LABEL="com.babymonitor.audio"
 AUDIO_PLIST="$HOME/Library/LaunchAgents/${AUDIO_LABEL}.plist"
+VOICE_LABEL="com.babymonitor.voice"
+VOICE_PLIST="$HOME/Library/LaunchAgents/${VOICE_LABEL}.plist"
 TUNNEL_LABEL="com.babymonitor.ollama-tunnel"
 TUNNEL_PLIST="$HOME/Library/LaunchAgents/${TUNNEL_LABEL}.plist"
 
 if [[ "$#" -eq 1 && "$1" == "--go2rtc-only-restart" ]]; then
   GO2RTC_ONLY_RESTART=1
+elif [[ "$#" -eq 1 && "$1" == "--voice-only" ]]; then
+  VOICE_ONLY_START=1
 elif [[ "$#" -ne 0 ]]; then
-  echo "Usage: bash tools/start_alpha.sh [--go2rtc-only-restart]" >&2
+  echo "Usage: bash tools/start_alpha.sh [--go2rtc-only-restart|--voice-only]" >&2
   exit 2
+fi
+
+if [[ "$VOICE_ONLY_START" -eq 1 ]]; then
+  if [[ "$(uname -s)" != "Darwin" ]] || ! command -v launchctl >/dev/null 2>&1 || [[ ! -f "$VOICE_PLIST" ]]; then
+    echo "voice_start=FAIL reason=service_unavailable" >&2
+    exit 1
+  fi
+  VOICE_DOMAIN="gui/$(id -u)"
+  if ! launchctl print "${VOICE_DOMAIN}/${VOICE_LABEL}" >/dev/null 2>&1; then
+    launchctl bootstrap "$VOICE_DOMAIN" "$VOICE_PLIST" >/dev/null
+  else
+    launchctl kickstart -k "${VOICE_DOMAIN}/${VOICE_LABEL}" >/dev/null
+  fi
+  echo "voice_start=PASS"
+  exit 0
 fi
 
 if [[ ! -f "$ENV_FILE" || ! -x "$GO2RTC_EXECUTABLE" || ! -x "$ROOT/.venv-alpha/bin/uvicorn" ]]; then
@@ -260,6 +281,11 @@ if [[ "$(uname -s)" == "Darwin" ]] && command -v launchctl >/dev/null 2>&1; then
       launchctl bootstrap "$GAUGE_DOMAIN" "$AUDIO_PLIST"
     fi
   fi
+  if [[ -f "$VOICE_PLIST" ]]; then
+    if ! launchctl print "${GAUGE_DOMAIN}/${VOICE_LABEL}" >/dev/null 2>&1; then
+      launchctl bootstrap "$GAUGE_DOMAIN" "$VOICE_PLIST"
+    fi
+  fi
   if ! launchctl print "${GAUGE_DOMAIN}/${WATCHDOG_LABEL}" >/dev/null 2>&1; then
     launchctl bootstrap "$GAUGE_DOMAIN" "$WATCHDOG_PLIST"
   fi
@@ -275,6 +301,10 @@ else
     nohup "$ROOT/.venv-alpha/bin/python" "$ROOT/tools/run_audio_worker.py" \
     --settings "$BABY_MONITOR_SETTINGS_PATH" \
     >"$ROOT/runtime/logs/audio.log" 2>&1
+  start_if_stopped "$VOICE_PID" \
+    nohup "$ROOT/.venv-alpha/bin/python" "$ROOT/tools/run_voice_worker.py" \
+    --settings "$BABY_MONITOR_SETTINGS_PATH" \
+    >"$ROOT/runtime/logs/voice.log" 2>&1
   start_if_stopped "$WATCHDOG_PID" \
     nohup "$ROOT/.venv-alpha/bin/python" "$ROOT/tools/run_environment_watchdog.py" \
     --settings "$BABY_MONITOR_SETTINGS_PATH" --env-file "$ENV_FILE" \

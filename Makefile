@@ -4,7 +4,7 @@ PYTHON311 ?= /usr/local/bin/python3.11
 BASH ?= /bin/bash
 .DEFAULT_GOAL := help
 
-.PHONY: help alpha-update alpha-install alpha-start alpha-stop alpha-restart alpha-go2rtc-restart alpha-status alpha-guardian-start alpha-guardian-test alpha-guardian-test-live alpha-guardian-scene-test alpha-audio-status alpha-audio-test alpha-voice-v0-test alpha-voice-v0-probe alpha-voice-v0-stability alpha-voice-converter-install alpha-voice-models-install alpha-voice-model-benchmark alpha-visual-status alpha-visual-performance alpha-visual-diagnostic alpha-visual-launchd-update alpha-logs alpha-quality-hd alpha-quality-info alpha-quality-rollback alpha-source-check alpha-subtype-probe alpha-subtype-apply alpha-go2rtc-info alpha-go2rtc-rebuild alpha-go2rtc-rollback alpha-realtime-models-check alpha-realtime-models-install alpha-ws2021-collect-calibrated alpha-ws2021-collect-model alpha-ws2021-dataset alpha-ws2021-model-train-bootstrap alpha-ws2021-model-train alpha-ws2021-model-export alpha-ws2021-model-check
+.PHONY: help alpha-update alpha-install alpha-start alpha-stop alpha-restart alpha-go2rtc-restart alpha-status alpha-guardian-start alpha-guardian-test alpha-guardian-test-live alpha-guardian-scene-test alpha-audio-status alpha-audio-test alpha-voice-status alpha-voice-test alpha-voice-start alpha-voice-stop alpha-voice-v0-test alpha-voice-v0-probe alpha-voice-v0-stability alpha-voice-converter-install alpha-voice-models-install alpha-voice-model-benchmark alpha-visual-status alpha-visual-performance alpha-visual-diagnostic alpha-visual-launchd-update alpha-logs alpha-quality-hd alpha-quality-info alpha-quality-rollback alpha-source-check alpha-subtype-probe alpha-subtype-apply alpha-go2rtc-info alpha-go2rtc-rebuild alpha-go2rtc-rollback alpha-realtime-models-check alpha-realtime-models-install alpha-ws2021-collect-calibrated alpha-ws2021-collect-model alpha-ws2021-dataset alpha-ws2021-model-train-bootstrap alpha-ws2021-model-train alpha-ws2021-model-export alpha-ws2021-model-check
 
 help:
 	@echo "Baby Monitor Local Alpha commands:"
@@ -21,6 +21,10 @@ help:
 	@echo "  make alpha-guardian-scene-test Run supervised household scene acceptance"
 	@echo "  make alpha-audio-status      Show bounded audio worker status"
 	@echo "  make alpha-audio-test        Run side-effect-free audio software gate"
+	@echo "  make alpha-voice-status      Show bounded Voice Care worker status"
+	@echo "  make alpha-voice-test        Run side-effect-free Voice Care software gate"
+	@echo "  make alpha-voice-start       Start only the Voice Care worker"
+	@echo "  make alpha-voice-stop        Stop only the Voice Care worker"
 	@echo "  make alpha-voice-v0-test     Run synthetic Voice Care V0 software gate"
 	@echo "  make alpha-voice-v0-probe    Run 60-second non-persistent audio probe"
 	@echo "  make alpha-voice-v0-stability Run 10-minute non-persistent audio probe"
@@ -125,6 +129,18 @@ alpha-audio-status:
 
 alpha-audio-test:
 	@$(PYTHON) -m pytest -q tests/audio tests/contracts/test_audio.py tests/contracts/test_audio_settings.py tests/deploy/test_audio_worker_deploy.py
+
+alpha-voice-status:
+	@$(PYTHON) tools/voice_status.py runtime/status/voice.json
+
+alpha-voice-test:
+	@$(PYTHON) -m pytest -q tests/voice tests/contracts/test_voice_care.py tests/contracts/test_voice_settings.py tests/deploy/test_voice_worker_deploy.py
+
+alpha-voice-start:
+	@$(BASH) tools/start_alpha.sh --voice-only
+
+alpha-voice-stop:
+	@$(BASH) tools/stop_alpha.sh --voice-only
 
 alpha-voice-v0-test:
 	@$(PYTHON) -m pytest -q tests/audio tests/stream/test_probe.py tests/tools/test_voice_audio_probe.py tests/deploy/test_audio_worker_deploy.py
