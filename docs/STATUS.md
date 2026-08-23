@@ -293,7 +293,14 @@
   noncanonical/private envelope content and maps only a closed feeding grammar into
   typed payloads. Fresh evidence is 19 focused and 103 adjacent tests; Baby Care's
   read-only verifier returns `CONTRACT_OK`. No speaker profile, household audio,
-  signed delivery, production worker or Baby Care write is enabled. Task 7 is next.
+  signed delivery, production worker or Baby Care write is enabled. Task 7 status follows.
+- Voice Care Task 7's local software boundary is complete at `e850b8d`. It provides a
+  Security.framework generic-password adapter with no secret argv, a Keychain-backed
+  AES-GCM profile store with canonical 0600 files, bounded adult-only enrollment and the
+  four closed identity states. Fresh evidence is 18 focused, 121 adjacent and 1,061
+  full Python tests. A real Keychain write/delete was deliberately not performed by the
+  software gate; converted ECAPA installation, adult enrollment and household accuracy
+  remain pending while Voice Care stays disabled. Task 9 signed delivery/outbox is next.
 - Installed-i9 audio-source discovery now verifies that the Xiaomi source exposes HEVC
   video plus Opus audio and that the fixed loopback `audio_analysis` alias exposes only
   Opus. The real input is supported 48 kHz stereo Opus; the fixed FFmpeg boundary

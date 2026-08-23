@@ -152,8 +152,10 @@ closed typed benchmark slots, an isolated fail-closed converter and the installe
 gate. Whisper `base` passed all four generated-speech thresholds; `small` failed closed.
 Baby Care M5 contract/device/write work and its synthetic feeding pilot are now locally
 complete. Baby Local Task 6 vendors that exact contract and its closed parser passes the
-cross-repository verifier. The next executable slice is Task 7 local speaker enrollment
-and Keychain-backed hybrid identity; Voice Care remains disabled.
+cross-repository verifier. Baby Local Task 7 now supplies the fail-closed Keychain,
+encrypted-profile, enrollment and hybrid-identity software boundary. The next executable
+slice is Task 9 signed intent delivery and bounded structured outbox; Voice Care remains
+disabled, and real ECAPA/adult accuracy remains an installed/human gate.
 
 **Prerequisites:** The current design approval permits synthetic/public-media software
 work before P0–P2 complete. P0–P2 and A7 remain prerequisites for household
@@ -170,9 +172,9 @@ never provide household audio for Git or chat.
 Test timing, deduplication, quiet/adult-speech negatives and privacy using generated or
 explicitly public media. Software tests do not prove household accuracy.
 
-**Next:** Execute Voice Care Gate V1 Task 7. Keep production Voice Care and cry A8
-disabled until their separate identity, integration and supervised household gates
-pass. P4 remains the next independent product stage.
+**Next:** Execute Voice Care Gate V1 Baby Local Task 9. Keep production Voice Care and
+cry A8 disabled until their separate model, identity, integration and supervised
+household gates pass. P4 remains the next independent product stage.
 
 ## P4 — Authenticated private remote access
 

@@ -717,17 +717,17 @@ and diff checks passed, and the Baby Care read-only verifier returned `CONTRACT_
 - Consumes: validated ECAPA artifact, explicit identity claim and an injected Keychain
   backend.
 
-- [ ] **Step 1: Write RED privacy and identity tests**
+- [x] **Step 1: Write RED privacy and identity tests**
 
 Cover verified, uncertain, mismatch and not-enrolled states; short/noisy/overlapping
 audio; claim/profile conflict; encrypted local profile file mode 0600; deletion; and
 absence of samples/transcripts from stored payloads and status.
 
-- [ ] **Step 2: Run RED tests**
+- [x] **Step 2: Run RED tests**
 
 Run: `.venv-alpha/bin/python -m pytest -q tests/voice/test_keychain.py tests/voice/test_speaker.py tests/voice/test_enrollment.py`
 
-- [ ] **Step 3: Implement the fail-closed boundary**
+- [x] **Step 3: Implement the fail-closed boundary**
 
 Use macOS Security.framework through a narrow adapter so secrets never appear in argv.
 Protect the local embedding with an AES-GCM key stored in Keychain. Store ciphertext,
@@ -735,7 +735,7 @@ nonce, opaque profile ID, model version and bounded calibration only. Enrollment
 discarded after embedding creation. No pickle is loaded by the production worker; the
 installed speaker artifact must be converted and validated before enablement.
 
-- [ ] **Step 4: Run GREEN gates**
+- [x] **Step 4: Run GREEN gates**
 
 Run:
 
@@ -745,12 +745,21 @@ Run:
 git diff --check
 ```
 
-- [ ] **Step 5: Commit Task 7**
+- [x] **Step 5: Commit Task 7**
 
 ```bash
 git add services/voice/keychain.py services/voice/speaker.py services/voice/enrollment.py tests/voice/test_keychain.py tests/voice/test_speaker.py tests/voice/test_enrollment.py
 git commit -m "feat: verify local caregiver voice profiles"
 ```
+
+Software boundary completed 2026-08-23 at `e850b8d`. Fresh evidence: 18 focused,
+121 adjacent Voice Care and 1,061 full Python tests passed; compile and diff checks
+passed. The Intel macOS Security.framework adapter completed a read-only missing-item
+probe without a CLI or Keychain mutation. The profile store uses AES-GCM, canonical
+0600 files and closed tamper/symlink handling. Voice Care remains disabled: a converted,
+validated ECAPA runtime, real Keychain create/delete, adult enrollment and household
+accuracy are later installed/human gates. The originally planned `cryptography==50.0.0`
+did not exist on official PyPI and was corrected to the available pinned `48.0.1`.
 
 ### Task 8: Baby Care Pending Feeding State And Final Voice Write
 

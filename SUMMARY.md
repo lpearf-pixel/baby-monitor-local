@@ -362,8 +362,13 @@ legacy branch into this line without a separate integration decision.
   combined golden corpus are vendored from `bb1337226c1948695159d14199c9bb73cdaf115a`,
   strict canonical envelope validation and a closed feeding grammar now pass 19 focused
   and 103 adjacent tests, and Baby Care's read-only cross-repository verifier returns
-  `CONTRACT_OK`. This does not enable speaker identity, delivery or Baby Care writes;
-  Task 7 local speaker enrollment and Keychain-backed identity is next.
+  `CONTRACT_OK`. Task 7's software boundary is complete at `e850b8d`: a ctypes-only
+  Security.framework adapter keeps secrets out of argv, encrypted profiles use a
+  Keychain-protected AES-GCM key and canonical mode-0600 storage, and verification has
+  only verified/uncertain/mismatch/not-enrolled outcomes. Fresh evidence is 18 focused,
+  121 adjacent and 1,061 full Python tests. Voice Care remains disabled; converted
+  ECAPA runtime installation, real adult enrollment/accuracy and real Keychain mutation
+  remain later gates. Baby Local Task 9 signed delivery and bounded outbox is next.
 - Remote private viewing and the 72-hour release gate remain unfinished.
 - This system does not detect breathing, heart rate, suffocation or medical emergencies.
 
@@ -380,10 +385,11 @@ legacy branch into this line without a separate integration decision.
 4. Continue the approved audio/cry plan at Stage A8; a production model and
    license are still required before enablement; household audio remains
    memory-only.
-5. Continue Voice Care Gate V1 Task 7. Baby Care M5 through its feeding pilot and Baby
-   Local Tasks 1–3 and 6 are locally complete; contract parity is `CONTRACT_OK`. Keep
-   Voice Care disabled while implementing Keychain-backed speaker enrollment and the
-   later signed delivery/worker gates; household adult accuracy remains a human gate.
+5. Continue Voice Care Gate V1 Baby Local Task 9 signed intent delivery and bounded
+   outbox. Baby Care M5 through its feeding pilot and Baby Local Tasks 1–3, 6 and the
+   Task 7 software boundary are locally complete; contract parity is `CONTRACT_OK`.
+   Keep Voice Care disabled; ECAPA installation and household adult accuracy remain
+   installed/human gates.
 6. Complete authenticated private remote access using Tailscale Serve/ACL only.
 7. Complete the final 72-hour release gate before any release/tag decision.
 8. Define per-parent acknowledgement and false-positive feedback only through a future

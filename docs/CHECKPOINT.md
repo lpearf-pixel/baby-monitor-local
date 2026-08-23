@@ -833,3 +833,15 @@ transcript/audio 字段及无时区时间。确定性 grammar 只接受批准的
 19 focused、103 adjacent passed，compile/diff checks PASS；Baby Care 只读 verifier
 返回 `CONTRACT_OK`。该证据不证明家庭成人说话人识别或真实交付，Voice worker 仍
 disabled；下一项为 Task 7 本地说话人 enrollment 与 Keychain-backed hybrid identity。
+
+2026-08-23 完成 Voice Care Gate V1 Baby Local Task 7 软件边界。`e850b8d` 新增不经
+argv 的 macOS Security.framework generic-password 适配器、Keychain 保护的 32 字节
+AES-GCM key、canonical mode-0600 加密 profile、3–5 条成人合成 enrollment 质量门以及
+verified/uncertain/mismatch/not-enrolled 四种闭合状态。短、静、噪声、重叠、claim 冲突、
+篡改、未知 schema、symlink 和删除路径均有合成回归；18 focused、121 adjacent、1,061
+完整 Python 测试以及 compile/diff checks PASS。真实 Security.framework 仅做了不存在项的
+只读探测，没有写入或删除用户 Keychain。原计划的 `cryptography==50.0.0` 在官方 PyPI
+不存在，已修正为可安装的固定 `48.0.1`；另发现主 venv 既有 Transformers 转换依赖残留
+导致独立 `pip check` 不一致，此项不属于生产 Voice runner，未通过删除包掩盖。Voice
+Care 仍 disabled；ECAPA 安全转换/安装、真实成人 enrollment 与家庭准确率未验收。下一
+软件切片为 Baby Local Task 9 signed delivery 与 bounded structured outbox。
