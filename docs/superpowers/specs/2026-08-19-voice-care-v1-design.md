@@ -184,6 +184,46 @@ VAD as passed; it exists only to isolate camera-to-Whisper accuracy from VAD acc
 Production Voice Care still requires the Silero path and never reads either calibration
 mode's private corpus.
 
+The i9 Keychain boundary must also work from the installed non-interactive Voice
+launchd job. A secret created from Terminal is not considered deployable evidence:
+macOS can bind generic-password access to the responsible interactive application and
+return `errSecInteractionNotAllowed` to Codex or launchd even when both run as the same
+user. Voice Care therefore uses one repository-built native helper with a fixed app
+bundle identifier and explicit stable designated requirement. The helper alone calls
+Security.framework. It accepts only the fixed Voice Care service, an allow-list of
+Voice Care account names and fixed read/create/delete operations; delete is reachable
+only through an explicit profile revocation or a failed-publication rollback and never
+through calibration evaluation. It rejects a terminal stdout, caller-supplied service,
+arbitrary size and unknown account.
+Secret bytes travel only through an anonymous parent-owned pipe and remain in memory.
+They never enter argv, environment, logs, status, files or network traffic. The
+operator may need to approve this stable helper once in the logged-in macOS session;
+after that, both calibration and the installed launchd worker must pass the same
+non-interactive read probe before Voice can be enabled.
+
+ASR tuning is one bounded bake-off, not an open-ended sequence of per-phrase patches.
+Every profile runs against the identical encrypted corpus and may use only one global
+decoder policy: the current baseline, no hotwords, a fixed care-domain vocabulary, or
+that same vocabulary with a larger fixed beam. It must never receive the expected text
+for the current clip as a prompt, prefix, hotword or correction. Diagnostics may expose
+only the public prompt ID, edit distance, exact/wake counts and aggregate latency; they
+must not expose recognized text. The selected profile still requires every phrase to
+match after the approved whitespace/punctuation normalization, every wake decision to
+match and P95 latency to stay at or below three seconds. A number-format classifier may
+describe an Arabic/Chinese numeral-only mismatch, but it does not turn that mismatch
+into a pass. If no approved Whisper candidate/profile passes, Voice remains disabled
+and a different ASR family requires a separate model, license and runtime amendment.
+
+Silero acceptance is separate from ASR acceptance. The same private clips may be
+decrypted in memory to report bounded signal energy and VAD probability aggregates,
+and a generated non-household Mandarin speech sample provides an independent runtime
+control. If the control fails, fix the ONNX state/context implementation. If the
+control passes but Xiaomi clips fail and their signal is at least 12 dB below the
+control, a VAD-only preprocessor may apply at most 12 dB of deterministic gain without
+clipping; ASR and persisted calibration ciphertext remain unchanged. The speech
+threshold stays at 0.50. If this still does not produce exactly one bounded span per
+prompt, production Voice remains disabled rather than lowering the gate.
+
 ### 4.2.1 Approved local model and runtime boundary
 
 The first V1 implementation uses this fixed local stack:
