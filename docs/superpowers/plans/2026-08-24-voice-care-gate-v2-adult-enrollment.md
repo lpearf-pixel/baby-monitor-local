@@ -187,14 +187,14 @@ git commit -m "feat: add one-time voice enrollment challenges"
 **Files:**
 - Create: `services/voice/speaker_runtime.py`
 - Create: `tests/voice/test_speaker_runtime.py`
-- Modify: `services/voice/ecapa.py`
-- Modify: `tests/voice/test_ecapa.py`
+- Verify: `services/voice/ecapa.py`
+- Verify: `tests/voice/test_ecapa.py`
 
 **Interfaces:**
 - Consumes: one owned `EcapaProcess` and validated float32 mono samples.
 - Produces: `EcapaObservationRunner(samples) -> EmbeddingObservation` and `close()`.
 
-- [ ] **Step 1: Write observation RED tests**
+- [x] **Step 1: Write observation RED tests**
 
 ```python
 runner = EcapaObservationRunner(process=fake_process)
@@ -205,12 +205,13 @@ assert observed.snr_db >= 8.0
 assert observed.overlap_probability <= 0.10
 ```
 
-Require the full utterance plus three non-overlapping 800 ms windows to use the same
-persistent child. Short input, flat/quiet input, low temporal cosine consistency,
+Require the full utterance plus first/middle/last 800 ms windows across at least 1.6
+seconds of detected active speech to use the same persistent child. The windows may
+overlap for a normal short Mandarin command. Short input, flat/quiet input, low temporal cosine consistency,
 malformed embeddings, timeout and closed process must fail closed; `close()` is
 idempotent. Tests use synthetic PCM and fixed fake embeddings only.
 
-- [ ] **Step 2: Run RED tests**
+- [x] **Step 2: Run RED tests**
 
 Run:
 
@@ -220,7 +221,7 @@ Run:
 
 Expected: FAIL because the production `EmbeddingRunner` adapter does not exist.
 
-- [ ] **Step 3: Implement bounded temporal quality**
+- [x] **Step 3: Implement bounded temporal quality**
 
 ```python
 class EcapaObservationRunner:
@@ -240,14 +241,15 @@ class EcapaObservationRunner:
         self._process.close()
 ```
 
-Reject anything outside 2.4–8.0 seconds. Compute 20 ms RMS frames, use bounded lower
-and upper percentiles for an SNR estimate, and embed the full utterance plus the first,
-middle and last 800 ms windows. Map minimum pairwise window cosine below `0.675` to an
+Reject anything outside 1.6–8.0 seconds of active speech. Compute 20 ms RMS frames, use
+bounded lower and upper percentiles for an SNR estimate, find the bounded active-speech
+interval, and embed the full utterance plus its first, middle and last 800 ms windows.
+Map minimum pairwise window cosine below `0.675` to an
 overlap probability above `0.10`; this deliberately conservative provisional boundary
 must not be relaxed until supervised Dad/Mom measurements exist. Return no latency,
 segment vector or private diagnostic in the observation.
 
-- [ ] **Step 4: Run GREEN and adjacent identity gates**
+- [x] **Step 4: Run GREEN and adjacent identity gates**
 
 Run:
 
@@ -257,10 +259,10 @@ Run:
 git diff --check
 ```
 
-- [ ] **Step 5: Commit Task 3**
+- [x] **Step 5: Commit Task 3**
 
 ```bash
-git add services/voice/ecapa.py services/voice/speaker_runtime.py tests/voice/test_ecapa.py tests/voice/test_speaker_runtime.py
+git add services/voice/speaker_runtime.py tests/voice/test_speaker_runtime.py
 git commit -m "feat: derive bounded ECAPA speaker quality"
 ```
 
