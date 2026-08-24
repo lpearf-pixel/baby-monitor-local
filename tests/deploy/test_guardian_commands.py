@@ -280,6 +280,13 @@ def test_guardian_sensitive_scan_does_not_match_its_own_rules(tmp_path: Path) ->
     assert result.stdout.splitlines()[-1] == "guardian_test=PASS"
 
 
+def test_ci_fetches_history_required_by_the_sensitive_diff_gate() -> None:
+    workflow = (ROOT / ".github/workflows/ci.yml").read_text(encoding="ascii")
+    contracts = workflow.split("  contracts:", 1)[1].split("\n  go2rtc-patch:", 1)[0]
+
+    assert "- uses: actions/checkout@v6\n        with:\n          fetch-depth: 0" in contracts
+
+
 def test_guardian_installation_gate_requires_stable_go2rtc_app_identity() -> None:
     script = (ROOT / "tools/test_guardian.sh").read_text(encoding="ascii")
 

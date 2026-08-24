@@ -5,6 +5,7 @@ from io import StringIO
 import os
 from pathlib import Path
 import subprocess
+import sys
 
 from services.vision.scene_acceptance import SCENES, GuardianSceneAcceptanceStore
 from tools.guardian_scene_acceptance import _terminal_inputs, run_scene_acceptance
@@ -155,7 +156,7 @@ def test_corrupt_existing_state_fails_closed_without_replacement(tmp_path: Path)
 
 def test_cli_requires_terminal_before_creating_state(tmp_path: Path) -> None:
     result = subprocess.run(
-        [str(Path(".venv-alpha/bin/python")), "tools/guardian_scene_acceptance.py"],
+        [sys.executable, "tools/guardian_scene_acceptance.py"],
         cwd=Path(__file__).resolve().parents[2],
         env=os.environ.copy(),
         input="YES\n" * 2,
