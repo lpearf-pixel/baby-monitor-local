@@ -69,10 +69,16 @@ def validate_speaker_environment(
             if "=" in line
             for key, value in (line.split("=", 1),)
         }
+        configured_executable = values.get("executable")
+        invalid_python_link = python.is_symlink() and (
+            configured_executable is None
+            or python.resolve(strict=True)
+            != Path(configured_executable).resolve(strict=True)
+        )
         if (
             configuration.is_symlink()
             or not configuration.is_file()
-            or python.is_symlink()
+            or invalid_python_link
             or not python.is_file()
             or not os.access(python, os.X_OK)
             or values.get("include-system-site-packages") != "false"
@@ -83,7 +89,7 @@ def validate_speaker_environment(
             check=False,
             capture_output=True,
             text=True,
-            timeout=60,
+            timeout=180,
         )
         observed = json.loads(result.stdout)
         if result.returncode != 0 or observed != PINNED_PACKAGES:

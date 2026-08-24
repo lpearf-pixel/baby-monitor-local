@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import json
 import subprocess
+import sys
 from pathlib import Path
 
 import pytest
@@ -72,9 +73,11 @@ def test_speaker_environment_checks_all_pinned_versions_in_one_child(
 ) -> None:
     environment, python = _environment(tmp_path)
     calls: list[tuple[str, ...]] = []
+    options: list[dict[str, object]] = []
 
-    def runner(command: tuple[str, ...], **_kwargs: object) -> subprocess.CompletedProcess[str]:
+    def runner(command: tuple[str, ...], **kwargs: object) -> subprocess.CompletedProcess[str]:
         calls.append(command)
+        options.append(kwargs)
         return subprocess.CompletedProcess(
             command,
             0,
@@ -86,6 +89,7 @@ def test_speaker_environment_checks_all_pinned_versions_in_one_child(
     assert len(calls) == 1
     assert calls[0][0] == str(python)
     assert calls[0][1] == "-I"
+    assert options[0]["timeout"] == 180
 
 
 def test_speaker_environment_rejects_version_drift_without_exposing_output(
@@ -106,3 +110,26 @@ def test_speaker_environment_rejects_version_drift_without_exposing_output(
     with pytest.raises(ValueError, match=f"^{INVALID_ENVIRONMENT}$") as error:
         validate_speaker_environment(tmp_path, environment, runner=runner)
     assert "private" not in str(error.value)
+
+
+def test_speaker_environment_accepts_the_standard_venv_python_symlink(
+    tmp_path: Path,
+) -> None:
+    environment, python = _environment(tmp_path)
+    python.unlink()
+    python.symlink_to(Path(sys.executable).resolve())
+    (environment / "pyvenv.cfg").write_text(
+        "include-system-site-packages = false\n"
+        f"executable = {Path(sys.executable).resolve()}\n",
+        encoding="ascii",
+    )
+
+    def runner(command: tuple[str, ...], **_kwargs: object) -> subprocess.CompletedProcess[str]:
+        return subprocess.CompletedProcess(
+            command,
+            0,
+            stdout=json.dumps(PINNED_PACKAGES, sort_keys=True, separators=(",", ":")),
+            stderr="",
+        )
+
+    assert validate_speaker_environment(tmp_path, environment, runner=runner) == environment

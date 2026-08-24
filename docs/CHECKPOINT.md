@@ -900,3 +900,13 @@ Local head 部署到真实 i9 checkout 后重跑 installed Guardian 门；Voice 
 均返回 HTTP 200，最终同一 installed 门为 19 PASS / 0 FAIL。未改业务代码、未启用 Voice、
 未保存家庭音频、未运行真实 TTS/enrollment/Baby Care 写入。下一门为本地 ECAPA 安装和
 两名成人的私有监督 Gate V2。
+
+2026-08-24 完成 Voice Care Gate V2 的本地 ECAPA 运行时切片。Intel i9 建立独立固定
+版本 SpeechBrain 环境，显式获取并校验固定 ECAPA 工件，通过单一有界持久子进程接收
+内存 PCM；模型加载不再修改不可变工件，输出显式做 L2 归一化。当前实机合成语音门
+5/5 返回有限 192 维 embedding，p50 284 ms、p95 311 ms，且
+`raw_audio_persisted=false`。新鲜软件门为 Python 1,156 passed、前端 73 passed；正式
+安装目录的 Guardian 门仍为 19 PASS / 0 FAIL。隔离功能 worktree 的同一门为 13/19，
+6 项仅因该 worktree 没有私有 launchd/视觉模型安装资产，不作为生产回归。Voice 继续
+disabled；未使用家庭音频、未登记成人声纹、未访问 Baby Care 写接口、未设置身份阈值。
+下一切片为另行批准的 replay/overlap 质量与 Dad/Mom 私有监督 enrollment/accuracy。

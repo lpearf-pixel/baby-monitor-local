@@ -1,14 +1,14 @@
 # Baby Monitor Local Project Summary
 
-Updated: 2026-08-21
+Updated: 2026-08-24
 
 ## Snapshot
 
 - Repository: `lpearf-pixel/baby-monitor-local` (public).
 - Stable Xiaomi line: `stable/xiaomi-alpha` at `0df20ae`.
 - Active implementation line: `codex/voice-care-v1-gate-v1`, based on the approved
-  `codex/voice-care-v1-design` checkpoint. Gate V1 Task 1 is local and has not been
-  pushed from this worktree.
+  `codex/voice-care-v1-design` checkpoint. The Gate V2 ECAPA runtime slice is complete
+  locally and awaits publication from this worktree.
 - The evidence-retention line is based on the published Dashboard snapshot `69e2d5b`;
   the Dashboard remains complete and its published branch is not rewritten.
 - Remote branch `codex/baby-guardian-event-loop` remains at its earlier squash snapshot
@@ -389,6 +389,14 @@ legacy branch into this line without a separate integration decision.
   run `32680603091`. Final documentation heads also passed runs `32680892081` and
   `32680891893`. Installed i9 readiness is complete; Voice remains disabled pending
   validated ECAPA installation and supervised Dad/Mom enrollment/accuracy.
+- Voice Care Gate V2's ECAPA runtime slice is complete on the actual Intel i9. A pinned,
+  isolated SpeechBrain runtime and immutable local artifact now feed one bounded
+  persistent embedding child. The generated-speech operator gate passed 5/5 finite,
+  L2-normalized 192-dimensional embeddings at p50 284 ms / p95 311 ms with
+  `raw_audio_persisted=false`; fresh software evidence is 1,156 Python and 73 frontend
+  tests. The installed deployment checkout still passes Guardian 19/19. Voice remains
+  disabled, and this result does not prove Dad/Mom identity, replay/overlap rejection,
+  enrollment quality, Baby Care pairing or production writes.
 - Remote private viewing and the 72-hour release gate remain unfinished.
 - This system does not detect breathing, heart rate, suffocation or medical emergencies.
 
@@ -405,9 +413,9 @@ legacy branch into this line without a separate integration decision.
 4. Continue the approved audio/cry plan at Stage A8; a production model and
    license are still required before enablement; household audio remains
    memory-only.
-5. Prepare Voice Care Gate V2: install and validate the pinned ECAPA runtime locally,
-   then enroll Dad and Mom through the private adult-only workflow and run the approved
-   supervised scenarios. Keep Voice disabled until those identity and accuracy gates pass.
+5. Continue Voice Care Gate V2 with the separately approved private adult-only slice:
+   replay/overlap quality, encrypted Dad/Mom enrollment and supervised accuracy, followed
+   by Baby Care profile binding/private transport. Keep Voice disabled until those gates pass.
 6. Complete authenticated private remote access using Tailscale Serve/ACL only.
 7. Complete the final 72-hour release gate before any release/tag decision.
 8. Define per-parent acknowledgement and false-positive feedback only through a future

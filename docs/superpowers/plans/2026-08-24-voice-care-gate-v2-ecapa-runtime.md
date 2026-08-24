@@ -267,16 +267,16 @@ git commit -m "feat: run bounded local ECAPA embeddings"
 - Produces: `make alpha-voice-ecapa-probe` with aggregate-only PASS/FAIL output.
 - Consumes: Tasks 1–3 and macOS local speech synthesis plus FFmpeg normalization.
 
-- [ ] **Step 1: Write probe RED tests**
+- [x] **Step 1: Write probe RED tests**
 
 Use fake synthesizer/decoder/runner boundaries to assert five generated utterances are
-processed, temporary WAV/PCM files are removed on success/failure/signal, the same
+processed, temporary generated-audio files are removed on success/failure/signal, the same
 persistent runner is reused, and output contains only fixed fields: result, sample
 count, dimensions, normalized count, p50/p95 latency and raw-audio-persisted=false.
 Reject any transcript, voice name, path, embedding, similarity threshold or exception
 text in stdout/stderr.
 
-- [ ] **Step 2: Run RED tests**
+- [x] **Step 2: Run RED tests**
 
 Run:
 
@@ -286,7 +286,7 @@ Run:
 
 Expected: FAIL because the probe and Make target do not exist.
 
-- [ ] **Step 3: Implement the generated-only smoke gate**
+- [x] **Step 3: Implement the generated-only smoke gate**
 
 Generate five fixed Mandarin care phrases with the local macOS synthesizer into a
 private temporary directory, normalize to 16 kHz mono s16le through the fixed FFmpeg
@@ -295,7 +295,7 @@ finite normalized 192-dimensional results, one persistent child process, p95 emb
 latency no greater than 3,000 ms and complete cleanup. Do not set speaker accept/
 uncertain thresholds from synthetic voices and do not call `SpeakerVerifier`.
 
-- [ ] **Step 4: Run installed operator gates**
+- [x] **Step 4: Run installed operator gates**
 
 Run on the actual i9, with Voice disabled before and after:
 
@@ -314,7 +314,7 @@ Passing proves only local artifact/runtime compatibility and generated-speech em
 shape/latency. It does not prove Dad/Mom identity accuracy, replay/overlap rejection,
 enrollment quality, Baby Care pairing or a production Voice write.
 
-- [ ] **Step 5: Update status and commit Task 4**
+- [x] **Step 5: Update status and commit Task 4**
 
 Record exact installed counts, stable reason codes and privacy evidence without model
 paths, local addresses, voice names, embeddings or household content.
@@ -328,3 +328,11 @@ git commit -m "test: validate the i9 ECAPA runtime"
 The next separately approved slice owns replay/overlap quality, encrypted Dad/Mom
 enrollment, Baby Care profile binding, the private API transport and production worker
 factory.
+
+**Result (2026-08-24):** complete. The actual Intel i9 generated-speech gate processed
+5/5 samples as finite, L2-normalized 192-dimensional embeddings with p50 284 ms and
+p95 311 ms; `raw_audio_persisted=false`. Fresh software evidence is 1,156 Python and
+73 frontend tests passed. The installed deployment checkout retained Guardian 19/19.
+The isolated feature worktree separately returned 13/19 only because its private
+Guardian installation/model assets are intentionally absent. Voice remains disabled;
+no household audio, adult enrollment, Baby Care write or identity threshold was used.

@@ -4,7 +4,7 @@ PYTHON311 ?= /usr/local/bin/python3.11
 BASH ?= /bin/bash
 .DEFAULT_GOAL := help
 
-.PHONY: help alpha-update alpha-install alpha-start alpha-stop alpha-restart alpha-go2rtc-restart alpha-status alpha-guardian-start alpha-guardian-test alpha-guardian-test-live alpha-guardian-scene-test alpha-audio-status alpha-audio-test alpha-voice-status alpha-voice-test alpha-voice-start alpha-voice-stop alpha-voice-v0-test alpha-voice-v0-probe alpha-voice-v0-stability alpha-voice-converter-install alpha-voice-speaker-install alpha-voice-speaker-check alpha-voice-ecapa-source alpha-voice-ecapa-install alpha-voice-models-install alpha-voice-model-benchmark alpha-visual-status alpha-visual-performance alpha-visual-diagnostic alpha-visual-launchd-update alpha-logs alpha-quality-hd alpha-quality-info alpha-quality-rollback alpha-source-check alpha-subtype-probe alpha-subtype-apply alpha-go2rtc-info alpha-go2rtc-rebuild alpha-go2rtc-rollback alpha-realtime-models-check alpha-realtime-models-install alpha-ws2021-collect-calibrated alpha-ws2021-collect-model alpha-ws2021-dataset alpha-ws2021-model-train-bootstrap alpha-ws2021-model-train alpha-ws2021-model-export alpha-ws2021-model-check
+.PHONY: help alpha-update alpha-install alpha-start alpha-stop alpha-restart alpha-go2rtc-restart alpha-status alpha-guardian-start alpha-guardian-test alpha-guardian-test-live alpha-guardian-scene-test alpha-audio-status alpha-audio-test alpha-voice-status alpha-voice-test alpha-voice-start alpha-voice-stop alpha-voice-v0-test alpha-voice-v0-probe alpha-voice-v0-stability alpha-voice-converter-install alpha-voice-speaker-install alpha-voice-speaker-check alpha-voice-ecapa-source alpha-voice-ecapa-install alpha-voice-ecapa-probe alpha-voice-models-install alpha-voice-model-benchmark alpha-visual-status alpha-visual-performance alpha-visual-diagnostic alpha-visual-launchd-update alpha-logs alpha-quality-hd alpha-quality-info alpha-quality-rollback alpha-source-check alpha-subtype-probe alpha-subtype-apply alpha-go2rtc-info alpha-go2rtc-rebuild alpha-go2rtc-rollback alpha-realtime-models-check alpha-realtime-models-install alpha-ws2021-collect-calibrated alpha-ws2021-collect-model alpha-ws2021-dataset alpha-ws2021-model-train-bootstrap alpha-ws2021-model-train alpha-ws2021-model-export alpha-ws2021-model-check
 
 help:
 	@echo "Baby Monitor Local Alpha commands:"
@@ -33,6 +33,7 @@ help:
 	@echo "  make alpha-voice-speaker-check Verify the isolated ECAPA runtime"
 	@echo "  make alpha-voice-ecapa-source Acquire the pinned ECAPA source"
 	@echo "  make alpha-voice-ecapa-install Install the verified ECAPA bundle"
+	@echo "  make alpha-voice-ecapa-probe Run the generated local ECAPA gate"
 	@echo "  make alpha-voice-models-install Install verified local Whisper base/small models"
 	@echo "  make alpha-voice-model-benchmark Run generated local Whisper base/small gate"
 	@echo "  make alpha-visual-status     Show redacted visual worker and M2 bridge health"
@@ -225,8 +226,11 @@ alpha-voice-ecapa-install:
 		echo "voice_ecapa_install=unavailable"; \
 		exit 1; \
 	fi; \
-	$(PYTHON) tools/voice_models.py --settings "$$settings" --artifact "speechbrain-ecapa-voxceleb" --operation acquire --source-dir "$$source" --source-manifest "$$manifest" --source-manifest-sha256 "$$manifest_sha" --project-root . >/dev/null 2>&1 || { echo "voice_ecapa_install=failed"; exit 1; }; \
+	$(PYTHON) -m tools.voice_models --settings "$$settings" --artifact "speechbrain-ecapa-voxceleb" --operation acquire --source-dir "$$source" --source-manifest "$$manifest" --source-manifest-sha256 "$$manifest_sha" --project-root . >/dev/null 2>&1 || { echo "voice_ecapa_install=failed"; exit 1; }; \
 	echo "voice_ecapa_install=ready"
+
+alpha-voice-ecapa-probe:
+	@$(PYTHON) -c 'from tools.voice_ecapa_probe_cli import run; raise SystemExit(run())'
 
 alpha-voice-models-install:
 	@set -eu; \

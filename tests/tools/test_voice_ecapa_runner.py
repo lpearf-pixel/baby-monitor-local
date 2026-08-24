@@ -3,10 +3,17 @@ from __future__ import annotations
 import io
 import json
 import struct
+import sys
+import types
+from pathlib import Path
 
 import pytest
 
-from tools.voice_ecapa_runner import run_protocol
+from tools.voice_ecapa_runner import (
+    _load_speechbrain_encoder,
+    _normalize_model_embedding,
+    run_protocol,
+)
 
 
 PCM = b"\x01\x00" * (16_000 * 2)
@@ -79,3 +86,49 @@ def test_runner_fails_closed_on_invalid_encoder_output(
         encoder=lambda _pcm: embedding,
     ) == 1
     assert len(output_stream.getvalue().splitlines()) == 1
+
+
+def test_speechbrain_loader_overrides_the_public_remote_pretrained_path(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    calls: list[dict[str, object]] = []
+
+    class EncoderClassifier:
+        @classmethod
+        def from_hparams(cls, **kwargs: object) -> object:
+            calls.append(kwargs)
+            return object()
+
+    fake_torch = types.ModuleType("torch")
+    fake_torch.set_num_threads = lambda _count: None  # type: ignore[attr-defined]
+    fake_speechbrain = types.ModuleType("speechbrain")
+    fake_inference = types.ModuleType("speechbrain.inference")
+    fake_speaker = types.ModuleType("speechbrain.inference.speaker")
+    fake_speaker.EncoderClassifier = EncoderClassifier  # type: ignore[attr-defined]
+    monkeypatch.setitem(sys.modules, "torch", fake_torch)
+    monkeypatch.setitem(sys.modules, "speechbrain", fake_speechbrain)
+    monkeypatch.setitem(sys.modules, "speechbrain.inference", fake_inference)
+    monkeypatch.setitem(sys.modules, "speechbrain.inference.speaker", fake_speaker)
+    bundle = tmp_path / "bundle"
+    bundle.mkdir()
+
+    _load_speechbrain_encoder(bundle)
+
+    assert len(calls) == 1
+    call = calls[0]
+    assert call["source"] == str(bundle)
+    assert call["run_opts"] == {"device": "cpu"}
+    assert call["overrides"] == {"pretrained_path": str(bundle)}
+    savedir = Path(str(call["savedir"]))
+    assert savedir != bundle
+    assert not savedir.exists()
+
+
+def test_model_embedding_is_explicitly_l2_normalized() -> None:
+    raw = tuple([3.0, 4.0] + [0.0] * 190)
+
+    normalized = _normalize_model_embedding(raw)
+
+    assert normalized == tuple([0.6, 0.8] + [0.0] * 190)
+    with pytest.raises(ValueError, match="^VOICE_ECAPA_PROTOCOL_INVALID$"):
+        _normalize_model_embedding(tuple([0.0] * 192))

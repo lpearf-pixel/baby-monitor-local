@@ -6,6 +6,7 @@ import math
 import os
 import struct
 import sys
+import tempfile
 import time
 from collections.abc import Callable
 from pathlib import Path
@@ -96,11 +97,13 @@ def _load_speechbrain_encoder(bundle: Path) -> Encoder:
     from speechbrain.inference.speaker import EncoderClassifier
 
     torch.set_num_threads(max(1, min(4, os.cpu_count() or 1)))
-    classifier = EncoderClassifier.from_hparams(
-        source=str(bundle),
-        savedir=str(bundle),
-        run_opts={"device": "cpu"},
-    )
+    with tempfile.TemporaryDirectory(prefix="voice-ecapa-runtime-") as temporary:
+        classifier = EncoderClassifier.from_hparams(
+            source=str(bundle),
+            savedir=temporary,
+            run_opts={"device": "cpu"},
+            overrides={"pretrained_path": str(bundle)},
+        )
 
     def encode(pcm: bytes) -> tuple[float, ...]:
         samples = np.frombuffer(pcm, dtype="<i2").astype(np.float32) / 32768.0
@@ -108,9 +111,20 @@ def _load_speechbrain_encoder(bundle: Path) -> Encoder:
         with torch.inference_mode():
             encoded = classifier.encode_batch(waveform, normalize=True)
         flattened = encoded.detach().cpu().reshape(-1).tolist()
-        return tuple(float(value) for value in flattened)
+        return _normalize_model_embedding(tuple(float(value) for value in flattened))
 
     return encode
+
+
+def _normalize_model_embedding(raw: tuple[float, ...]) -> tuple[float, ...]:
+    if len(raw) != EMBEDDING_DIMENSIONS or any(
+        not math.isfinite(value) for value in raw
+    ):
+        raise ValueError("VOICE_ECAPA_PROTOCOL_INVALID")
+    norm = math.sqrt(sum(value * value for value in raw))
+    if not math.isfinite(norm) or norm <= 0.0:
+        raise ValueError("VOICE_ECAPA_PROTOCOL_INVALID")
+    return tuple(value / norm for value in raw)
 
 
 def main() -> int:

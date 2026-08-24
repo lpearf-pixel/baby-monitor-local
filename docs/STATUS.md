@@ -6,7 +6,7 @@
 - Design: approved.
 - Environment monitoring design and implementation plan: approved on 2026-08-05.
 - Stable Xiaomi Alpha commit: `0df20ae` on `stable/xiaomi-alpha`.
-- Active local development branch: `codex/voice-care-v1-design`.
+- Active local development branch: `codex/voice-care-v1-gate-v1`.
 - 2026-08-20 go2rtc lifecycle correction: the installed macOS path now has one
   user-level launchd owner. `alpha-start` bootstraps a missing job, kickstarts only a
   loaded unhealthy job, never falls back to a second direct process, and verifies the
@@ -332,6 +332,15 @@
   `32680519119` and Baby Care `53e69d4` / run `32680603091`; final documentation heads
   also pass runs `32680892081` and `32680891893`. Installed i9 readiness is complete;
   ECAPA installation and supervised two-adult Gate V2 remain open.
+- Voice Care Gate V2 ECAPA runtime validation is complete locally. The Intel i9 uses a
+  separate pinned speaker environment, manifest-validated immutable artifact and one
+  bounded persistent offline embedding child. The current generated-only gate passed
+  5/5 finite L2-normalized 192-dimensional embeddings at p50 284 ms / p95 311 ms and
+  reported `raw_audio_persisted=false`. Fresh software evidence is 1,156 Python and 73
+  frontend tests; the production deployment checkout remains Guardian 19/19. This is
+  runtime/shape/latency evidence only: Voice is still disabled and Dad/Mom accuracy,
+  replay/overlap rejection, private enrollment, Baby Care pairing and production writes
+  remain pending.
 - Installed-i9 audio-source discovery now verifies that the Xiaomi source exposes HEVC
   video plus Opus audio and that the fixed loopback `audio_analysis` alias exposes only
   Opus. The real input is supported 48 kHz stereo Opus; the fixed FFmpeg boundary

@@ -806,10 +806,22 @@ def test_intel_voice_speaker_install_is_explicit_and_host_gated(tmp_path: Path) 
     assert not marker.exists()
 
 
-def test_voice_speaker_check_fails_closed_without_an_environment() -> None:
+def test_voice_speaker_check_fails_closed_without_an_environment(
+    tmp_path: Path,
+) -> None:
+    shutil.copy2(ROOT / "Makefile", tmp_path / "Makefile")
+    (tmp_path / "tools").mkdir()
+    shutil.copy2(
+        ROOT / "tools/voice_speaker_environment.py",
+        tmp_path / "tools/voice_speaker_environment.py",
+    )
     result = subprocess.run(
-        ["make", "alpha-voice-speaker-check"],
-        cwd=ROOT,
+        [
+            "make",
+            "alpha-voice-speaker-check",
+            f"PYTHON311={shutil.which('python3') or '/usr/bin/python3'}",
+        ],
+        cwd=tmp_path,
         check=False,
         capture_output=True,
         text=True,
@@ -848,6 +860,63 @@ def test_ecapa_source_and_install_commands_fail_closed_without_private_inputs(
     assert install.returncode != 0
     assert install.stdout.strip() == "voice_ecapa_install=unavailable"
     assert not marker.exists()
+
+
+def test_ecapa_probe_command_fails_closed_without_installed_runtime(
+    tmp_path: Path,
+) -> None:
+    shutil.copy2(ROOT / "Makefile", tmp_path / "Makefile")
+    result = subprocess.run(
+        [
+            "make",
+            "alpha-voice-ecapa-probe",
+            f"PYTHON={ROOT / '.venv-alpha/bin/python'}",
+        ],
+        cwd=tmp_path,
+        env={**os.environ, "PYTHONPATH": str(ROOT)},
+        check=False,
+        capture_output=True,
+        text=True,
+    )
+
+    assert result.returncode != 0
+    assert result.stdout.splitlines() == [
+        "result=FAIL",
+        "reason=voice_model_unavailable",
+        "raw_audio_persisted=false",
+    ]
+
+
+def test_ecapa_install_runs_the_current_checkout_model_module(tmp_path: Path) -> None:
+    shutil.copy2(ROOT / "Makefile", tmp_path / "Makefile")
+    settings = tmp_path / "runtime/config/voice-care-models.json"
+    source_root = (
+        tmp_path
+        / "runtime/models/voice-care-sources/speechbrain-ecapa-voxceleb"
+    )
+    settings.parent.mkdir(parents=True)
+    (source_root / "source").mkdir(parents=True)
+    settings.write_text("{}\n", encoding="ascii")
+    (source_root / "source-manifest.json").write_text("{}\n", encoding="ascii")
+    calls = tmp_path / "calls"
+    fake_python = tmp_path / "python"
+    _write_executable(
+        fake_python,
+        '#!/bin/sh\nprintf "%s\\n" "$*" >> "$VOICE_TEST_CALLS"\n',
+    )
+
+    result = subprocess.run(
+        ["make", "alpha-voice-ecapa-install", f"PYTHON={fake_python}"],
+        cwd=tmp_path,
+        env={**os.environ, "VOICE_TEST_CALLS": str(calls)},
+        check=False,
+        capture_output=True,
+        text=True,
+    )
+
+    assert result.returncode == 0
+    assert result.stdout.strip() == "voice_ecapa_install=ready"
+    assert calls.read_text(encoding="ascii").startswith("-m tools.voice_models ")
 
 
 def test_installer_installs_acceptance_test_dependencies() -> None:

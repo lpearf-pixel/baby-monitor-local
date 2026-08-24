@@ -1037,5 +1037,8 @@ CI passed at Baby Local `c554334` / run `32680519119` and Baby Care `53e69d4` / 
 `32680603091`. Final documentation heads also passed exact-head CI at Baby Local
 `614ea69` / run `32680892081` and Baby Care `b301571` / run `32680891893`. Gate V1 is
 therefore closed, and Baby Local installed readiness passed 19/19 on the actual i9.
-Voice remains disabled. The next gate is local ECAPA installation plus supervised
-Dad/Mom enrollment before the adult-only Gate V2 scenarios; no infant is used.
+Voice remains disabled. The Gate V2 local ECAPA runtime slice completed on the Intel i9
+with 5/5 finite L2-normalized 192-dimensional generated-speech embeddings at p50 284 ms
+and p95 311 ms, no raw-audio persistence, 1,156 Python tests and Guardian 19/19 in the
+installed checkout. The next separately approved slice is replay/overlap quality plus
+private Dad/Mom enrollment before the adult-only Gate V2 scenarios; no infant is used.
