@@ -879,3 +879,13 @@ frontend 73 passed；Baby Care lint/typecheck/build PASS、完整 458 passed / 1
 真实 PostgreSQL 2/2。隔离 worktree installed Guardian 仍为 13 PASS / 6 FAIL，缺私有安装/
 模型资产，未声明安装态通过。未使用家庭音频、真实 Keychain 或生产数据库；Voice disabled。
 下一门为双分支推送与 exact-head CI，再在真实 i9 checkout 部署复验。
+
+2026-08-24 Voice Care Gate V1 双分支已发布并通过 exact-head CI。Baby Local 首轮 run
+`32679703106` 暴露两项 CI portability 问题：浅克隆使敏感 diff 门无法取得基线，旧测试
+硬编码 `.venv-alpha/bin/python`；`c554334` 以完整 checkout history 和 `sys.executable`
+修复，完整 Python 1,109 passed，run `32680519119` 全绿。Baby Care 首轮 run
+`32679908753` 暴露 M5 restore sanitation 已正确返回 Voice lease/session 两项计数但旧
+M4 期望遗漏；`53e69d4` 只补齐安全计数期望，operations 148 passed / 4 skipped，run
+`32680603091` 的 static、unit、integration、build、production Compose 5/5 全绿。两次
+失败均未降低验收标准；未创建 PR、未 merge、未修改 main。下一项仍是把接受的 Baby
+Local head 部署到真实 i9 checkout 后重跑 installed Guardian 门；Voice 保持 disabled。

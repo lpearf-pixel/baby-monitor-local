@@ -158,9 +158,10 @@ now supplies canonical Ed25519 pairing/intent signatures, strict semantic parsin
 bounded encrypted restart-safe outbox. Task 10 now supplies fixed TTS, an in-memory
 closed command pipeline, bounded status and an independent disabled-by-default job. Its
 software gates pass, while exact-head installed Guardian acceptance remains pending on
-the actual i9 checkout. Task 11 local synthetic Gate V1 is now complete at Baby Local
-`e4cd5d5` and Baby Care `bca9b9e`, including real disposable PostgreSQL 16 authority and
-failure-path evidence. The next executable slice is publication and exact-head CI;
+the actual i9 checkout. Task 11 synthetic Gate V1 is complete and published; exact-head
+CI passed at Baby Local `c554334` / `32680519119` and Baby Care `53e69d4` /
+`32680603091`, including real PostgreSQL 16 and production Compose evidence. The next
+executable slice is exact-head installation and readiness on the actual i9 checkout;
 Voice Care remains disabled, and real ECAPA/adult accuracy remains an installed/human
 gate.
 
@@ -179,8 +180,7 @@ never provide household audio for Git or chat.
 Test timing, deduplication, quiet/adult-speech negatives and privacy using generated or
 explicitly public media. Software tests do not prove household accuracy.
 
-**Next:** Push both approved Voice Care feature branches and require exact-head CI, then
-deploy the accepted Baby Local head to the actual i9 checkout and rerun installed
+**Next:** Deploy accepted Baby Local head `c554334` to the actual i9 checkout and rerun installed
 Guardian readiness. Keep production Voice Care and cry A8 disabled until their separate
 model, identity, integration and supervised household gates pass. P4 remains the next
 independent product stage.

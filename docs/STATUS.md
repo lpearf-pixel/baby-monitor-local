@@ -326,7 +326,9 @@
   through the existing revision route, and fail closed for cancel, identity mismatch
   and injected commit failure. Full local evidence is 1,108 Python plus 73 frontend
   passed; Baby Care is 458 passed / 115 opt-in skipped plus real PostgreSQL 2/2. This is
-  synthetic software evidence only; exact-head CI and installed/human gates remain open.
+  synthetic software evidence only. Exact-head CI passed at Baby Local `c554334` / run
+  `32680519119` and Baby Care `53e69d4` / run `32680603091`; installed/human gates remain
+  open.
 - Installed-i9 audio-source discovery now verifies that the Xiaomi source exposes HEVC
   video plus Opus audio and that the fixed loopback `audio_analysis` alias exposes only
   Opus. The real input is supported 48 kHz stereo Opus; the fixed FFmpeg boundary

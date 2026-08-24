@@ -1013,7 +1013,7 @@ embeddings, credentials, private addresses and raw model output. Confirm manual 
 Care recording and all independent Baby Local workers remain available when Voice is
 disabled or failed.
 
-- [ ] **Step 5: Update authoritative status and commit separately**
+- [x] **Step 5: Update authoritative status and commit separately**
 
 Commit each repository's own status changes on its own feature branch. Record both full
 local HEADs and exact CI run IDs. Do not claim V2 household accuracy, merge, tag or
@@ -1029,6 +1029,8 @@ Local Gate V1 implementation is committed at Baby Local `e4cd5d5` and Baby Care
 repository, Baby Local full Python 1,108 and frontend 73, and Baby Care Node 24 full 458
 passed / 115 opt-in skipped with lint/typecheck/build plus real PostgreSQL 16 2/2. The
 installed Baby Local gate remains 13 PASS / 6 FAIL in the isolated worktree because
-private installation/model assets are absent. Step 5 stays open until both branches are
-pushed, exact CI run IDs are recorded and the accepted Baby Local head is deployed to
-the actual i9 checkout for installed readiness. Voice remains disabled.
+private installation/model assets are absent. Both branches are published and exact-head
+CI passed at Baby Local `c554334` / run `32680519119` and Baby Care `53e69d4` / run
+`32680603091`. Gate V1 is therefore closed. The accepted Baby Local head must still be
+deployed to the actual i9 checkout for installed readiness before the adult-only Gate V2;
+Voice remains disabled.

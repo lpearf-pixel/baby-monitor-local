@@ -383,8 +383,9 @@ legacy branch into this line without a separate integration decision.
   retry after an outage, and the Node 24/PostgreSQL 16 producer commits and corrects
   bottle/direct facts while cancel, mismatch and failed commit remain closed. Fresh full
   evidence is 1,108 Python and 73 frontend passed locally, 458 passed / 115 opt-in skipped
-  in Baby Care, plus its real PostgreSQL 2/2. Exact-head CI and installed i9 readiness are
-  still pending; Voice remains disabled.
+  in Baby Care, plus its real PostgreSQL 2/2. Exact-head CI passed on Baby Local
+  `c554334` / run `32680519119` and Baby Care `53e69d4` /
+  run `32680603091`. Installed i9 readiness is still pending; Voice remains disabled.
 - Remote private viewing and the 72-hour release gate remain unfinished.
 - This system does not detect breathing, heart rate, suffocation or medical emergencies.
 
@@ -401,8 +402,7 @@ legacy branch into this line without a separate integration decision.
 4. Continue the approved audio/cry plan at Stage A8; a production model and
    license are still required before enablement; household audio remains
    memory-only.
-5. Publish both approved Voice Care feature branches and require exact-head CI. Then
-   deploy the accepted Baby Local head to the actual i9 checkout and rerun
+5. Deploy accepted Baby Local head `c554334` to the actual i9 checkout and rerun
    `alpha-guardian-test`; keep Voice disabled until ECAPA installation and supervised
    household adult accuracy pass.
 6. Complete authenticated private remote access using Tailscale Serve/ACL only.
