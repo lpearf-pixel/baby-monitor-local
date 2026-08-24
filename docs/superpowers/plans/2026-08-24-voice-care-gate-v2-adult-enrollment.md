@@ -114,7 +114,7 @@ git commit -m "fix: isolate caregiver profile secrets"
   `EnrollmentChallengeSession.consume(challenge_id, transcript)`.
 - Consumes: an injected monotonic clock, secure token generator and digit chooser.
 
-- [ ] **Step 1: Write challenge RED tests**
+- [x] **Step 1: Write challenge RED tests**
 
 ```python
 challenge = session.issue()
@@ -128,7 +128,7 @@ normalization, punctuation-only tolerance, Arabic-to-Chinese digit normalization
 unknown IDs, and stable `voice_enrollment_challenge_failed` errors without transcript
 or token in exceptions/repr.
 
-- [ ] **Step 2: Run RED tests**
+- [x] **Step 2: Run RED tests**
 
 Run:
 
@@ -138,7 +138,7 @@ Run:
 
 Expected: FAIL because the challenge module does not exist.
 
-- [ ] **Step 3: Implement the in-memory challenge**
+- [x] **Step 3: Implement the in-memory challenge**
 
 ```python
 @dataclass(frozen=True)
@@ -165,7 +165,7 @@ Generate four independent digits from the fixed Chinese digit table, store only 
 active expected normalized phrase plus expiry in memory, and consume it before checking
 the transcript so every attempt is one-shot. Never log or persist the transcript.
 
-- [ ] **Step 4: Run GREEN and static checks**
+- [x] **Step 4: Run GREEN and static checks**
 
 Run:
 
@@ -175,7 +175,7 @@ Run:
 git diff --check
 ```
 
-- [ ] **Step 5: Commit Task 2**
+- [x] **Step 5: Commit Task 2**
 
 ```bash
 git add services/voice/challenge.py tests/voice/test_challenge.py
