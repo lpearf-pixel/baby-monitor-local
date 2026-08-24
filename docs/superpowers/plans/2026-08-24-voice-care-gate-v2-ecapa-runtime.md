@@ -202,7 +202,7 @@ git commit -m "feat: acquire the pinned ECAPA artifact"
 - Does not yet produce `EmbeddingObservation`; SNR and overlap quality remain a later
   supervised-enrollment slice and are never fabricated as zero or healthy.
 
-- [ ] **Step 1: Write framed-protocol RED tests**
+- [x] **Step 1: Write framed-protocol RED tests**
 
 Cover one 0.8–8.0 second 16 kHz mono s16le request, two sequential requests in the same
 process, exact 192-value finite normalized output, 8,192-byte response cap, five-second
@@ -211,7 +211,7 @@ JSON, wrong shape, non-finite output, child exit and `close()` settlement. Asser
 parent sends PCM only through stdin and never uses argv, filesystem or environment
 variables for audio.
 
-- [ ] **Step 2: Run RED tests**
+- [x] **Step 2: Run RED tests**
 
 Run:
 
@@ -221,7 +221,7 @@ Run:
 
 Expected: FAIL because the runner and parent adapter do not exist.
 
-- [ ] **Step 3: Implement the fail-closed process boundary**
+- [x] **Step 3: Implement the fail-closed process boundary**
 
 The parent validates the artifact before process creation, sets
 `HF_HUB_OFFLINE=1`, `TRANSFORMERS_OFFLINE=1` and `NO_PROXY=*`, then launches the fixed
@@ -232,7 +232,7 @@ the bytes, and emits one canonical ASCII JSON line containing only `schemaVersio
 other than the bounded normalized embedding. Parent failure closes/destroys the child
 and raises `voice_model_unavailable`.
 
-- [ ] **Step 4: Run GREEN and regression checks**
+- [x] **Step 4: Run GREEN and regression checks**
 
 Run:
 
@@ -242,7 +242,7 @@ Run:
 git diff --check
 ```
 
-- [ ] **Step 5: Commit Task 3**
+- [x] **Step 5: Commit Task 3**
 
 ```bash
 git add services/voice/ecapa.py tools/voice_ecapa_runner.py tests/voice/test_ecapa.py tests/tools/test_voice_ecapa_runner.py
