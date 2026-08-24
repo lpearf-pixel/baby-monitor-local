@@ -23,7 +23,8 @@ faster-whisper `base`, local SpeechBrain ECAPA, FFmpeg, pytest, Make.
 - Run only on Darwin `x86_64`; Linux CI uses fakes and synthetic PCM.
 - Keep `VoiceCareSettings.enabled=false` before, during and after enrollment.
 - Never persist raw PCM, generated or household audio, transcript, challenge response,
-  embedding plaintext, Keychain secret, model output or local address.
+  embedding plaintext, Keychain secret, model output or local address, except for the
+  Task 5 operator-approved encrypted fixed-phrase calibration corpus defined below.
 - Never write Baby Care, pair a device, create a care fact or start the Voice worker.
 - Dad/Mom are the only local enrollment roles; role is not authorization.
 - Every failure emits one stable code and leaves no new usable profile or false success.
@@ -344,7 +345,36 @@ git add services/audio/source.py services/voice/enrollment.py services/voice/liv
 git commit -m "feat: add private adult voice enrollment"
 ```
 
-### Task 5: Installed i9 Human Enrollment Gate
+### Task 5: Installed i9 ASR Accuracy Gate
+
+**Status:** In progress. This gate now blocks enrollment and speaker verification.
+
+**Goal:** Prove accurate camera-to-text behavior before any voice identity work. Capture
+one bounded supervised corpus of fixed adult test phrases, encrypt it locally, and reuse
+the same clips for fair Whisper candidate and preprocessing comparisons.
+
+**Constraints:** Maximum 20 clips, eight seconds each; fixed displayed phrases only;
+dedicated Keychain encryption; ignored mode-0600 files; no free-form transcript, raw
+audio log, Baby Care write, Voice enablement or automatic deletion.
+
+- [x] Implement and test the encrypted private ASR calibration corpus.
+- [x] Implement the registry-validated Silero v6.2 segmentation runtime and bounded
+  capture command with aggregate signal/VAD diagnostics.
+- [ ] Capture the supervised fixed-phrase corpus once on the Xiaomi/i9 path.
+- [ ] Run base and small against identical clips; require exact normalized text,
+  exact `小小` prefix and bounded aggregate latency before selecting a candidate.
+- [ ] Record aggregate evidence only. Keep enrollment blocked on any accuracy failure.
+
+**Next:** Only after this gate passes, continue Dad/Mom enrollment below.
+
+Current installed evidence: the pinned official Silero artifact validates and rejects
+real silence, while the supervised Xiaomi batch returned zero speech spans and therefore
+did not publish a corpus. A fixed eight-second calibration-only capture now isolates ASR
+from VAD, but the current automation context cannot create its dedicated Keychain item:
+macOS returns OSStatus `-25308` (`User interaction is not allowed`). Run the fixed capture
+once from the logged-in user's Terminal; do not substitute a plaintext key or weaken VAD.
+
+### Task 6: Installed i9 Human Enrollment Gate
 
 **Files:**
 - Modify: `SUMMARY.md`

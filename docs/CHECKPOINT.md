@@ -917,3 +917,15 @@ disabled；未使用家庭音频、未登记成人声纹、未访问 Baby Care �
 保持临时无 runtime 项目和原 fail-closed 断言；本地定向 9/9、部署命令 39/39 通过。
 修正后的 exact-head run `32699249559` 全绿，包括 Python、前端、schema、编译、shell 与
 go2rtc cross-build。未降低验收标准，未创建 PR、未 merge、未修改 main。
+
+2026-08-24 将 Voice Care Gate V2 重新收敛为 ASR-first。新增最大 20 条、每条最多
+8 秒的固定短句 AES-GCM 私有语料库，专用 key 只允许进入 i9 Keychain；官方 Silero
+v6.2 ONNX 工件先经 manifest/digest 校验，再以固定 16 kHz/state/context 合同运行。
+校准命令支持 Silero 分段、一次 6 句 batch、单句固定 8 秒存储和同一密文语料的
+Whisper base/small 聚合评测，输出不含 transcript。真实 Xiaomi source PASS，独立 30 秒
+采集连续取得 960,000 字节；监督 batch 的官方 Silero 结果为 0 spans，正确无写入。
+随后固定 8 秒采集成功但 Keychain 发布返回 macOS OSStatus -25308（当前自动化上下文
+不允许用户交互），因此无 corpus 文件、无专用 key。下一步必须从登录用户 Terminal
+执行一次固定短句采集；Voice 保持 disabled，speaker/enrollment/Baby Care 写入继续阻塞。
+本切片新鲜软件门为 Voice Care 209 passed、完整 Python 1,229 passed；Python compile、
+Make dry-run 与 `git diff --check` 均通过。

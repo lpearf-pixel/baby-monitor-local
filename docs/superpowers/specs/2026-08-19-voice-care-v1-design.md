@@ -168,6 +168,22 @@ to derive one closed intent and is then discarded; it is not written to status, 
 SQLite, Baby Care or diagnostics. Debug audio or transcript persistence is disabled in
 production and cannot be enabled through a public API.
 
+One supervised, operator-approved ASR calibration workflow is the only persistence
+exception. It may retain at most 20 clips of fixed, pre-displayed adult test phrases,
+each no longer than eight seconds, solely in ignored private storage encrypted with a
+dedicated i9 Keychain key. It never records continuously, starts only from an explicit
+local operator command, stores no free-form transcript, is never read by the production
+worker and exposes only aggregate exact-match and latency results. The corpus remains
+local until the operator separately approves deletion; Git, logs, status, Baby Care,
+Ollama and network APIs never receive its audio or encryption key.
+
+The calibration operator has two separate modes. The Silero mode proves real utterance
+segmentation and remains fail-closed when zero or multiple spans are observed. A fixed-
+window fallback may store one explicitly prompted eight-second clip without treating
+VAD as passed; it exists only to isolate camera-to-Whisper accuracy from VAD accuracy.
+Production Voice Care still requires the Silero path and never reads either calibration
+mode's private corpus.
+
 ### 4.2.1 Approved local model and runtime boundary
 
 The first V1 implementation uses this fixed local stack:

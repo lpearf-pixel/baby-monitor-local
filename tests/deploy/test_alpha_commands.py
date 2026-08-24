@@ -930,6 +930,21 @@ def test_private_adult_enrollment_commands_fix_the_role_and_current_module() -> 
     assert "VOICE_PROFILE" not in content
 
 
+def test_private_asr_calibration_commands_use_fixed_local_module() -> None:
+    content = (ROOT / "Makefile").read_text(encoding="utf-8")
+
+    assert "alpha-voice-asr-capture:" in content
+    assert "alpha-voice-asr-capture-fixed:" in content
+    assert "alpha-voice-asr-capture-fixed-all:" in content
+    assert "alpha-voice-asr-capture-all:" in content
+    assert "alpha-voice-asr-evaluate:" in content
+    assert "-m tools.voice_asr_calibrate capture --prompt-id \"$(PROMPT)\"" in content
+    assert "-m tools.voice_asr_calibrate capture-fixed --prompt-id \"$(PROMPT)\"" in content
+    assert "for prompt in feeding_start_dad feeding_start_mom feeding_amount feeding_finish care_cancel negative_weather" in content
+    assert "-m tools.voice_asr_calibrate capture-all" in content
+    assert "-m tools.voice_asr_calibrate evaluate" in content
+
+
 def test_installer_installs_acceptance_test_dependencies() -> None:
     content = (ROOT / "tools/install_alpha_macos.sh").read_text(encoding="utf-8")
 

@@ -342,6 +342,16 @@
   replay/overlap rejection, private enrollment, Baby Care pairing and production writes
   remain pending. The implementation is published through `7dd0155`; exact-head CI run
   `32699249559` passed all Python, frontend, schema, compile, shell and go2rtc jobs.
+- Voice Care Gate V2 is paused at the installed-i9 ASR accuracy gate before enrollment.
+  The local implementation now provides a maximum-20 AES-GCM fixed-phrase corpus with
+  one dedicated Keychain key, a manifest-validated official Silero v6.2 ONNX adapter,
+  bounded live capture and transcript-free base/small aggregate comparison. The Xiaomi
+  source gate and standalone 30-second PCM capture pass, but a supervised official-
+  Silero batch detected zero spans and persisted nothing. The calibration-only fixed
+  eight-second path is ready, but this agent context receives macOS OSStatus `-25308`
+  when creating the key; the first capture must run once in the logged-in Terminal.
+  No audio/key currently exists and production Voice stays disabled. Fresh software
+  evidence is Voice Care 209 passed and full Python 1,229 passed.
 - Installed-i9 audio-source discovery now verifies that the Xiaomi source exposes HEVC
   video plus Opus audio and that the fixed loopback `audio_analysis` alias exposes only
   Opus. The real input is supported 48 kHz stereo Opus; the fixed FFmpeg boundary

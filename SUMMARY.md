@@ -397,6 +397,16 @@ legacy branch into this line without a separate integration decision.
   tests. The installed deployment checkout still passes Guardian 19/19. Voice remains
   disabled, and this result does not prove Dad/Mom identity, replay/overlap rejection,
   enrollment quality, Baby Care pairing or production writes.
+- Voice Care Gate V2 is now ASR-first. A bounded encrypted fixed-phrase calibration
+  corpus, pinned official Silero ONNX adapter, supervised 8/12/30-second capture paths
+  and transcript-free base/small comparison gate are implemented locally. The live
+  Xiaomi source remains healthy, but the official Silero batch detected zero speech
+  spans and correctly wrote nothing. A separate fixed eight-second calibration mode is
+  ready to isolate Whisper accuracy; the agent process cannot create its dedicated
+  Keychain item because macOS returns interaction-not-allowed. One logged-in Terminal
+  capture is therefore the exact next human action. Voice remains disabled, no
+  calibration audio or key currently exists, and enrollment remains blocked. Fresh
+  software evidence is Voice Care 209/209 and full Python 1,229/1,229.
 - Remote private viewing and the 72-hour release gate remain unfinished.
 - This system does not detect breathing, heart rate, suffocation or medical emergencies.
 
@@ -413,9 +423,10 @@ legacy branch into this line without a separate integration decision.
 4. Continue the approved audio/cry plan at Stage A8; a production model and
    license are still required before enablement; household audio remains
    memory-only.
-5. Continue Voice Care Gate V2 with the separately approved private adult-only slice:
-   replay/overlap quality, encrypted Dad/Mom enrollment and supervised accuracy, followed
-   by Baby Care profile binding/private transport. Keep Voice disabled until those gates pass.
+5. Complete the Voice Care installed-i9 ASR accuracy gate first: create the encrypted
+   fixed-phrase corpus from the logged-in Terminal, compare base/small on identical
+   clips, then fix the zero-span Silero result without lowering its threshold. Only
+   after that continue Dad/Mom enrollment, replay/overlap and Baby Care binding.
 6. Complete authenticated private remote access using Tailscale Serve/ACL only.
 7. Complete the final 72-hour release gate before any release/tag decision.
 8. Define per-parent acknowledgement and false-positive feedback only through a future
