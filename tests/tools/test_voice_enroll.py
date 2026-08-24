@@ -5,7 +5,7 @@ from pathlib import Path
 import pytest
 
 from packages.contracts.settings import VoiceCareSettings
-from services.voice.live_enrollment import EnrollmentRunReport
+from services.voice.live_enrollment import EnrollmentFailure, EnrollmentRunReport
 from tools import voice_enroll
 
 
@@ -67,7 +67,7 @@ def test_operator_redacts_failure_and_closes_models(tmp_path: Path) -> None:
         ["--role", "mom"],
         project_root=tmp_path,
         builder=lambda *_args: (
-            Coordinator(RuntimeError("private transcript and profile path")),
+            Coordinator(EnrollmentFailure("asr")),
             lambda: closed.append(True),
         ),
         input_fn=lambda _prompt: "",
@@ -78,6 +78,7 @@ def test_operator_redacts_failure_and_closes_models(tmp_path: Path) -> None:
     assert output == [
         "result=FAIL",
         "reason=voice_enrollment_failed",
+        "failure_stage=asr",
         "raw_audio_persisted=false",
     ]
     assert closed == [True]

@@ -283,7 +283,8 @@ git commit -m "feat: derive bounded ECAPA speaker quality"
 **Interfaces:**
 - Produces: `make alpha-voice-enroll-dad`, `make alpha-voice-enroll-mom` and aggregate
   only `result=PASS|FAIL`, `role=dad|mom`, `sample_count`, `profile_state`,
-  `raw_audio_persisted=false`.
+  `raw_audio_persisted=false`; a failure may additionally expose only the fixed stage
+  enum `preflight|capture|asr|challenge|speaker|storage`.
 - Consumes: fixed Xiaomi `audio_analysis`, local Whisper base, Tasks 1–3, macOS
   Keychain and terminal confirmation before each prompted phrase.
 

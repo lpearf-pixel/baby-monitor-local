@@ -14,6 +14,7 @@ from services.voice.challenge import EnrollmentChallenge
 from services.voice.live_enrollment import (
     ENROLLMENT_FAILED,
     BoundedLivePcmCapture,
+    EnrollmentFailure,
     EnrollmentRunReport,
     LiveEnrollmentCoordinator,
     VoiceProfileRegistry,
@@ -116,7 +117,7 @@ def test_coordinator_consumes_three_challenges_before_binding_profile() -> None:
 def test_challenge_failure_or_existing_role_creates_no_profile() -> None:
     enrollment = Enrollment()
     blocked_capture: list[str] = []
-    with pytest.raises(ValueError, match=f"^{ENROLLMENT_FAILED}$"):
+    with pytest.raises(EnrollmentFailure, match=f"^{ENROLLMENT_FAILED}$") as error:
         LiveEnrollmentCoordinator(
             role="mom",
             capture=lambda _phrase: PCM,
@@ -126,7 +127,8 @@ def test_challenge_failure_or_existing_role_creates_no_profile() -> None:
             registry=Registry(),
             store=Store(),
         ).run()
-    with pytest.raises(ValueError, match=f"^{ENROLLMENT_FAILED}$"):
+    assert error.value.stage == "challenge"
+    with pytest.raises(EnrollmentFailure, match=f"^{ENROLLMENT_FAILED}$") as error:
         LiveEnrollmentCoordinator(
             role="dad",
             capture=lambda phrase: blocked_capture.append(phrase) or PCM,
@@ -136,6 +138,7 @@ def test_challenge_failure_or_existing_role_creates_no_profile() -> None:
             registry=Registry(existing=PROFILE_ID),
             store=Store(),
         ).run()
+    assert error.value.stage == "preflight"
 
     assert enrollment.samples is None
     assert blocked_capture == []

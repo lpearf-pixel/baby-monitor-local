@@ -24,6 +24,19 @@ CAPTURE_SECONDS = 5
 CAPTURE_TIMEOUT_SECONDS = 10.0
 _MAX_REGISTRY_BYTES = 4_096
 _ROLES = frozenset({"dad", "mom"})
+_FAILURE_STAGES = frozenset(
+    {"preflight", "capture", "asr", "challenge", "speaker", "storage"}
+)
+
+
+class EnrollmentFailure(ValueError):
+    """One redacted, allowlisted enrollment failure stage."""
+
+    def __init__(self, stage: str) -> None:
+        if stage not in _FAILURE_STAGES:
+            stage = "preflight"
+        self.stage = stage
+        super().__init__(ENROLLMENT_FAILED)
 
 
 class _Asr(Protocol):
@@ -91,21 +104,30 @@ class LiveEnrollmentCoordinator:
     def run(self) -> EnrollmentRunReport:
         samples: list[bytes] = []
         profile_created = False
+        stage = "preflight"
         try:
             role = _validated_role(self._role)
             if self._registry.profile_id(role) is not None:
                 raise ValueError(ENROLLMENT_FAILED)
             for _index in range(3):
+                stage = "challenge"
                 challenge = self._challenges.issue()
+                stage = "capture"
                 pcm = self._capture(challenge.phrase)
                 if type(pcm) is not bytes or not pcm:
                     raise ValueError(ENROLLMENT_FAILED)
+                stage = "asr"
                 transcript = getattr(self._asr.transcribe(pcm), "text")
+                if type(transcript) is not str:
+                    raise ValueError(ENROLLMENT_FAILED)
+                stage = "challenge"
                 if not self._challenges.consume(challenge.challenge_id, transcript):
                     raise ValueError(ENROLLMENT_FAILED)
                 samples.append(pcm)
+            stage = "speaker"
             profile = self._enrollment.create(tuple(samples))
             profile_created = True
+            stage = "storage"
             self._registry.bind(role, profile.profile_id)
             return EnrollmentRunReport(role, 3, "created", False)
         except Exception:
@@ -114,7 +136,7 @@ class LiveEnrollmentCoordinator:
                     self._store.delete()
                 except Exception:
                     pass
-            raise ValueError(ENROLLMENT_FAILED) from None
+            raise EnrollmentFailure(stage) from None
         finally:
             samples.clear()
 
@@ -322,6 +344,7 @@ def _canonical_profile_id(profile_id: object) -> str:
 __all__ = [
     "BoundedLivePcmCapture",
     "ENROLLMENT_FAILED",
+    "EnrollmentFailure",
     "EnrollmentRunReport",
     "LiveEnrollmentCoordinator",
     "VoiceProfileRegistry",

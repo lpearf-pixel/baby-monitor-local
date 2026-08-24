@@ -18,6 +18,7 @@ from services.voice.keychain import KeychainSecretStore, MacOSSecurityKeychain
 from services.voice.live_enrollment import (
     BoundedLivePcmCapture,
     ENROLLMENT_FAILED,
+    EnrollmentFailure,
     EnrollmentRunReport,
     LiveEnrollmentCoordinator,
     VoiceProfileRegistry,
@@ -78,9 +79,11 @@ def main(
         printer("profile_state=created")
         printer("raw_audio_persisted=false")
         return 0
-    except (Exception, KeyboardInterrupt):
+    except (Exception, KeyboardInterrupt) as error:
+        stage = error.stage if isinstance(error, EnrollmentFailure) else "preflight"
         printer("result=FAIL")
         printer(f"reason={ENROLLMENT_FAILED}")
+        printer(f"failure_stage={stage}")
         printer("raw_audio_persisted=false")
         return 1
     finally:
