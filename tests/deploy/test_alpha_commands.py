@@ -3,6 +3,7 @@ from __future__ import annotations
 import os
 import shutil
 import subprocess
+import sys
 import tomllib
 from pathlib import Path
 
@@ -870,7 +871,7 @@ def test_ecapa_probe_command_fails_closed_without_installed_runtime(
         [
             "make",
             "alpha-voice-ecapa-probe",
-            f"PYTHON={ROOT / '.venv-alpha/bin/python'}",
+            f"PYTHON={sys.executable}",
         ],
         cwd=tmp_path,
         env={**os.environ, "PYTHONPATH": str(ROOT)},
