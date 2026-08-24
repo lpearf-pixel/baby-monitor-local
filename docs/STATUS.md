@@ -340,7 +340,8 @@
   frontend tests; the production deployment checkout remains Guardian 19/19. This is
   runtime/shape/latency evidence only: Voice is still disabled and Dad/Mom accuracy,
   replay/overlap rejection, private enrollment, Baby Care pairing and production writes
-  remain pending.
+  remain pending. The implementation is published through `7dd0155`; exact-head CI run
+  `32699249559` passed all Python, frontend, schema, compile, shell and go2rtc jobs.
 - Installed-i9 audio-source discovery now verifies that the Xiaomi source exposes HEVC
   video plus Opus audio and that the fixed loopback `audio_analysis` alias exposes only
   Opus. The real input is supported 48 kHz stereo Opus; the fixed FFmpeg boundary

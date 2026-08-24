@@ -336,3 +336,6 @@ p95 311 ms; `raw_audio_persisted=false`. Fresh software evidence is 1,156 Python
 The isolated feature worktree separately returned 13/19 only because its private
 Guardian installation/model assets are intentionally absent. Voice remains disabled;
 no household audio, adult enrollment, Baby Care write or identity threshold was used.
+The implementation is published through `7dd0155`. Initial Linux run `32699054840`
+exposed one test-only private-venv assumption; it was fixed without changing product
+behavior or weakening the fail-closed assertion, and exact-head run `32699249559` passed.

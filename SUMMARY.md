@@ -7,8 +7,8 @@ Updated: 2026-08-24
 - Repository: `lpearf-pixel/baby-monitor-local` (public).
 - Stable Xiaomi line: `stable/xiaomi-alpha` at `0df20ae`.
 - Active implementation line: `codex/voice-care-v1-gate-v1`, based on the approved
-  `codex/voice-care-v1-design` checkpoint. The Gate V2 ECAPA runtime slice is complete
-  locally and awaits publication from this worktree.
+  `codex/voice-care-v1-design` checkpoint. The Gate V2 ECAPA runtime implementation is
+  published through `7dd0155`; exact-head CI run `32699249559` passed.
 - The evidence-retention line is based on the published Dashboard snapshot `69e2d5b`;
   the Dashboard remains complete and its published branch is not rewritten.
 - Remote branch `codex/baby-guardian-event-loop` remains at its earlier squash snapshot

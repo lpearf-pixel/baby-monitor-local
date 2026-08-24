@@ -910,3 +910,10 @@ Local head 部署到真实 i9 checkout 后重跑 installed Guardian 门；Voice 
 6 项仅因该 worktree 没有私有 launchd/视觉模型安装资产，不作为生产回归。Voice 继续
 disabled；未使用家庭音频、未登记成人声纹、未访问 Baby Care 写接口、未设置身份阈值。
 下一切片为另行批准的 replay/overlap 质量与 Dad/Mom 私有监督 enrollment/accuracy。
+
+同日发布 Voice Care Gate V2 ECAPA 运行时实现。首轮远端 `37287b1` / run
+`32699054840` 的 Linux Python 门为 1 failed / 1,155 passed：新测试错误依赖本地私有
+`.venv-alpha` 路径，CI checkout 在进入产品代码前退出。`7dd0155` 改用当前测试解释器，
+保持临时无 runtime 项目和原 fail-closed 断言；本地定向 9/9、部署命令 39/39 通过。
+修正后的 exact-head run `32699249559` 全绿，包括 Python、前端、schema、编译、shell 与
+go2rtc cross-build。未降低验收标准，未创建 PR、未 merge、未修改 main。
