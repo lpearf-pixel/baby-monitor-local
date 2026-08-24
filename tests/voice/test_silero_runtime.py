@@ -140,3 +140,20 @@ def test_segmenter_caps_padded_utterance_at_eight_seconds(tmp_path: Path) -> Non
 
     assert len(spans) == 1
     assert spans[0].end_sample - spans[0].start_sample == 128_000
+
+
+def test_analysis_uses_exact_half_threshold_and_resets_state_per_clip(
+    tmp_path: Path,
+) -> None:
+    session = FakeSession([0.5] * 8 + [0.0] * 25 + [0.499] * 33)
+    segmenter, _calls = _segmenter(tmp_path, session)
+
+    first = segmenter.analyze(b"\0\0" * (512 * 33))
+    second = segmenter.analyze(b"\0\0" * (512 * 33))
+
+    assert len(first.spans) == 1
+    assert first.peak_probability == pytest.approx(0.5)
+    assert second.spans == ()
+    assert second.peak_probability == pytest.approx(0.499)
+    assert np.all(session.calls[0]["state"] == 0.0)
+    assert np.all(session.calls[33]["state"] == 0.0)

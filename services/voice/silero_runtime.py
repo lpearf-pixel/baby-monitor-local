@@ -37,6 +37,12 @@ class SpeechSpan:
 
 
 @dataclass(frozen=True)
+class SileroAnalysis:
+    spans: tuple[SpeechSpan, ...]
+    peak_probability: float
+
+
+@dataclass(frozen=True)
 class _SessionPolicy:
     intra_op_num_threads: int = 1
     inter_op_num_threads: int = 1
@@ -96,6 +102,9 @@ class SileroOnnxSegmenter:
             raise ValueError(SILERO_UNAVAILABLE) from None
 
     def segment(self, pcm: bytes) -> tuple[SpeechSpan, ...]:
+        return self.analyze(pcm).spans
+
+    def analyze(self, pcm: bytes) -> SileroAnalysis:
         if (
             type(pcm) is not bytes
             or not pcm
@@ -107,7 +116,10 @@ class SileroOnnxSegmenter:
         samples /= 32_768.0
         try:
             probabilities = self._probabilities(samples)
-            return _speech_spans(probabilities, samples.size)
+            return SileroAnalysis(
+                _speech_spans(probabilities, samples.size),
+                max(probabilities),
+            )
         except Exception:
             raise ValueError(SILERO_UNAVAILABLE) from None
 
@@ -222,6 +234,7 @@ def _onnx_session(
 __all__ = [
     "SILERO_PCM_INVALID",
     "SILERO_UNAVAILABLE",
+    "SileroAnalysis",
     "SpeechSpan",
     "SileroOnnxSegmenter",
 ]

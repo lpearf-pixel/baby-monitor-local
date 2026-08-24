@@ -565,20 +565,20 @@ git commit -m "feat: run bounded local ASR bakeoff"
 - Consumes: one generated non-household Mandarin control and the six encrypted clips in
   memory through Task 5A.
 
-- [ ] **Step 1: Write RED control, signal and gain-bound tests**
+- [x] **Step 1: Write RED control, signal and gain-bound tests**
 
 Assert the official input/state/context shapes, state reset between clips, finite
 probabilities, exact 0.50 speech threshold, aggregate-only output and deterministic
 gain capped at +12 dB without clipping. ASR bytes and corpus ciphertext must remain
 unchanged.
 
-- [ ] **Step 2: Run RED tests**
+- [x] **Step 2: Run RED tests**
 
 ```bash
 .venv-alpha/bin/python -m pytest -q tests/voice/test_silero_runtime.py tests/voice/test_vad_diagnostic.py tests/tools/test_voice_vad_diagnostic.py
 ```
 
-- [ ] **Step 3: Implement diagnostic-first decision logic**
+- [x] **Step 3: Implement diagnostic-first decision logic**
 
 First run unmodified Silero on both control and private clips. If the control returns no
 span, correct only the ONNX state/context contract. If the control returns one span per
@@ -586,7 +586,7 @@ utterance while private clips return none and private RMS is at least 12 dB lowe
 the fixed +12 dB-or-less non-clipping preprocessor for VAD only. Never lower the 0.50
 threshold, rewrite the stored corpus or pass gained PCM to ASR/ECAPA.
 
-- [ ] **Step 4: Run GREEN and real aggregate gate**
+- [x] **Step 4: Run GREEN and real aggregate gate**
 
 ```bash
 .venv-alpha/bin/python -m pytest -q tests/voice/test_silero_runtime.py tests/voice/test_vad_diagnostic.py tests/tools/test_voice_vad_diagnostic.py
@@ -596,7 +596,14 @@ make alpha-voice-vad-diagnostic
 Require six private prompts with exactly one bounded span each plus a passing generated
 control. Otherwise return `vad_candidate_unavailable` and keep Voice disabled.
 
-- [ ] **Step 5: Commit Task 5C**
+Evidence on 2026-08-24: the generated Mandarin control passed with one span and peak
+probability 1.000. Five private prompt IDs produced exactly one span; public prompt ID
+`negative_weather` produced two. Private RMS ranged from -16.713 to -14.700 dBFS,
+which was not 12 dB below the -18.053 dBFS control, so the bounded gain branch correctly
+did not run. The gate returned `vad_candidate_unavailable`; threshold 0.50, corpus
+ciphertext and ASR input bytes remained unchanged and Voice stayed disabled.
+
+- [x] **Step 5: Commit Task 5C**
 
 ```bash
 git add services/voice/silero_runtime.py services/voice/vad_diagnostic.py tools/voice_vad_diagnostic.py tests/voice/test_silero_runtime.py tests/voice/test_vad_diagnostic.py tests/tools/test_voice_vad_diagnostic.py Makefile

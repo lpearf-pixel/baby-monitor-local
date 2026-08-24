@@ -4,7 +4,7 @@ PYTHON311 ?= /usr/local/bin/python3.11
 BASH ?= /bin/bash
 .DEFAULT_GOAL := help
 
-.PHONY: help alpha-update alpha-install alpha-start alpha-stop alpha-restart alpha-go2rtc-restart alpha-status alpha-guardian-start alpha-guardian-test alpha-guardian-test-live alpha-guardian-scene-test alpha-audio-status alpha-audio-test alpha-voice-status alpha-voice-test alpha-voice-start alpha-voice-stop alpha-voice-v0-test alpha-voice-v0-probe alpha-voice-v0-stability alpha-voice-keychain-helper-build alpha-voice-keychain-migrate alpha-voice-keychain-check alpha-voice-converter-install alpha-voice-speaker-install alpha-voice-speaker-check alpha-voice-ecapa-source alpha-voice-ecapa-install alpha-voice-ecapa-probe alpha-voice-enroll-dad alpha-voice-enroll-mom alpha-voice-asr-capture alpha-voice-asr-capture-fixed alpha-voice-asr-capture-fixed-all alpha-voice-asr-capture-all alpha-voice-asr-evaluate alpha-voice-asr-bakeoff alpha-voice-models-install alpha-voice-model-benchmark alpha-visual-status alpha-visual-performance alpha-visual-diagnostic alpha-visual-launchd-update alpha-logs alpha-quality-hd alpha-quality-info alpha-quality-rollback alpha-source-check alpha-subtype-probe alpha-subtype-apply alpha-go2rtc-info alpha-go2rtc-rebuild alpha-go2rtc-rollback alpha-realtime-models-check alpha-realtime-models-install alpha-ws2021-collect-calibrated alpha-ws2021-collect-model alpha-ws2021-dataset alpha-ws2021-model-train-bootstrap alpha-ws2021-model-train alpha-ws2021-model-export alpha-ws2021-model-check
+.PHONY: help alpha-update alpha-install alpha-start alpha-stop alpha-restart alpha-go2rtc-restart alpha-status alpha-guardian-start alpha-guardian-test alpha-guardian-test-live alpha-guardian-scene-test alpha-audio-status alpha-audio-test alpha-voice-status alpha-voice-test alpha-voice-start alpha-voice-stop alpha-voice-v0-test alpha-voice-v0-probe alpha-voice-v0-stability alpha-voice-keychain-helper-build alpha-voice-keychain-migrate alpha-voice-keychain-check alpha-voice-converter-install alpha-voice-speaker-install alpha-voice-speaker-check alpha-voice-ecapa-source alpha-voice-ecapa-install alpha-voice-ecapa-probe alpha-voice-enroll-dad alpha-voice-enroll-mom alpha-voice-asr-capture alpha-voice-asr-capture-fixed alpha-voice-asr-capture-fixed-all alpha-voice-asr-capture-all alpha-voice-asr-evaluate alpha-voice-asr-bakeoff alpha-voice-vad-diagnostic alpha-voice-models-install alpha-voice-model-benchmark alpha-visual-status alpha-visual-performance alpha-visual-diagnostic alpha-visual-launchd-update alpha-logs alpha-quality-hd alpha-quality-info alpha-quality-rollback alpha-source-check alpha-subtype-probe alpha-subtype-apply alpha-go2rtc-info alpha-go2rtc-rebuild alpha-go2rtc-rollback alpha-realtime-models-check alpha-realtime-models-install alpha-ws2021-collect-calibrated alpha-ws2021-collect-model alpha-ws2021-dataset alpha-ws2021-model-train-bootstrap alpha-ws2021-model-train alpha-ws2021-model-export alpha-ws2021-model-check
 
 help:
 	@echo "Baby Monitor Local Alpha commands:"
@@ -45,6 +45,7 @@ help:
 	@echo "  make alpha-voice-asr-capture-all Save the six fixed phrases in one session"
 	@echo "  make alpha-voice-asr-evaluate Re-evaluate the encrypted fixed phrase corpus"
 	@echo "  make alpha-voice-asr-bakeoff Run the closed local ASR decode matrix"
+	@echo "  make alpha-voice-vad-diagnostic Run aggregate Silero signal diagnostics"
 	@echo "  make alpha-voice-models-install Install verified local Whisper base/small models"
 	@echo "  make alpha-voice-model-benchmark Run generated local Whisper base/small gate"
 	@echo "  make alpha-visual-status     Show redacted visual worker and M2 bridge health"
@@ -278,6 +279,9 @@ alpha-voice-asr-evaluate:
 
 alpha-voice-asr-bakeoff:
 	@$(PYTHON) -m tools.voice_asr_calibrate bakeoff
+
+alpha-voice-vad-diagnostic:
+	@$(PYTHON) -m tools.voice_vad_diagnostic
 
 alpha-voice-models-install:
 	@set -eu; \
