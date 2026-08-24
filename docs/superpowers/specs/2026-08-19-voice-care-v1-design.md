@@ -241,11 +241,12 @@ The first V1 implementation uses this fixed local stack:
 - Silero VAD ONNX at 16 kHz mono for speech activity. The artifact and MIT license are
   installed locally, pinned by source revision and SHA-256 and never downloaded by a
   running worker.
-- Official OpenAI multilingual Whisper `base` and `small` are the only ASR bake-off
-  candidates. Both code and weights use the upstream MIT license. An installed-i9 gate
-  selects the smallest candidate that passes the same public/synthetic Mandarin command
-  corpus, latency and closed-wake tests. The selected artifact, conversion metadata and
-  SHA-256 become fixed runtime configuration before V1 can be enabled.
+- Official OpenAI multilingual Whisper `base` and `small` were the first closed ASR
+  bake-off candidates. Both code and weights use the upstream MIT license. Their
+  installed-i9 matrix is retained as historical evidence; neither passed the private
+  exact-match gate. The approved replacement candidate and runtime are defined in
+  section 4.2.2. Any selected artifact, conversion metadata and SHA-256 become fixed
+  runtime configuration before V1 can be enabled.
 - SpeechBrain `spkrec-ecapa-voxceleb` is the first speaker-embedding candidate. Its
   upstream model card declares Apache-2.0. It is used only for local adult enrollment
   and verification; the exact source revision, files and digests are pinned before use.
@@ -259,11 +260,38 @@ unavailable reason and creates no wake, identity, intent, care record or success
 No model artifact is committed to Git, fetched at worker startup or sent to Ollama or a
 cloud API.
 
-The `sherpa-onnx` runtime and its Chinese keyword models are not approved for V1. The
-runtime source is Apache-2.0, but the selected KWS weights do not currently carry an
-explicit model-specific redistribution license. A later replacement requires a new
-recorded model/license review and the same acceptance gates; it is not a silent runtime
-configuration change.
+### 4.2.2 Approved Mandarin ASR family amendment
+
+The installed-i9 Whisper matrix is exhausted: no approved base/small profile reached
+6/6 exact matches, while adding another prompt, hotword profile or phrase correction
+would violate the bounded bake-off contract. The approved next candidate is
+`csukuangfj/sherpa-onnx-paraformer-zh-2023-09-14` at source revision
+`def027084691107096b5ebba69785756d63de6c5`, using only `model.int8.onnx` and
+`tokens.txt`. Its model card declares Apache-2.0. The runtime is `sherpa-onnx==1.13.6`,
+also Apache-2.0, installed only in ignored `runtime/voice-asr-venv` on Darwin x86_64.
+
+Paraformer runs in one separately supervised offline child process. The parent validates
+the canonical artifact manifest and isolated environment before spawn, sends only one
+length-prefixed mono 16 kHz s16le utterance through anonymous stdin, and accepts only one
+bounded canonical JSON response containing schema version, Mandarin text and inference
+latency. The child receives a minimal offline environment with no proxy, token or model-
+hub credentials; it cannot download at startup. Timeout, malformed PCM, extra response
+fields, non-UTF-8 text, child exit or digest mismatch destroys the child and returns
+`voice_model_unavailable`. Raw audio and transcripts are never written by this adapter.
+
+The Paraformer evaluation receives the identical six encrypted fixed-prompt clips in
+memory and no expected phrase, hotword file, language-model correction, punctuation
+model or inverse-text-normalization layer. Only the existing whitespace/punctuation
+normalization may be used for scoring. It must reach 6/6 exact, 6/6 wake decisions and
+P95 at most 3,000 ms. The older Whisper results remain historical evidence and cannot
+be combined with Paraformer per phrase. A failing Paraformer gate leaves Voice disabled
+and requires another separately approved model/runtime/license amendment.
+
+The sherpa-onnx Chinese keyword-spotting models remain unapproved for V1. Approval of
+the Paraformer ASR artifact above does not approve a KWS artifact: the selected KWS
+weights do not currently carry an explicit model-specific redistribution license. A
+later wake-model replacement requires a new recorded model/license review and the same
+acceptance gates; it is not a silent runtime configuration change.
 
 Guardian cry classification remains a separate A8 gate. Voice Care V1 neither enables
 cry analysis nor treats speech, ASR or speaker output as evidence of crying.
@@ -710,6 +738,13 @@ uncertainty gates pass. Each fact gets an independent RED-GREEN slice.
 - OpenAI documents Whisper's multilingual model sizes, limitations and MIT license for
   code and model weights: <https://github.com/openai/whisper/blob/main/model-card.md>
   and <https://github.com/openai/whisper/blob/main/LICENSE>.
+- The pinned Paraformer model card declares Apache-2.0 and publishes immutable INT8
+  model and token assets at revision `def027084691107096b5ebba69785756d63de6c5`:
+  <https://huggingface.co/csukuangfj/sherpa-onnx-paraformer-zh-2023-09-14>.
+- sherpa-onnx documents macOS x86_64 support, local Python inference and the exact
+  Paraformer model invocation; its runtime is Apache-2.0:
+  <https://pypi.org/project/sherpa-onnx/> and
+  <https://k2-fsa.github.io/sherpa/onnx/pretrained_models/offline-paraformer/paraformer-models.html>.
 - SpeechBrain publishes the selected ECAPA-TDNN model card under Apache-2.0:
   <https://huggingface.co/speechbrain/spkrec-ecapa-voxceleb>.
 - Apple documents bounded speech synthesis and explicit stop/control through

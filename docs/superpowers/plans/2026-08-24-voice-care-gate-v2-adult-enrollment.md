@@ -610,6 +610,101 @@ git add services/voice/silero_runtime.py services/voice/vad_diagnostic.py tools/
 git commit -m "fix: validate Xiaomi speech segmentation"
 ```
 
+#### Task 5E: Approved Paraformer Mandarin ASR Amendment
+
+**Files:**
+- Modify: `packages/contracts/settings.py`
+- Modify: `services/voice/artifacts.py`
+- Create: `services/voice/paraformer.py`
+- Create: `tools/voice_asr_environment.py`
+- Create: `tools/voice_paraformer_runner.py`
+- Create: `config/voice-asr-requirements.txt`
+- Modify: `services/voice/asr_calibration.py`
+- Modify: `tools/voice_asr_calibrate.py`
+- Modify: `tools/voice_models.py`
+- Modify: `Makefile`
+- Modify: focused tests under `tests/contracts/`, `tests/voice/` and `tests/tools/`
+
+**Interfaces:**
+- Consumes: the manifest-validated Apache-2.0 Paraformer INT8 model at revision
+  `def027084691107096b5ebba69785756d63de6c5`, ignored `runtime/voice-asr-venv`, and
+  the unchanged six-clip encrypted corpus through the helper-owned Keychain v2 item.
+- Produces: `ParaformerProcess.transcribe(pcm: bytes) -> AsrResult`, the fixed framed
+  child protocol, and `make alpha-voice-asr-paraformer` aggregate-only acceptance.
+
+- [ ] **Step 1: Add registry, settings and isolated-environment RED tests**
+
+Require artifact ID `sherpa-onnx-paraformer-zh-2023-09-14`, only
+`model.int8.onnx`/`tokens.txt`, Apache-2.0, exact source revision, a canonical manifest
+digest, Darwin x86_64 and `sherpa-onnx==1.13.6`. Reject parent/leaf symlinks, system site
+packages, wrong versions and extra model files before any runtime process is started.
+
+- [ ] **Step 2: Run registry/environment RED, then implement minimal GREEN**
+
+```bash
+.venv-alpha/bin/python -m pytest -q tests/contracts/test_voice_settings.py tests/voice/test_artifacts.py tests/tools/test_voice_asr_environment.py
+```
+
+Add the fifth optional settings digest, closed artifact registry entry, pinned isolated
+requirements and path/version validator. Keep Voice disabled and preserve the existing
+Whisper artifact fields for historical validation and rollback evidence.
+
+- [ ] **Step 3: Add child-protocol and parent-process RED tests**
+
+Exercise two sequential requests through one child, exact mono 16 kHz s16le bounds,
+canonical UTF-8 JSON, Mandarin language, 3,000 ms request timeout, child settlement,
+offline sanitized environment and absence of PCM/transcript persistence. Malformed or
+extra response fields, timeout and child exit must destroy the child and fail closed.
+
+- [ ] **Step 4: Run protocol RED, then implement minimal GREEN**
+
+```bash
+.venv-alpha/bin/python -m pytest -q tests/voice/test_paraformer.py tests/tools/test_voice_paraformer_runner.py
+```
+
+Implement one fixed greedy-search CPU recognizer with two threads. Do not supply a
+hotword file, expected phrase, punctuation model, ITN, network client or fallback
+engine. The parent passes PCM only over anonymous stdin and receives text only over
+stdout; stderr is discarded.
+
+- [ ] **Step 5: Add aggregate calibration/CLI RED tests, then implement GREEN**
+
+Require a single candidate named `paraformer`, six evaluated public prompt IDs, 6/6
+exact, 6/6 wake and P95 at most 3,000 ms. Output may contain only counts, public prompt
+IDs and aggregate latency; it must not contain recognized text, PCM, local paths or
+Keychain details.
+
+```bash
+.venv-alpha/bin/python -m pytest -q tests/voice/test_asr_calibration.py tests/tools/test_voice_asr_calibrate.py
+```
+
+- [ ] **Step 6: Install public runtime/model and run the real encrypted-corpus gate**
+
+```bash
+make alpha-voice-asr-install
+make alpha-voice-paraformer-install
+make alpha-voice-asr-paraformer
+```
+
+The install command may download only the pinned public runtime/model during this
+operator step. The installed worker never downloads. Accept only 6/6 exact, 6/6 wake,
+P95 at most 3,000 ms and `VoiceCareSettings.enabled=false`; otherwise report
+`asr_candidate_unavailable` and retain Voice disabled.
+
+- [ ] **Step 7: Run full verification, update handoff state and commit Task 5E**
+
+```bash
+make alpha-voice-test
+.venv-alpha/bin/python -m pytest -q
+.venv-alpha/bin/python -m compileall -q services/voice tools tests/voice tests/tools
+make -n alpha-voice-asr-install alpha-voice-paraformer-install alpha-voice-asr-paraformer
+git diff --check
+```
+
+Record the exact real gate result without transcript/audio. Commit only tracked
+implementation, tests, spec, plan and handoff documents; never stage runtime artifacts,
+private corpus, settings, Keychain data or `uv.lock`.
+
 #### Task 5D: Installed Non-Interactive Voice Preflight
 
 **Files:**
