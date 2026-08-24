@@ -14,6 +14,7 @@ from services.voice.artifacts import (
     validate_voice_artifact,
     validate_voice_artifact_bundle,
     validate_voice_source,
+    voice_artifact_spec,
     voice_artifact_specs,
     write_canonical_manifest,
 )
@@ -180,9 +181,9 @@ def main() -> int:
     parser.add_argument("--project-root", type=Path, default=Path.cwd())
     arguments = parser.parse_args()
     settings = VoiceCareSettings.model_validate_json(arguments.settings.read_text("utf-8"))
-    specs = {spec.artifact_id: spec for spec in voice_artifact_specs(settings)}
-    spec = specs.get(arguments.artifact)
-    if spec is None:
+    try:
+        spec = voice_artifact_spec(settings, arguments.artifact)
+    except ValueError:
         parser.error("unknown Voice Care artifact")
     if arguments.operation == "convert-whisper" and spec.acquisition != "convert-whisper":
         parser.error("convert-whisper is only valid for Whisper artifacts")

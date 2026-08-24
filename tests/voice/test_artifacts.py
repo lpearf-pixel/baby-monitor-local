@@ -12,6 +12,7 @@ from services.voice.artifacts import (
     VOICE_ARTIFACT_IDS,
     VoiceArtifactSpec,
     validate_voice_artifact,
+    voice_artifact_spec,
     voice_artifact_specs,
 )
 from tools.voice_models import collect_voice_artifact, convert_whisper_bundle, install_voice_artifact
@@ -167,6 +168,20 @@ def test_registry_is_closed_and_uses_full_immutable_provenance() -> None:
         == Path("runtime/models/voice-care") / spec.artifact_id / spec.manifest_sha256
         for spec in specs
     )
+
+
+def test_single_artifact_selection_requires_only_its_own_digest() -> None:
+    settings = VoiceCareSettings(
+        enabled=False,
+        speechbrain_ecapa_manifest_sha256="4" * 64,
+    )
+
+    spec = voice_artifact_spec(settings, "speechbrain-ecapa-voxceleb")
+
+    assert spec.artifact_id == "speechbrain-ecapa-voxceleb"
+    assert spec.manifest_sha256 == "4" * 64
+    with pytest.raises(ValueError, match="^VOICE_ARTIFACT_DIGEST_REQUIRED$"):
+        voice_artifact_spec(settings, "openai-whisper-base")
 
 
 @pytest.mark.parametrize("artifact_id", ("openai-whisper-base", "openai-whisper-small"))

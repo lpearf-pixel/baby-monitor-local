@@ -12,6 +12,7 @@ INVALID_ENVIRONMENT = "VOICE_SPEAKER_ENVIRONMENT_INVALID"
 PINNED_PACKAGES = {
     "huggingface-hub": "0.36.0",
     "numpy": "1.26.4",
+    "pydantic": "2.13.4",
     "speechbrain": "1.0.3",
     "torch": "2.2.2",
     "torchaudio": "2.2.2",
@@ -24,6 +25,7 @@ import json
 packages = {
     "huggingface-hub": ("huggingface_hub", "0.36.0"),
     "numpy": ("numpy", "1.26.4"),
+    "pydantic": ("pydantic", "2.13.4"),
     "speechbrain": ("speechbrain", "1.0.3"),
     "torch": ("torch", "2.2.2"),
     "torchaudio": ("torchaudio", "2.2.2"),

@@ -129,7 +129,7 @@ git commit -m "feat: isolate the ECAPA speaker runtime"
 - Consumes: the existing registry definition and canonical
   `validate_voice_source`/`acquire_voice_artifact` path.
 
-- [ ] **Step 1: Write source/install RED tests**
+- [x] **Step 1: Write source/install RED tests**
 
 Use an injected fake fetcher and assert that the source materializer requests exactly
 the approved repository, revision and five file names. It must reject a returned cache
@@ -143,7 +143,7 @@ The Make install target must derive the source-manifest digest locally, call
 `tools/voice_models.py --operation acquire` for only
 `speechbrain-ecapa-voxceleb`, and expose no URL, path or digest in output.
 
-- [ ] **Step 2: Run RED tests**
+- [x] **Step 2: Run RED tests**
 
 Run:
 
@@ -153,7 +153,7 @@ Run:
 
 Expected: FAIL because the explicit ECAPA materializer and Make targets do not exist.
 
-- [ ] **Step 3: Implement immutable acquisition**
+- [x] **Step 3: Implement immutable acquisition**
 
 Use `huggingface_hub.hf_hub_download` only in the explicit source command, with the
 repository, immutable revision and file list supplied by the closed registry rather
@@ -165,7 +165,7 @@ source directory only after all five files and the canonical manifest validate. 
 provided artifact IDs, revisions or file lists. All worker paths set offline flags and
 never import the download client.
 
-- [ ] **Step 4: Run GREEN, privacy and static checks**
+- [x] **Step 4: Run GREEN, privacy and static checks**
 
 Run:
 
@@ -178,7 +178,7 @@ git diff --check
 
 Verify no model, manifest, runtime path, URL response or generated setting is tracked.
 
-- [ ] **Step 5: Commit Task 2**
+- [x] **Step 5: Commit Task 2**
 
 ```bash
 git add tools/voice_ecapa_source.py tools/voice_models.py Makefile tests/tools/test_voice_ecapa_source.py tests/voice/test_artifacts.py tests/deploy/test_alpha_commands.py

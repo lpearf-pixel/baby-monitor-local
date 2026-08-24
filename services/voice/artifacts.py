@@ -166,6 +166,35 @@ def voice_artifact_specs(settings: VoiceCareSettings) -> tuple[VoiceArtifactSpec
     )
 
 
+def voice_artifact_spec(
+    settings: VoiceCareSettings, artifact_id: str
+) -> VoiceArtifactSpec:
+    """Select one closed-registry artifact without requiring unrelated digests."""
+
+    definition = _DEFINITIONS.get(artifact_id)
+    digest_field = {
+        "silero-vad-v6.2": "silero_vad_manifest_sha256",
+        "openai-whisper-base": "whisper_base_manifest_sha256",
+        "openai-whisper-small": "whisper_small_manifest_sha256",
+        "speechbrain-ecapa-voxceleb": "speechbrain_ecapa_manifest_sha256",
+    }.get(artifact_id)
+    if definition is None or digest_field is None:
+        raise ValueError("VOICE_ARTIFACT_INVALID")
+    return _spec_from_definition(
+        definition, _required_digest(getattr(settings, digest_field))
+    )
+
+
+def voice_artifact_manifest_sha256(
+    spec: VoiceArtifactSpec, bundle: Path, source_manifest_sha256: str
+) -> str:
+    """Derive the runtime manifest identity from a complete local source bundle."""
+
+    return hashlib.sha256(
+        _artifact_manifest_bytes(spec, bundle, source_manifest_sha256)
+    ).hexdigest()
+
+
 def validate_voice_artifact(spec: VoiceArtifactSpec, project_root: Path) -> Path:
     """Return the absolute validated immutable bundle directory before runner creation."""
 
@@ -238,23 +267,40 @@ def write_canonical_manifest(
 ) -> None:
     """Write the canonical manifest after an explicit conversion has created all files."""
 
-    files = {}
-    for relative_path in spec.required_files:
-        artifact_file = bundle / relative_path
-        if artifact_file.is_symlink() or not artifact_file.is_file():
-            raise ValueError("VOICE_ARTIFACT_INVALID")
-        files[relative_path] = _sha256_file(artifact_file)
-    payload = {
-        "artifact_id": spec.artifact_id,
-        "files": files,
-        "source_manifest_sha256": source_manifest_sha256,
-        "source_revision": spec.source_revision,
-        "spdx_license": spec.spdx_license,
-    }
-    manifest = _canonical_json(payload)
+    manifest = _artifact_manifest_bytes(spec, bundle, source_manifest_sha256)
     if hashlib.sha256(manifest).hexdigest() != spec.manifest_sha256:
         raise ValueError("VOICE_ARTIFACT_INVALID")
     (bundle / MANIFEST_NAME).write_bytes(manifest)
+
+
+def _artifact_manifest_bytes(
+    spec: VoiceArtifactSpec, bundle: Path, source_manifest_sha256: str
+) -> bytes:
+    if not _is_sha256(source_manifest_sha256):
+        raise ValueError("VOICE_ARTIFACT_INVALID")
+    files: dict[str, str] = {}
+    actual_files: set[str] = set()
+    for entry in bundle.rglob("*"):
+        if entry.is_symlink():
+            raise ValueError("VOICE_ARTIFACT_INVALID")
+        if entry.is_file():
+            actual_files.add(entry.relative_to(bundle).as_posix())
+        elif not entry.is_dir():
+            raise ValueError("VOICE_ARTIFACT_INVALID")
+    if actual_files != set(spec.required_files):
+        raise ValueError("VOICE_ARTIFACT_INVALID")
+    for relative_path in spec.required_files:
+        artifact_file = bundle / relative_path
+        files[relative_path] = _sha256_file(artifact_file)
+    return _canonical_json(
+        {
+            "artifact_id": spec.artifact_id,
+            "files": files,
+            "source_manifest_sha256": source_manifest_sha256,
+            "source_revision": spec.source_revision,
+            "spdx_license": spec.spdx_license,
+        }
+    )
 
 
 def _spec_from_definition(

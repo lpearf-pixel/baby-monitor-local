@@ -769,6 +769,7 @@ def test_intel_voice_speaker_install_is_explicit_and_host_gated(tmp_path: Path) 
     assert requirements == [
         "huggingface-hub==0.36.0",
         "numpy==1.26.4",
+        "pydantic==2.13.4",
         "speechbrain==1.0.3",
         "torch==2.2.2",
         "torchaudio==2.2.2",
@@ -816,6 +817,37 @@ def test_voice_speaker_check_fails_closed_without_an_environment() -> None:
 
     assert result.returncode != 0
     assert result.stdout.strip() == "voice_speaker_check=unavailable"
+
+
+def test_ecapa_source_and_install_commands_fail_closed_without_private_inputs(
+    tmp_path: Path,
+) -> None:
+    shutil.copy2(ROOT / "Makefile", tmp_path / "Makefile")
+    fake_python = tmp_path / ".venv-alpha/bin/python"
+    marker = tmp_path / "python-called"
+    fake_python.parent.mkdir(parents=True)
+    _write_executable(fake_python, f"#!/bin/sh\n: > '{marker}'\nexit 1\n")
+
+    source = subprocess.run(
+        ["make", "alpha-voice-ecapa-source", f"PYTHON311={fake_python}"],
+        cwd=tmp_path,
+        check=False,
+        capture_output=True,
+        text=True,
+    )
+    install = subprocess.run(
+        ["make", "alpha-voice-ecapa-install", f"PYTHON={fake_python}"],
+        cwd=tmp_path,
+        check=False,
+        capture_output=True,
+        text=True,
+    )
+
+    assert source.returncode != 0
+    assert source.stdout.strip() == "voice_ecapa_source=unavailable"
+    assert install.returncode != 0
+    assert install.stdout.strip() == "voice_ecapa_install=unavailable"
+    assert not marker.exists()
 
 
 def test_installer_installs_acceptance_test_dependencies() -> None:
