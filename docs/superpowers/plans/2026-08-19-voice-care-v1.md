@@ -971,12 +971,12 @@ and that installed gate is rerun; Voice remains disabled and no real TTS/care wr
 - Produces: Gate V1 evidence for synthetic wake through committed feeding, correction,
   cancellation, failure and privacy paths.
 
-- [ ] **Step 1: Run contract digest parity**
+- [x] **Step 1: Run contract digest parity**
 
 Verify Baby Local's vendored schema and fixtures byte-for-byte against the recorded Baby
 Care source commit and SHA-256. Any mismatch is a closed gate failure.
 
-- [ ] **Step 2: Run the synthetic closed loop**
+- [x] **Step 2: Run the synthetic closed loop**
 
 Exercise generated/fake audio through VAD, exact wake, ASR result, explicit claim,
 speaker verification, signed takeover, feeding start/end, readback confirmation and one
@@ -985,7 +985,7 @@ identity mismatch, duplicate delivery and Baby Care outage. No infant or househo
 is required. The correction case uses Baby Care's existing authenticated revision route
 after a Voice-created record; it does not invent a seventh V1 voice intent.
 
-- [ ] **Step 3: Run both full software gates**
+- [x] **Step 3: Run both full software gates**
 
 Baby Local:
 
@@ -1006,7 +1006,7 @@ pnpm build
 git diff --check
 ```
 
-- [ ] **Step 4: Inspect privacy and side effects**
+- [x] **Step 4: Inspect privacy and side effects**
 
 Scan both tracked diffs and test databases for audio/media files, transcripts,
 embeddings, credentials, private addresses and raw model output. Confirm manual Baby
@@ -1023,3 +1023,12 @@ release.
 idempotency and the synthetic end-to-end loop. It does not prove Dad/Mom household
 speaker accuracy, quiet-night accuracy, camera backchannel, cry detection or unattended
 care. Those remain Gate V2 or later human-supervised gates.
+
+Local Gate V1 implementation is committed at Baby Local `e4cd5d5` and Baby Care
+`bca9b9e`. Fresh local evidence is contract digest 5/5, cross-product 2/2 in each
+repository, Baby Local full Python 1,108 and frontend 73, and Baby Care Node 24 full 458
+passed / 115 opt-in skipped with lint/typecheck/build plus real PostgreSQL 16 2/2. The
+installed Baby Local gate remains 13 PASS / 6 FAIL in the isolated worktree because
+private installation/model assets are absent. Step 5 stays open until both branches are
+pushed, exact CI run IDs are recorded and the accepted Baby Local head is deployed to
+the actual i9 checkout for installed readiness. Voice remains disabled.

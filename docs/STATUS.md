@@ -316,8 +316,17 @@
   and 1,106 full Python tests. The isolated worktree's installed Guardian gate is not
   accepted: 13 checks passed and 6 installation/realtime checks failed because private
   runtime and installed assets are deliberately absent there. Voice stays disabled;
-  deploy this exact head to the real i9 checkout and rerun that gate later. Task 11 is
-  the next automatic software slice.
+  deploy this exact head to the real i9 checkout and rerun that gate later.
+- Voice Care Task 11 local synthetic Gate V1 is complete at Baby Local `e4cd5d5` and
+  Baby Care `bca9b9e`. Generated PCM reaches VAD, exact wake, ASR result, explicit adult
+  claim, synthetic speaker state, canonical Ed25519 signing and the encrypted outbox;
+  outage retry sends identical signed bytes and persists no transcript/audio. The Baby
+  Care side uses an authenticated Dad takeover and real disposable PostgreSQL 16 to
+  commit/read back bottle and direct feeding, idempotently replay confirmation, correct
+  through the existing revision route, and fail closed for cancel, identity mismatch
+  and injected commit failure. Full local evidence is 1,108 Python plus 73 frontend
+  passed; Baby Care is 458 passed / 115 opt-in skipped plus real PostgreSQL 2/2. This is
+  synthetic software evidence only; exact-head CI and installed/human gates remain open.
 - Installed-i9 audio-source discovery now verifies that the Xiaomi source exposes HEVC
   video plus Opus audio and that the fixed loopback `audio_analysis` alias exposes only
   Opus. The real input is supported 48 kHz stereo Opus; the fixed FFmpeg boundary

@@ -377,8 +377,14 @@ legacy branch into this line without a separate integration decision.
   pipeline, bounded status and an independent launchd job pass 140 Voice, 73 frontend,
   133 Guardian-focused and 1,106 full Python tests. The isolated worktree installed gate
   remains 13 PASS / 6 FAIL only because its `.local`/private runtime/launchd/model assets
-  are absent; it must be rerun after deployment to the actual i9 checkout. Task 11
-  cross-repository synthetic Gate V1 is the next automatic slice.
+  are absent; it must be rerun after deployment to the actual i9 checkout. Task 11's
+  local synthetic Gate V1 is complete at Baby Local `e4cd5d5` and Baby Care `bca9b9e`:
+  generated PCM passes VAD/wake/ASR/claim/speaker/sign/encrypted-outbox paths, exact bytes
+  retry after an outage, and the Node 24/PostgreSQL 16 producer commits and corrects
+  bottle/direct facts while cancel, mismatch and failed commit remain closed. Fresh full
+  evidence is 1,108 Python and 73 frontend passed locally, 458 passed / 115 opt-in skipped
+  in Baby Care, plus its real PostgreSQL 2/2. Exact-head CI and installed i9 readiness are
+  still pending; Voice remains disabled.
 - Remote private viewing and the 72-hour release gate remain unfinished.
 - This system does not detect breathing, heart rate, suffocation or medical emergencies.
 
@@ -395,11 +401,10 @@ legacy branch into this line without a separate integration decision.
 4. Continue the approved audio/cry plan at Stage A8; a production model and
    license are still required before enablement; household audio remains
    memory-only.
-5. Continue Voice Care Gate V1 Task 11 cross-repository synthetic closed loop. Baby
-   Local Task 10 software is committed, while its installed `alpha-guardian-test` must
-   be rerun after exact-head deployment to the actual i9 checkout. Keep Voice Care
-   disabled; ECAPA installation and household adult accuracy remain installed/human
-   gates.
+5. Publish both approved Voice Care feature branches and require exact-head CI. Then
+   deploy the accepted Baby Local head to the actual i9 checkout and rerun
+   `alpha-guardian-test`; keep Voice disabled until ECAPA installation and supervised
+   household adult accuracy pass.
 6. Complete authenticated private remote access using Tailscale Serve/ACL only.
 7. Complete the final 72-hour release gate before any release/tag decision.
 8. Define per-parent acknowledgement and false-positive feedback only through a future

@@ -867,3 +867,15 @@ worktree 自己的 `.local` go2rtc app、private runtime、installed launchd 和
 不是软件回归；source 和 sibling services 通过。Voice 仍 disabled，真实 TTS/Keychain/
 护理写入未执行；部署到真实 i9 checkout 后须重跑 installed 门。下一自动切片为 Task 11
 cross-repository synthetic Gate V1。
+
+2026-08-24 完成 Voice Care Task 11 本地跨项目合成 Gate V1。Baby Local `e4cd5d5`
+新增 2 项组合验收：纯合成 PCM 经过 VAD、精确唤醒、ASR 结果、成人声明、speaker state、
+canonical Ed25519 签名、mode-0600/AES-GCM outbox 与固定语义反馈；瓶喂、亲喂、取消、
+身份不匹配均闭合，断网后只重试完全相同的加密签名字节，SQLite/status 不含 transcript、
+音频或 profile ID。Baby Care `bca9b9e` 新增 Node 24 + disposable PostgreSQL 16 的 2 项
+权威验收：Dad 通过认证租约 API 接手，瓶喂提交/重复交付/既有 revision 更正、亲喂提交、
+取消、身份不匹配与提交失败均符合预期。合同 digest 5/5，Baby Local 完整 Python 1,108、
+frontend 73 passed；Baby Care lint/typecheck/build PASS、完整 458 passed / 115 opt-in skipped、
+真实 PostgreSQL 2/2。隔离 worktree installed Guardian 仍为 13 PASS / 6 FAIL，缺私有安装/
+模型资产，未声明安装态通过。未使用家庭音频、真实 Keychain 或生产数据库；Voice disabled。
+下一门为双分支推送与 exact-head CI，再在真实 i9 checkout 部署复验。
