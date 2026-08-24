@@ -44,11 +44,20 @@ class VoiceProfileStore:
         path: Path,
         keychain: KeychainSecretStore,
         *,
+        boundary: Path,
         profile_id: str,
         random_bytes: Callable[[int], bytes] = secrets.token_bytes,
     ) -> None:
         self._path = path
         self._keychain = keychain
+        if boundary.is_symlink():
+            raise ValueError(PROFILE_UNAVAILABLE)
+        try:
+            self._boundary = boundary.resolve(strict=True)
+        except Exception:
+            raise ValueError(PROFILE_UNAVAILABLE) from None
+        if not self._boundary.is_dir():
+            raise ValueError(PROFILE_UNAVAILABLE)
         self._profile_id = _canonical_profile_id(profile_id)
         self._key_account = f"{PROFILE_KEY_ACCOUNT_PREFIX}{self._profile_id}"
         self._random_bytes = random_bytes
@@ -56,6 +65,7 @@ class VoiceProfileStore:
     def create(self, profile: VoiceProfile) -> None:
         key_created = False
         try:
+            self._validate_boundary()
             if profile.profile_id != self._profile_id:
                 raise ValueError(PROFILE_UNAVAILABLE)
             if self._path.exists() or self._path.is_symlink():
@@ -94,6 +104,7 @@ class VoiceProfileStore:
             raise ValueError(PROFILE_UNAVAILABLE) from None
 
     def read(self) -> VoiceProfile | None:
+        self._validate_boundary()
         if not self._path.exists() and not self._path.is_symlink():
             return None
         try:
@@ -163,14 +174,31 @@ class VoiceProfileStore:
 
     def delete(self) -> None:
         try:
-            self._keychain.delete(self._key_account)
+            self._validate_boundary()
             if self._path.is_symlink():
                 raise ValueError(PROFILE_UNAVAILABLE)
             if self._path.exists():
                 value = self._path.lstat()
                 if not stat.S_ISREG(value.st_mode):
                     raise ValueError(PROFILE_UNAVAILABLE)
+            self._keychain.delete(self._key_account)
+            if self._path.exists():
                 self._path.unlink()
+        except Exception:
+            raise ValueError(PROFILE_UNAVAILABLE) from None
+
+    def _validate_boundary(self) -> None:
+        try:
+            relative = self._path.relative_to(self._boundary)
+            if not relative.parts or relative.is_absolute() or ".." in relative.parts:
+                raise ValueError(PROFILE_UNAVAILABLE)
+            current = self._boundary
+            for part in relative.parts[:-1]:
+                current = current / part
+                if current.is_symlink() or (
+                    current.exists() and not current.is_dir()
+                ):
+                    raise ValueError(PROFILE_UNAVAILABLE)
         except Exception:
             raise ValueError(PROFILE_UNAVAILABLE) from None
 

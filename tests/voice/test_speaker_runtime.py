@@ -3,8 +3,10 @@ from __future__ import annotations
 import numpy as np
 import pytest
 
+from packages.contracts.settings import VoiceCareSettings
+from services.voice.artifacts import voice_artifact_spec
 from services.voice.ecapa import EcapaEmbedding
-from services.voice.speaker_runtime import EcapaObservationRunner
+from services.voice.speaker_runtime import EcapaObservationRunner, ecapa_model_version
 
 
 def embedding(first: float, second: float = 0.0) -> tuple[float, ...]:
@@ -100,3 +102,12 @@ def test_close_is_idempotent() -> None:
     runner.close()
 
     assert process.close_calls == 1
+
+
+def test_model_version_is_bounded_and_derived_from_verified_manifest() -> None:
+    artifact = voice_artifact_spec(
+        VoiceCareSettings(speechbrain_ecapa_manifest_sha256="a" * 64),
+        "speechbrain-ecapa-voxceleb",
+    )
+
+    assert ecapa_model_version(artifact) == "speechbrain-ecapa-aaaaaaaaaaaaaaaa"

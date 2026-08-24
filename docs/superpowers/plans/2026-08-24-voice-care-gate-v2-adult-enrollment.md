@@ -47,8 +47,8 @@ faster-whisper `base`, local SpeechBrain ECAPA, FFmpeg, pytest, Make.
 - [x] **Step 1: Write multi-profile RED tests**
 
 ```python
-dad = VoiceProfileStore(dad_path, secrets, profile_id=DAD_ID)
-mom = VoiceProfileStore(mom_path, secrets, profile_id=MOM_ID)
+dad = VoiceProfileStore(dad_path, secrets, boundary=root, profile_id=DAD_ID)
+mom = VoiceProfileStore(mom_path, secrets, boundary=root, profile_id=MOM_ID)
 dad.create(profile(DAD_ID))
 mom.create(profile(MOM_ID))
 dad.delete()
@@ -274,6 +274,8 @@ git commit -m "feat: derive bounded ECAPA speaker quality"
 - Create: `tests/voice/test_live_enrollment.py`
 - Create: `tests/tools/test_voice_enroll.py`
 - Modify: `services/audio/source.py`
+- Modify: `services/voice/enrollment.py`
+- Modify: `services/voice/speaker_runtime.py`
 - Modify: `tests/audio/test_source.py`
 - Modify: `Makefile`
 - Modify: `tests/deploy/test_alpha_commands.py`
@@ -285,7 +287,7 @@ git commit -m "feat: derive bounded ECAPA speaker quality"
 - Consumes: fixed Xiaomi `audio_analysis`, local Whisper base, Tasks 1–3, macOS
   Keychain and terminal confirmation before each prompted phrase.
 
-- [ ] **Step 1: Write operator RED tests**
+- [x] **Step 1: Write operator RED tests**
 
 ```python
 result = run_enrollment(role="dad", capture=fake_capture, asr=fake_asr,
@@ -299,7 +301,7 @@ Cover Dad/Mom only, Voice enabled rejection, challenge mismatch/replay, capture 
 ASR/ECAPA/Keychain failure, SIGINT/SIGTERM cleanup, existing-role refusal, exclusive
 profile/registry publication and redacted output. No test may use household media.
 
-- [ ] **Step 2: Run RED tests**
+- [x] **Step 2: Run RED tests**
 
 Run:
 
@@ -309,17 +311,18 @@ Run:
 
 Expected: FAIL because the live enrollment coordinator and Make commands do not exist.
 
-- [ ] **Step 3: Implement fixed memory-only capture and enrollment**
+- [x] **Step 3: Implement fixed memory-only capture and enrollment**
 
 Expose the existing fixed FFmpeg command builder from `services/audio/source.py` so the
-operator does not duplicate the loopback endpoint. Read exactly bounded 16 kHz mono
-s16le bytes through a selector with a hard deadline, keeping all PCM in bytearrays and
+operator does not duplicate the loopback endpoint. Extend the decoder with an optional
+selector-backed bounded read and collect exactly bounded 16 kHz mono s16le bytes with
+a hard deadline, keeping all PCM in bytearrays and
 zeroing them on every exit. For each of three one-time challenges: print the public
 prompt, wait for explicit Enter, capture one utterance, require local Whisper to match,
 then pass PCM to `VoiceEnrollment`. Publish the encrypted profile and a mode-0600
 role-to-opaque-ID registry only after all three samples pass. On failure, publish neither.
 
-- [ ] **Step 4: Run software and installed dry gates**
+- [x] **Step 4: Run software and installed dry gates**
 
 Run:
 
@@ -333,10 +336,10 @@ git diff --check
 
 Do not run either real enrollment command in this step.
 
-- [ ] **Step 5: Commit Task 4**
+- [x] **Step 5: Commit Task 4**
 
 ```bash
-git add services/audio/source.py services/voice/live_enrollment.py tools/voice_enroll.py Makefile tests/audio/test_source.py tests/voice/test_live_enrollment.py tests/tools/test_voice_enroll.py tests/deploy/test_alpha_commands.py
+git add services/audio/source.py services/voice/enrollment.py services/voice/live_enrollment.py services/voice/speaker_runtime.py tools/voice_enroll.py Makefile tests/audio/test_source.py tests/voice/test_enrollment.py tests/voice/test_live_enrollment.py tests/voice/test_speaker_runtime.py tests/tools/test_voice_enroll.py tests/deploy/test_alpha_commands.py docs/superpowers/plans/2026-08-24-voice-care-gate-v2-adult-enrollment.md
 git commit -m "feat: add private adult voice enrollment"
 ```
 

@@ -65,6 +65,7 @@ class EnrollmentRunner:
 
 
 def profile_store(tmp_path: Path) -> tuple[VoiceProfileStore, FakeKeychain, Path]:
+    tmp_path.mkdir(parents=True, exist_ok=True)
     backend = FakeKeychain()
     secrets = KeychainSecretStore(backend, random_bytes=lambda size: b"k" * size)
     path = tmp_path / "runtime/private/voice-profile.json"
@@ -72,6 +73,7 @@ def profile_store(tmp_path: Path) -> tuple[VoiceProfileStore, FakeKeychain, Path
         VoiceProfileStore(
             path,
             secrets,
+            boundary=tmp_path,
             profile_id=PROFILE_ID,
             random_bytes=lambda size: b"n" * size,
         ),
@@ -133,12 +135,14 @@ def test_deleting_one_profile_preserves_the_other_profile_and_key(
     dad = VoiceProfileStore(
         tmp_path / "dad.json",
         secrets,
+        boundary=tmp_path,
         profile_id=PROFILE_ID,
         random_bytes=lambda size: b"d" * size,
     )
     mom = VoiceProfileStore(
         tmp_path / "mom.json",
         secrets,
+        boundary=tmp_path,
         profile_id=MOM_PROFILE_ID,
         random_bytes=lambda size: b"m" * size,
     )
@@ -204,6 +208,7 @@ def test_failed_profile_publication_removes_its_new_exact_key(tmp_path: Path) ->
     store = VoiceProfileStore(
         path,
         secrets,
+        boundary=tmp_path,
         profile_id=PROFILE_ID,
         random_bytes=lambda _size: b"bad",
     )
@@ -229,9 +234,17 @@ def test_profile_store_rejects_noncanonical_or_mismatched_profile_ids(
     backend = FakeKeychain()
     secrets = KeychainSecretStore(backend, random_bytes=lambda size: b"k" * size)
     with pytest.raises(ValueError, match="^voice_profile_unavailable$"):
-        VoiceProfileStore(tmp_path / "invalid.json", secrets, profile_id="not-a-uuid")
+        VoiceProfileStore(
+            tmp_path / "invalid.json",
+            secrets,
+            boundary=tmp_path,
+            profile_id="not-a-uuid",
+        )
     store = VoiceProfileStore(
-        tmp_path / "mismatch.json", secrets, profile_id=PROFILE_ID
+        tmp_path / "mismatch.json",
+        secrets,
+        boundary=tmp_path,
+        profile_id=PROFILE_ID,
     )
     mismatch = VoiceProfile(
         profile_id=MOM_PROFILE_ID,
@@ -259,7 +272,41 @@ def test_profile_creation_refuses_a_symlinked_parent_without_key_write(
     linked = tmp_path / "linked"
     linked.symlink_to(outside, target_is_directory=True)
     store = VoiceProfileStore(
-        linked / "profile.json", secrets, profile_id=PROFILE_ID
+        linked / "profile.json",
+        secrets,
+        boundary=tmp_path,
+        profile_id=PROFILE_ID,
+    )
+    candidate = VoiceProfile(
+        profile_id=PROFILE_ID,
+        model_version=MODEL_VERSION,
+        embedding=vector(0.01),
+        accept_threshold=0.80,
+        uncertain_threshold=0.60,
+        enrollment_quality="accepted",
+    )
+
+    with pytest.raises(ValueError, match="^voice_profile_unavailable$"):
+        store.create(candidate)
+
+    assert list(outside.iterdir()) == []
+    assert backend.values == {}
+
+
+def test_profile_creation_refuses_a_symlinked_ancestor_without_key_write(
+    tmp_path: Path,
+) -> None:
+    backend = FakeKeychain()
+    secrets = KeychainSecretStore(backend, random_bytes=lambda size: b"k" * size)
+    outside = tmp_path / "outside"
+    outside.mkdir()
+    runtime = tmp_path / "runtime"
+    runtime.symlink_to(outside, target_is_directory=True)
+    store = VoiceProfileStore(
+        runtime / "private/profile.json",
+        secrets,
+        boundary=tmp_path,
+        profile_id=PROFILE_ID,
     )
     candidate = VoiceProfile(
         profile_id=PROFILE_ID,

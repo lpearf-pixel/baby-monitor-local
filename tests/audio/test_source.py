@@ -1,12 +1,18 @@
 from __future__ import annotations
 
+import os
 import subprocess
 
 import pytest
 
 from packages.contracts.audio import AudioFailureReason
 from packages.contracts.settings import AudioSettings
-from services.audio.source import BoundedPcmBuffer, FixedAudioDecoder
+from services.audio.source import (
+    BoundedPcmBuffer,
+    DecoderRead,
+    FixedAudioDecoder,
+    fixed_audio_decoder_command,
+)
 
 
 def test_pcm_buffer_keeps_only_aligned_configured_duration() -> None:
@@ -92,6 +98,16 @@ def test_decoder_uses_fixed_loopback_audio_only_command() -> None:
     assert kwargs["stderr"] is subprocess.DEVNULL
 
 
+def test_shared_decoder_command_is_the_same_fixed_audio_only_boundary() -> None:
+    command = fixed_audio_decoder_command(AudioSettings())
+
+    assert command[0] == "ffmpeg"
+    assert command[-1] == "pipe:1"
+    assert "rtsp://127.0.0.1:8554/audio_analysis" in command
+    assert command[command.index("-ac") + 1] == "1"
+    assert command[command.index("-ar") + 1] == "16000"
+
+
 @pytest.mark.parametrize(
     ("process", "reason"),
     [
@@ -150,3 +166,19 @@ def test_decoder_close_terminates_child_and_is_idempotent() -> None:
     assert process.terminated is True
     assert process.killed is False
     assert process.wait_calls == [2.0]
+
+
+def test_decoder_bounded_read_fails_closed_when_no_pcm_is_ready() -> None:
+    read_descriptor, write_descriptor = os.pipe()
+    process = FakeProcess([])
+    process.stdout = os.fdopen(read_descriptor, "rb", buffering=0)
+    decoder = FixedAudioDecoder(
+        AudioSettings(), opener=lambda *_args, **_kwargs: process
+    )
+    try:
+        result = decoder.read(2, timeout_seconds=0.001)
+    finally:
+        os.close(write_descriptor)
+        decoder.close()
+
+    assert result == DecoderRead(b"", AudioFailureReason.AUDIO_STALE)

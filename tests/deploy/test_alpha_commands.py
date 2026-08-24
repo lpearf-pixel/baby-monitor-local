@@ -920,6 +920,16 @@ def test_ecapa_install_runs_the_current_checkout_model_module(tmp_path: Path) ->
     assert calls.read_text(encoding="ascii").startswith("-m tools.voice_models ")
 
 
+def test_private_adult_enrollment_commands_fix_the_role_and_current_module() -> None:
+    content = (ROOT / "Makefile").read_text(encoding="utf-8")
+
+    assert "alpha-voice-enroll-dad:" in content
+    assert "alpha-voice-enroll-mom:" in content
+    assert "$(PYTHON) -m tools.voice_enroll --role dad" in content
+    assert "$(PYTHON) -m tools.voice_enroll --role mom" in content
+    assert "VOICE_PROFILE" not in content
+
+
 def test_installer_installs_acceptance_test_dependencies() -> None:
     content = (ROOT / "tools/install_alpha_macos.sh").read_text(encoding="utf-8")
 

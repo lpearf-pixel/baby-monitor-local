@@ -7,6 +7,7 @@ from typing import Protocol
 
 import numpy as np
 
+from services.voice.artifacts import VoiceArtifactSpec
 from services.voice.ecapa import EcapaEmbedding
 from services.voice.speaker import EmbeddingObservation
 
@@ -58,6 +59,12 @@ class EcapaObservationRunner:
             return
         self._closed = True
         self._process.close()
+
+
+def ecapa_model_version(artifact: VoiceArtifactSpec) -> str:
+    if artifact.artifact_id != "speechbrain-ecapa-voxceleb":
+        raise ValueError(UNAVAILABLE_REASON)
+    return f"speechbrain-ecapa-{artifact.manifest_sha256[:16]}"
 
 
 def _validated_samples(samples: np.ndarray) -> np.ndarray:
@@ -156,4 +163,4 @@ def _temporal_overlap_probability(
     )
 
 
-__all__ = ["EcapaObservationRunner"]
+__all__ = ["EcapaObservationRunner", "ecapa_model_version"]

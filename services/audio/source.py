@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+import os
+import selectors
 import subprocess
 from dataclasses import dataclass
 from typing import Any, Callable
@@ -55,6 +57,34 @@ class DecoderRead:
 ProcessOpener = Callable[..., Any]
 
 
+def fixed_audio_decoder_command(settings: AudioSettings) -> tuple[str, ...]:
+    """Return the single fixed loopback audio-only FFmpeg command."""
+
+    return (
+        "ffmpeg",
+        "-nostdin",
+        "-hide_banner",
+        "-loglevel",
+        "error",
+        "-rtsp_transport",
+        "tcp",
+        "-timeout",
+        "5000000",
+        "-i",
+        "rtsp://127.0.0.1:8554/audio_analysis",
+        "-map",
+        "0:a:0",
+        "-vn",
+        "-ac",
+        str(settings.channels),
+        "-ar",
+        str(settings.sample_rate_hz),
+        "-f",
+        "s16le",
+        "pipe:1",
+    )
+
+
 class FixedAudioDecoder:
     def __init__(
         self,
@@ -67,29 +97,7 @@ class FixedAudioDecoder:
         self._process: Any | None = None
 
     def _command(self) -> tuple[str, ...]:
-        return (
-            "ffmpeg",
-            "-nostdin",
-            "-hide_banner",
-            "-loglevel",
-            "error",
-            "-rtsp_transport",
-            "tcp",
-            "-timeout",
-            "5000000",
-            "-i",
-            "rtsp://127.0.0.1:8554/audio_analysis",
-            "-map",
-            "0:a:0",
-            "-vn",
-            "-ac",
-            str(self._settings.channels),
-            "-ar",
-            str(self._settings.sample_rate_hz),
-            "-f",
-            "s16le",
-            "pipe:1",
-        )
+        return fixed_audio_decoder_command(self._settings)
 
     def _start(self) -> bool:
         try:
@@ -105,15 +113,30 @@ class FixedAudioDecoder:
             return False
         return self._process.stdout is not None
 
-    def read(self, max_bytes: int) -> DecoderRead:
+    def read(
+        self, max_bytes: int, *, timeout_seconds: float | None = None
+    ) -> DecoderRead:
         if max_bytes <= 0:
             raise ValueError("max_bytes must be positive")
+        if timeout_seconds is not None and not 0 < timeout_seconds <= 10.0:
+            raise ValueError("timeout_seconds must be bounded")
         if self._process is None and not self._start():
             return DecoderRead(b"", AudioFailureReason.AUDIO_SOURCE_UNAVAILABLE)
 
         try:
-            pcm = self._process.stdout.read(max_bytes)
-        except OSError:
+            if timeout_seconds is None:
+                pcm = self._process.stdout.read(max_bytes)
+            else:
+                descriptor = self._process.stdout.fileno()
+                selector = selectors.DefaultSelector()
+                try:
+                    selector.register(descriptor, selectors.EVENT_READ)
+                    if not selector.select(timeout_seconds):
+                        return DecoderRead(b"", AudioFailureReason.AUDIO_STALE)
+                    pcm = os.read(descriptor, max_bytes)
+                finally:
+                    selector.close()
+        except (OSError, ValueError):
             return DecoderRead(b"", AudioFailureReason.DECODER_FAILED)
         if pcm and len(pcm) % self._settings.sample_width_bytes:
             return DecoderRead(b"", AudioFailureReason.DECODER_FAILED)
