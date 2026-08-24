@@ -44,7 +44,7 @@ faster-whisper `base`, local SpeechBrain ECAPA, FFmpeg, pytest, Make.
 - Produces: `VoiceProfileStore(path, keychain, profile_id: str)` where the exact profile
   owns Keychain account `voice-profile-key.v1.<uuid>` and delete affects only that key.
 
-- [ ] **Step 1: Write multi-profile RED tests**
+- [x] **Step 1: Write multi-profile RED tests**
 
 ```python
 dad = VoiceProfileStore(dad_path, secrets, profile_id=DAD_ID)
@@ -60,7 +60,7 @@ assert mom_key in backend.values
 Also reject a noncanonical ID, a profile/path ID mismatch, a symlinked parent and
 creation when either the profile or its exact Keychain item already exists.
 
-- [ ] **Step 2: Run RED tests**
+- [x] **Step 2: Run RED tests**
 
 Run:
 
@@ -71,7 +71,7 @@ Run:
 Expected: FAIL because `VoiceProfileStore` still shares one fixed Keychain account and
 does not bind a store to one opaque profile ID.
 
-- [ ] **Step 3: Implement per-profile ownership**
+- [x] **Step 3: Implement per-profile ownership**
 
 ```python
 def _profile_key_account(profile_id: str) -> str:
@@ -86,7 +86,7 @@ derive the account for create/read/delete, and preserve exclusive 0600 publicati
 Do not add fallback reads for the old shared account because no real profile was ever
 accepted under it.
 
-- [ ] **Step 4: Run GREEN and adjacent privacy tests**
+- [x] **Step 4: Run GREEN and adjacent privacy tests**
 
 Run:
 
@@ -96,7 +96,7 @@ Run:
 git diff --check
 ```
 
-- [ ] **Step 5: Commit Task 1**
+- [x] **Step 5: Commit Task 1**
 
 ```bash
 git add services/voice/enrollment.py tests/voice/test_enrollment.py

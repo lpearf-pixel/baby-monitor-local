@@ -10,7 +10,7 @@ import stat
 import tempfile
 from collections.abc import Callable, Sequence
 from pathlib import Path
-from uuid import uuid4
+from uuid import UUID, uuid4
 
 import numpy as np
 from cryptography.hazmat.primitives.ciphers.aead import AESGCM
@@ -29,7 +29,7 @@ from services.voice.speaker import (
 
 ENROLLMENT_REJECTED = "voice_enrollment_rejected"
 PROFILE_UNAVAILABLE = "voice_profile_unavailable"
-PROFILE_KEY_ACCOUNT = "voice-profile-key.v1"
+PROFILE_KEY_ACCOUNT_PREFIX = "voice-profile-key.v1."
 MIN_ENROLLMENT_SAMPLES = 3
 MAX_ENROLLMENT_SAMPLES = 5
 _MAX_PROFILE_BYTES = 65_536
@@ -44,22 +44,31 @@ class VoiceProfileStore:
         path: Path,
         keychain: KeychainSecretStore,
         *,
+        profile_id: str,
         random_bytes: Callable[[int], bytes] = secrets.token_bytes,
     ) -> None:
         self._path = path
         self._keychain = keychain
+        self._profile_id = _canonical_profile_id(profile_id)
+        self._key_account = f"{PROFILE_KEY_ACCOUNT_PREFIX}{self._profile_id}"
         self._random_bytes = random_bytes
 
     def create(self, profile: VoiceProfile) -> None:
+        key_created = False
         try:
+            if profile.profile_id != self._profile_id:
+                raise ValueError(PROFILE_UNAVAILABLE)
             if self._path.exists() or self._path.is_symlink():
+                raise ValueError(PROFILE_UNAVAILABLE)
+            if self._keychain.read(self._key_account, size=32) is not None:
                 raise ValueError(PROFILE_UNAVAILABLE)
             parent = self._path.parent
             parent.mkdir(mode=0o700, parents=True, exist_ok=True)
             if parent.is_symlink() or not parent.is_dir():
                 raise ValueError(PROFILE_UNAVAILABLE)
             parent.chmod(0o700)
-            key = self._keychain.get_or_create(PROFILE_KEY_ACCOUNT, size=32)
+            key = self._keychain.get_or_create(self._key_account, size=32)
+            key_created = True
             nonce = self._random_bytes(12)
             if type(nonce) is not bytes or len(nonce) != 12:
                 raise ValueError(PROFILE_UNAVAILABLE)
@@ -77,6 +86,11 @@ class VoiceProfileStore:
                 raise ValueError(PROFILE_UNAVAILABLE)
             _publish_exclusive(self._path, payload)
         except Exception:
+            if key_created and not self._path.exists() and not self._path.is_symlink():
+                try:
+                    self._keychain.delete(self._key_account)
+                except Exception:
+                    pass
             raise ValueError(PROFILE_UNAVAILABLE) from None
 
     def read(self) -> VoiceProfile | None:
@@ -116,8 +130,10 @@ class VoiceProfileStore:
                 raise ValueError(PROFILE_UNAVAILABLE)
             if envelope["schemaVersion"] != _SCHEMA_VERSION:
                 raise ValueError(PROFILE_UNAVAILABLE)
+            if envelope["profileId"] != self._profile_id:
+                raise ValueError(PROFILE_UNAVAILABLE)
             metadata = {key: envelope[key] for key in expected - {"ciphertext", "nonce"}}
-            key = self._keychain.read(PROFILE_KEY_ACCOUNT, size=32)
+            key = self._keychain.read(self._key_account, size=32)
             if key is None:
                 raise ValueError(PROFILE_UNAVAILABLE)
             nonce = base64.b64decode(envelope["nonce"], validate=True)
@@ -147,7 +163,7 @@ class VoiceProfileStore:
 
     def delete(self) -> None:
         try:
-            self._keychain.delete(PROFILE_KEY_ACCOUNT)
+            self._keychain.delete(self._key_account)
             if self._path.is_symlink():
                 raise ValueError(PROFILE_UNAVAILABLE)
             if self._path.exists():
@@ -228,6 +244,16 @@ def _metadata(profile: VoiceProfile) -> dict[str, object]:
         "schemaVersion": _SCHEMA_VERSION,
         "uncertainThreshold": profile.uncertain_threshold,
     }
+
+
+def _canonical_profile_id(profile_id: str) -> str:
+    try:
+        canonical = str(UUID(profile_id))
+    except Exception:
+        raise ValueError(PROFILE_UNAVAILABLE) from None
+    if canonical != profile_id:
+        raise ValueError(PROFILE_UNAVAILABLE)
+    return canonical
 
 
 def _canonical_json(value: object) -> bytes:

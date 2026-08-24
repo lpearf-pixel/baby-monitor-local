@@ -15,10 +15,11 @@ from services.voice.enrollment import (
     VoiceProfileStore,
 )
 from services.voice.keychain import KeychainSecretStore
-from services.voice.speaker import EmbeddingObservation
+from services.voice.speaker import EmbeddingObservation, VoiceProfile
 
 
 PROFILE_ID = "11111111-1111-4111-8111-111111111111"
+MOM_PROFILE_ID = "22222222-2222-4222-8222-222222222222"
 MODEL_VERSION = "speechbrain-ecapa-v1"
 
 
@@ -67,7 +68,16 @@ def profile_store(tmp_path: Path) -> tuple[VoiceProfileStore, FakeKeychain, Path
     backend = FakeKeychain()
     secrets = KeychainSecretStore(backend, random_bytes=lambda size: b"k" * size)
     path = tmp_path / "runtime/private/voice-profile.json"
-    return VoiceProfileStore(path, secrets, random_bytes=lambda size: b"n" * size), backend, path
+    return (
+        VoiceProfileStore(
+            path,
+            secrets,
+            profile_id=PROFILE_ID,
+            random_bytes=lambda size: b"n" * size,
+        ),
+        backend,
+        path,
+    )
 
 
 def test_enrollment_encrypts_embedding_and_persists_only_bounded_metadata(
@@ -113,6 +123,158 @@ def test_profile_deletion_removes_ciphertext_and_its_key(tmp_path: Path) -> None
     assert not path.exists()
     assert backend.values == {}
     assert store.read() is None
+
+
+def test_deleting_one_profile_preserves_the_other_profile_and_key(
+    tmp_path: Path,
+) -> None:
+    backend = FakeKeychain()
+    secrets = KeychainSecretStore(backend, random_bytes=lambda size: b"k" * size)
+    dad = VoiceProfileStore(
+        tmp_path / "dad.json",
+        secrets,
+        profile_id=PROFILE_ID,
+        random_bytes=lambda size: b"d" * size,
+    )
+    mom = VoiceProfileStore(
+        tmp_path / "mom.json",
+        secrets,
+        profile_id=MOM_PROFILE_ID,
+        random_bytes=lambda size: b"m" * size,
+    )
+    dad_profile = VoiceProfile(
+        profile_id=PROFILE_ID,
+        model_version=MODEL_VERSION,
+        embedding=vector(0.01),
+        accept_threshold=0.80,
+        uncertain_threshold=0.60,
+        enrollment_quality="accepted",
+    )
+    mom_profile = VoiceProfile(
+        profile_id=MOM_PROFILE_ID,
+        model_version=MODEL_VERSION,
+        embedding=vector(0.02),
+        accept_threshold=0.80,
+        uncertain_threshold=0.60,
+        enrollment_quality="accepted",
+    )
+
+    dad.create(dad_profile)
+    mom.create(mom_profile)
+    dad.delete()
+
+    assert dad.read() is None
+    assert mom.read() == mom_profile
+    assert (
+        "com.baby-monitor-local.voice-care",
+        f"voice-profile-key.v1.{PROFILE_ID}",
+    ) not in backend.values
+    assert (
+        "com.baby-monitor-local.voice-care",
+        f"voice-profile-key.v1.{MOM_PROFILE_ID}",
+    ) in backend.values
+
+
+def test_profile_creation_refuses_a_preexisting_exact_key(tmp_path: Path) -> None:
+    store, backend, path = profile_store(tmp_path)
+    account = f"voice-profile-key.v1.{PROFILE_ID}"
+    backend.values[("com.baby-monitor-local.voice-care", account)] = b"x" * 32
+    candidate = VoiceProfile(
+        profile_id=PROFILE_ID,
+        model_version=MODEL_VERSION,
+        embedding=vector(0.01),
+        accept_threshold=0.80,
+        uncertain_threshold=0.60,
+        enrollment_quality="accepted",
+    )
+
+    with pytest.raises(ValueError, match="^voice_profile_unavailable$"):
+        store.create(candidate)
+
+    assert not path.exists()
+    assert backend.values == {
+        ("com.baby-monitor-local.voice-care", account): b"x" * 32
+    }
+
+
+def test_failed_profile_publication_removes_its_new_exact_key(tmp_path: Path) -> None:
+    backend = FakeKeychain()
+    secrets = KeychainSecretStore(backend, random_bytes=lambda size: b"k" * size)
+    path = tmp_path / "profile.json"
+    store = VoiceProfileStore(
+        path,
+        secrets,
+        profile_id=PROFILE_ID,
+        random_bytes=lambda _size: b"bad",
+    )
+    candidate = VoiceProfile(
+        profile_id=PROFILE_ID,
+        model_version=MODEL_VERSION,
+        embedding=vector(0.01),
+        accept_threshold=0.80,
+        uncertain_threshold=0.60,
+        enrollment_quality="accepted",
+    )
+
+    with pytest.raises(ValueError, match="^voice_profile_unavailable$"):
+        store.create(candidate)
+
+    assert not path.exists()
+    assert backend.values == {}
+
+
+def test_profile_store_rejects_noncanonical_or_mismatched_profile_ids(
+    tmp_path: Path,
+) -> None:
+    backend = FakeKeychain()
+    secrets = KeychainSecretStore(backend, random_bytes=lambda size: b"k" * size)
+    with pytest.raises(ValueError, match="^voice_profile_unavailable$"):
+        VoiceProfileStore(tmp_path / "invalid.json", secrets, profile_id="not-a-uuid")
+    store = VoiceProfileStore(
+        tmp_path / "mismatch.json", secrets, profile_id=PROFILE_ID
+    )
+    mismatch = VoiceProfile(
+        profile_id=MOM_PROFILE_ID,
+        model_version=MODEL_VERSION,
+        embedding=vector(0.01),
+        accept_threshold=0.80,
+        uncertain_threshold=0.60,
+        enrollment_quality="accepted",
+    )
+
+    with pytest.raises(ValueError, match="^voice_profile_unavailable$"):
+        store.create(mismatch)
+
+    assert backend.values == {}
+    assert not (tmp_path / "mismatch.json").exists()
+
+
+def test_profile_creation_refuses_a_symlinked_parent_without_key_write(
+    tmp_path: Path,
+) -> None:
+    backend = FakeKeychain()
+    secrets = KeychainSecretStore(backend, random_bytes=lambda size: b"k" * size)
+    outside = tmp_path / "outside"
+    outside.mkdir()
+    linked = tmp_path / "linked"
+    linked.symlink_to(outside, target_is_directory=True)
+    store = VoiceProfileStore(
+        linked / "profile.json", secrets, profile_id=PROFILE_ID
+    )
+    candidate = VoiceProfile(
+        profile_id=PROFILE_ID,
+        model_version=MODEL_VERSION,
+        embedding=vector(0.01),
+        accept_threshold=0.80,
+        uncertain_threshold=0.60,
+        enrollment_quality="accepted",
+    )
+
+    with pytest.raises(ValueError, match="^voice_profile_unavailable$"):
+        store.create(candidate)
+
+    assert list(outside.iterdir()) == []
+    assert backend.values == {}
 
 
 def test_enrollment_rejects_bad_count_or_quality_without_a_profile(tmp_path: Path) -> None:
@@ -183,7 +345,10 @@ def test_profile_store_rejects_an_authenticated_unknown_schema(tmp_path: Path) -
             json.dumps(value, separators=(",", ":"), sort_keys=True) + "\n"
         ).encode("ascii")
     key = backend.values[
-        ("com.baby-monitor-local.voice-care", "voice-profile-key.v1")
+        (
+            "com.baby-monitor-local.voice-care",
+            f"voice-profile-key.v1.{PROFILE_ID}",
+        )
     ]
     nonce = base64.b64decode(envelope["nonce"])
     plaintext = AESGCM(key).decrypt(
