@@ -42,9 +42,8 @@ def result(vector: tuple[float, ...]) -> EcapaEmbedding:
     return EcapaEmbedding(vector, 10)
 
 
-def test_runtime_uses_one_process_for_full_and_three_active_speech_windows() -> None:
-    same = result(embedding(1.0))
-    process = Process((same, same, same, same))
+def test_unsupervised_runtime_fails_closed_when_overlap_is_not_measured() -> None:
+    process = Process((result(embedding(1.0)),))
     runner = EcapaObservationRunner(process=process)
 
     observed = runner(utterance())
@@ -52,30 +51,20 @@ def test_runtime_uses_one_process_for_full_and_three_active_speech_windows() -> 
     assert observed.embedding == embedding(1.0)
     assert observed.speech_seconds >= 1.6
     assert observed.snr_db >= 8.0
-    assert observed.overlap_probability == 0.0
-    assert len(process.calls) == 4
+    assert observed.overlap_probability == 1.0
+    assert len(process.calls) == 1
     assert len(process.calls[0]) == len(utterance()) * 2
-    assert [len(value) for value in process.calls[1:]] == [25_600] * 3
 
 
-def test_temporally_inconsistent_speaker_windows_exceed_overlap_gate() -> None:
-    first = result(embedding(1.0))
-    different = result(embedding(0.0, 1.0))
-    process = Process((first, first, different, first))
+def test_explicit_human_supervision_allows_single_speaker_enrollment_observation() -> None:
+    process = Process((result(embedding(1.0)),))
 
-    observed = EcapaObservationRunner(process=process)(utterance())
+    observed = EcapaObservationRunner(
+        process=process, supervised_single_speaker=True
+    )(utterance())
 
-    assert observed.overlap_probability > 0.10
-
-
-def test_window_cosine_below_provisional_boundary_exceeds_overlap_gate() -> None:
-    first = result(embedding(1.0))
-    boundary_failure = result(embedding(0.67, float(np.sqrt(1.0 - 0.67**2))))
-    process = Process((first, first, boundary_failure, first))
-
-    observed = EcapaObservationRunner(process=process)(utterance())
-
-    assert observed.overlap_probability > 0.10
+    assert observed.overlap_probability == 0.0
+    assert len(process.calls) == 1
 
 
 @pytest.mark.parametrize(

@@ -27,8 +27,12 @@ faster-whisper `base`, local SpeechBrain ECAPA, FFmpeg, pytest, Make.
 - Never write Baby Care, pair a device, create a care fact or start the Voice worker.
 - Dad/Mom are the only local enrollment roles; role is not authorization.
 - Every failure emits one stable code and leaves no new usable profile or false success.
-- No anti-spoof model or new training is introduced. One-time phrase freshness and
-  conservative temporal consistency are gates, not proof against arbitrary replay.
+- No anti-spoof or overlap model and no new training is introduced. One-time phrase
+  freshness plus three whole-utterance ECAPA consistency checks are enrollment gates,
+  not proof against arbitrary replay or automatic multi-speaker detection.
+- Automatic overlap state remains fail-closed (`unknown`). Only the explicitly
+  human-supervised Dad/Mom enrollment operator may assert one speaker; Voice stays
+  disabled until the later overlap acceptance gate is separately satisfied.
 - Do not lower identity or overlap standards when a synthetic or real test fails.
 
 ---
@@ -118,7 +122,7 @@ git commit -m "fix: isolate caregiver profile secrets"
 
 ```python
 challenge = session.issue()
-assert challenge.phrase.startswith("小小，验证口令")
+assert challenge.phrase.startswith("小小，我要说口令")
 assert session.consume(challenge.challenge_id, challenge.phrase) is True
 assert session.consume(challenge.challenge_id, challenge.phrase) is False
 ```
@@ -148,8 +152,8 @@ class EnrollmentChallenge:
 
 class EnrollmentChallengeSession:
     def issue(self) -> EnrollmentChallenge:
-        digits = "".join(self._choose(_DIGITS) for _ in range(4))
-        challenge = EnrollmentChallenge(self._token(), f"小小，验证口令{digits}")
+        digits = four_unique_digits(self._choose)
+        challenge = EnrollmentChallenge(self._token(), f"小小，我要说口令{digits}")
         self._active = (challenge.challenge_id, _normalize(challenge.phrase),
                         self._clock() + 60.0)
         return challenge
@@ -161,7 +165,7 @@ class EnrollmentChallengeSession:
                     and _normalize(transcript) == active[1])
 ```
 
-Generate four independent digits from the fixed Chinese digit table, store only one
+Generate four non-repeating digits from the fixed Chinese digit table, store only one
 active expected normalized phrase plus expiry in memory, and consume it before checking
 the transcript so every attempt is one-shot. Never log or persist the transcript.
 
@@ -191,7 +195,8 @@ git commit -m "feat: add one-time voice enrollment challenges"
 - Verify: `tests/voice/test_ecapa.py`
 
 **Interfaces:**
-- Consumes: one owned `EcapaProcess` and validated float32 mono samples.
+- Consumes: one owned `EcapaProcess`, validated float32 mono samples and an explicit
+  human-supervision flag used only by the private enrollment operator.
 - Produces: `EcapaObservationRunner(samples) -> EmbeddingObservation` and `close()`.
 
 - [x] **Step 1: Write observation RED tests**
@@ -205,11 +210,11 @@ assert observed.snr_db >= 8.0
 assert observed.overlap_probability <= 0.10
 ```
 
-Require the full utterance plus first/middle/last 800 ms windows across at least 1.6
-seconds of detected active speech to use the same persistent child. The windows may
-overlap for a normal short Mandarin command. Short input, flat/quiet input, low temporal cosine consistency,
-malformed embeddings, timeout and closed process must fail closed; `close()` is
-idempotent. Tests use synthetic PCM and fixed fake embeddings only.
+Require at least 1.6 seconds of detected active speech and one full-utterance embedding.
+Without explicit human supervision the overlap state remains unknown and fails closed.
+Short input, flat/quiet input, malformed embeddings, timeout and closed process must
+fail closed; `close()` is idempotent. Tests use synthetic PCM and fixed fake embeddings
+only.
 
 - [x] **Step 2: Run RED tests**
 
@@ -228,26 +233,21 @@ class EcapaObservationRunner:
     def __call__(self, samples: np.ndarray) -> EmbeddingObservation:
         checked = _validated_samples(samples)
         full = self._process.embed(_pcm_bytes(checked)).embedding
-        windows = tuple(
-            self._process.embed(_pcm_bytes(window)).embedding
-            for window in _three_windows(checked)
-        )
         speech_seconds, snr_db = _signal_quality(checked)
-        overlap_probability = _temporal_overlap_probability(windows)
         return EmbeddingObservation(full, speech_seconds, snr_db,
-                                    overlap_probability)
+                                    0.0 if supervised else 1.0)
 
     def close(self) -> None:
         self._process.close()
 ```
 
-Reject anything outside 1.6–8.0 seconds of active speech. Compute 20 ms RMS frames, use
-bounded lower and upper percentiles for an SNR estimate, find the bounded active-speech
-interval, and embed the full utterance plus its first, middle and last 800 ms windows.
-Map minimum pairwise window cosine below `0.675` to an
-overlap probability above `0.10`; this deliberately conservative provisional boundary
-must not be relaxed until supervised Dad/Mom measurements exist. Return no latency,
-segment vector or private diagnostic in the observation.
+Reject anything outside 1.6–8.0 seconds of active speech. Compute 20 ms RMS frames and
+use bounded lower and upper percentiles for an SNR estimate. Embed only the full
+utterance; `VoiceEnrollment` compares all three enrollment utterances. An installed-i9
+synthetic diagnostic proved phonetic 0.8-second window variance is not a valid overlap
+estimator because it falsely rejected one speaker, so unsupervised overlap remains
+closed rather than fabricating a probability. Return no latency, segment vector or
+private diagnostic in the observation.
 
 - [x] **Step 4: Run GREEN and adjacent identity gates**
 

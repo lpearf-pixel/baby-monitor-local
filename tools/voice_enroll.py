@@ -118,7 +118,10 @@ def _build_operator(
         boundary=project_root,
     )
     process = EcapaProcess(ecapa, project_root=project_root)
-    runner = EcapaObservationRunner(process=process)
+    runner = EcapaObservationRunner(
+        process=process,
+        supervised_single_speaker=True,
+    )
     enrollment = VoiceEnrollment(
         runner=runner,
         store=store,

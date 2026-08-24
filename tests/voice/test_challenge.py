@@ -33,9 +33,9 @@ def test_challenge_is_one_time_and_accepts_only_its_normalized_phrase() -> None:
 
     assert issued == EnrollmentChallenge(
         challenge_id="a" * 32,
-        phrase="小小，验证口令三五七九",
+        phrase="小小，我要说口令三五七九",
     )
-    assert challenges.consume(issued.challenge_id, " 小小 验证口令 3 5 7 9。") is True
+    assert challenges.consume(issued.challenge_id, " 小小 我要说口令 3 5 7 9。") is True
     assert challenges.consume(issued.challenge_id, issued.phrase) is False
 
 
@@ -43,7 +43,7 @@ def test_wrong_attempt_consumes_the_challenge_before_comparison() -> None:
     challenges = session()
     issued = challenges.issue()
 
-    assert challenges.consume(issued.challenge_id, "小小，验证口令一二三四") is False
+    assert challenges.consume(issued.challenge_id, "小小，我要说口令一二三四") is False
     assert challenges.consume(issued.challenge_id, issued.phrase) is False
 
 
@@ -76,3 +76,13 @@ def test_invalid_generator_output_fails_with_one_stable_reason(token: str) -> No
 
     if token:
         assert token not in str(error.value)
+
+
+def test_challenge_refuses_repeated_or_unknown_digit_generator_output() -> None:
+    challenges = EnrollmentChallengeSession(
+        token_factory=lambda: "a" * 32,
+        digit_choice=lambda _digits: "一",
+    )
+
+    with pytest.raises(ValueError, match=f"^{CHALLENGE_FAILED}$"):
+        challenges.issue()

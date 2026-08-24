@@ -119,7 +119,7 @@ def test_engine_uses_only_validated_absolute_local_whisper_and_chinese_transcrib
         "condition_on_previous_text": False,
         "vad_filter": False,
         "without_timestamps": True,
-        "hotwords": "喂奶 开始 喂完 继续 结束 爸爸 妈妈",
+        "hotwords": "喂奶 开始 喂完 继续 结束 爸爸 妈妈 口令",
     }
     assert result.text == "小小，我要喂奶了"
     assert result.language == "zh"

@@ -14,10 +14,8 @@ from services.voice.speaker import EmbeddingObservation
 
 SAMPLE_RATE_HZ = 16_000
 FRAME_SAMPLES = 320
-WINDOW_SAMPLES = 12_800
 MIN_ACTIVE_SECONDS = 1.6
 MAX_UTTERANCE_SECONDS = 8.0
-TEMPORAL_REFERENCE_COSINE = 0.75
 UNAVAILABLE_REASON = "voice_model_unavailable"
 
 
@@ -30,26 +28,30 @@ class _EmbeddingProcess(Protocol):
 class EcapaObservationRunner:
     """Create one closed speaker observation from full and temporal embeddings."""
 
-    def __init__(self, *, process: _EmbeddingProcess) -> None:
+    def __init__(
+        self,
+        *,
+        process: _EmbeddingProcess,
+        supervised_single_speaker: bool = False,
+    ) -> None:
+        if type(supervised_single_speaker) is not bool:
+            raise ValueError(UNAVAILABLE_REASON)
         self._process = process
+        self._supervised_single_speaker = supervised_single_speaker
         self._closed = False
 
     def __call__(self, samples: np.ndarray) -> EmbeddingObservation:
         try:
             checked = _validated_samples(samples)
-            speech_seconds, snr_db, active_start, active_end = _signal_quality(
-                checked
-            )
+            speech_seconds, snr_db = _signal_quality(checked)
             full = _embedding(self._process.embed(_pcm_bytes(checked)))
-            windows = tuple(
-                _embedding(self._process.embed(_pcm_bytes(window)))
-                for window in _three_windows(checked, active_start, active_end)
-            )
             return EmbeddingObservation(
                 embedding=full,
                 speech_seconds=speech_seconds,
                 snr_db=snr_db,
-                overlap_probability=_temporal_overlap_probability(windows),
+                overlap_probability=(
+                    0.0 if self._supervised_single_speaker else 1.0
+                ),
             )
         except Exception:
             raise ValueError(UNAVAILABLE_REASON) from None
@@ -82,7 +84,7 @@ def _validated_samples(samples: np.ndarray) -> np.ndarray:
     return samples
 
 
-def _signal_quality(samples: np.ndarray) -> tuple[float, float, int, int]:
+def _signal_quality(samples: np.ndarray) -> tuple[float, float]:
     frame_count = samples.size // FRAME_SAMPLES
     frames = samples[: frame_count * FRAME_SAMPLES].reshape(
         frame_count, FRAME_SAMPLES
@@ -102,22 +104,7 @@ def _signal_quality(samples: np.ndarray) -> tuple[float, float, int, int]:
         or active_indices.size == 0
     ):
         raise ValueError(UNAVAILABLE_REASON)
-    start = int(active_indices[0] * FRAME_SAMPLES)
-    end = int((active_indices[-1] + 1) * FRAME_SAMPLES)
-    if end - start < WINDOW_SAMPLES:
-        raise ValueError(UNAVAILABLE_REASON)
-    return speech_seconds, min(snr_db, 120.0), start, end
-
-
-def _three_windows(
-    samples: np.ndarray, active_start: int, active_end: int
-) -> tuple[np.ndarray, np.ndarray, np.ndarray]:
-    last_start = active_end - WINDOW_SAMPLES
-    middle_start = (active_start + last_start) // 2
-    return tuple(
-        samples[start : start + WINDOW_SAMPLES]
-        for start in (active_start, middle_start, last_start)
-    )  # type: ignore[return-value]
+    return speech_seconds, min(snr_db, 120.0)
 
 
 def _pcm_bytes(samples: np.ndarray) -> bytes:
@@ -141,26 +128,6 @@ def _embedding(result: EcapaEmbedding) -> tuple[float, ...]:
     if not math.isfinite(norm) or not 0.999 <= norm <= 1.001:
         raise ValueError(UNAVAILABLE_REASON)
     return tuple(float(value) for value in values)
-
-
-def _temporal_overlap_probability(
-    windows: tuple[tuple[float, ...], ...]
-) -> float:
-    similarities = [
-        float(np.dot(windows[left], windows[right]))
-        for left, right in ((0, 1), (0, 2), (1, 2))
-    ]
-    minimum = min(similarities)
-    if not math.isfinite(minimum):
-        raise ValueError(UNAVAILABLE_REASON)
-    return max(
-        0.0,
-        min(
-            1.0,
-            (TEMPORAL_REFERENCE_COSINE - minimum)
-            / TEMPORAL_REFERENCE_COSINE,
-        ),
-    )
 
 
 __all__ = ["EcapaObservationRunner", "ecapa_model_version"]

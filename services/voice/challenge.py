@@ -43,7 +43,15 @@ class EnrollmentChallengeSession:
         try:
             token = self._token_factory()
             now = float(self._clock())
-            digits = "".join(self._digit_choice(_DIGITS) for _ in range(4))
+            available = list(_DIGITS)
+            selected: list[str] = []
+            for _index in range(4):
+                digit = self._digit_choice(tuple(available))
+                if digit not in available:
+                    raise ValueError(CHALLENGE_FAILED)
+                available.remove(digit)
+                selected.append(digit)
+            digits = "".join(selected)
             if (
                 type(token) is not str
                 or _TOKEN.fullmatch(token) is None
@@ -52,7 +60,7 @@ class EnrollmentChallengeSession:
                 or any(digit not in _DIGITS for digit in digits)
             ):
                 raise ValueError(CHALLENGE_FAILED)
-            phrase = f"小小，验证口令{digits}"
+            phrase = f"小小，我要说口令{digits}"
             self._active = (
                 token,
                 _normalize(phrase),
