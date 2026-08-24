@@ -6,6 +6,7 @@ import threading
 import time
 from collections.abc import Callable, Iterable, MutableMapping
 from dataclasses import dataclass
+from enum import Enum
 from pathlib import Path
 from typing import Protocol
 
@@ -23,7 +24,24 @@ _WHISPER_ARTIFACT_IDS = frozenset(
     {"openai-whisper-base", "openai-whisper-small"}
 )
 _VOICE_HOTWORDS = "小小 喂奶 开始 喂完 继续 结束 爸爸 妈妈 口令"
+_CARE_HOTWORDS = (
+    "小小 爸爸 妈妈 宝宝 喂奶 开始 结束 喝了 九十 毫升 配方奶 "
+    "取消 这次 记录 今天 天气 不错"
+)
 _WHISPER_IMPORT_LOCK = threading.Lock()
+
+
+class AsrDecodeProfile(str, Enum):
+    BASELINE = "baseline"
+    NO_HOTWORDS = "no_hotwords"
+    CARE_HOTWORDS = "care_hotwords"
+    CARE_HOTWORDS_BEAM10 = "care_hotwords_beam10"
+
+
+BASELINE = AsrDecodeProfile.BASELINE
+NO_HOTWORDS = AsrDecodeProfile.NO_HOTWORDS
+CARE_HOTWORDS = AsrDecodeProfile.CARE_HOTWORDS
+CARE_BEAM10 = AsrDecodeProfile.CARE_HOTWORDS_BEAM10
 
 
 @dataclass(frozen=True)
@@ -79,6 +97,14 @@ class AsrEngine:
         self._monotonic_ns = monotonic_ns
 
     def transcribe(self, pcm: bytes) -> AsrResult:
+        return self._transcribe(pcm, BASELINE)
+
+    def for_profile(self, profile: object) -> _ProfileAsrEngine:
+        if type(profile) is not AsrDecodeProfile:
+            raise ValueError(UNAVAILABLE_REASON)
+        return _ProfileAsrEngine(self, profile)
+
+    def _transcribe(self, pcm: bytes, profile: AsrDecodeProfile) -> AsrResult:
         if (
             type(pcm) is not bytes
             or not pcm
@@ -93,17 +119,22 @@ class AsrEngine:
         samples /= 32768.0
         started_ns = self._monotonic_ns()
         try:
-            segments, info = self._runner.transcribe(
-                samples,
-                language="zh",
-                task="transcribe",
-                beam_size=5,
-                temperature=0.0,
-                condition_on_previous_text=False,
-                vad_filter=False,
-                without_timestamps=True,
-                hotwords=_VOICE_HOTWORDS,
-            )
+            options: dict[str, object] = {
+                "language": "zh",
+                "task": "transcribe",
+                "beam_size": 10 if profile is CARE_BEAM10 else 5,
+                "temperature": 0.0,
+                "condition_on_previous_text": False,
+                "vad_filter": False,
+                "without_timestamps": True,
+            }
+            if profile is BASELINE:
+                options["hotwords"] = _VOICE_HOTWORDS
+            elif profile in {CARE_HOTWORDS, CARE_BEAM10}:
+                options["hotwords"] = _CARE_HOTWORDS
+            elif profile is not NO_HOTWORDS:
+                raise ValueError(UNAVAILABLE_REASON)
+            segments, info = self._runner.transcribe(samples, **options)
             parts: list[str] = []
             for segment in segments:
                 if not isinstance(segment.text, str):
@@ -116,6 +147,15 @@ class AsrEngine:
         except Exception:
             raise ValueError(UNAVAILABLE_REASON) from None
         return AsrResult(text="".join(parts), language="zh", duration_ms=duration_ms)
+
+
+@dataclass(frozen=True)
+class _ProfileAsrEngine:
+    engine: AsrEngine
+    profile: AsrDecodeProfile
+
+    def transcribe(self, pcm: bytes) -> AsrResult:
+        return self.engine._transcribe(pcm, self.profile)
 
 
 def _faster_whisper_runner(

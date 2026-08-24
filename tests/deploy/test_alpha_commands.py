@@ -938,11 +938,13 @@ def test_private_asr_calibration_commands_use_fixed_local_module() -> None:
     assert "alpha-voice-asr-capture-fixed-all:" in content
     assert "alpha-voice-asr-capture-all:" in content
     assert "alpha-voice-asr-evaluate:" in content
+    assert "alpha-voice-asr-bakeoff:" in content
     assert "-m tools.voice_asr_calibrate capture --prompt-id \"$(PROMPT)\"" in content
     assert "-m tools.voice_asr_calibrate capture-fixed --prompt-id \"$(PROMPT)\"" in content
     assert "for prompt in feeding_start_dad feeding_start_mom feeding_amount feeding_finish care_cancel negative_weather" in content
     assert "-m tools.voice_asr_calibrate capture-all" in content
     assert "-m tools.voice_asr_calibrate evaluate" in content
+    assert "-m tools.voice_asr_calibrate bakeoff" in content
 
 
 def test_makefile_exposes_fixed_voice_keychain_helper_lifecycle() -> None:

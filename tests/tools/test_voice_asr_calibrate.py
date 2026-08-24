@@ -10,6 +10,8 @@ from services.voice.asr_calibration import (
     CalibrationCaptureReport,
     CalibrationGateReport,
     CalibrationModelMetrics,
+    CalibrationProfileGateReport,
+    CalibrationProfileMetrics,
 )
 from tools import voice_asr_calibrate
 
@@ -40,10 +42,15 @@ class Capture:
 
 
 class Evaluator:
-    def __init__(self, report: CalibrationGateReport) -> None:
+    def __init__(self, report: object) -> None:
         self.report = report
 
     def evaluate(self) -> CalibrationGateReport:
+        assert isinstance(self.report, CalibrationGateReport)
+        return self.report
+
+    def evaluate_profiles(self, _profiles: tuple[object, ...]) -> CalibrationProfileGateReport:
+        assert isinstance(self.report, CalibrationProfileGateReport)
         return self.report
 
 
@@ -157,6 +164,61 @@ def test_evaluate_prints_only_candidate_counts_and_latency(tmp_path: Path) -> No
     ]
     assert "爸爸" not in "\n".join(output)
     assert "transcript" not in "\n".join(output)
+
+
+def test_bakeoff_prints_only_closed_profile_aggregate_metrics(tmp_path: Path) -> None:
+    report = CalibrationProfileGateReport(
+        candidates=(
+            CalibrationProfileMetrics(
+                "base",
+                "baseline",
+                True,
+                6,
+                5,
+                6,
+                800,
+                900,
+                False,
+                ("feeding_amount",),
+                1,
+                2,
+            ),
+        ),
+        selected_model=None,
+        selected_profile=None,
+        gate_passed=False,
+    )
+    output: list[str] = []
+
+    result = voice_asr_calibrate.main(
+        ["bakeoff"],
+        project_root=tmp_path,
+        evaluator_builder=lambda _root: Evaluator(report),
+        printer=output.append,
+    )
+
+    assert result == 1
+    assert output == [
+        "result=FAIL",
+        "operation=bakeoff",
+        "reason=asr_candidate_unavailable",
+        "gate_passed=false",
+        "selected_model=none",
+        "selected_profile=none",
+        "candidate_1_model=base",
+        "candidate_1_profile=baseline",
+        "candidate_1_available=true",
+        "candidate_1_samples_evaluated=6",
+        "candidate_1_exact_matches=5",
+        "candidate_1_wake_matches=6",
+        "candidate_1_latency_p50_ms=800",
+        "candidate_1_latency_p95_ms=900",
+        "candidate_1_mismatch_prompt_ids=feeding_amount",
+        "candidate_1_numeric_form_only_count=1",
+        "candidate_1_edit_distance_total=2",
+        "candidate_1_passed=false",
+    ]
+    assert "喝了90" not in "\n".join(output)
 
 
 def test_capture_all_is_one_confirmed_fixed_order_session(tmp_path: Path) -> None:

@@ -8,7 +8,13 @@ from typing import Protocol
 
 from packages.contracts.settings import AudioSettings, VoiceCareSettings
 from services.voice.artifacts import voice_artifact_spec
-from services.voice.asr import AsrEngine
+from services.voice.asr import (
+    BASELINE,
+    CARE_BEAM10,
+    CARE_HOTWORDS,
+    NO_HOTWORDS,
+    AsrEngine,
+)
 from services.voice.asr_calibration import (
     ASR_CALIBRATION_FAILED,
     AsrCalibrationCapture,
@@ -17,6 +23,7 @@ from services.voice.asr_calibration import (
     BoundedCalibrationPcmCapture,
     CalibrationCaptureReport,
     CalibrationGateReport,
+    CalibrationProfileGateReport,
     FixedWindowAsrCalibrationCapture,
     FixedWindowCaptureReport,
 )
@@ -35,6 +42,10 @@ class _Capture(Protocol):
 
 class _Evaluator(Protocol):
     def evaluate(self) -> CalibrationGateReport: ...
+
+    def evaluate_profiles(
+        self, profiles: tuple[object, ...]
+    ) -> CalibrationProfileGateReport: ...
 
 
 class _FixedCapture(Protocol):
@@ -70,6 +81,7 @@ def main(
     )
     subparsers.add_parser("capture-all")
     subparsers.add_parser("evaluate")
+    subparsers.add_parser("bakeoff")
     arguments = parser.parse_args(argv)
     operation = str(arguments.operation)
     try:
@@ -119,7 +131,48 @@ def main(
             )
             printer("encrypted_clip_persisted=true")
             return 0
-        report = (evaluator_builder or _build_evaluator)(root).evaluate()
+        evaluator = (evaluator_builder or _build_evaluator)(root)
+        if operation == "bakeoff":
+            bakeoff = evaluator.evaluate_profiles(
+                (BASELINE, NO_HOTWORDS, CARE_HOTWORDS, CARE_BEAM10)
+            )
+            printer(f"result={'PASS' if bakeoff.gate_passed else 'FAIL'}")
+            printer("operation=bakeoff")
+            if not bakeoff.gate_passed:
+                printer("reason=asr_candidate_unavailable")
+            printer(f"gate_passed={_boolean(bakeoff.gate_passed)}")
+            printer(f"selected_model={bakeoff.selected_model or 'none'}")
+            printer(f"selected_profile={bakeoff.selected_profile or 'none'}")
+            for index, candidate in enumerate(bakeoff.candidates, start=1):
+                prefix = f"candidate_{index}"
+                printer(f"{prefix}_model={candidate.model}")
+                printer(f"{prefix}_profile={candidate.profile}")
+                printer(f"{prefix}_available={_boolean(candidate.available)}")
+                printer(f"{prefix}_samples_evaluated={candidate.samples_evaluated}")
+                printer(f"{prefix}_exact_matches={candidate.exact_matches}")
+                printer(f"{prefix}_wake_matches={candidate.wake_matches}")
+                printer(
+                    f"{prefix}_latency_p50_ms="
+                    f"{candidate.latency_p50_ms if candidate.latency_p50_ms is not None else 'none'}"
+                )
+                printer(
+                    f"{prefix}_latency_p95_ms="
+                    f"{candidate.latency_p95_ms if candidate.latency_p95_ms is not None else 'none'}"
+                )
+                printer(
+                    f"{prefix}_mismatch_prompt_ids="
+                    f"{','.join(candidate.mismatch_prompt_ids) or 'none'}"
+                )
+                printer(
+                    f"{prefix}_numeric_form_only_count="
+                    f"{candidate.numeric_form_only_count}"
+                )
+                printer(
+                    f"{prefix}_edit_distance_total={candidate.edit_distance_total}"
+                )
+                printer(f"{prefix}_passed={_boolean(candidate.passed)}")
+            return 0 if bakeoff.gate_passed else 1
+        report = evaluator.evaluate()
         printer(f"result={'PASS' if report.gate_passed else 'FAIL'}")
         printer("operation=evaluate")
         printer(f"gate_passed={_boolean(report.gate_passed)}")

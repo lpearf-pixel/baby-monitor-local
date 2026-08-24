@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import math
+import re
 import time
 import unicodedata
 from collections.abc import Callable, Mapping
@@ -11,7 +12,7 @@ from typing import Literal, Protocol
 
 from packages.contracts.settings import AudioSettings
 from services.audio.source import DecoderRead, FixedAudioDecoder
-from services.voice.asr import AsrResult
+from services.voice.asr import BASELINE, AsrDecodeProfile, AsrResult
 from services.voice.asr_corpus import PRIVATE_ASR_PROMPTS
 from services.voice.silero_runtime import SAMPLE_RATE_HZ, SpeechSpan
 from services.voice.wake import validate_wake_prefix
@@ -106,6 +107,30 @@ class CalibrationModelMetrics:
 class CalibrationGateReport:
     models: tuple[CalibrationModelMetrics, ...]
     selected_model: str | None
+    gate_passed: bool
+
+
+@dataclass(frozen=True)
+class CalibrationProfileMetrics:
+    model: str
+    profile: str
+    available: bool
+    samples_evaluated: int
+    exact_matches: int
+    wake_matches: int
+    latency_p50_ms: int | None
+    latency_p95_ms: int | None
+    passed: bool
+    mismatch_prompt_ids: tuple[str, ...] = ()
+    numeric_form_only_count: int = 0
+    edit_distance_total: int = 0
+
+
+@dataclass(frozen=True)
+class CalibrationProfileGateReport:
+    candidates: tuple[CalibrationProfileMetrics, ...]
+    selected_model: str | None
+    selected_profile: str | None
     gate_passed: bool
 
 
@@ -229,6 +254,111 @@ class AsrCalibrationEvaluator:
             return CalibrationGateReport(metrics, selected, selected is not None)
         except Exception:
             raise ValueError(ASR_CALIBRATION_FAILED) from None
+
+    def evaluate_profiles(
+        self, profiles: tuple[AsrDecodeProfile, ...]
+    ) -> CalibrationProfileGateReport:
+        try:
+            if (
+                type(profiles) is not tuple
+                or not profiles
+                or len(set(profiles)) != len(profiles)
+                or any(type(profile) is not AsrDecodeProfile for profile in profiles)
+            ):
+                raise ValueError
+            clips = self._corpus.read_all()
+            if (
+                not clips
+                or {prompt_id for prompt_id, _pcm in clips}
+                != set(PRIVATE_ASR_PROMPTS)
+            ):
+                raise ValueError
+            candidates = tuple(
+                self._evaluate_profile(model, profile, clips)
+                for profile in profiles
+                for model in ("base", "small")
+            )
+            selected = next((item for item in candidates if item.passed), None)
+            return CalibrationProfileGateReport(
+                candidates,
+                selected.model if selected is not None else None,
+                selected.profile if selected is not None else None,
+                selected is not None,
+            )
+        except Exception:
+            raise ValueError(ASR_CALIBRATION_FAILED) from None
+
+    def _evaluate_profile(
+        self,
+        model: str,
+        profile: AsrDecodeProfile,
+        clips: tuple[tuple[str, bytes], ...],
+    ) -> CalibrationProfileMetrics:
+        exact_matches = 0
+        wake_matches = 0
+        latencies: list[int] = []
+        mismatch_prompt_ids: list[str] = []
+        numeric_form_only_count = 0
+        edit_distance_total = 0
+        try:
+            base_engine = self._engines[model]
+            if profile is BASELINE:
+                engine = base_engine
+            else:
+                factory = getattr(base_engine, "for_profile")
+                engine = factory(profile)
+            for prompt_id, pcm in clips:
+                expected = PRIVATE_ASR_PROMPTS[prompt_id]
+                result = engine.transcribe(pcm)
+                if (
+                    not isinstance(result, AsrResult)
+                    or result.language != "zh"
+                    or type(result.duration_ms) is not int
+                    or result.duration_ms < 0
+                ):
+                    raise ValueError
+                actual_normalized = _normalize_exact(result.text)
+                expected_normalized = _normalize_exact(expected)
+                exact = actual_normalized == expected_normalized
+                exact_matches += int(exact)
+                if not exact:
+                    mismatch_prompt_ids.append(prompt_id)
+                    numeric_form_only_count += int(
+                        _numeric_form_only(actual_normalized, expected_normalized)
+                    )
+                    edit_distance_total += _edit_distance(
+                        actual_normalized, expected_normalized
+                    )
+                expected_wake = prompt_id != "negative_weather"
+                wake_matches += int(
+                    validate_wake_prefix(result.text).accepted == expected_wake
+                )
+                latencies.append(result.duration_ms)
+        except Exception:
+            return CalibrationProfileMetrics(
+                model, profile.value, False, 0, 0, 0, None, None, False
+            )
+        p50 = _nearest_rank(latencies, 0.50)
+        p95 = _nearest_rank(latencies, 0.95)
+        passed = (
+            exact_matches == len(clips)
+            and wake_matches == len(clips)
+            and p95 <= MAX_LATENCY_MS
+        )
+        return CalibrationProfileMetrics(
+            model,
+            profile.value,
+            True,
+            len(clips),
+            exact_matches,
+            wake_matches,
+            p50,
+            p95,
+            passed,
+            tuple(mismatch_prompt_ids),
+            numeric_form_only_count,
+            edit_distance_total,
+        )
 
     def _evaluate_model(
         self, model: str, clips: tuple[tuple[str, bytes], ...]
@@ -428,6 +558,33 @@ def _edit_distance(left: str, right: str) -> int:
     return previous[-1]
 
 
+def _numeric_form_only(actual: str, expected: str) -> bool:
+    if actual == expected:
+        return False
+    return re.sub(r"[0-9]{1,3}", _chinese_integer_match, actual) == expected
+
+
+def _chinese_integer_match(match: re.Match[str]) -> str:
+    return _chinese_integer(int(match.group(0)))
+
+
+def _chinese_integer(value: int) -> str:
+    digits = "零一二三四五六七八九"
+    if value < 10:
+        return digits[value]
+    if value < 100:
+        tens, ones = divmod(value, 10)
+        prefix = "十" if tens == 1 else digits[tens] + "十"
+        return prefix + (digits[ones] if ones else "")
+    hundreds, remainder = divmod(value, 100)
+    result = digits[hundreds] + "百"
+    if remainder == 0:
+        return result
+    if remainder < 10:
+        return result + "零" + digits[remainder]
+    return result + _chinese_integer(remainder)
+
+
 __all__ = [
     "ASR_CALIBRATION_FAILED",
     "AsrCalibrationFailure",
@@ -437,6 +594,8 @@ __all__ = [
     "CalibrationCaptureReport",
     "CalibrationGateReport",
     "CalibrationModelMetrics",
+    "CalibrationProfileGateReport",
+    "CalibrationProfileMetrics",
     "FixedWindowAsrCalibrationCapture",
     "FixedWindowCaptureReport",
 ]

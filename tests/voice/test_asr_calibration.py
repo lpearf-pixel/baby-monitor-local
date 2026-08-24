@@ -7,7 +7,7 @@ import pytest
 from packages.contracts.audio import AudioFailureReason
 from packages.contracts.settings import AudioSettings
 from services.audio.source import DecoderRead
-from services.voice.asr import AsrResult
+from services.voice.asr import BASELINE, AsrResult
 from services.voice.asr_calibration import (
     ASR_CALIBRATION_FAILED,
     AsrCalibrationCapture,
@@ -239,6 +239,39 @@ def test_evaluator_reports_only_fixed_prompt_ids_and_aggregate_edit_distance() -
         assert model.edit_distance_total == 3
         assert "取消记录" not in repr(model)
         assert "今天的天气" not in repr(model)
+
+
+def test_profile_bakeoff_reports_numeric_form_without_relaxing_exact_match() -> None:
+    clips = {
+        "feeding_start_dad": b"d" * 8_000,
+        "feeding_start_mom": b"m" * 8_000,
+        "feeding_amount": b"a" * 8_000,
+        "feeding_finish": b"f" * 8_000,
+        "care_cancel": b"c" * 8_000,
+        "negative_weather": b"n" * 8_000,
+    }
+    exact = dict(PRIVATE_ASR_PROMPTS)
+    numeric = {**exact, "feeding_amount": "小小，宝宝喝了90毫升配方奶"}
+    evaluator = AsrCalibrationEvaluator(
+        corpus=Corpus(tuple(clips.items())),
+        engines={
+            "base": Engine({clips[key]: numeric[key] for key in clips}, 900),
+            "small": Engine({clips[key]: exact[key] for key in clips}, 3_100),
+        },
+    )
+
+    report = evaluator.evaluate_profiles((BASELINE,))
+
+    assert report.gate_passed is False
+    assert report.selected_model is None
+    assert report.selected_profile is None
+    assert report.candidates[0].mismatch_prompt_ids == ("feeding_amount",)
+    assert report.candidates[0].numeric_form_only_count == 1
+    assert report.candidates[0].exact_matches == 5
+    assert report.candidates[0].passed is False
+    assert report.candidates[1].exact_matches == 6
+    assert report.candidates[1].passed is False
+    assert "喝了90" not in repr(report)
 
 
 def test_evaluator_rejects_incomplete_fixed_prompt_corpus() -> None:

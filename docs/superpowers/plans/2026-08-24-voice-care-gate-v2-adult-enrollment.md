@@ -491,7 +491,7 @@ git commit -m "feat: add stable Voice Keychain identity"
 - Consumes: the same six decrypted clips in memory; no profile receives the current
   prompt text or expected transcript.
 
-- [ ] **Step 1: Write RED profile and privacy tests**
+- [x] **Step 1: Write RED profile and privacy tests**
 
 Assert exact runner options for all four closed profiles, reject arbitrary options and
 ensure reports contain only model/profile, public prompt IDs, edit distance, exact/wake
@@ -506,13 +506,13 @@ assert report.candidates[0].passed is False
 assert "90" not in repr(report)
 ```
 
-- [ ] **Step 2: Run RED tests**
+- [x] **Step 2: Run RED tests**
 
 ```bash
 .venv-alpha/bin/python -m pytest -q tests/voice/test_asr.py tests/voice/test_asr_calibration.py tests/tools/test_voice_asr_calibrate.py
 ```
 
-- [ ] **Step 3: Implement the closed matrix**
+- [x] **Step 3: Implement the closed matrix**
 
 Use the baseline exactly as recorded. `no_hotwords` removes only the global hotword
 argument. `care_hotwords` uses one fixed vocabulary containing the wake word, caregiver,
@@ -521,7 +521,7 @@ changes only `beam_size=10`. Do not add `initial_prompt`, `prefix`, per-clip hot
 post-ASR phrase replacement or fuzzy wake matching. Select only a candidate with 6/6
 exact, 6/6 wake and P95 at most 3,000 ms.
 
-- [ ] **Step 4: Run GREEN and the real one-shot bake-off**
+- [x] **Step 4: Run GREEN and the real one-shot bake-off**
 
 ```bash
 .venv-alpha/bin/python -m pytest -q tests/voice/test_asr.py tests/voice/test_asr_calibration.py tests/tools/test_voice_asr_calibrate.py
@@ -532,7 +532,15 @@ If no candidate passes, keep Voice disabled and stop this task with an explicit
 `asr_candidate_unavailable`; do not add another profile. A different model family then
 requires a separate approved model/license amendment.
 
-- [ ] **Step 5: Commit Task 5B**
+Evidence on 2026-08-24: the launchd one-shot matrix completed all eight candidates and
+returned `asr_candidate_unavailable`. Baseline base remained 4/6 exact, 6/6 wake and
+P95 1,260 ms. The best bounded candidates were base `care_hotwords` and
+`care_hotwords_beam10`, both 5/6 exact and 6/6 wake with P95 2,246 ms and 2,145 ms;
+both missed only public prompt ID `feeding_start_dad` with aggregate edit distance 2.
+Every small candidate failed accuracy and exceeded the latency gate. Voice remains
+disabled; no fifth profile or per-prompt correction was added.
+
+- [x] **Step 5: Commit Task 5B**
 
 ```bash
 git add services/voice/asr.py services/voice/asr_calibration.py tools/voice_asr_calibrate.py tests/voice/test_asr.py tests/voice/test_asr_calibration.py tests/tools/test_voice_asr_calibrate.py Makefile

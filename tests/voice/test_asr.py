@@ -11,7 +11,14 @@ import pytest
 
 from packages.contracts.settings import VoiceCareSettings
 from services.voice.artifacts import VoiceArtifactSpec, voice_artifact_specs
-from services.voice.asr import AsrEngine, _load_whisper_model_class
+from services.voice.asr import (
+    BASELINE,
+    CARE_BEAM10,
+    CARE_HOTWORDS,
+    NO_HOTWORDS,
+    AsrEngine,
+    _load_whisper_model_class,
+)
 
 
 def _whisper_spec_and_bundle(
@@ -124,6 +131,55 @@ def test_engine_uses_only_validated_absolute_local_whisper_and_chinese_transcrib
     assert result.text == "小小，我要喂奶了"
     assert result.language == "zh"
     assert result.duration_ms == 12
+
+
+@pytest.mark.parametrize(
+    ("profile", "beam_size", "hotwords"),
+    (
+        (BASELINE, 5, "小小 喂奶 开始 喂完 继续 结束 爸爸 妈妈 口令"),
+        (NO_HOTWORDS, 5, None),
+        (
+            CARE_HOTWORDS,
+            5,
+            "小小 爸爸 妈妈 宝宝 喂奶 开始 结束 喝了 九十 毫升 配方奶 取消 这次 记录 今天 天气 不错",
+        ),
+        (
+            CARE_BEAM10,
+            10,
+            "小小 爸爸 妈妈 宝宝 喂奶 开始 结束 喝了 九十 毫升 配方奶 取消 这次 记录 今天 天气 不错",
+        ),
+    ),
+)
+def test_engine_uses_only_closed_global_decode_profiles(
+    tmp_path: Path, profile: object, beam_size: int, hotwords: str | None
+) -> None:
+    spec, _bundle = _whisper_spec_and_bundle(tmp_path)
+    runner = _Runner()
+    engine = AsrEngine(
+        spec,
+        project_root=tmp_path,
+        runner_factory=lambda **_options: runner,
+    )
+
+    engine.for_profile(profile).transcribe(b"\0\0")
+
+    options = runner.calls[0][1]
+    assert options["beam_size"] == beam_size
+    assert options.get("hotwords") == hotwords
+    assert "initial_prompt" not in options
+    assert "prefix" not in options
+
+
+def test_engine_rejects_arbitrary_decode_profile(tmp_path: Path) -> None:
+    spec, _bundle = _whisper_spec_and_bundle(tmp_path)
+    engine = AsrEngine(
+        spec,
+        project_root=tmp_path,
+        runner_factory=lambda **_options: _Runner(),
+    )
+
+    with pytest.raises(ValueError, match="^voice_model_unavailable$"):
+        engine.for_profile("care_hotwords_beam20")
 
 
 def test_engine_rejects_non_whisper_artifact_before_runner_creation(tmp_path: Path) -> None:
