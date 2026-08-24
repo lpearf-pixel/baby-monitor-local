@@ -1,7 +1,10 @@
 from __future__ import annotations
 
+import importlib
+import sys
+import threading
 import time
-from collections.abc import Callable, Iterable
+from collections.abc import Callable, Iterable, MutableMapping
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Protocol
@@ -20,6 +23,7 @@ _WHISPER_ARTIFACT_IDS = frozenset(
     {"openai-whisper-base", "openai-whisper-small"}
 )
 _VOICE_HOTWORDS = "喂奶 开始 喂完 继续 结束 爸爸 妈妈"
+_WHISPER_IMPORT_LOCK = threading.Lock()
 
 
 @dataclass(frozen=True)
@@ -117,7 +121,7 @@ class AsrEngine:
 def _faster_whisper_runner(
     *, model_path: Path, device: str, compute_type: str, local_files_only: bool
 ) -> _Runner:
-    from faster_whisper import WhisperModel
+    WhisperModel = _load_whisper_model_class()
 
     return WhisperModel(
         str(model_path),
@@ -125,3 +129,27 @@ def _faster_whisper_runner(
         compute_type=compute_type,
         local_files_only=local_files_only,
     )
+
+
+def _load_whisper_model_class(
+    *,
+    importer: Callable[[str], object] = importlib.import_module,
+    modules: MutableMapping[str, object] = sys.modules,
+    active_count: Callable[[], int] = threading.active_count,
+) -> RunnerFactory:
+    """Import runtime ASR without loading optional training/conversion Torch."""
+
+    with _WHISPER_IMPORT_LOCK:
+        if active_count() != 1 or "torch" in modules:
+            raise ValueError(UNAVAILABLE_REASON)
+        modules["torch"] = None
+        try:
+            module = importer("faster_whisper")
+            model_class = getattr(module, "WhisperModel")
+            if not callable(model_class):
+                raise ValueError(UNAVAILABLE_REASON)
+        except Exception:
+            raise ValueError(UNAVAILABLE_REASON) from None
+        finally:
+            modules.pop("torch", None)
+    return model_class

@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import hashlib
 import json
+import types
 from pathlib import Path
 from types import SimpleNamespace
 
@@ -10,7 +11,7 @@ import pytest
 
 from packages.contracts.settings import VoiceCareSettings
 from services.voice.artifacts import VoiceArtifactSpec, voice_artifact_specs
-from services.voice.asr import AsrEngine
+from services.voice.asr import AsrEngine, _load_whisper_model_class
 
 
 def _whisper_spec_and_bundle(
@@ -191,3 +192,37 @@ def test_engine_rejects_empty_misaligned_or_over_eight_second_pcm(
 
     with pytest.raises(ValueError, match="^voice_pcm_invalid$"):
         engine.transcribe(pcm)
+
+
+def test_runtime_import_blocks_optional_torch_only_before_threads_start() -> None:
+    modules: dict[str, object] = {}
+    observed: list[object] = []
+    model_class = lambda **_options: _Runner()
+
+    def importer(name: str) -> object:
+        assert name == "faster_whisper"
+        observed.append(modules["torch"])
+        return types.SimpleNamespace(WhisperModel=model_class)
+
+    loaded = _load_whisper_model_class(
+        importer=importer,
+        modules=modules,
+        active_count=lambda: 1,
+    )
+
+    assert loaded is model_class
+    assert observed == [None]
+    assert "torch" not in modules
+
+    with pytest.raises(ValueError, match="^voice_model_unavailable$"):
+        _load_whisper_model_class(
+            importer=importer,
+            modules={"torch": object()},
+            active_count=lambda: 1,
+        )
+    with pytest.raises(ValueError, match="^voice_model_unavailable$"):
+        _load_whisper_model_class(
+            importer=importer,
+            modules={},
+            active_count=lambda: 2,
+        )
