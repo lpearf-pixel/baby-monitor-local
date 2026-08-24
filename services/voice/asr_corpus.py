@@ -17,7 +17,8 @@ from services.voice.keychain import KeychainSecretStore
 
 
 ASR_CORPUS_UNAVAILABLE = "voice_asr_corpus_unavailable"
-ASR_CORPUS_KEY_ACCOUNT = "voice-asr-calibration-key.v1"
+LEGACY_ASR_CORPUS_KEY_ACCOUNT = "voice-asr-calibration-key.v1"
+ASR_CORPUS_KEY_ACCOUNT = "voice-asr-calibration-key.v2"
 PRIVATE_ASR_PROMPTS = {
     "feeding_start_dad": "小小，我是爸爸，现在开始喂奶",
     "feeding_start_mom": "小小，我是妈妈，现在开始喂奶",

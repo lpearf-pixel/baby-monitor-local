@@ -945,6 +945,47 @@ def test_private_asr_calibration_commands_use_fixed_local_module() -> None:
     assert "-m tools.voice_asr_calibrate evaluate" in content
 
 
+def test_makefile_exposes_fixed_voice_keychain_helper_lifecycle() -> None:
+    build = subprocess.run(
+        ["make", "-n", "alpha-voice-keychain-helper-build"],
+        cwd=ROOT,
+        check=False,
+        capture_output=True,
+        text=True,
+    )
+    check = subprocess.run(
+        ["make", "-n", "alpha-voice-keychain-check"],
+        cwd=ROOT,
+        check=False,
+        capture_output=True,
+        text=True,
+    )
+    migrate = subprocess.run(
+        ["make", "-n", "alpha-voice-keychain-migrate"],
+        cwd=ROOT,
+        check=False,
+        capture_output=True,
+        text=True,
+    )
+
+    assert build.returncode == 0
+    assert "-m tools.voice_keychain_helper_build ensure" in build.stdout
+    assert check.returncode == 0
+    assert "-m tools.voice_keychain_probe" in check.stdout
+    assert migrate.returncode == 0
+    assert "-m tools.voice_keychain_migrate" in migrate.stdout
+
+
+def test_installer_and_guardian_gate_require_stable_voice_keychain_helper() -> None:
+    installer = (ROOT / "tools/install_alpha_macos.sh").read_text(encoding="ascii")
+    guardian = (ROOT / "tools/test_guardian.sh").read_text(encoding="ascii")
+
+    assert 'tools.voice_keychain_helper_build ensure' in installer
+    assert 'VOICE_KEYCHAIN_APP="$ROOT/.local/VoiceKeychainHelper.app"' in guardian
+    assert 'com.babymonitor.voice-keychain-helper' in guardian
+    assert 'codesign --verify --deep --strict' in guardian
+
+
 def test_installer_installs_acceptance_test_dependencies() -> None:
     content = (ROOT / "tools/install_alpha_macos.sh").read_text(encoding="utf-8")
 

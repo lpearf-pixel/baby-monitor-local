@@ -26,6 +26,8 @@ fi
 "$ROOT/.venv-alpha/bin/python" -m pip install --upgrade pip
 "$ROOT/.venv-alpha/bin/python" -m pip install -e "$ROOT[dev]"
 "$ROOT/.venv-alpha/bin/python" "$ROOT/tools/go2rtc_build.py" ensure
+"$ROOT/.venv-alpha/bin/python" -m tools.voice_keychain_helper_build ensure
+chmod 700 "$ROOT/tools/authorize_voice_keychain.command"
 
 if [[ ! -f "$ROOT/runtime/go2rtc.yaml" ]]; then
   cp "$ROOT/config/go2rtc.alpha.yaml" "$ROOT/runtime/go2rtc.yaml"

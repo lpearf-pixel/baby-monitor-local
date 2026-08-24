@@ -201,6 +201,16 @@ operator may need to approve this stable helper once in the logged-in macOS sess
 after that, both calibration and the installed launchd worker must pass the same
 non-interactive read probe before Voice can be enabled.
 
+The already-captured calibration corpus predates the helper and uses the legacy
+`voice-asr-calibration-key.v1` item owned by the interactive Terminal/Python identity.
+One fixed local migration may read that 32-byte value in the logged-in Terminal and
+write the identical bytes through the helper under
+`voice-asr-calibration-key.v2`. The bytes stay in memory and cross only the helper's
+anonymous stdin pipe; the corpus ciphertext is not rewritten. The migration refuses a
+missing legacy key or a different existing v2 key. It does not delete v1; removal of the
+orphaned legacy item requires a separate explicit deletion approval after every v2 gate
+passes. All normal calibration, Codex and launchd reads use v2 only.
+
 ASR tuning is one bounded bake-off, not an open-ended sequence of per-phrase patches.
 Every profile runs against the identical encrypted corpus and may use only one global
 decoder policy: the current baseline, no hotwords, a fixed care-domain vocabulary, or

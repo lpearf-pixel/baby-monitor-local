@@ -373,11 +373,18 @@ audio log, Baby Care write, Voice enablement or automatic deletion.
 **Files:**
 - Create: `tools/native/voice_keychain_helper.c`
 - Create: `tools/voice_keychain_helper_build.py`
+- Create: `tools/voice_keychain_probe.py`
+- Create: `tools/voice_keychain_migrate.py`
+- Create: `tools/authorize_voice_keychain.command`
 - Create: `services/voice/helper_keychain.py`
 - Create: `tests/voice/test_helper_keychain.py`
 - Create: `tests/monitoring/test_voice_keychain_helper_build.py`
+- Create: `tests/tools/test_voice_keychain_probe.py`
+- Create: `tests/tools/test_voice_keychain_migrate.py`
+- Create: `tests/deploy/test_voice_keychain_authorize.py`
 - Modify: `services/voice/keychain.py`
 - Modify: `tools/voice_asr_calibrate.py`
+- Modify: `tools/voice_enroll.py`
 - Modify: `tools/install_alpha_macos.sh`
 - Modify: `tools/test_guardian.sh`
 - Modify: `Makefile`
@@ -391,7 +398,7 @@ audio log, Baby Care write, Voice enablement or automatic deletion.
 - Consumes: fixed service `com.baby-monitor-local.voice-care`, 32-byte secrets and only
   the existing fixed Voice account names/prefixes.
 
-- [ ] **Step 1: Write helper protocol and path RED tests**
+- [x] **Step 1: Write helper protocol and path RED tests**
 
 Use a fake subprocess with a real anonymous stdin/stdout pipe. Assert a binary bounded
 request/response, exact service rejection before spawn, fixed 32-byte secrets, unknown
@@ -401,13 +408,13 @@ an arbitrary service/account or print a secret must fail these tests.
 
 ```python
 backend = HelperKeychainBackend(helper, opener=fake_opener)
-backend.write(VOICE_KEYCHAIN_SERVICE, "voice-asr-calibration-key.v1", b"k" * 32)
+backend.write(VOICE_KEYCHAIN_SERVICE, "voice-asr-calibration-key.v2", b"k" * 32)
 assert fake.argv == (str(helper),)
 assert b"k" * 32 in fake.stdin_payload
 assert b"k" * 32 not in repr(fake.argv)
 ```
 
-- [ ] **Step 2: Run RED tests**
+- [x] **Step 2: Run RED tests**
 
 ```bash
 .venv-alpha/bin/python -m pytest -q tests/voice/test_helper_keychain.py tests/monitoring/test_voice_keychain_helper_build.py
@@ -415,11 +422,11 @@ assert b"k" * 32 not in repr(fake.argv)
 
 Expected: FAIL because the signed helper builder/backend do not exist.
 
-- [ ] **Step 3: Implement the minimum native helper and Python backend**
+- [x] **Step 3: Implement the minimum native helper and Python backend**
 
 The C helper must use Security.framework directly and a fixed binary protocol. It
 refuses TTY stdin/stdout, fixes the service internally, accepts only
-`voice-asr-calibration-key.v1`, `device-signing-key.v1`, `voice-outbox-key.v1` and
+`voice-asr-calibration-key.v2`, `device-signing-key.v1`, `voice-outbox-key.v1` and
 `voice-profile-key.v1.<canonical UUID>`, bounds all messages to 4 KiB and zeroes secret
 buffers before exit. Python always starts it with `stdin=PIPE`, `stdout=PIPE`,
 `stderr=DEVNULL`, an empty fixed environment and a five-second deadline. Build it with
@@ -433,7 +440,7 @@ def keychain_for_runtime(root: Path) -> KeychainSecretStore:
     return KeychainSecretStore(HelperKeychainBackend(helper, boundary=root))
 ```
 
-- [ ] **Step 4: Run software, build and identity GREEN gates**
+- [x] **Step 4: Run software, build and identity GREEN gates**
 
 ```bash
 .venv-alpha/bin/python -m pytest -q tests/voice/test_helper_keychain.py tests/voice/test_keychain.py tests/monitoring/test_voice_keychain_helper_build.py tests/deploy/test_alpha_commands.py
@@ -444,7 +451,7 @@ codesign -d -r- .local/VoiceKeychainHelper.app
 git diff --check
 ```
 
-- [ ] **Step 5: Prove the existing corpus key is readable through the stable identity**
+- [x] **Step 5: Prove the existing corpus key is readable through the stable identity**
 
 Run one aggregate-only helper probe from the logged-in i9 session. The operator may
 approve the stable helper once. Then run the same probe through the installed user
@@ -452,10 +459,19 @@ launchd context and require both to return `key_state=available`, `key_bytes=32`
 printing the key, path or account. A second run must require no new approval. Do not
 delete or replace the existing corpus/key.
 
-- [ ] **Step 6: Commit Task 5A**
+Evidence on 2026-08-24: the fixed migration copied the identical 32-byte v1 value to
+helper-owned v2 without rewriting the encrypted corpus or deleting v1. The signed
+helper requirement verified as `com.babymonitor.voice-keychain-helper`. A one-shot
+`gui/501` launchd probe ran twice with exit 0 and returned only
+`key_state=available`, `key_bytes=32`; the probe job was then unloaded. The complete
+Voice software gate passed 223 tests. Direct Codex execution remains unable to read the
+login Keychain because its managed execution context is restricted; that is not used
+as production evidence and does not override the successful launchd gate.
+
+- [x] **Step 6: Commit Task 5A**
 
 ```bash
-git add tools/native/voice_keychain_helper.c tools/voice_keychain_helper_build.py services/voice/helper_keychain.py services/voice/keychain.py tools/voice_asr_calibrate.py tools/install_alpha_macos.sh tools/test_guardian.sh Makefile tests/voice/test_helper_keychain.py tests/monitoring/test_voice_keychain_helper_build.py tests/deploy/test_alpha_commands.py docs/superpowers/specs/2026-08-19-voice-care-v1-design.md docs/superpowers/plans/2026-08-24-voice-care-gate-v2-adult-enrollment.md
+git add tools/native/voice_keychain_helper.c tools/voice_keychain_helper_build.py tools/voice_keychain_probe.py tools/voice_keychain_migrate.py tools/authorize_voice_keychain.command services/voice/helper_keychain.py services/voice/keychain.py tools/voice_asr_calibrate.py tools/voice_enroll.py tools/install_alpha_macos.sh tools/test_guardian.sh Makefile tests/voice/test_helper_keychain.py tests/monitoring/test_voice_keychain_helper_build.py tests/tools/test_voice_keychain_probe.py tests/tools/test_voice_keychain_migrate.py tests/deploy/test_voice_keychain_authorize.py tests/deploy/test_alpha_commands.py docs/superpowers/specs/2026-08-19-voice-care-v1-design.md docs/superpowers/plans/2026-08-24-voice-care-gate-v2-adult-enrollment.md
 git commit -m "feat: add stable Voice Keychain identity"
 ```
 
@@ -633,11 +649,12 @@ git commit -m "test: gate installed Voice runtime preflight"
 
 Current installed evidence: the pinned official Silero artifact validates and rejects
 real silence, while the supervised Xiaomi batch returned zero speech spans. The fixed
-eight-second corpus now contains all six encrypted prompts. The Terminal-created key is
-readable interactively, but Codex/launchd access still returns OSStatus `-25308`; base
-misses `feeding_amount` and `negative_weather` with aggregate edit distance 5, and small
-fails both accuracy and latency. These are explicit Task 5A-5C failures, not reasons to
-weaken privacy, exact-match, wake, VAD or latency gates.
+eight-second corpus now contains all six encrypted prompts. Task 5A is complete: the
+helper-owned v2 key passes two fresh non-interactive launchd reads. Base still misses
+`feeding_amount` and `negative_weather` with aggregate edit distance 5, small fails both
+accuracy and latency, and the supervised Silero batch still has zero speech spans.
+These are Task 5B-5C failures, not reasons to weaken privacy, exact-match, wake, VAD or
+latency gates.
 
 ### Task 6: Installed i9 Human Enrollment Gate
 

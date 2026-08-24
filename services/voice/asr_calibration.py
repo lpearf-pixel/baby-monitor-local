@@ -98,6 +98,8 @@ class CalibrationModelMetrics:
     latency_p50_ms: int | None
     latency_p95_ms: int | None
     passed: bool
+    mismatch_prompt_ids: tuple[str, ...] = ()
+    edit_distance_total: int = 0
 
 
 @dataclass(frozen=True)
@@ -234,6 +236,8 @@ class AsrCalibrationEvaluator:
         exact_matches = 0
         wake_matches = 0
         latencies: list[int] = []
+        mismatch_prompt_ids: list[str] = []
+        edit_distance_total = 0
         try:
             engine = self._engines[model]
             for prompt_id, pcm in clips:
@@ -246,9 +250,15 @@ class AsrCalibrationEvaluator:
                     or result.duration_ms < 0
                 ):
                     raise ValueError
-                exact_matches += int(
-                    _normalize_exact(result.text) == _normalize_exact(expected)
-                )
+                actual_normalized = _normalize_exact(result.text)
+                expected_normalized = _normalize_exact(expected)
+                exact = actual_normalized == expected_normalized
+                exact_matches += int(exact)
+                if not exact:
+                    mismatch_prompt_ids.append(prompt_id)
+                    edit_distance_total += _edit_distance(
+                        actual_normalized, expected_normalized
+                    )
                 expected_wake = prompt_id != "negative_weather"
                 wake_matches += int(
                     validate_wake_prefix(result.text).accepted == expected_wake
@@ -272,6 +282,8 @@ class AsrCalibrationEvaluator:
             p50,
             p95,
             passed,
+            tuple(mismatch_prompt_ids),
+            edit_distance_total,
         )
 
 
@@ -397,6 +409,23 @@ def _normalize_exact(value: str) -> str:
 def _nearest_rank(values: list[int], quantile: float) -> int:
     ordered = sorted(values)
     return ordered[math.ceil(quantile * len(ordered)) - 1]
+
+
+def _edit_distance(left: str, right: str) -> int:
+    previous = list(range(len(right) + 1))
+    for left_index, left_character in enumerate(left, start=1):
+        current = [left_index]
+        for right_index, right_character in enumerate(right, start=1):
+            current.append(
+                min(
+                    current[-1] + 1,
+                    previous[right_index] + 1,
+                    previous[right_index - 1]
+                    + int(left_character != right_character),
+                )
+            )
+        previous = current
+    return previous[-1]
 
 
 __all__ = [

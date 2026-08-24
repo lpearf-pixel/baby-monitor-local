@@ -21,7 +21,7 @@ from services.voice.asr_calibration import (
     FixedWindowCaptureReport,
 )
 from services.voice.asr_corpus import PRIVATE_ASR_PROMPTS, PrivateAsrCorpus
-from services.voice.keychain import KeychainSecretStore, MacOSSecurityKeychain
+from services.voice.helper_keychain import keychain_for_runtime
 from services.voice.silero_runtime import SileroOnnxSegmenter
 
 
@@ -137,6 +137,13 @@ def main(
                 f"{model.model}_latency_p95_ms="
                 f"{model.latency_p95_ms if model.latency_p95_ms is not None else 'none'}"
             )
+            printer(
+                f"{model.model}_mismatch_prompt_ids="
+                f"{','.join(model.mismatch_prompt_ids) or 'none'}"
+            )
+            printer(
+                f"{model.model}_edit_distance_total={model.edit_distance_total}"
+            )
             printer(f"{model.model}_passed={_boolean(model.passed)}")
         return 0 if report.gate_passed else 1
     except (Exception, KeyboardInterrupt) as error:
@@ -201,10 +208,14 @@ def _build_evaluator(project_root: Path) -> AsrCalibrationEvaluator:
     )
 
 
-def _private_corpus(project_root: Path) -> PrivateAsrCorpus:
+def _private_corpus(
+    project_root: Path,
+    *,
+    keychain_factory: Callable[[Path], object] = keychain_for_runtime,
+) -> PrivateAsrCorpus:
     return PrivateAsrCorpus(
         project_root / "runtime/private/voice-asr-calibration.json",
-        KeychainSecretStore(MacOSSecurityKeychain()),
+        keychain_factory(project_root),
         boundary=project_root,
     )
 

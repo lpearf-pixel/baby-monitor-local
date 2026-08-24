@@ -6,6 +6,9 @@ PYTHON="$ROOT/.venv-alpha/bin/python"
 GO2RTC_APP="$ROOT/.local/Go2RTC.app"
 GO2RTC_EXECUTABLE="$GO2RTC_APP/Contents/MacOS/go2rtc"
 GO2RTC_REQUIREMENT='designated => identifier "com.babymonitor.go2rtc"'
+VOICE_KEYCHAIN_APP="$ROOT/.local/VoiceKeychainHelper.app"
+VOICE_KEYCHAIN_EXECUTABLE="$VOICE_KEYCHAIN_APP/Contents/MacOS/voice-keychain-helper"
+VOICE_KEYCHAIN_REQUIREMENT='designated => identifier "com.babymonitor.voice-keychain-helper"'
 PASS_COUNT=0
 FAIL_COUNT=0
 
@@ -116,7 +119,8 @@ check_required_binaries() {
     [[ -x "$PYTHON" ]] && \
     [[ -x "$ROOT/.venv-alpha/bin/uvicorn" ]] && \
     [[ -x "$ROOT/.local/bin/go2rtc" ]] && \
-    [[ -x "$GO2RTC_EXECUTABLE" ]] || return 1
+    [[ -x "$GO2RTC_EXECUTABLE" ]] && \
+    [[ -x "$VOICE_KEYCHAIN_EXECUTABLE" ]] || return 1
 
   codesign --verify --deep --strict \
     --requirements "=$GO2RTC_REQUIREMENT" "$GO2RTC_APP" || return 1
@@ -125,7 +129,16 @@ check_required_binaries() {
   if [[ "$requirement" == *cdhash* ]]; then
     return 1
   fi
-  [[ "$requirement" == *"$GO2RTC_REQUIREMENT"* ]]
+  [[ "$requirement" == *"$GO2RTC_REQUIREMENT"* ]] || return 1
+
+  codesign --verify --deep --strict \
+    --requirements "=$VOICE_KEYCHAIN_REQUIREMENT" \
+    "$VOICE_KEYCHAIN_APP" || return 1
+  requirement="$(codesign -d -r- "$VOICE_KEYCHAIN_APP" 2>&1)" || return 1
+  if [[ "$requirement" == *cdhash* ]]; then
+    return 1
+  fi
+  [[ "$requirement" == *"$VOICE_KEYCHAIN_REQUIREMENT"* ]]
 }
 
 check_runtime_config() {

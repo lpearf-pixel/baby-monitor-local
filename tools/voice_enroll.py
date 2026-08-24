@@ -14,7 +14,7 @@ from services.voice.asr import AsrEngine
 from services.voice.challenge import EnrollmentChallengeSession
 from services.voice.ecapa import EcapaProcess
 from services.voice.enrollment import VoiceEnrollment, VoiceProfileStore
-from services.voice.keychain import KeychainSecretStore, MacOSSecurityKeychain
+from services.voice.helper_keychain import keychain_for_runtime
 from services.voice.live_enrollment import (
     BoundedLivePcmCapture,
     ENROLLMENT_FAILED,
@@ -108,7 +108,7 @@ def _build_operator(
     whisper = voice_artifact_spec(settings, "openai-whisper-base")
     ecapa = voice_artifact_spec(settings, "speechbrain-ecapa-voxceleb")
     asr = AsrEngine(whisper, project_root=project_root)
-    keychain = KeychainSecretStore(MacOSSecurityKeychain())
+    keychain = keychain_for_runtime(project_root)
     profile_id = str(uuid4())
     store = VoiceProfileStore(
         project_root / f"runtime/private/voice-profiles/{profile_id}.json",

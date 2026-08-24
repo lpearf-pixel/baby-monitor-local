@@ -207,6 +207,40 @@ def test_evaluator_compares_identical_encrypted_clips_without_transcript_output(
     assert "天气" not in repr(report)
 
 
+def test_evaluator_reports_only_fixed_prompt_ids_and_aggregate_edit_distance() -> None:
+    clips = {
+        "feeding_start_dad": b"d" * 8_000,
+        "feeding_start_mom": b"m" * 8_000,
+        "feeding_amount": b"a" * 8_000,
+        "feeding_finish": b"f" * 8_000,
+        "care_cancel": b"c" * 8_000,
+        "negative_weather": b"n" * 8_000,
+    }
+    texts = {
+        "feeding_start_dad": "小小，我是爸爸，现在开始喂奶。",
+        "feeding_start_mom": "小小，我是妈妈，现在开始喂奶。",
+        "feeding_amount": "小小，宝宝喝了九十毫升配方奶。",
+        "feeding_finish": "小小，喂奶结束。",
+        "care_cancel": "小小，取消记录。",
+        "negative_weather": "今天的天气不错。",
+    }
+    evaluator = AsrCalibrationEvaluator(
+        corpus=Corpus(tuple(clips.items())),
+        engines={
+            "base": Engine({clips[key]: value for key, value in texts.items()}, 900),
+            "small": Engine({clips[key]: value for key, value in texts.items()}, 1_800),
+        },
+    )
+
+    report = evaluator.evaluate()
+
+    for model in report.models:
+        assert model.mismatch_prompt_ids == ("care_cancel", "negative_weather")
+        assert model.edit_distance_total == 3
+        assert "取消记录" not in repr(model)
+        assert "今天的天气" not in repr(model)
+
+
 def test_evaluator_rejects_incomplete_fixed_prompt_corpus() -> None:
     pcm = b"d" * 8_000
     evaluator = AsrCalibrationEvaluator(

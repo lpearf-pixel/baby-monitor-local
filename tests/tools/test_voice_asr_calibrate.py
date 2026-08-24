@@ -2,6 +2,8 @@ from __future__ import annotations
 
 from pathlib import Path
 
+from services.voice.asr_corpus import PRIVATE_ASR_PROMPTS
+from services.voice.keychain import KeychainSecretStore
 from services.voice.asr_calibration import (
     ASR_CALIBRATION_FAILED,
     AsrCalibrationFailure,
@@ -10,6 +12,20 @@ from services.voice.asr_calibration import (
     CalibrationModelMetrics,
 )
 from tools import voice_asr_calibrate
+
+
+class MemoryKeychain:
+    def __init__(self) -> None:
+        self.values: dict[tuple[str, str], bytes] = {}
+
+    def read(self, service: str, account: str) -> bytes | None:
+        return self.values.get((service, account))
+
+    def write(self, service: str, account: str, secret: bytes) -> None:
+        self.values[(service, account)] = bytes(secret)
+
+    def delete(self, service: str, account: str) -> None:
+        self.values.pop((service, account), None)
 
 
 class Capture:
@@ -86,8 +102,21 @@ def test_capture_fixed_uses_supervised_eight_second_storage_without_vad(
 def test_evaluate_prints_only_candidate_counts_and_latency(tmp_path: Path) -> None:
     report = CalibrationGateReport(
         models=(
-            CalibrationModelMetrics("base", True, 6, 6, 6, 800, 900, True),
-            CalibrationModelMetrics("small", True, 6, 5, 6, 1_600, 1_900, False),
+            CalibrationModelMetrics(
+                "base", True, 6, 6, 6, 800, 900, True, (), 0
+            ),
+            CalibrationModelMetrics(
+                "small",
+                True,
+                6,
+                5,
+                6,
+                1_600,
+                1_900,
+                False,
+                ("negative_weather",),
+                1,
+            ),
         ),
         selected_model="base",
         gate_passed=True,
@@ -113,6 +142,8 @@ def test_evaluate_prints_only_candidate_counts_and_latency(tmp_path: Path) -> No
         "base_wake_matches=6",
         "base_latency_p50_ms=800",
         "base_latency_p95_ms=900",
+        "base_mismatch_prompt_ids=none",
+        "base_edit_distance_total=0",
         "base_passed=true",
         "small_available=true",
         "small_samples_evaluated=6",
@@ -120,6 +151,8 @@ def test_evaluate_prints_only_candidate_counts_and_latency(tmp_path: Path) -> No
         "small_wake_matches=6",
         "small_latency_p50_ms=1600",
         "small_latency_p95_ms=1900",
+        "small_mismatch_prompt_ids=negative_weather",
+        "small_edit_distance_total=1",
         "small_passed=false",
     ]
     assert "爸爸" not in "\n".join(output)
@@ -222,3 +255,20 @@ def test_operator_reports_only_bounded_capture_progress(tmp_path: Path) -> None:
         "failure_stage=capture",
         "captured_ms=12345",
     ]
+
+
+def test_private_corpus_uses_the_stable_runtime_keychain_factory(
+    tmp_path: Path,
+) -> None:
+    backend = MemoryKeychain()
+    store = KeychainSecretStore(backend, random_bytes=lambda size: b"k" * size)
+    roots: list[Path] = []
+
+    corpus = voice_asr_calibrate._private_corpus(
+        tmp_path,
+        keychain_factory=lambda root: roots.append(root) or store,
+    )
+    corpus.append(next(iter(PRIVATE_ASR_PROMPTS)), b"p" * 8_000)
+
+    assert roots == [tmp_path]
+    assert len(backend.values) == 1

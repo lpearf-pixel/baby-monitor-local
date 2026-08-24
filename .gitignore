@@ -10,6 +10,7 @@ __pycache__/
 .mypy_cache/
 .ruff_cache/
 .worktrees/
+.local/
 .DS_Store
 runtime/
 data/
