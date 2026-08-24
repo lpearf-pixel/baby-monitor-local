@@ -762,6 +762,62 @@ def test_intel_voice_converter_dependencies_are_isolated_and_fully_pinned() -> N
     assert makefile.index(path_gate) < makefile.index("-m pip install --requirement")
 
 
+def test_intel_voice_speaker_install_is_explicit_and_host_gated(tmp_path: Path) -> None:
+    requirements = (
+        ROOT / "config/voice-speaker-requirements.txt"
+    ).read_text(encoding="ascii").splitlines()
+    assert requirements == [
+        "huggingface-hub==0.36.0",
+        "numpy==1.26.4",
+        "speechbrain==1.0.3",
+        "torch==2.2.2",
+        "torchaudio==2.2.2",
+    ]
+
+    fake_bin = tmp_path / "bin"
+    fake_bin.mkdir()
+    marker = tmp_path / "python-called"
+    _write_executable(
+        fake_bin / "uname",
+        "#!/bin/sh\n"
+        "if test \"$1\" = -s; then echo Linux; else echo x86_64; fi\n",
+    )
+    fake_python = tmp_path / "python3.11"
+    _write_executable(fake_python, f"#!/bin/sh\n: > '{marker}'\nexit 1\n")
+    environment = os.environ.copy()
+    environment["PATH"] = f"{fake_bin}:{environment['PATH']}"
+
+    result = subprocess.run(
+        [
+            shutil.which("make") or "make",
+            "alpha-voice-speaker-install",
+            f"PYTHON311={fake_python}",
+        ],
+        cwd=ROOT,
+        env=environment,
+        check=False,
+        capture_output=True,
+        text=True,
+    )
+
+    assert result.returncode != 0
+    assert result.stdout.strip() == "voice_speaker_install=unavailable"
+    assert not marker.exists()
+
+
+def test_voice_speaker_check_fails_closed_without_an_environment() -> None:
+    result = subprocess.run(
+        ["make", "alpha-voice-speaker-check"],
+        cwd=ROOT,
+        check=False,
+        capture_output=True,
+        text=True,
+    )
+
+    assert result.returncode != 0
+    assert result.stdout.strip() == "voice_speaker_check=unavailable"
+
+
 def test_installer_installs_acceptance_test_dependencies() -> None:
     content = (ROOT / "tools/install_alpha_macos.sh").read_text(encoding="utf-8")
 

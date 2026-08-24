@@ -57,7 +57,7 @@ registry and macOS `say`/FFmpeg for generated-speech smoke evidence.
 - Produces: `make alpha-voice-speaker-install` and `make alpha-voice-speaker-check`.
 - Consumes: Homebrew Python 3.11 already required by the Alpha installer.
 
-- [ ] **Step 1: Write environment RED tests**
+- [x] **Step 1: Write environment RED tests**
 
 Test that the checker accepts only the exact prefix
 `runtime/voice-speaker-venv`, rejects a symlink in either `runtime` or the environment,
@@ -77,7 +77,7 @@ pip write, invoke the checker before and after installation, suppress pip intern
 emit only `voice_speaker_install=ready|failed|unavailable` or
 `voice_speaker_check=ready|unavailable`.
 
-- [ ] **Step 2: Run RED tests**
+- [x] **Step 2: Run RED tests**
 
 Run:
 
@@ -87,7 +87,7 @@ Run:
 
 Expected: FAIL because the checker, requirements file and Make targets do not exist.
 
-- [ ] **Step 3: Implement the isolated environment gate**
+- [x] **Step 3: Implement the isolated environment gate**
 
 Use the same canonical-parent and `pyvenv.cfg` protections as
 `tools/voice_converter_environment.py`, but require the speaker prefix and import each
@@ -95,7 +95,7 @@ dependency in one isolated child check. Never modify `sys.modules` in the main r
 The install target creates or upgrades the ignored venv and performs only the pinned
 requirements install; startup and `alpha-install` must not invoke it.
 
-- [ ] **Step 4: Run GREEN and static checks**
+- [x] **Step 4: Run GREEN and static checks**
 
 Run:
 
@@ -106,7 +106,7 @@ make -n alpha-voice-speaker-install alpha-voice-speaker-check
 git diff --check
 ```
 
-- [ ] **Step 5: Commit Task 1**
+- [x] **Step 5: Commit Task 1**
 
 ```bash
 git add config/voice-speaker-requirements.txt tools/voice_speaker_environment.py Makefile tests/tools/test_voice_speaker_environment.py tests/deploy/test_alpha_commands.py
