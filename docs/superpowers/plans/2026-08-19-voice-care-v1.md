@@ -922,7 +922,7 @@ client and TTS. Keep `voice.enabled=false` by default. Status contains only stab
 reason, timestamps and bounded aggregate latency; it excludes text, scores tied to a
 person, paths and configuration. launchd owns only the Voice worker.
 
-- [ ] **Step 4: Run focused and full Baby Local gates**
+- [x] **Step 4: Run focused and full Baby Local gates**
 
 Run:
 
@@ -955,8 +955,11 @@ plist lint, Make dry-run, compile and diff checks passed. The exact installed
 `make alpha-guardian-test` was also run and reported 13 PASS / 6 FAIL because this
 isolated worktree intentionally has no `.local` go2rtc app, private runtime settings,
 installed launchd definitions or realtime-model bundle. Source and sibling services
-passed. Step 4 remains open until this exact head is deployed to the actual i9 checkout
-and that installed gate is rerun; Voice remains disabled and no real TTS/care write ran.
+passed. The published final head `614ea69` was then deployed to the actual Intel i9
+checkout on 2026-08-24. After replacing the stale DHCP tunnel target with the same M2's
+verified Bonjour identity and re-enabling its user launchd job, the exact installed
+`make alpha-guardian-test` passed 19/19. Voice launchd is installed but exits cleanly as
+`voice_disabled`; no real TTS, enrollment, household ASR or care write ran.
 
 ### Task 11: Cross-Repository Synthetic Gate V1
 
@@ -1031,6 +1034,8 @@ passed / 115 opt-in skipped with lint/typecheck/build plus real PostgreSQL 16 2/
 installed Baby Local gate remains 13 PASS / 6 FAIL in the isolated worktree because
 private installation/model assets are absent. Both branches are published and exact-head
 CI passed at Baby Local `c554334` / run `32680519119` and Baby Care `53e69d4` / run
-`32680603091`. Gate V1 is therefore closed. The accepted Baby Local head must still be
-deployed to the actual i9 checkout for installed readiness before the adult-only Gate V2;
-Voice remains disabled.
+`32680603091`. Final documentation heads also passed exact-head CI at Baby Local
+`614ea69` / run `32680892081` and Baby Care `b301571` / run `32680891893`. Gate V1 is
+therefore closed, and Baby Local installed readiness passed 19/19 on the actual i9.
+Voice remains disabled. The next gate is local ECAPA installation plus supervised
+Dad/Mom enrollment before the adult-only Gate V2 scenarios; no infant is used.

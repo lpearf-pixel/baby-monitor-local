@@ -889,3 +889,14 @@ M4 期望遗漏；`53e69d4` 只补齐安全计数期望，operations 148 passed 
 `32680603091` 的 static、unit、integration、build、production Compose 5/5 全绿。两次
 失败均未降低验收标准；未创建 PR、未 merge、未修改 main。下一项仍是把接受的 Baby
 Local head 部署到真实 i9 checkout 后重跑 installed Guardian 门；Voice 保持 disabled。
+
+2026-08-24 完成 Voice Care Gate V1 实际 Intel i9 安装验收。Baby Local 最终发布 HEAD
+`614ea69` 部署到保留私有 runtime 与模型的根 checkout；安装更新和受控重启后，Dashboard
+健康、Xiaomi H265 source check PASS、visual worker 保持 5 FPS、Voice launchd 以
+`voice_disabled` 正常退出。首次 `make alpha-guardian-test` 为 18 PASS / 1 FAIL，唯一失败
+是 M2 Ollama bridge：旧临时映射已消失、受限 launchd job 被持久禁用且目标使用陈旧 DHCP
+地址。将目标改为同一 M2 的稳定 Bonjour 身份前，先逐项确认新旧 SSH host key 3/3 完全
+匹配；随后追加哈希 known-host 别名并重新启用用户 job。11435 `/api/version` 与 `/api/tags`
+均返回 HTTP 200，最终同一 installed 门为 19 PASS / 0 FAIL。未改业务代码、未启用 Voice、
+未保存家庭音频、未运行真实 TTS/enrollment/Baby Care 写入。下一门为本地 ECAPA 安装和
+两名成人的私有监督 Gate V2。

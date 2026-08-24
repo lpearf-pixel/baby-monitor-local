@@ -313,10 +313,12 @@
   separately supervised interactive Voice job, fixed semantic TTS through stdin,
   bounded playback/cancellation/ducking, a transcript-free in-memory command pipeline
   and redacted status. Fresh evidence is 140 Voice, 73 frontend, 133 Guardian-focused
-  and 1,106 full Python tests. The isolated worktree's installed Guardian gate is not
+  and 1,106 full Python tests. The isolated worktree's installed Guardian gate was not
   accepted: 13 checks passed and 6 installation/realtime checks failed because private
-  runtime and installed assets are deliberately absent there. Voice stays disabled;
-  deploy this exact head to the real i9 checkout and rerun that gate later.
+  runtime and installed assets were deliberately absent there. The published final head
+  `614ea69` is now deployed to the actual Intel i9; `make alpha-guardian-test` passes
+  19/19. Voice launchd is installed and cleanly stopped as `voice_disabled`; no household
+  audio, enrollment or care write was exercised.
 - Voice Care Task 11 local synthetic Gate V1 is complete at Baby Local `e4cd5d5` and
   Baby Care `bca9b9e`. Generated PCM reaches VAD, exact wake, ASR result, explicit adult
   claim, synthetic speaker state, canonical Ed25519 signing and the encrypted outbox;
@@ -327,8 +329,9 @@
   and injected commit failure. Full local evidence is 1,108 Python plus 73 frontend
   passed; Baby Care is 458 passed / 115 opt-in skipped plus real PostgreSQL 2/2. This is
   synthetic software evidence only. Exact-head CI passed at Baby Local `c554334` / run
-  `32680519119` and Baby Care `53e69d4` / run `32680603091`; installed/human gates remain
-  open.
+  `32680519119` and Baby Care `53e69d4` / run `32680603091`; final documentation heads
+  also pass runs `32680892081` and `32680891893`. Installed i9 readiness is complete;
+  ECAPA installation and supervised two-adult Gate V2 remain open.
 - Installed-i9 audio-source discovery now verifies that the Xiaomi source exposes HEVC
   video plus Opus audio and that the fixed loopback `audio_analysis` alias exposes only
   Opus. The real input is supported 48 kHz stereo Opus; the fixed FFmpeg boundary
