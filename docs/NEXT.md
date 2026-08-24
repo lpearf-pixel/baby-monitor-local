@@ -166,12 +166,12 @@ finite normalized 192-dimensional embeddings at p50 284 ms / p95 311 ms without 
 audio persistence, and the installed Guardian gate remains 19/19. Voice Care remains
 disabled until the human identity/accuracy gate passes.
 
-Gate V2 is now ASR-first. The encrypted fixed-phrase corpus, official Silero runtime,
-bounded capture and transcript-free base/small evaluator are implemented. Real Xiaomi
-capture is available, but official Silero returned zero spans and no corpus was written;
-the agent session also cannot create the dedicated Keychain item because macOS requires
-logged-in user interaction. The next action is one fixed eight-second prompted capture
-from Terminal, followed by offline VAD/Whisper comparison on that stored sample.
+Gate V2 is ASR-first. The encrypted six-prompt corpus and stable signed Keychain helper
+now pass real user-launchd access. The approved base/small x four-profile one-shot matrix
+has been exhausted: no candidate reached 6/6 exact, although base care-hotword profiles
+reached 5/6 with acceptable latency. Official Silero passes its generated control and
+5/6 prompts; `negative_weather` splits into two spans, and gain is inapplicable because
+the private signal is not 12 dB below control. Voice remains disabled.
 
 **Prerequisites:** The current design approval permits synthetic/public-media software
 work before P0–P2 complete. P0–P2 and A7 remain prerequisites for household
@@ -188,11 +188,10 @@ never provide household audio for Git or chat.
 Test timing, deduplication, quiet/adult-speech negatives and privacy using generated or
 explicitly public media. Software tests do not prove household accuracy.
 
-**Next:** Complete the installed-i9 ASR accuracy gate and repair the zero-span Silero
-result before replay/overlap or Dad/Mom enrollment. Then run adult-only supervised
-identity scenarios before Baby Care binding/private delivery. Keep production Voice
-Care and cry A8 disabled until their separate accuracy, identity and model gates pass.
-P4 remains the next independent product stage.
+**Next:** Approve a separate ASR model/runtime/license amendment, then rerun the same
+encrypted six-prompt exact/wake/latency gate. Resolve the one remaining Silero split
+without lowering 0.50. Replay/overlap, Dad/Mom enrollment and Baby Care binding remain
+blocked until both gates pass. P4 remains the next independent product stage.
 
 ## P4 — Authenticated private remote access
 

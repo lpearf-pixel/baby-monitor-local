@@ -8,7 +8,8 @@ Updated: 2026-08-24
 - Stable Xiaomi line: `stable/xiaomi-alpha` at `0df20ae`.
 - Active implementation line: `codex/voice-care-v1-gate-v1`, based on the approved
   `codex/voice-care-v1-design` checkpoint. The Gate V2 ECAPA runtime implementation is
-  published through `7dd0155`; exact-head CI run `32699249559` passed.
+  published through `7dd0155`; exact-head CI run `32699249559` passed. The current local
+  ASR-first line is through `305232f` and has not been pushed.
 - The evidence-retention line is based on the published Dashboard snapshot `69e2d5b`;
   the Dashboard remains complete and its published branch is not rewritten.
 - Remote branch `codex/baby-guardian-event-loop` remains at its earlier squash snapshot
@@ -256,7 +257,7 @@ window, not 24/72-hour stability or unattended-care safety.
 |---|---|
 | Protected default branch | `main`; unchanged by guardian work |
 | Stable Xiaomi branch | `stable/xiaomi-alpha` at `0df20ae` |
-| Active feature branch | `codex/voice-care-v1-design` |
+| Active feature branch | `codex/voice-care-v1-gate-v1` at `305232f` |
 | Guardian evidence-retention runtime implementation | `718af9a` |
 | Guardian evidence-retention safety closure | `e3cd69c` |
 | Guardian live-notification helper | `d862f2a` |
@@ -271,10 +272,8 @@ window, not 24/72-hour stability or unattended-care safety.
 | PR/merge | No guardian PR; not merged |
 | Protected branches | `main` and `stable/xiaomi-alpha`; unchanged |
 
-The current recovery started from `10f3466` on `codex/voice-care-v1-design`, equal to
-its upstream before local edits. Nothing from this recovery slice had been pushed,
-merged or opened as a PR at this checkpoint. Untracked `.local/`,
-`Interactive` and `test.sh` were deliberately preserved.
+The current Voice accuracy work remains local on `codex/voice-care-v1-gate-v1` and has
+not been pushed, merged or opened as a PR. Protected branches remain unchanged.
 
 ## Latest Installed-i9 Runtime Evidence
 
@@ -397,16 +396,17 @@ legacy branch into this line without a separate integration decision.
   tests. The installed deployment checkout still passes Guardian 19/19. Voice remains
   disabled, and this result does not prove Dad/Mom identity, replay/overlap rejection,
   enrollment quality, Baby Care pairing or production writes.
-- Voice Care Gate V2 is now ASR-first. A bounded encrypted fixed-phrase calibration
-  corpus, pinned official Silero ONNX adapter, supervised 8/12/30-second capture paths
-  and transcript-free base/small comparison gate are implemented locally. The live
-  Xiaomi source remains healthy, but the official Silero batch detected zero speech
-  spans and correctly wrote nothing. A separate fixed eight-second calibration mode is
-  ready to isolate Whisper accuracy; the agent process cannot create its dedicated
-  Keychain item because macOS returns interaction-not-allowed. One logged-in Terminal
-  capture is therefore the exact next human action. Voice remains disabled, no
-  calibration audio or key currently exists, and enrollment remains blocked. Fresh
-  software evidence is Voice Care 209/209 and full Python 1,229/1,229.
+- Voice Care Gate V2 remains ASR-first. Six fixed prompted clips now exist only as one
+  ignored AES-GCM corpus. Commit `de499b7` adds a signed fixed-identity Keychain helper;
+  the legacy 32-byte key was copied in memory to helper-owned v2 without rewriting the
+  corpus or deleting v1, and the real user launchd context read it twice successfully.
+  The closed 2-model x 4-profile bake-off at `f61e2ed` found no passing candidate:
+  base `care_hotwords`/beam10 were best at 5/6 exact, 6/6 wake and P95 2,246/2,145 ms;
+  all small candidates failed accuracy and latency. The Silero diagnostic at `305232f`
+  passed its generated control and 5/6 private prompts, but `negative_weather` produced
+  two spans. It correctly skipped gain because private audio was not 12 dB quieter.
+  Voice remains disabled with `asr_candidate_unavailable` and
+  `vad_candidate_unavailable`; fresh Voice software evidence is 233/233.
 - Remote private viewing and the 72-hour release gate remain unfinished.
 - This system does not detect breathing, heart rate, suffocation or medical emergencies.
 
@@ -423,10 +423,11 @@ legacy branch into this line without a separate integration decision.
 4. Continue the approved audio/cry plan at Stage A8; a production model and
    license are still required before enablement; household audio remains
    memory-only.
-5. Complete the Voice Care installed-i9 ASR accuracy gate first: create the encrypted
-   fixed-phrase corpus from the logged-in Terminal, compare base/small on identical
-   clips, then fix the zero-span Silero result without lowering its threshold. Only
-   after that continue Dad/Mom enrollment, replay/overlap and Baby Care binding.
+5. Keep Voice Care disabled. The approved base/small closed matrix is exhausted and no
+   candidate reached 6/6; Silero also remains 5/6. The next Voice slice is a separately
+   approved ASR model/runtime/license amendment, followed by the same encrypted-corpus
+   gate. Do not continue Dad/Mom enrollment or Baby Care binding before both ASR and VAD
+   pass unchanged thresholds.
 6. Complete authenticated private remote access using Tailscale Serve/ACL only.
 7. Complete the final 72-hour release gate before any release/tag decision.
 8. Define per-parent acknowledgement and false-positive feedback only through a future

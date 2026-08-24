@@ -342,16 +342,17 @@
   replay/overlap rejection, private enrollment, Baby Care pairing and production writes
   remain pending. The implementation is published through `7dd0155`; exact-head CI run
   `32699249559` passed all Python, frontend, schema, compile, shell and go2rtc jobs.
-- Voice Care Gate V2 is paused at the installed-i9 ASR accuracy gate before enrollment.
-  The local implementation now provides a maximum-20 AES-GCM fixed-phrase corpus with
-  one dedicated Keychain key, a manifest-validated official Silero v6.2 ONNX adapter,
-  bounded live capture and transcript-free base/small aggregate comparison. The Xiaomi
-  source gate and standalone 30-second PCM capture pass, but a supervised official-
-  Silero batch detected zero spans and persisted nothing. The calibration-only fixed
-  eight-second path is ready, but this agent context receives macOS OSStatus `-25308`
-  when creating the key; the first capture must run once in the logged-in Terminal.
-  No audio/key currently exists and production Voice stays disabled. Fresh software
-  evidence is Voice Care 209 passed and full Python 1,229 passed.
+- Voice Care Gate V2 is blocked at the installed-i9 ASR/VAD accuracy gate before
+  enrollment. Six fixed prompted clips are present only in the ignored encrypted corpus.
+  A signed stable Keychain helper copied the same legacy key bytes to helper-owned v2;
+  two real user-launchd reads passed without exposing the key. The one-shot base/small
+  matrix exhausted all four approved global decode profiles. No candidate passed: base
+  `care_hotwords` and beam10 were best at 5/6 exact, 6/6 wake and P95 2,246/2,145 ms;
+  small failed accuracy and latency. Official Silero passed the generated control and
+  five private prompts, while `negative_weather` produced two spans. Gain correctly did
+  not run because private RMS was not 12 dB below control. Current stable blockers are
+  `asr_candidate_unavailable` and `vad_candidate_unavailable`; Voice stays disabled.
+  Local commits are `de499b7`, `f61e2ed` and `305232f`; fresh Voice tests are 233 passed.
 - Installed-i9 audio-source discovery now verifies that the Xiaomi source exposes HEVC
   video plus Opus audio and that the fixed loopback `audio_analysis` alias exposes only
   Opus. The real input is supported 48 kHz stereo Opus; the fixed FFmpeg boundary

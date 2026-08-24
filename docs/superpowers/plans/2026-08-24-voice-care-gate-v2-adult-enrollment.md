@@ -662,14 +662,14 @@ git commit -m "test: gate installed Voice runtime preflight"
 
 **Next:** Only after this gate passes, continue Dad/Mom enrollment below.
 
-Current installed evidence: the pinned official Silero artifact validates and rejects
-real silence, while the supervised Xiaomi batch returned zero speech spans. The fixed
-eight-second corpus now contains all six encrypted prompts. Task 5A is complete: the
-helper-owned v2 key passes two fresh non-interactive launchd reads. Base still misses
-`feeding_amount` and `negative_weather` with aggregate edit distance 5, small fails both
-accuracy and latency, and the supervised Silero batch still has zero speech spans.
-These are Task 5B-5C failures, not reasons to weaken privacy, exact-match, wake, VAD or
-latency gates.
+Current installed evidence: Task 5A is complete and helper-owned v2 passes two fresh
+non-interactive launchd reads. Task 5B is exhausted and blocked as
+`asr_candidate_unavailable`; the best approved base profiles reached 5/6 exact and 6/6
+wake within latency. Task 5C is blocked as `vad_candidate_unavailable`; its generated
+control and 5/6 private prompts pass, while `negative_weather` produces two spans. Task
+5D and Task 6 remain unchecked. These failures require a separate ASR model/runtime/
+license amendment and a compliant Silero result, not weaker privacy, exact-match, wake,
+VAD or latency gates.
 
 ### Task 6: Installed i9 Human Enrollment Gate
 

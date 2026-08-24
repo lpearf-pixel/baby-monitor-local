@@ -929,3 +929,20 @@ Whisper base/small 聚合评测，输出不含 transcript。真实 Xiaomi source
 执行一次固定短句采集；Voice 保持 disabled，speaker/enrollment/Baby Care 写入继续阻塞。
 本切片新鲜软件门为 Voice Care 209 passed、完整 Python 1,229 passed；Python compile、
 Make dry-run 与 `git diff --check` 均通过。
+
+2026-08-24 Voice Care Gate V2 ASR-first real-device checkpoint. Commit `de499b7` added
+the signed `com.babymonitor.voice-keychain-helper` boundary and copied the existing
+32-byte calibration key in memory from legacy v1 to helper-owned v2 without rewriting
+the encrypted corpus or deleting v1. A one-shot user launchd probe ran twice with exit
+0 and returned only `key_state=available`, `key_bytes=32`. Commit `f61e2ed` ran the
+closed base/small x baseline/no-hotwords/care-hotwords/beam10 matrix on the same six
+encrypted clips. No candidate passed: the best base care profiles were 5/6 exact, 6/6
+wake, P95 2,246/2,145 ms and missed only public prompt ID `feeding_start_dad`; all small
+candidates failed accuracy and latency. Commit `305232f` added aggregate Silero signal
+diagnostics: its generated Mandarin control and five private prompts had one span,
+while `negative_weather` had two; no gain was applied because private RMS was not 12 dB
+below control. Fresh focused gates were 39 and 15 passed, and the final Voice suite was
+233 passed. No raw audio, transcript, key, corpus path or Baby Care write was emitted.
+Voice remains disabled with `asr_candidate_unavailable` and
+`vad_candidate_unavailable`; Task 5D/enrollment require a separate approved ASR model/
+runtime/license amendment and a passing unchanged Silero gate.
