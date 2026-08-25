@@ -7,11 +7,19 @@ import os
 import re
 import time
 from collections.abc import Callable, Mapping
+from dataclasses import dataclass
 from datetime import datetime
 from pathlib import Path
 from typing import Protocol
 
+from packages.contracts.settings import VoiceCareSettings
 from services.audio.source import DecoderRead
+from services.voice.artifacts import (
+    VoiceArtifactSpec,
+    validate_voice_artifact,
+    voice_artifact_spec,
+)
+from services.voice.asr_corpus import ASR_CORPUS_KEY_ACCOUNT
 from services.voice.capture import UtteranceResult
 from services.voice.client import VoiceSemanticResponse
 from services.voice.intent import DialogueState, ParsedIntent, parse_feeding_command
@@ -20,6 +28,7 @@ from services.voice.signing import DeviceIdentity
 from services.voice.speaker import SpeakerVerification
 from services.voice.vad import VadResult
 from services.voice.wake import validate_wake_prefix
+from services.voice.helper_keychain import keychain_for_runtime
 
 
 VOICE_WORKER_UNAVAILABLE = "voice_worker_unavailable"
@@ -44,6 +53,70 @@ _STATUS_REASONS = {
 }
 _FRAME_BYTES = 3_200
 _CLAIM = re.compile(r"^我是(爸爸|妈妈)[,，、\s]+(.+)$")
+_SELECTED_ASR_ARTIFACT = "sherpa-onnx-paraformer-zh-2023-09-14"
+_SELECTED_ASR_PROFILE = "paraformer"
+_SILERO_ARTIFACT = "silero-vad-v6.2"
+
+
+class PreflightKeychain(Protocol):
+    def read(self, account: str, *, size: int) -> bytes | None: ...
+
+
+PreflightKeychainFactory = Callable[[Path], PreflightKeychain]
+ArtifactValidator = Callable[[VoiceArtifactSpec, Path], object]
+
+
+@dataclass(frozen=True)
+class VoicePreflightReport:
+    available: bool
+    reason: str
+    asr_profile: str | None
+
+    def __post_init__(self) -> None:
+        valid = (
+            self.available is True
+            and self.reason == "voice_preflight_available"
+            and self.asr_profile == _SELECTED_ASR_PROFILE
+        ) or (
+            self.available is False
+            and self.reason
+            in {
+                "voice_preflight_unavailable",
+                "voice_keychain_unavailable",
+                "voice_model_unavailable",
+            }
+            and self.asr_profile is None
+        )
+        if not valid:
+            raise ValueError(VOICE_WORKER_UNAVAILABLE)
+
+
+def run_voice_preflight(
+    settings: VoiceCareSettings,
+    project_root: Path,
+    *,
+    keychain_factory: PreflightKeychainFactory = keychain_for_runtime,
+    artifact_validator: ArtifactValidator = validate_voice_artifact,
+) -> VoicePreflightReport:
+    """Validate the fixed disabled Voice runtime without opening audio or models."""
+
+    if settings.enabled:
+        return VoicePreflightReport(False, "voice_preflight_unavailable", None)
+    try:
+        root = Path(project_root).resolve(strict=True)
+        key = keychain_factory(root).read(ASR_CORPUS_KEY_ACCOUNT, size=32)
+        if type(key) is not bytes or len(key) != 32:
+            raise ValueError
+    except Exception:
+        return VoicePreflightReport(False, "voice_keychain_unavailable", None)
+    try:
+        for artifact_id in (_SELECTED_ASR_ARTIFACT, _SILERO_ARTIFACT):
+            artifact_validator(voice_artifact_spec(settings, artifact_id), root)
+    except Exception:
+        return VoicePreflightReport(False, "voice_model_unavailable", None)
+    return VoicePreflightReport(
+        True, "voice_preflight_available", _SELECTED_ASR_PROFILE
+    )
 
 
 class StopEvent(Protocol):
@@ -378,6 +451,8 @@ def _closed_response(code: str) -> VoiceSemanticResponse:
 __all__ = [
     "VOICE_WORKER_UNAVAILABLE",
     "VoiceCommandProcessor",
+    "VoicePreflightReport",
     "VoiceStatusWriter",
     "VoiceWorker",
+    "run_voice_preflight",
 ]

@@ -10,6 +10,8 @@
     <string>__PROJECT_ROOT__/tools/run_voice_worker.py</string>
     <string>--settings</string>
     <string>__PROJECT_ROOT__/runtime/settings.yaml</string>
+    <string>--voice-models</string>
+    <string>__PROJECT_ROOT__/runtime/config/voice-care-models.json</string>
   </array>
   <key>WorkingDirectory</key>
   <string>__PROJECT_ROOT__</string>

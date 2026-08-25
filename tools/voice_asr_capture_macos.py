@@ -45,7 +45,7 @@ InputFunction = Callable[[str], str]
 JobRunner = Callable[[Path, str], int]
 EvaluationJobRunner = Callable[[Path, str], int]
 UidGetter = Callable[[], int]
-_EVALUATIONS = frozenset({"paraformer", "vad-diagnostic"})
+_EVALUATIONS = frozenset({"paraformer", "vad-diagnostic", "preflight"})
 _REQUEST_ID_PATTERN = re.compile(r"[0-9a-f]{32}")
 
 
@@ -141,7 +141,13 @@ def parse_evaluation_result(
         values[key] = value
         if key != "request_id":
             rendered.append(line)
-    allowed = _paraformer_keys(values) if operation == "paraformer" else _vad_keys()
+    allowed = (
+        _paraformer_keys(values)
+        if operation == "paraformer"
+        else _preflight_keys(values)
+        if operation == "preflight"
+        else _vad_keys()
+    )
     if set(values) != allowed or values.get("operation") != operation:
         raise ValueError(CAPTURE_UNAVAILABLE)
     if values.get("result") not in {"PASS", "FAIL"}:
@@ -151,6 +157,8 @@ def parse_evaluation_result(
     if values.get("request_id") != request_id:
         raise ValueError(CAPTURE_UNAVAILABLE)
     if (values["result"] == "PASS") != (values["gate_passed"] == "true"):
+        raise ValueError(CAPTURE_UNAVAILABLE)
+    if operation == "preflight" and not _valid_preflight_values(values):
         raise ValueError(CAPTURE_UNAVAILABLE)
     if not all(_bounded_aggregate_value(key, value) for key, value in values.items()):
         raise ValueError(CAPTURE_UNAVAILABLE)
@@ -204,6 +212,56 @@ def _vad_keys() -> set[str]:
     return keys
 
 
+def _preflight_keys(values: dict[str, str]) -> set[str]:
+    keys = {
+        "result",
+        "operation",
+        "voice_preflight",
+        "gate_passed",
+        "request_id",
+    }
+    if values.get("result") == "PASS":
+        keys.update(
+            {
+                "asr_profile",
+                "keychain",
+                "asr_artifact",
+                "silero_artifact",
+            }
+        )
+    else:
+        keys.add("reason")
+    return keys
+
+
+def _valid_preflight_values(values: dict[str, str]) -> bool:
+    if values.get("result") == "PASS":
+        return all(
+            values.get(key) == expected
+            for key, expected in {
+                "operation": "preflight",
+                "voice_preflight": "available",
+                "gate_passed": "true",
+                "asr_profile": "paraformer",
+                "keychain": "available",
+                "asr_artifact": "available",
+                "silero_artifact": "available",
+            }.items()
+        )
+    return (
+        values.get("result") == "FAIL"
+        and values.get("operation") == "preflight"
+        and values.get("voice_preflight") == "unavailable"
+        and values.get("gate_passed") == "false"
+        and values.get("reason")
+        in {
+            "voice_preflight_unavailable",
+            "voice_keychain_unavailable",
+            "voice_model_unavailable",
+        }
+    )
+
+
 def _bounded_aggregate_value(key: str, value: str) -> bool:
     if not value or len(value) > 256 or any(character.isspace() for character in value):
         return False
@@ -245,6 +303,17 @@ def _evaluation_job(project_root: Path, operation: str) -> int:
         from tools.voice_vad_diagnostic import main as diagnostic_main
 
         return diagnostic_main(project_root=project_root)
+    if operation == "preflight":
+        from tools.run_voice_worker import main as worker_main
+
+        return worker_main(
+            [
+                "--preflight",
+                "--voice-models",
+                str(project_root / "runtime/config/voice-care-models.json"),
+            ],
+            project_root=project_root,
+        )
     raise ValueError(CAPTURE_UNAVAILABLE)
 
 
@@ -294,6 +363,7 @@ def main(argv: Sequence[str] | None = None) -> int:
     record.add_argument("--prompt-id", required=True, choices=tuple(PRIVATE_ASR_PROMPTS))
     subparsers.add_parser("paraformer")
     subparsers.add_parser("vad-diagnostic")
+    subparsers.add_parser("preflight")
     subparsers.add_parser("recover")
     subparsers.add_parser("login-job")
     subparsers.add_parser("terminal-job")

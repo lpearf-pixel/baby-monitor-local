@@ -26,6 +26,8 @@ def test_voice_launchd_is_independent_interactive_and_private() -> None:
         "__PROJECT_ROOT__/tools/run_voice_worker.py",
         "--settings",
         "__PROJECT_ROOT__/runtime/settings.yaml",
+        "--voice-models",
+        "__PROJECT_ROOT__/runtime/config/voice-care-models.json",
     ]
     assert payload["KeepAlive"] == {"SuccessfulExit": False}
     assert payload["ProcessType"] == "Interactive"
@@ -40,6 +42,7 @@ def test_voice_make_targets_are_bounded_and_separate() -> None:
         "alpha-voice-test",
         "alpha-voice-start",
         "alpha-voice-stop",
+        "alpha-voice-preflight",
     ):
         completed = subprocess.run(
             ["make", "-n", target], cwd=ROOT, capture_output=True, text=True, check=False
@@ -50,9 +53,12 @@ def test_voice_make_targets_are_bounded_and_separate() -> None:
     assert "tests/voice" in outputs["alpha-voice-test"]
     assert "--voice-only" in outputs["alpha-voice-start"]
     assert "--voice-only" in outputs["alpha-voice-stop"]
+    assert "tools.voice_asr_capture_macos preflight" in outputs["alpha-voice-preflight"]
     for target in ("alpha-voice-start", "alpha-voice-stop"):
         assert "alpha-restart" not in outputs[target]
         assert "go2rtc" not in outputs[target]
+    for sibling in ("alpha-restart", "go2rtc", "visual", "gauge", "watchdog", "audio"):
+        assert sibling not in outputs["alpha-voice-preflight"].lower()
 
 
 def test_install_start_stop_and_guardian_gate_keep_voice_as_one_sibling() -> None:
@@ -66,6 +72,7 @@ def test_install_start_stop_and_guardian_gate_keep_voice_as_one_sibling() -> Non
     assert 'VOICE_LABEL="com.babymonitor.voice"' in stop
     assert "run_voice_worker.py" in start
     assert "test_voice_worker_deploy.py" in guardian
+    assert 'run_check "installation" "voice_preflight" check_voice_preflight' in guardian
     assert (
         "tests/tools/test_run_visual_worker.py \\\n"
         "    tests/deploy/test_voice_worker_deploy.py\n"
@@ -189,3 +196,101 @@ def test_disabled_runner_exits_without_opening_audio_or_models(tmp_path: Path) -
     ) == 0
     status = json.loads((project / "runtime/status/voice.json").read_text())
     assert status["worker_state"] == "disabled"
+
+
+def test_preflight_runner_is_aggregate_only_and_never_builds_worker(
+    tmp_path: Path,
+) -> None:
+    from services.voice.worker import VoicePreflightReport
+    from tools.run_voice_worker import main
+
+    project = tmp_path / "project"
+    models = project / "runtime/config/voice-care-models.json"
+    models.parent.mkdir(parents=True)
+    models.write_text(
+        json.dumps(
+            {
+                "enabled": False,
+                "silero_vad_manifest_sha256": "a" * 64,
+                "paraformer_zh_manifest_sha256": "b" * 64,
+            }
+        ),
+        encoding="ascii",
+    )
+    output: list[str] = []
+
+    result = main(
+        ["--preflight", "--voice-models", str(models)],
+        project_root=project,
+        worker_factory=lambda *_args: (_ for _ in ()).throw(AssertionError("worker")),
+        preflight_factory=lambda _settings, _root: VoicePreflightReport(
+            True, "voice_preflight_available", "paraformer"
+        ),
+        printer=output.append,
+    )
+
+    assert result == 0
+    assert output == [
+        "result=PASS",
+        "operation=preflight",
+        "voice_preflight=available",
+        "gate_passed=true",
+        "asr_profile=paraformer",
+        "keychain=available",
+        "asr_artifact=available",
+        "silero_artifact=available",
+    ]
+    assert not (project / "runtime/status/voice.json").exists()
+
+
+def test_preflight_runner_redacts_failure_and_rejects_wrong_model_path(
+    tmp_path: Path,
+) -> None:
+    from services.voice.worker import VoicePreflightReport
+    from tools.run_voice_worker import main
+
+    project = tmp_path / "project"
+    models = project / "runtime/config/voice-care-models.json"
+    models.parent.mkdir(parents=True)
+    models.write_text(
+        json.dumps(
+            {
+                "enabled": False,
+                "silero_vad_manifest_sha256": "a" * 64,
+                "paraformer_zh_manifest_sha256": "b" * 64,
+            }
+        ),
+        encoding="ascii",
+    )
+    output: list[str] = []
+    failed = main(
+        ["--preflight", "--voice-models", str(models)],
+        project_root=project,
+        preflight_factory=lambda _settings, _root: VoicePreflightReport(
+            False, "voice_model_unavailable", None
+        ),
+        printer=output.append,
+    )
+    wrong_output: list[str] = []
+    wrong = main(
+        ["--preflight", "--voice-models", str(tmp_path / "other.json")],
+        project_root=project,
+        printer=wrong_output.append,
+    )
+
+    assert failed == 1
+    assert output == [
+        "result=FAIL",
+        "operation=preflight",
+        "voice_preflight=unavailable",
+        "gate_passed=false",
+        "reason=voice_model_unavailable",
+    ]
+    assert wrong == 1
+    assert wrong_output == [
+        "result=FAIL",
+        "operation=preflight",
+        "voice_preflight=unavailable",
+        "gate_passed=false",
+        "reason=voice_preflight_unavailable",
+    ]

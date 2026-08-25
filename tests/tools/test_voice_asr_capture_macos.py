@@ -1175,6 +1175,60 @@ def test_login_paraformer_evaluation_uses_same_background_identity(
     assert printed == list(parse_evaluation_result(output, "paraformer", request_id))
 
 
+def test_login_preflight_uses_same_background_identity(tmp_path: Path) -> None:
+    root = tmp_path / "repo"
+    root.mkdir()
+    outputs: list[tuple[str, str]] = []
+
+    def opener(_command: list[str], **_: object) -> _Result:
+        request_id = _pending_request_id(root)
+        output = (
+            "result=PASS\noperation=preflight\n"
+            "voice_preflight=available\ngate_passed=true\n"
+            "asr_profile=paraformer\nkeychain=available\n"
+            "asr_artifact=available\nsilero_artifact=available\n"
+            f"request_id={request_id}\nlogin_job_complete=true\n"
+        )
+        outputs.append((request_id, output))
+        (root / "runtime/status/voice-asr-capture.txt").write_text(
+            output, encoding="utf-8"
+        )
+        return _Result()
+
+    printed: list[str] = []
+    assert (
+        run_login_evaluation(
+            root,
+            "preflight",
+            opener=opener,
+            sleeper=lambda _: None,
+            printer=printed.append,
+            platform_name="darwin",
+            uid_getter=lambda: 501,
+        )
+        == 0
+    )
+    request_id, output = outputs[0]
+    assert printed == list(parse_evaluation_result(output, "preflight", request_id))
+
+
+@pytest.mark.parametrize(
+    "output",
+    [
+        "result=PASS\noperation=preflight\nvoice_preflight=available\n"
+        "gate_passed=true\nasr_profile=private\nkeychain=available\n"
+        "asr_artifact=available\nsilero_artifact=available\n"
+        "request_id=aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\nlogin_job_complete=true\n",
+        "result=FAIL\noperation=preflight\nvoice_preflight=unavailable\n"
+        "gate_passed=false\nreason=private_path\n"
+        "request_id=aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\nlogin_job_complete=true\n",
+    ],
+)
+def test_preflight_result_accepts_only_fixed_aggregate_values(output: str) -> None:
+    with pytest.raises(ValueError, match="^voice_asr_capture_unavailable$"):
+        parse_evaluation_result(output, "preflight", "a" * 32)
+
+
 def test_evaluation_result_rejects_transcript_output() -> None:
     with pytest.raises(ValueError, match="^voice_asr_capture_unavailable$"):
         parse_evaluation_result(

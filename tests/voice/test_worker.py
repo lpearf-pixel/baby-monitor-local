@@ -14,7 +14,13 @@ from services.voice.client import VoiceSemanticResponse
 from services.voice.outbox import DeliveryResult, OutboxEntry
 from services.voice.speaker import SpeakerVerification
 from services.voice.vad import VadResult
-from services.voice.worker import VoiceCommandProcessor, VoiceStatusWriter, VoiceWorker
+from packages.contracts.settings import VoiceCareSettings
+from services.voice.worker import (
+    VoiceCommandProcessor,
+    VoiceStatusWriter,
+    VoiceWorker,
+    run_voice_preflight,
+)
 from services.voice.asr import AsrResult
 
 
@@ -176,6 +182,93 @@ def test_worker_run_closes_only_its_decoder_and_collector(tmp_path: Path) -> Non
 
     assert decoder.closed is True
     assert collector.closed is True
+
+
+class _PreflightKeychain:
+    def __init__(self, value: bytes | None) -> None:
+        self.value = value
+        self.calls: list[tuple[str, int]] = []
+
+    def read(self, account: str, *, size: int) -> bytes | None:
+        self.calls.append((account, size))
+        return self.value
+
+
+def _voice_model_settings(*, enabled: bool = False) -> VoiceCareSettings:
+    return VoiceCareSettings(
+        enabled=enabled,
+        silero_vad_manifest_sha256="a" * 64,
+        whisper_base_manifest_sha256="c" * 64,
+        whisper_small_manifest_sha256="d" * 64,
+        paraformer_zh_manifest_sha256="b" * 64,
+        speechbrain_ecapa_manifest_sha256="e" * 64,
+    )
+
+
+def test_preflight_reads_one_fixed_key_and_validates_only_selected_models(
+    tmp_path: Path,
+) -> None:
+    keychain = _PreflightKeychain(b"k" * 32)
+    validated: list[str] = []
+
+    report = run_voice_preflight(
+        _voice_model_settings(),
+        tmp_path,
+        keychain_factory=lambda _root: keychain,
+        artifact_validator=lambda spec, _root: validated.append(spec.artifact_id),
+    )
+
+    assert report.available is True
+    assert report.reason == "voice_preflight_available"
+    assert report.asr_profile == "paraformer"
+    assert keychain.calls == [("voice-asr-calibration-key.v2", 32)]
+    assert validated == [
+        "sherpa-onnx-paraformer-zh-2023-09-14",
+        "silero-vad-v6.2",
+    ]
+
+
+def test_preflight_keychain_failure_does_not_open_models(tmp_path: Path) -> None:
+    validated: list[str] = []
+
+    report = run_voice_preflight(
+        _voice_model_settings(),
+        tmp_path,
+        keychain_factory=lambda _root: _PreflightKeychain(None),
+        artifact_validator=lambda spec, _root: validated.append(spec.artifact_id),
+    )
+
+    assert report.available is False
+    assert report.reason == "voice_keychain_unavailable"
+    assert report.asr_profile is None
+    assert validated == []
+
+
+def test_preflight_model_failure_is_bounded_and_keeps_voice_disabled(
+    tmp_path: Path,
+) -> None:
+    keychain = _PreflightKeychain(b"k" * 32)
+
+    def reject_model(_spec, _root) -> None:
+        raise RuntimeError("private path or model exception")
+
+    report = run_voice_preflight(
+        _voice_model_settings(),
+        tmp_path,
+        keychain_factory=lambda _root: keychain,
+        artifact_validator=reject_model,
+    )
+    enabled_report = run_voice_preflight(
+        _voice_model_settings(enabled=True),
+        tmp_path,
+        keychain_factory=lambda _root: keychain,
+        artifact_validator=lambda _spec, _root: None,
+    )
+
+    assert report.available is False
+    assert report.reason == "voice_model_unavailable"
+    assert enabled_report.available is False
+    assert enabled_report.reason == "voice_preflight_unavailable"
 
 
 def test_status_writer_rejects_unlisted_reason_instead_of_echoing_it(tmp_path: Path) -> None:

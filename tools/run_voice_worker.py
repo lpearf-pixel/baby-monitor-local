@@ -12,16 +12,27 @@ ROOT = Path(__file__).resolve().parents[1]
 if str(ROOT) not in sys.path:
     sys.path.insert(0, str(ROOT))
 
-from packages.contracts.settings import AppSettings
-from services.voice.worker import VoiceStatusWriter, VoiceWorker
+from packages.contracts.settings import AppSettings, VoiceCareSettings
+from services.voice.worker import (
+    VoicePreflightReport,
+    VoiceStatusWriter,
+    VoiceWorker,
+    run_voice_preflight,
+)
 
 
 WorkerFactory = Callable[[AppSettings, Path], VoiceWorker]
+PreflightFactory = Callable[[VoiceCareSettings, Path], VoicePreflightReport]
+Printer = Callable[[str], None]
+_VOICE_MODELS_RELATIVE = Path("runtime/config/voice-care-models.json")
+_MAX_VOICE_MODELS_BYTES = 16_384
 
 
 def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
     parser = argparse.ArgumentParser(description="Run the independent Voice Care worker.")
-    parser.add_argument("--settings", required=True, type=Path)
+    parser.add_argument("--settings", type=Path)
+    parser.add_argument("--voice-models", type=Path)
+    parser.add_argument("--preflight", action="store_true")
     return parser.parse_args(argv)
 
 
@@ -30,10 +41,30 @@ def main(
     *,
     project_root: Path = ROOT,
     worker_factory: WorkerFactory | None = None,
+    preflight_factory: PreflightFactory = run_voice_preflight,
+    printer: Printer = print,
 ) -> int:
-    status = VoiceStatusWriter(project_root / "runtime/status/voice.json")
+    root = Path(project_root)
     try:
+        root = root.resolve(strict=True)
         args = parse_args(argv)
+        if args.preflight:
+            settings = _load_voice_models(root, args.voice_models)
+            report = preflight_factory(settings, root)
+            _print_preflight(report, printer)
+            return 0 if report.available else 1
+    except (Exception, KeyboardInterrupt):
+        printer("result=FAIL")
+        printer("operation=preflight")
+        printer("voice_preflight=unavailable")
+        printer("gate_passed=false")
+        printer("reason=voice_preflight_unavailable")
+        return 1
+
+    status = VoiceStatusWriter(root / "runtime/status/voice.json")
+    try:
+        if args.settings is None:
+            raise ValueError
         settings = AppSettings.load(args.settings)
         if not settings.voice_care.enabled:
             status.write(
@@ -51,7 +82,7 @@ def main(
                 last_latency_ms=None,
             )
             return 2
-        worker = worker_factory(settings, project_root)
+        worker = worker_factory(settings, root)
     except Exception:
         try:
             status.write(
@@ -76,6 +107,45 @@ def main(
     except Exception:
         return 2
     return 0
+
+
+def _load_voice_models(root: Path, supplied: Path | None) -> VoiceCareSettings:
+    try:
+        expected = root / _VOICE_MODELS_RELATIVE
+        if supplied is None or Path(supplied) != expected:
+            raise ValueError
+        current = root
+        for part in _VOICE_MODELS_RELATIVE.parts:
+            current = current / part
+            if current.is_symlink():
+                raise ValueError
+        payload = current.read_bytes()
+        if not 0 < len(payload) <= _MAX_VOICE_MODELS_BYTES:
+            raise ValueError
+        settings = VoiceCareSettings.model_validate_json(payload)
+        if settings.enabled:
+            raise ValueError
+        return settings
+    except Exception:
+        raise ValueError("voice_preflight_unavailable") from None
+
+
+def _print_preflight(report: VoicePreflightReport, printer: Printer) -> None:
+    if report.available:
+        printer("result=PASS")
+        printer("operation=preflight")
+        printer("voice_preflight=available")
+        printer("gate_passed=true")
+        printer("asr_profile=paraformer")
+        printer("keychain=available")
+        printer("asr_artifact=available")
+        printer("silero_artifact=available")
+        return
+    printer("result=FAIL")
+    printer("operation=preflight")
+    printer("voice_preflight=unavailable")
+    printer("gate_passed=false")
+    printer(f"reason={report.reason}")
 
 
 if __name__ == "__main__":

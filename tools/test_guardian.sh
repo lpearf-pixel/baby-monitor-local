@@ -169,6 +169,10 @@ check_realtime_models() {
   "$PYTHON" "$ROOT/tools/realtime_models.py" check
 }
 
+check_voice_preflight() {
+  make -C "$ROOT" --no-print-directory alpha-voice-preflight
+}
+
 check_source() {
   make -C "$ROOT" --no-print-directory alpha-source-check
 }
@@ -232,6 +236,7 @@ run_check "installation" "required_binaries" check_required_binaries
 run_check "installation" "runtime_config" check_runtime_config
 run_check "installation" "launchd_definitions" check_launchd_definitions
 run_check "installation" "realtime_models" check_realtime_models
+run_check "installation" "voice_preflight" check_voice_preflight
 run_service_readiness
 run_check "media" "source_check" check_source
 run_check "isolation" "guardian_focused" check_guardian_focused
