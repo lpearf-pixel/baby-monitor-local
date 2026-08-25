@@ -1,6 +1,9 @@
 from __future__ import annotations
 
+import subprocess
+import sys
 import threading
+import time
 from pathlib import Path
 
 import pytest
@@ -124,8 +127,9 @@ def test_capture_result_rejects_incomplete_or_extra_output(output: str) -> None:
 
 
 class _Result:
-    def __init__(self, returncode: int = 0) -> None:
+    def __init__(self, returncode: int = 0, stdout: str = "") -> None:
         self.returncode = returncode
+        self.stdout = stdout
 
 
 def test_login_capture_uses_fixed_background_launchagent_without_gui(
@@ -173,6 +177,55 @@ def test_login_capture_uses_fixed_background_launchagent_without_gui(
     assert printed[-1] == "encrypted_clip_persisted=true"
 
 
+def test_login_capture_publishes_request_only_after_countdown(
+    tmp_path: Path,
+) -> None:
+    root = tmp_path / "repo"
+    root.mkdir()
+    pending = root / "runtime/status/voice-asr-capture.request"
+    early_jobs: list[str] = []
+    attempted_early_kickstart = False
+
+    def sleeper(_seconds: float) -> None:
+        nonlocal attempted_early_kickstart
+        if attempted_early_kickstart:
+            return
+        attempted_early_kickstart = True
+        try:
+            run_terminal_job(
+                root,
+                sleeper=lambda _: None,
+                printer=lambda _: None,
+                job_runner=lambda _root, prompt_id: early_jobs.append(prompt_id) or 0,
+                require_confirmation=False,
+                countdown_seconds=0,
+            )
+        except ValueError:
+            pass
+
+    def opener(_command: list[str], **_: object) -> _Result:
+        assert pending.is_file()
+        (root / "runtime/status/voice-asr-capture.txt").write_text(
+            _capture_success(_pending_request_id(root)), encoding="utf-8"
+        )
+        return _Result()
+
+    assert (
+        run_login_capture(
+            root,
+            "negative_weather",
+            opener=opener,
+            sleeper=sleeper,
+            printer=lambda _: None,
+            platform_name="darwin",
+            uid_getter=lambda: 501,
+        )
+        == 0
+    )
+    assert attempted_early_kickstart
+    assert early_jobs == []
+
+
 def test_login_capture_waits_for_the_terminal_success_sentinel(tmp_path: Path) -> None:
     root = tmp_path / "repo"
     root.mkdir()
@@ -189,10 +242,11 @@ def test_login_capture_waits_for_the_terminal_success_sentinel(tmp_path: Path) -
     def sleeper(_: float) -> None:
         nonlocal sleep_count
         sleep_count += 1
-        (root / "runtime/status/voice-asr-capture.txt").write_text(
-            _capture_success(_pending_request_id(root)),
-            encoding="utf-8",
-        )
+        if (root / "runtime/status/voice-asr-capture.request").exists():
+            (root / "runtime/status/voice-asr-capture.txt").write_text(
+                _capture_success(_pending_request_id(root)),
+                encoding="utf-8",
+            )
 
     assert (
         run_login_capture(
@@ -344,21 +398,62 @@ def test_operator_atomically_claims_and_consumes_each_request_once(
         )
 
 
+def test_losing_claim_never_removes_the_winners_active_request(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    from tools import voice_asr_capture_macos as capture_macos
+
+    root = tmp_path / "repo"
+    status = root / "runtime/status"
+    status.mkdir(parents=True)
+    pending = status / "voice-asr-capture.request"
+    active = status / "voice-asr-capture.active"
+    pending.write_text(
+        _request_payload("a" * 32, "negative_weather"), encoding="ascii"
+    )
+    original_link = capture_macos.os.link
+    claim_barrier = threading.Barrier(2)
+
+    def racing_link(source: Path, target: Path, **kwargs: object) -> None:
+        claim_barrier.wait(timeout=2)
+        original_link(source, target, **kwargs)
+
+    monkeypatch.setattr(capture_macos.os, "link", racing_link)
+    claims: list[object] = []
+    failures: list[BaseException] = []
+
+    def claim() -> None:
+        try:
+            claims.append(capture_macos._claim_request(root))
+        except BaseException as error:  # pragma: no cover - asserted below
+            failures.append(error)
+
+    threads = [threading.Thread(target=claim) for _ in range(2)]
+    for thread in threads:
+        thread.start()
+    for thread in threads:
+        thread.join(timeout=2)
+
+    assert len(claims) == 1
+    assert len(failures) == 1
+    assert active.is_file()
+    assert active.read_text(encoding="ascii") == _request_payload(
+        "a" * 32, "negative_weather"
+    )
+
+
 def test_concurrent_parent_capture_fails_without_replacing_first_request(
     tmp_path: Path,
 ) -> None:
     root = tmp_path / "repo"
     root.mkdir()
-    first_waiting = threading.Event()
+    first_launched = threading.Event()
     release_first = threading.Event()
     first_result: list[int | BaseException] = []
 
-    def first_sleeper(_seconds: float) -> None:
-        if not first_waiting.is_set():
-            first_waiting.set()
-            assert release_first.wait(timeout=2)
-
     def successful_opener(_command: list[str], **_: object) -> _Result:
+        first_launched.set()
+        assert release_first.wait(timeout=2)
         (root / "runtime/status/voice-asr-capture.txt").write_text(
             _capture_success(_pending_request_id(root)),
             encoding="utf-8",
@@ -372,7 +467,7 @@ def test_concurrent_parent_capture_fails_without_replacing_first_request(
                     root,
                     "negative_weather",
                     opener=successful_opener,
-                    sleeper=first_sleeper,
+                    sleeper=lambda _: None,
                     printer=lambda _: None,
                     platform_name="darwin",
                     uid_getter=lambda: 501,
@@ -383,7 +478,7 @@ def test_concurrent_parent_capture_fails_without_replacing_first_request(
 
     thread = threading.Thread(target=first_call)
     thread.start()
-    assert first_waiting.wait(timeout=2)
+    assert first_launched.wait(timeout=2)
     first_request = (root / "runtime/status/voice-asr-capture.request").read_bytes()
     try:
         with pytest.raises(ValueError, match="^voice_asr_capture_unavailable$"):
@@ -432,9 +527,131 @@ def test_timeout_cancels_operator_and_removes_only_owned_request(
     assert calls == [
         ["/bin/launchctl", "kickstart", "-k", target],
         ["/bin/launchctl", "kill", "SIGTERM", target],
+        ["/bin/launchctl", "print", target],
     ]
     assert not (root / "runtime/status/voice-asr-capture.request").exists()
     assert not (root / "runtime/status/voice-asr-capture.active").exists()
+
+
+def test_timeout_kills_and_confirms_real_async_operator_before_return(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    from tools import voice_asr_capture_macos as capture_macos
+
+    root = tmp_path / "repo"
+    root.mkdir()
+    ready = tmp_path / "operator-ready"
+    late_mutation = tmp_path / "late-mutation"
+    process: subprocess.Popen[str] | None = None
+    monkeypatch.setattr(capture_macos, "_WAIT_SECONDS", 0)
+    monkeypatch.setattr(capture_macos, "_STOP_WAIT_SECONDS", 0, raising=False)
+
+    def opener(command: list[str], **_: object) -> _Result:
+        nonlocal process
+        action = command[1]
+        if action == "kickstart":
+            process = subprocess.Popen(
+                [
+                    sys.executable,
+                    "-c",
+                    (
+                        "import pathlib,signal,sys,time;"
+                        "signal.signal(signal.SIGTERM,lambda *_: None);"
+                        "pathlib.Path(sys.argv[1]).write_text('ready');"
+                        "time.sleep(0.3);"
+                        "pathlib.Path(sys.argv[2]).write_text('late')"
+                    ),
+                    str(ready),
+                    str(late_mutation),
+                ],
+                text=True,
+            )
+            deadline = time.monotonic() + 2
+            while not ready.exists() and time.monotonic() < deadline:
+                time.sleep(0.01)
+            assert ready.exists()
+            return _Result()
+        assert process is not None
+        if action == "kill":
+            if command[2] == "SIGTERM":
+                process.terminate()
+            else:
+                assert command[2] == "SIGKILL"
+                process.kill()
+                process.wait(timeout=2)
+            return _Result()
+        assert action == "print"
+        running = process.poll() is None
+        return _Result(
+            stdout=(
+                f"state = running\npid = {process.pid}\n"
+                if running
+                else "state = exited\n"
+            )
+        )
+
+    with pytest.raises(ValueError, match="^voice_asr_capture_unavailable$"):
+        run_login_capture(
+            root,
+            "negative_weather",
+            opener=opener,
+            sleeper=lambda _: None,
+            printer=lambda _: None,
+            platform_name="darwin",
+            uid_getter=lambda: 501,
+        )
+
+    assert process is not None
+    process.wait(timeout=2)
+    time.sleep(0.35)
+    assert not late_mutation.exists()
+
+
+def test_unconfirmed_operator_exit_leaves_durable_blocking_state(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    from tools import voice_asr_capture_macos as capture_macos
+
+    root = tmp_path / "repo"
+    root.mkdir()
+    calls: list[list[str]] = []
+    monkeypatch.setattr(capture_macos, "_WAIT_SECONDS", 0)
+    monkeypatch.setattr(capture_macos, "_STOP_WAIT_SECONDS", 0, raising=False)
+
+    def never_stops(command: list[str], **_: object) -> _Result:
+        calls.append(command)
+        if command[1] == "print":
+            return _Result(stdout="state = running\npid = 123\n")
+        return _Result()
+
+    with pytest.raises(ValueError, match="^voice_asr_capture_unavailable$"):
+        run_login_capture(
+            root,
+            "negative_weather",
+            opener=never_stops,
+            sleeper=lambda _: None,
+            printer=lambda _: None,
+            platform_name="darwin",
+            uid_getter=lambda: 501,
+        )
+
+    status = root / "runtime/status"
+    assert (status / "voice-asr-capture.blocked").is_file()
+    assert (status / "voice-asr-capture.request").exists() or (
+        status / "voice-asr-capture.active"
+    ).exists()
+    calls_before_retry = list(calls)
+    with pytest.raises(ValueError, match="^voice_asr_capture_unavailable$"):
+        run_login_capture(
+            root,
+            "negative_weather",
+            opener=never_stops,
+            sleeper=lambda _: None,
+            printer=lambda _: None,
+            platform_name="darwin",
+            uid_getter=lambda: 501,
+        )
+    assert calls == calls_before_retry
 
 
 def test_invalid_mismatched_completion_preserves_another_active_request(
@@ -476,7 +693,7 @@ def test_invalid_mismatched_completion_preserves_another_active_request(
         encoding="ascii"
     ) == f"request_id={other_request_id}\noperation=negative_weather\n"
     assert not (root / "runtime/status/voice-asr-capture.request").exists()
-    assert calls[-1][1:3] == ["kill", "SIGTERM"]
+    assert any(command[1:3] == ["kill", "SIGTERM"] for command in calls)
 
 
 def test_background_operator_launchagent_is_non_persistent_and_not_run_at_load() -> None:

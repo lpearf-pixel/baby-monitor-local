@@ -4,6 +4,7 @@ import fcntl
 import json
 import stat
 import threading
+import time
 from pathlib import Path
 
 import pytest
@@ -200,6 +201,53 @@ def test_corpus_lock_failure_preserves_prior_envelope(
         store.put("negative_weather", b"\x02\0" * 4_000)
 
     assert path.read_bytes() == before
+
+
+def test_failed_first_writer_deletes_key_before_releasing_writer_lock(
+    tmp_path: Path,
+) -> None:
+    delete_started = threading.Event()
+
+    class SlowDeleteKeychain(FakeKeychain):
+        def delete(self, service: str, account: str) -> None:
+            delete_started.set()
+            time.sleep(0.2)
+            super().delete(service, account)
+
+    backend = SlowDeleteKeychain()
+    keychain = KeychainSecretStore(backend, random_bytes=lambda size: b"k" * size)
+    path = tmp_path / "runtime/private/voice-asr-calibration.json"
+    failing = PrivateAsrCorpus(
+        path,
+        keychain,
+        boundary=tmp_path,
+        random_bytes=lambda size: b"a" * size,
+    )
+    succeeding = PrivateAsrCorpus(
+        path,
+        keychain,
+        boundary=tmp_path,
+        random_bytes=lambda size: b"b" * size,
+    )
+    failing._publish = lambda _payload: (_ for _ in ()).throw(OSError("synthetic"))
+    failures: list[BaseException] = []
+
+    def first_write() -> None:
+        try:
+            failing.append("feeding_start_dad", b"\x01\0" * 4_000)
+        except BaseException as error:  # pragma: no cover - asserted below
+            failures.append(error)
+
+    first = threading.Thread(target=first_write)
+    first.start()
+    assert delete_started.wait(timeout=2)
+    succeeding.append("feeding_start_mom", b"\x02\0" * 4_000)
+    first.join(timeout=2)
+
+    assert len(failures) == 1
+    assert succeeding.read_all() == (
+        ("feeding_start_mom", b"\x02\0" * 4_000),
+    )
 
 
 def test_corpus_rejects_unknown_prompt_invalid_pcm_tamper_and_overflow(

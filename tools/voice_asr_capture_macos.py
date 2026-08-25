@@ -7,6 +7,7 @@ import fcntl
 import os
 import re
 import secrets
+import stat
 import subprocess
 import sys
 import time
@@ -25,12 +26,14 @@ _STATUS_RELATIVE = Path("runtime/status/voice-asr-capture.txt")
 _REQUEST_RELATIVE = Path("runtime/status/voice-asr-capture.request")
 _ACTIVE_REQUEST_RELATIVE = Path("runtime/status/voice-asr-capture.active")
 _PARENT_LOCK_RELATIVE = Path("runtime/status/voice-asr-capture.lock")
+_BLOCKED_RELATIVE = Path("runtime/status/voice-asr-capture.blocked")
 _COMMAND_RELATIVE = Path("tools/voice_asr_capture_macos.command")
 _TERMINAL_APP = "/System/Applications/Utilities/Terminal.app"
 _OPERATOR_LABEL = "com.babymonitor.voice-asr-operator"
 _EXPECTED_DURATION_MS = 8_000
 _COUNTDOWN_SECONDS = 10
 _WAIT_SECONDS = 180
+_STOP_WAIT_SECONDS = 5
 
 
 Runner = Callable[..., subprocess.CompletedProcess[str]]
@@ -48,6 +51,19 @@ _REQUEST_ID_PATTERN = re.compile(r"[0-9a-f]{32}")
 class _Request:
     request_id: str
     operation: str
+
+
+@dataclass(frozen=True)
+class _RequestOwnership:
+    request_id: str
+    device: int
+    inode: int
+
+
+@dataclass(frozen=True)
+class _ClaimedRequest:
+    request: _Request
+    ownership: _RequestOwnership
 
 
 def parse_capture_result(
@@ -221,9 +237,10 @@ def run_terminal_job(
     evaluation_runner: EvaluationJobRunner = _evaluation_job,
     require_confirmation: bool = True,
     countdown_seconds: int = _COUNTDOWN_SECONDS,
-    claimed_request: _Request | None = None,
+    claimed_request: _ClaimedRequest | None = None,
 ) -> int:
-    request = claimed_request or _claim_request(project_root)
+    claim = claimed_request or _claim_request(project_root)
+    request = claim.request
     owns_claim = claimed_request is None
     try:
         if request.operation in _EVALUATIONS:
@@ -243,7 +260,7 @@ def run_terminal_job(
     finally:
         if owns_claim:
             _remove_owned_request(
-                project_root / _ACTIVE_REQUEST_RELATIVE, request.request_id
+                project_root / _ACTIVE_REQUEST_RELATIVE, claim.ownership
             )
 
 
@@ -261,16 +278,17 @@ def main(argv: Sequence[str] | None = None) -> int:
     arguments = parser.parse_args(argv)
     root = Path.cwd().resolve(strict=True)
     if arguments.operation in {"login-job", "terminal-job"}:
-        request: _Request | None = None
+        claim: _ClaimedRequest | None = None
         try:
-            request = _claim_request(root)
+            claim = _claim_request(root)
+            request = claim.request
             return_code = run_terminal_job(
                 root,
                 require_confirmation=arguments.operation == "terminal-job",
                 countdown_seconds=(
                     _COUNTDOWN_SECONDS if arguments.operation == "terminal-job" else 0
                 ),
-                claimed_request=request,
+                claimed_request=claim,
             )
             print(f"request_id={request.request_id}")
             print(
@@ -283,19 +301,19 @@ def main(argv: Sequence[str] | None = None) -> int:
             print("result=FAIL")
             print("operation=login-job")
             print(f"reason={CAPTURE_UNAVAILABLE}")
-            if request is not None:
-                print(f"request_id={request.request_id}")
+            if claim is not None:
+                print(f"request_id={claim.request.request_id}")
             print(
                 "capture_job_complete=true"
-                if request is not None
-                and request.operation not in _EVALUATIONS
+                if claim is not None
+                and claim.request.operation not in _EVALUATIONS
                 else "login_job_complete=true"
             )
             return 1
         finally:
-            if request is not None:
+            if claim is not None:
                 _remove_owned_request(
-                    root / _ACTIVE_REQUEST_RELATIVE, request.request_id
+                    root / _ACTIVE_REQUEST_RELATIVE, claim.ownership
                 )
     if arguments.operation in _EVALUATIONS:
         try:
@@ -333,8 +351,9 @@ def run_login_capture(
         request = _new_request(prompt_id)
         target = f"gui/{uid_getter()}/{_OPERATOR_LABEL}"
         launched = False
+        ownership: _RequestOwnership | None = None
+        preserve_request = False
         try:
-            _write_request(request_path, request)
             status_path.write_text("", encoding="utf-8")
             status_path.chmod(0o600)
             printer(f"prompt={PRIVATE_ASR_PROMPTS[prompt_id]}")
@@ -342,6 +361,7 @@ def run_login_capture(
                 printer(f"capture_starts_in_seconds={remaining}")
                 sleeper(1)
             printer("capture_now=true")
+            ownership = _write_request(request_path, request)
             launched = True
             _kickstart_operator(opener, target)
             _wait_for_status(status_path, "capture_job_complete=true\n", sleeper)
@@ -354,11 +374,15 @@ def run_login_capture(
                 printer(line)
             return 0
         except (Exception, KeyboardInterrupt):
-            if launched:
-                _stop_operator(opener, target)
+            if launched and not _stop_operator(opener, target, sleeper):
+                if ownership is not None:
+                    preserve_request = True
+                    _mark_blocked(root, ownership)
+                raise ValueError(CAPTURE_UNAVAILABLE) from None
             raise
         finally:
-            _cleanup_owned_request(root, request.request_id)
+            if ownership is not None and not preserve_request:
+                _cleanup_owned_request(root, ownership)
 
 
 def run_login_evaluation(
@@ -381,10 +405,12 @@ def run_login_evaluation(
         request = _new_request(operation)
         target = f"gui/{uid_getter()}/{_OPERATOR_LABEL}"
         launched = False
+        ownership: _RequestOwnership | None = None
+        preserve_request = False
         try:
-            _write_request(request_path, request)
             status_path.write_text("", encoding="utf-8")
             status_path.chmod(0o600)
+            ownership = _write_request(request_path, request)
             launched = True
             _kickstart_operator(opener, target)
             _wait_for_status(status_path, "login_job_complete=true\n", sleeper)
@@ -397,11 +423,15 @@ def run_login_evaluation(
                 printer(line)
             return 0 if rendered[0] == "result=PASS" else 1
         except (Exception, KeyboardInterrupt):
-            if launched:
-                _stop_operator(opener, target)
+            if launched and not _stop_operator(opener, target, sleeper):
+                if ownership is not None:
+                    preserve_request = True
+                    _mark_blocked(root, ownership)
+                raise ValueError(CAPTURE_UNAVAILABLE) from None
             raise
         finally:
-            _cleanup_owned_request(root, request.request_id)
+            if ownership is not None and not preserve_request:
+                _cleanup_owned_request(root, ownership)
 
 
 def _prepare_login_job(root: Path) -> tuple[Path, Path]:
@@ -410,17 +440,23 @@ def _prepare_login_job(root: Path) -> tuple[Path, Path]:
     status_path.parent.mkdir(mode=0o700, parents=True, exist_ok=True)
     status_path.parent.chmod(0o700)
     active_path = root / _ACTIVE_REQUEST_RELATIVE
+    blocked_path = root / _BLOCKED_RELATIVE
     if (
         request_path.is_symlink()
+        or request_path.exists()
         or active_path.is_symlink()
         or active_path.exists()
+        or blocked_path.is_symlink()
+        or blocked_path.exists()
         or status_path.is_symlink()
     ):
         raise ValueError(CAPTURE_UNAVAILABLE)
     return status_path, request_path
 
 
-def _write_request(request_path: Path, request: _Request) -> None:
+def _write_request(
+    request_path: Path, request: _Request
+) -> _RequestOwnership:
     _validate_request(request)
     temporary = request_path.with_suffix(".request.tmp")
     if temporary.is_symlink():
@@ -428,7 +464,7 @@ def _write_request(request_path: Path, request: _Request) -> None:
     temporary.write_text(_request_payload(request), encoding="ascii")
     temporary.chmod(0o600)
     temporary.replace(request_path)
-    request_path.chmod(0o600)
+    return _request_ownership(request_path, request.request_id)
 
 
 def _read_request_path(request_path: Path) -> _Request:
@@ -468,36 +504,79 @@ def _request_payload(request: _Request) -> str:
     return f"request_id={request.request_id}\noperation={request.operation}\n"
 
 
-def _claim_request(project_root: Path) -> _Request:
+def _claim_request(project_root: Path) -> _ClaimedRequest:
     pending = project_root / _REQUEST_RELATIVE
     active = project_root / _ACTIVE_REQUEST_RELATIVE
     request = _read_request_path(pending)
+    pending_ownership = _request_ownership(pending, request.request_id)
     if active.is_symlink() or active.exists():
         raise ValueError(CAPTURE_UNAVAILABLE)
+    linked = False
+    active_ownership: _RequestOwnership | None = None
     try:
         os.link(pending, active, follow_symlinks=False)
+        linked = True
+        active_ownership = _request_ownership(active, request.request_id)
         active.chmod(0o600)
-        pending.unlink()
+        _remove_owned_request(pending, pending_ownership)
     except Exception:
-        _remove_owned_request(active, request.request_id)
+        if linked and active_ownership is not None:
+            _remove_owned_request(active, active_ownership)
         raise ValueError(CAPTURE_UNAVAILABLE) from None
-    return request
+    if active_ownership is None:
+        raise ValueError(CAPTURE_UNAVAILABLE)
+    return _ClaimedRequest(request=request, ownership=active_ownership)
 
 
-def _remove_owned_request(path: Path, request_id: str) -> None:
+def _request_ownership(path: Path, request_id: str) -> _RequestOwnership:
+    _validate_request_id(request_id)
+    if path.is_symlink():
+        raise ValueError(CAPTURE_UNAVAILABLE)
+    value = path.stat()
+    if not stat.S_ISREG(value.st_mode):
+        raise ValueError(CAPTURE_UNAVAILABLE)
+    return _RequestOwnership(
+        request_id=request_id,
+        device=value.st_dev,
+        inode=value.st_ino,
+    )
+
+
+def _remove_owned_request(path: Path, ownership: _RequestOwnership) -> None:
     try:
         if path.is_symlink() or not path.is_file():
             return
+        value = path.stat()
+        if value.st_dev != ownership.device or value.st_ino != ownership.inode:
+            return
         request = _read_request_path(path)
-        if request.request_id == request_id:
+        if request.request_id == ownership.request_id:
             path.unlink()
     except Exception:
         return
 
 
-def _cleanup_owned_request(project_root: Path, request_id: str) -> None:
-    _remove_owned_request(project_root / _REQUEST_RELATIVE, request_id)
-    _remove_owned_request(project_root / _ACTIVE_REQUEST_RELATIVE, request_id)
+def _cleanup_owned_request(
+    project_root: Path, ownership: _RequestOwnership
+) -> None:
+    _remove_owned_request(project_root / _REQUEST_RELATIVE, ownership)
+    _remove_owned_request(project_root / _ACTIVE_REQUEST_RELATIVE, ownership)
+
+
+def _mark_blocked(project_root: Path, ownership: _RequestOwnership) -> None:
+    blocked = project_root / _BLOCKED_RELATIVE
+    if blocked.is_symlink():
+        raise ValueError(CAPTURE_UNAVAILABLE)
+    temporary = blocked.with_suffix(".blocked.tmp")
+    if temporary.is_symlink():
+        raise ValueError(CAPTURE_UNAVAILABLE)
+    temporary.write_text(
+        "reason=operator_exit_unconfirmed\n"
+        f"request_id={ownership.request_id}\n",
+        encoding="ascii",
+    )
+    temporary.chmod(0o600)
+    temporary.replace(blocked)
 
 
 @contextmanager
@@ -536,12 +615,49 @@ def _kickstart_operator(opener: Runner, target: str) -> None:
     )
 
 
-def _stop_operator(opener: Runner, target: str) -> None:
-    _run(
-        opener,
-        ["/bin/launchctl", "kill", "SIGTERM", target],
-        capture_output=True,
-    )
+def _stop_operator(opener: Runner, target: str, sleeper: Sleeper) -> bool:
+    for signal_name in ("SIGTERM", "SIGKILL"):
+        try:
+            _run(
+                opener,
+                ["/bin/launchctl", "kill", signal_name, target],
+                capture_output=True,
+            )
+        except Exception:
+            continue
+        if _wait_for_operator_exit(opener, target, sleeper):
+            return True
+    return False
+
+
+def _wait_for_operator_exit(
+    opener: Runner, target: str, sleeper: Sleeper
+) -> bool:
+    deadline = time.monotonic() + _STOP_WAIT_SECONDS
+    while True:
+        if not _operator_is_running(opener, target):
+            return True
+        if time.monotonic() >= deadline:
+            return False
+        sleeper(0.1)
+
+
+def _operator_is_running(opener: Runner, target: str) -> bool:
+    try:
+        result = _run(
+            opener,
+            ["/bin/launchctl", "print", target],
+            check=False,
+            capture_output=True,
+        )
+    except Exception:
+        return True
+    if result.returncode != 0:
+        return False
+    output = result.stdout
+    if type(output) is not str or len(output) > 16_384:
+        return True
+    return re.search(r"(?m)^\s*(?:state = running|pid = [0-9]+)\s*$", output) is not None
 
 
 def _wait_for_status(status_path: Path, sentinel: str, sleeper: Sleeper) -> None:

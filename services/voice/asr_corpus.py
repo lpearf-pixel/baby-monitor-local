@@ -152,9 +152,11 @@ class PrivateAsrCorpus:
                     raise ValueError
                 self._publish(payload)
         except Exception:
-            if key_created and not self._path.exists() and not self._path.is_symlink():
+            if key_created:
                 try:
-                    self._keychain.delete(ASR_CORPUS_KEY_ACCOUNT)
+                    with self._writer_lock():
+                        if not self._path.exists() and not self._path.is_symlink():
+                            self._keychain.delete(ASR_CORPUS_KEY_ACCOUNT)
                 except Exception:
                     pass
             raise ValueError(ASR_CORPUS_UNAVAILABLE) from None
