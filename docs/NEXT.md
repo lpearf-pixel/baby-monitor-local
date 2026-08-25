@@ -173,8 +173,9 @@ reached 5/6 with acceptable latency. Official Silero passes its generated contro
 5/6 prompts; `negative_weather` splits into two spans, and gain is inapplicable because
 the private signal is not 12 dB below control. The approved pinned Paraformer amendment
 is also implementation-complete: its exact-head i9 run evaluated 6/6 clips at p50
-524 ms / p95 563 ms after Task 5F's deterministic punctuation-free boundary. It now
-achieves 5/6 exact and 6/6 wake; `negative_weather` is the sole exact mismatch and also
+506 ms / p95 540 ms at implementation `6e933a6` after Task 5F's deterministic
+punctuation-free boundary. It now achieves 5/6 exact and 6/6 wake;
+`negative_weather` is the sole exact mismatch and also
 the only clip with two Silero spans. It fails closed as `asr_candidate_unavailable` and
 `vad_candidate_unavailable`. Voice remains disabled.
 

@@ -364,12 +364,13 @@
   public ID `negative_weather` with edit distance 2. Result:
   `asr_candidate_unavailable`; Voice remains disabled. Fresh Voice tests are 250/250,
   full Python is 1,302/1,302, and independent review found no Critical/Important issue.
-- Task 5F adds the approved source-controlled punctuation-free boundary without fuzzy
-  wake matching or transcript rewriting. The fixed care-vocabulary prefix is only a
+- Task 5F implementation `6e933a6` adds the approved source-controlled
+  punctuation-free boundary without fuzzy wake matching or transcript rewriting. The
+  fixed care-vocabulary prefix is only a
   lexical boundary; repeated/unknown/incidental continuations fail closed and the
-  existing typed parser still decides the full command. Fresh user-launchd evidence is
-  5/6 exact, 6/6 wake, p50 524 ms and p95 563 ms. `negative_weather` remains the only
-  exact mismatch at edit distance 2 and still yields two Silero spans. Voice remains
+  existing typed parser still decides the full command. Fresh exact-head user-launchd
+  evidence is 5/6 exact, 6/6 wake, p50 506 ms and p95 540 ms. `negative_weather`
+  remains the only exact mismatch at edit distance 2 and still yields two Silero spans. Voice remains
   disabled; fresh software evidence is Voice 267/267 and full Python 1,319/1,319.
 - Installed-i9 audio-source discovery now verifies that the Xiaomi source exposes HEVC
   video plus Opus audio and that the fixed loopback `audio_analysis` alias exposes only

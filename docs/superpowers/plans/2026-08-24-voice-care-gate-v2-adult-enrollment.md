@@ -753,9 +753,9 @@ most 3,000 ms and one Silero span per fixed prompt. If the existing `negative_we
 clip still fails, leave Voice disabled and require one clean operator rerecord; never
 rewrite, trim or replace encrypted household audio automatically.
 
-Worktree user-launchd evidence on 2026-08-25 showed the boundary change raised the
-Paraformer result from 1/6 to 6/6 wake while preserving 5/6 exact, edit distance 2 and
-the sole public mismatch ID `negative_weather`; p50 was 524 ms and p95 563 ms. The same
+Exact-head user-launchd evidence for implementation `6e933a6` on 2026-08-25 showed the
+boundary change raised the Paraformer result from 1/6 to 6/6 wake while preserving 5/6 exact, edit distance 2 and
+the sole public mismatch ID `negative_weather`; p50 was 506 ms and p95 540 ms. The same
 clip still produced two Silero spans while the other five produced one each. Software
 evidence was 27/27 wake tests, 267/267 Voice tests and 1,319/1,319 full Python tests.
 Voice remains disabled; the next action is one clean operator rerecord of only the
@@ -817,7 +817,7 @@ Current installed evidence: Task 5A is complete and helper-owned v2 passes two f
 non-interactive launchd reads. Task 5B and Task 5E are exhausted and blocked as
 `asr_candidate_unavailable`: the best approved base profiles reached 5/6 exact and 6/6
 wake within latency. Task 5F corrected the deterministic punctuation-free boundary, so
-Paraformer now reaches 5/6 exact and 6/6 wake at p95 563 ms; only the fixed public
+Paraformer now reaches 5/6 exact and 6/6 wake at p95 540 ms; only the fixed public
 `negative_weather` clip remains an exact mismatch.
 Task 5C is blocked as `vad_candidate_unavailable`; its generated control and 5/6 private
 prompts pass, while `negative_weather` produces two spans. Task 5D and Task 6 remain

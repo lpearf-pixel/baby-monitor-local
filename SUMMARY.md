@@ -419,12 +419,14 @@ legacy branch into this line without a separate integration decision.
   no transcript, PCM, private path or Keychain value was emitted. Fresh evidence is
   Voice 250/250 and full Python 1,302/1,302, with independent review clean of Critical/
   Important findings.
-- Task 5F now supplies the approved deterministic punctuation-free `小小` boundary.
+- Task 5F implementation `6e933a6` supplies the approved deterministic
+  punctuation-free `小小` boundary.
   Only fixed care-vocabulary prefixes can prove the missing Chinese word boundary;
   repeated wake words, unknown continuations and incidental `小小` words still fail
   closed, and the downstream parser remains independently authoritative. Fresh
-  user-launchd evidence reached 5/6 exact, 6/6 wake and p50 524 ms / p95 563 ms; the
-  sole mismatch remains public prompt ID `negative_weather` with edit distance 2. The
+  exact-head user-launchd evidence reached 5/6 exact, 6/6 wake and p50 506 ms / p95
+  540 ms; the sole mismatch remains public prompt ID `negative_weather` with edit
+  distance 2. The
   same clip still has two Silero spans while the other five have one. Voice remains
   disabled. Fresh software evidence is Voice 267/267 and full Python 1,319/1,319.
 - Remote private viewing and the 72-hour release gate remain unfinished.
