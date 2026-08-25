@@ -12,6 +12,7 @@ from services.voice.silero_runtime import (
     SILERO_PCM_INVALID,
     SILERO_UNAVAILABLE,
     SileroOnnxSegmenter,
+    StreamingSileroVad,
 )
 
 
@@ -157,3 +158,73 @@ def test_analysis_uses_exact_half_threshold_and_resets_state_per_clip(
     assert second.peak_probability == pytest.approx(0.499)
     assert np.all(session.calls[0]["state"] == 0.0)
     assert np.all(session.calls[33]["state"] == 0.0)
+
+
+def _streaming_vad(tmp_path: Path, session: FakeSession) -> StreamingSileroVad:
+    bundle = tmp_path / "streaming-validated"
+    bundle.mkdir()
+    (bundle / "silero_vad.onnx").write_bytes(b"synthetic")
+    return StreamingSileroVad(
+        _spec(),
+        project_root=tmp_path,
+        artifact_validator=lambda _artifact, _root: bundle,
+        session_factory=lambda _path, _policy, _providers: session,
+    )
+
+
+def test_streaming_vad_carries_state_and_pending_samples_across_frames(
+    tmp_path: Path,
+) -> None:
+    session = FakeSession([0.2, 0.8, 0.3, 0.1, 0.2, 0.3])
+    vad = _streaming_vad(tmp_path, session)
+
+    first = vad.observe(b"\0\0" * 1_600)
+    second = vad.observe(b"\0\0" * 1_600)
+
+    assert first.speech is True
+    assert first.probability == pytest.approx(0.8)
+    assert second.speech is False
+    assert second.probability == pytest.approx(0.3)
+    assert len(session.calls) == 6
+    assert np.all(session.calls[3]["state"] == 3.0)
+    assert vad.pending_samples == 128
+
+
+def test_streaming_vad_reset_clears_model_state_context_and_pending_pcm(
+    tmp_path: Path,
+) -> None:
+    session = FakeSession([0.2, 0.2, 0.2, 0.9, 0.1, 0.1])
+    vad = _streaming_vad(tmp_path, session)
+    vad.observe(b"\0\0" * 1_600)
+
+    vad.reset()
+    result = vad.observe(b"\0\0" * 1_600)
+
+    assert result.speech is True
+    assert np.all(session.calls[3]["state"] == 0.0)
+    assert np.all(session.calls[3]["input"][:, :64] == 0.0)
+    assert vad.pending_samples == 64
+
+
+def test_streaming_vad_fails_closed_for_bad_frame_or_model_output(
+    tmp_path: Path,
+) -> None:
+    vad = _streaming_vad(tmp_path, FakeSession([[0.1, 0.2]]))
+
+    malformed = vad.observe(b"x")
+    unavailable = vad.observe(b"\0\0" * 1_600)
+
+    assert malformed.reason == SILERO_UNAVAILABLE
+    assert unavailable.reason == SILERO_UNAVAILABLE
+    assert vad.pending_samples == 0
+
+
+def test_streaming_vad_close_is_idempotent_and_rejects_later_input(
+    tmp_path: Path,
+) -> None:
+    vad = _streaming_vad(tmp_path, FakeSession([0.9, 0.9, 0.9]))
+
+    vad.close()
+    vad.close()
+
+    assert vad.observe(b"\0\0" * 1_600).reason == SILERO_UNAVAILABLE

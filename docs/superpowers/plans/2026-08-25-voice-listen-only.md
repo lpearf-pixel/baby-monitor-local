@@ -152,7 +152,7 @@ git commit -m "feat: add bounded Voice audio pump"
 - Produces: `StreamingSileroVad.observe(frame: bytes) -> VadResult`; `reset() -> None`; `close() -> None`.
 - Preserves: `SileroOnnxSegmenter` whole-clip diagnostic API.
 
-- [ ] **Step 1: Write RED streaming-state tests**
+- [x] **Step 1: Write RED streaming-state tests**
 
 ```python
 def test_streaming_vad_carries_state_and_resets_on_boundary() -> None:
@@ -165,19 +165,19 @@ def test_streaming_vad_carries_state_and_resets_on_boundary() -> None:
 
 Cover fixed frame length, 512-sample chunking within a 1,600-sample frame, context/state continuity, invalid ONNX output, close, and no probability/status persistence.
 
-- [ ] **Step 2: Run RED**
+- [x] **Step 2: Run RED**
 
 Run: `.venv-alpha/bin/python -m pytest -q tests/voice/test_silero_runtime.py tests/voice/test_vad.py`
 
-- [ ] **Step 3: Implement a dedicated streaming adapter**
+- [x] **Step 3: Implement a dedicated streaming adapter**
 
 Reuse the pinned artifact/session validation, keep model state only in instance memory, aggregate the fixed subchunks conservatively to one `VadResult`, and reset after utterance, duck, source discontinuity, or close.
 
-- [ ] **Step 4: Run GREEN**
+- [x] **Step 4: Run GREEN**
 
 Run the Step 2 command. Expected: all pass.
 
-- [ ] **Step 5: Commit Task 3**
+- [x] **Step 5: Commit Task 3**
 
 ```bash
 git add services/voice/silero_runtime.py services/voice/vad.py tests/voice/test_silero_runtime.py tests/voice/test_vad.py

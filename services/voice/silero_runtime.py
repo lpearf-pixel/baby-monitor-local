@@ -11,6 +11,7 @@ from typing import Any, Protocol
 import numpy as np
 
 from services.voice.artifacts import VoiceArtifactSpec, validate_voice_artifact
+from services.voice.vad import VadResult
 
 
 SILERO_UNAVAILABLE = "voice_model_unavailable"
@@ -60,6 +61,112 @@ class _Session(Protocol):
 
 SessionFactory = Callable[[Path, object, tuple[str, ...]], _Session]
 ArtifactValidator = Callable[[VoiceArtifactSpec, Path], Path]
+
+
+class StreamingSileroVad:
+    """Keep Silero model state across exact 100 ms frames without retaining clips."""
+
+    def __init__(
+        self,
+        artifact: VoiceArtifactSpec,
+        *,
+        project_root: Path,
+        artifact_validator: ArtifactValidator = validate_voice_artifact,
+        session_factory: SessionFactory | None = None,
+    ) -> None:
+        try:
+            if (
+                artifact.artifact_id != "silero-vad-v6.2"
+                or artifact.required_files != ("silero_vad.onnx",)
+            ):
+                raise ValueError
+            bundle = artifact_validator(artifact, project_root)
+            model = bundle / "silero_vad.onnx"
+            if not bundle.is_absolute() or model.is_symlink() or not model.is_file():
+                raise ValueError
+            self._session = (session_factory or _onnx_session)(
+                model,
+                _SessionPolicy(),
+                ("CPUExecutionProvider",),
+            )
+            if [item.name for item in self._session.get_inputs()] != [
+                "input",
+                "state",
+                "sr",
+            ] or [item.name for item in self._session.get_outputs()] != [
+                "output",
+                "stateN",
+            ]:
+                raise ValueError
+        except Exception:
+            raise ValueError(SILERO_UNAVAILABLE) from None
+        self._state = np.zeros(_STATE_SHAPE, dtype=np.float32)
+        self._context = np.zeros((1, _CONTEXT_SAMPLES), dtype=np.float32)
+        self._pending = np.empty(0, dtype=np.float32)
+        self._closed = False
+
+    @property
+    def pending_samples(self) -> int:
+        return int(self._pending.size)
+
+    def observe(self, frame: bytes) -> VadResult:
+        if self._closed or type(frame) is not bytes or len(frame) != 3_200:
+            return VadResult(False, 0.0, SILERO_UNAVAILABLE)
+        try:
+            samples = np.frombuffer(frame, dtype="<i2").astype(np.float32)
+            samples /= 32_768.0
+            combined = np.concatenate((self._pending, samples))
+            probabilities: list[float] = []
+            offset = 0
+            while combined.size - offset >= _CHUNK_SAMPLES:
+                chunk = combined[offset : offset + _CHUNK_SAMPLES].reshape(
+                    1, _CHUNK_SAMPLES
+                )
+                model_input = np.concatenate((self._context, chunk), axis=1)
+                raw_probability, raw_state = self._session.run(
+                    ("output", "stateN"),
+                    {
+                        "input": model_input,
+                        "state": self._state,
+                        "sr": np.asarray(SAMPLE_RATE_HZ, dtype=np.int64),
+                    },
+                )
+                probability_values = np.asarray(raw_probability, dtype=np.float32)
+                next_state = np.asarray(raw_state, dtype=np.float32)
+                if (
+                    probability_values.size != 1
+                    or next_state.shape != _STATE_SHAPE
+                    or not np.isfinite(next_state).all()
+                ):
+                    raise ValueError
+                probability = float(probability_values.reshape(-1)[0])
+                if not math.isfinite(probability) or not 0.0 <= probability <= 1.0:
+                    raise ValueError
+                probabilities.append(probability)
+                self._state = next_state
+                self._context = chunk[:, -_CONTEXT_SAMPLES:].copy()
+                offset += _CHUNK_SAMPLES
+            self._replace_pending(combined[offset:])
+            probability = max(probabilities)
+            return VadResult(probability >= _SPEECH_THRESHOLD, probability)
+        except Exception:
+            self.reset()
+            return VadResult(False, 0.0, SILERO_UNAVAILABLE)
+
+    def reset(self) -> None:
+        self._state.fill(0.0)
+        self._context.fill(0.0)
+        self._replace_pending(np.empty(0, dtype=np.float32))
+
+    def close(self) -> None:
+        if self._closed:
+            return
+        self.reset()
+        self._closed = True
+
+    def _replace_pending(self, value: np.ndarray) -> None:
+        self._pending.fill(0.0)
+        self._pending = value.astype(np.float32, copy=True)
 
 
 class SileroOnnxSegmenter:
@@ -237,4 +344,5 @@ __all__ = [
     "SileroAnalysis",
     "SpeechSpan",
     "SileroOnnxSegmenter",
+    "StreamingSileroVad",
 ]
