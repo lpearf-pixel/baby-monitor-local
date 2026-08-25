@@ -35,6 +35,7 @@ _EXPECTED_DURATION_MS = 8_000
 _COUNTDOWN_SECONDS = 10
 _WAIT_SECONDS = 180
 _STOP_WAIT_SECONDS = 5
+_DOMAIN_OUTPUT_LIMIT = 262_144
 
 
 Runner = Callable[..., subprocess.CompletedProcess[str]]
@@ -78,6 +79,12 @@ class _OperatorState(Enum):
     RUNNING = "running"
     STOPPED = "stopped"
     UNKNOWN = "unknown"
+
+
+class _KickstartState(Enum):
+    DEFINITE_FAILURE = "definite_failure"
+    LAUNCHED = "launched"
+    POSSIBLY_LAUNCHED = "possibly_launched"
 
 
 def parse_capture_result(
@@ -373,7 +380,7 @@ def run_login_capture(
         status_path, request_path = _prepare_login_job(root)
         request = _new_request(prompt_id)
         target = f"gui/{uid_getter()}/{_OPERATOR_LABEL}"
-        launched = False
+        kickstart_state = _KickstartState.DEFINITE_FAILURE
         ownership: _RequestOwnership | None = None
         preserve_request = False
         try:
@@ -385,8 +392,14 @@ def run_login_capture(
                 sleeper(1)
             printer("capture_now=true")
             ownership = _write_request(request_path, request)
-            _kickstart_operator(opener, target)
-            launched = True
+            kickstart_state = _KickstartState.POSSIBLY_LAUNCHED
+            try:
+                _kickstart_operator(opener, target)
+            except subprocess.CalledProcessError:
+                kickstart_state = _KickstartState.DEFINITE_FAILURE
+                raise
+            else:
+                kickstart_state = _KickstartState.LAUNCHED
             _wait_for_status(status_path, "capture_job_complete=true\n", sleeper)
             result = parse_capture_result(
                 status_path.read_text(encoding="utf-8"),
@@ -397,7 +410,10 @@ def run_login_capture(
                 printer(line)
             return 0
         except (Exception, KeyboardInterrupt):
-            if launched and not _stop_operator(opener, target, sleeper):
+            if (
+                kickstart_state is not _KickstartState.DEFINITE_FAILURE
+                and not _stop_operator(opener, target, sleeper)
+            ):
                 if ownership is not None:
                     preserve_request = True
                     _mark_blocked(root, ownership)
@@ -427,15 +443,21 @@ def run_login_evaluation(
         status_path, request_path = _prepare_login_job(root)
         request = _new_request(operation)
         target = f"gui/{uid_getter()}/{_OPERATOR_LABEL}"
-        launched = False
+        kickstart_state = _KickstartState.DEFINITE_FAILURE
         ownership: _RequestOwnership | None = None
         preserve_request = False
         try:
             status_path.write_text("", encoding="utf-8")
             status_path.chmod(0o600)
             ownership = _write_request(request_path, request)
-            _kickstart_operator(opener, target)
-            launched = True
+            kickstart_state = _KickstartState.POSSIBLY_LAUNCHED
+            try:
+                _kickstart_operator(opener, target)
+            except subprocess.CalledProcessError:
+                kickstart_state = _KickstartState.DEFINITE_FAILURE
+                raise
+            else:
+                kickstart_state = _KickstartState.LAUNCHED
             _wait_for_status(status_path, "login_job_complete=true\n", sleeper)
             rendered = parse_evaluation_result(
                 status_path.read_text(encoding="utf-8"),
@@ -446,7 +468,10 @@ def run_login_evaluation(
                 printer(line)
             return 0 if rendered[0] == "result=PASS" else 1
         except (Exception, KeyboardInterrupt):
-            if launched and not _stop_operator(opener, target, sleeper):
+            if (
+                kickstart_state is not _KickstartState.DEFINITE_FAILURE
+                and not _stop_operator(opener, target, sleeper)
+            ):
                 if ownership is not None:
                     preserve_request = True
                     _mark_blocked(root, ownership)
@@ -801,7 +826,7 @@ def _operator_label_is_absent(opener: Runner, domain: str) -> bool:
     return (
         result.returncode == 0
         and type(output) is str
-        and len(output) <= 65_536
+        and len(output) <= _DOMAIN_OUTPUT_LIMIT
         and re.search(
             rf"(?m)^\s*{re.escape(domain)} = \{{\s*$", output
         )

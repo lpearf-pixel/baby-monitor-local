@@ -41,6 +41,19 @@ def _capture_success(request_id: str) -> str:
     )
 
 
+def _large_launchctl_domain(*, size: int, include_operator: bool) -> str:
+    prefix = "gui/501 = {\nservices = {\n"
+    operator = (
+        "0\t-\tcom.babymonitor.voice-asr-operator\n"
+        if include_operator
+        else ""
+    )
+    suffix = "}\n}\n"
+    padding_size = size - len(prefix) - len(operator) - len(suffix)
+    assert padding_size >= 0
+    return prefix + ("x" * padding_size) + operator + suffix
+
+
 @pytest.mark.parametrize(
     "prompt_id",
     ["free_form", "negative_weather\nProgramArguments", ""],
@@ -797,6 +810,96 @@ def test_explicit_kickstart_failure_is_retriable_without_a_blocker(
     )
 
 
+@pytest.mark.parametrize("failure_kind", ("timeout", "interrupt"))
+def test_uncertain_kickstart_failure_stops_real_async_operator_before_return(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+    failure_kind: str,
+) -> None:
+    from tools import voice_asr_capture_macos as capture_macos
+
+    root = tmp_path / "repo"
+    root.mkdir()
+    ready = tmp_path / "operator-ready"
+    late_mutation = tmp_path / "late-mutation"
+    process: subprocess.Popen[str] | None = None
+    calls: list[list[str]] = []
+    monkeypatch.setattr(capture_macos, "_STOP_WAIT_SECONDS", 0)
+
+    def opener(command: list[str], **_: object) -> _Result:
+        nonlocal process
+        calls.append(command)
+        action = command[1]
+        if action == "kickstart":
+            process = subprocess.Popen(
+                [
+                    sys.executable,
+                    "-c",
+                    (
+                        "import pathlib,signal,sys,time;"
+                        "signal.signal(signal.SIGTERM,lambda *_: None);"
+                        "pathlib.Path(sys.argv[1]).write_text('ready');"
+                        "time.sleep(0.3);"
+                        "pathlib.Path(sys.argv[2]).write_text('late')"
+                    ),
+                    str(ready),
+                    str(late_mutation),
+                ],
+                text=True,
+            )
+            deadline = time.monotonic() + 2
+            while not ready.exists() and time.monotonic() < deadline:
+                time.sleep(0.01)
+            assert ready.exists()
+            if failure_kind == "timeout":
+                raise subprocess.TimeoutExpired(command, timeout=10)
+            raise KeyboardInterrupt
+        assert process is not None
+        if action == "kill":
+            if command[2] == "SIGTERM":
+                process.terminate()
+            else:
+                assert command[2] == "SIGKILL"
+                process.kill()
+                process.wait(timeout=2)
+            return _Result()
+        assert action == "print"
+        return _Result(returncode=113)
+
+    try:
+        caught: BaseException | None = None
+        try:
+            run_login_capture(
+                root,
+                "negative_weather",
+                opener=opener,
+                sleeper=lambda _: None,
+                printer=lambda _: None,
+                platform_name="darwin",
+                uid_getter=lambda: 501,
+            )
+        except BaseException as error:
+            caught = error
+        assert type(caught) is ValueError
+        assert str(caught) == "voice_asr_capture_unavailable"
+        assert process is not None
+        process.wait(timeout=2)
+        # The child attempts its mutation after 0.3 seconds. Once it has exited,
+        # absence of the marker proves the parent stopped it before returning.
+        assert not late_mutation.exists()
+        status = root / "runtime/status"
+        assert (status / "voice-asr-capture.blocked").is_file()
+        assert (status / "voice-asr-capture.request").is_file()
+        assert [command[2] for command in calls if command[1] == "kill"] == [
+            "SIGTERM",
+            "SIGKILL",
+        ]
+    finally:
+        if process is not None and process.poll() is None:
+            process.kill()
+            process.wait(timeout=2)
+
+
 def test_recovery_boots_out_exact_operator_then_clears_one_owned_request(
     tmp_path: Path,
 ) -> None:
@@ -851,6 +954,66 @@ def test_recovery_boots_out_exact_operator_then_clears_one_owned_request(
     assert not pending.exists()
     assert not active.exists()
     assert not blocked.exists()
+
+
+@pytest.mark.parametrize(
+    ("domain_output", "should_recover"),
+    (
+        pytest.param(
+            _large_launchctl_domain(size=131_344, include_operator=False),
+            True,
+            id="large-label-absent",
+        ),
+        pytest.param(
+            _large_launchctl_domain(size=131_344, include_operator=True),
+            False,
+            id="large-label-present",
+        ),
+        pytest.param(
+            _large_launchctl_domain(size=262_145, include_operator=False),
+            False,
+            id="oversize-unknown",
+        ),
+    ),
+)
+def test_recovery_bounds_large_domain_output_without_missing_operator_label(
+    tmp_path: Path, domain_output: str, should_recover: bool
+) -> None:
+    from tools import voice_asr_capture_macos as capture_macos
+
+    root = tmp_path / "repo"
+    root.mkdir()
+
+    def opener(command: list[str], **_: object) -> _Result:
+        if command[1] == "bootout":
+            return _Result()
+        assert command[1:] == ["print", "gui/501"]
+        return _Result(stdout=domain_output)
+
+    printed: list[str] = []
+    if should_recover:
+        assert (
+            capture_macos.recover_login_job(
+                root,
+                opener=opener,
+                printer=printed.append,
+                platform_name="darwin",
+                uid_getter=lambda: 501,
+            )
+            == 0
+        )
+        assert printed == ["result=PASS", "operation=recover", "state=clean"]
+    else:
+        with pytest.raises(ValueError, match="^voice_asr_capture_unavailable$"):
+            capture_macos.recover_login_job(
+                root,
+                opener=opener,
+                printer=printed.append,
+                platform_name="darwin",
+                uid_getter=lambda: 501,
+            )
+        assert printed == []
+    assert domain_output not in "\n".join(printed)
 
 
 @pytest.mark.parametrize(
