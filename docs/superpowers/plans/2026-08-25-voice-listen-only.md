@@ -311,19 +311,19 @@ git commit -m "feat: compose Voice listen-only runtime"
 - Produces: `make alpha-voice-listen-start`, `alpha-voice-listen-status`, `alpha-voice-listen-stop`.
 - Preserves: Guardian and ASR operator launchd ownership and ordinary `alpha-voice-*` compatibility.
 
-- [ ] **Step 1: Write RED lifecycle tests**
+- [x] **Step 1: Write RED lifecycle tests**
 
 Assert Make dry-runs are short, use only Voice labels, status prints only schema/mode/state/reason/count/latency, start requires `listen_only_enabled=true`, and stop settles the Voice worker without touching go2rtc/Guardian/audio siblings.
 
-- [ ] **Step 2: Run RED**
+- [x] **Step 2: Run RED**
 
 Run: `.venv-alpha/bin/python -m pytest -q tests/deploy/test_voice_worker_deploy.py`
 
-- [ ] **Step 3: Add minimal lifecycle targets and runbook**
+- [x] **Step 3: Add minimal lifecycle targets and runbook**
 
 Use existing Voice-only launchd scripts; do not add an Alpha restart path. Document fixed i9 commands and that TTS uses the i9 speaker, not the camera.
 
-- [ ] **Step 4: Run software GREEN gates**
+- [x] **Step 4: Run software GREEN gates**
 
 Run:
 

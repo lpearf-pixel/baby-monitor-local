@@ -317,6 +317,7 @@ else
   start_if_stopped "$VOICE_PID" \
     nohup "$ROOT/.venv-alpha/bin/python" "$ROOT/tools/run_voice_worker.py" \
     --settings "$BABY_MONITOR_SETTINGS_PATH" \
+    --voice-models "$ROOT/runtime/config/voice-care-models.json" \
     >"$ROOT/runtime/logs/voice.log" 2>&1
   start_if_stopped "$WATCHDOG_PID" \
     nohup "$ROOT/.venv-alpha/bin/python" "$ROOT/tools/run_environment_watchdog.py" \

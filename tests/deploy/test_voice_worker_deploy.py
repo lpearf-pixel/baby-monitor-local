@@ -61,6 +61,27 @@ def test_voice_make_targets_are_bounded_and_separate() -> None:
         assert sibling not in outputs["alpha-voice-preflight"].lower()
 
 
+def test_listen_only_make_targets_use_one_bounded_voice_lifecycle_script() -> None:
+    outputs = {}
+    for target in (
+        "alpha-voice-listen-start",
+        "alpha-voice-listen-status",
+        "alpha-voice-listen-stop",
+    ):
+        completed = subprocess.run(
+            ["make", "-n", target], cwd=ROOT, capture_output=True, text=True, check=False
+        )
+        assert completed.returncode == 0
+        outputs[target] = completed.stdout
+
+    assert "tools/voice_listen_lifecycle.sh start" in outputs["alpha-voice-listen-start"]
+    assert "tools/voice_listen_lifecycle.sh status" in outputs["alpha-voice-listen-status"]
+    assert "tools/voice_listen_lifecycle.sh stop" in outputs["alpha-voice-listen-stop"]
+    for output in outputs.values():
+        for sibling in ("alpha-restart", "go2rtc", "visual", "gauge", "watchdog"):
+            assert sibling not in output.lower()
+
+
 def test_install_start_stop_and_guardian_gate_keep_voice_as_one_sibling() -> None:
     installer = (ROOT / "tools/install_alpha_macos.sh").read_text()
     start = (ROOT / "tools/start_alpha.sh").read_text()
@@ -71,6 +92,7 @@ def test_install_start_stop_and_guardian_gate_keep_voice_as_one_sibling() -> Non
     assert 'VOICE_LABEL="com.babymonitor.voice"' in start
     assert 'VOICE_LABEL="com.babymonitor.voice"' in stop
     assert "run_voice_worker.py" in start
+    assert '--voice-models "$ROOT/runtime/config/voice-care-models.json"' in start
     assert "test_voice_worker_deploy.py" in guardian
     assert 'run_check "installation" "voice_preflight" check_voice_preflight' in guardian
     assert (

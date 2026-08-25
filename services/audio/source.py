@@ -132,19 +132,33 @@ class FixedAudioDecoder:
                 try:
                     selector.register(descriptor, selectors.EVENT_READ)
                     if not selector.select(timeout_seconds):
+                        self.close()
                         return DecoderRead(b"", AudioFailureReason.AUDIO_STALE)
                     pcm = os.read(descriptor, max_bytes)
                 finally:
                     selector.close()
         except (OSError, ValueError):
+            self.close()
             return DecoderRead(b"", AudioFailureReason.DECODER_FAILED)
         if pcm and len(pcm) % self._settings.sample_width_bytes:
+            self.close()
             return DecoderRead(b"", AudioFailureReason.DECODER_FAILED)
         if pcm:
             return DecoderRead(pcm)
         if self._process.poll() is None:
+            self.close()
             return DecoderRead(b"", AudioFailureReason.AUDIO_STALE)
+        self._discard_exited_process()
         return DecoderRead(b"", AudioFailureReason.DECODER_FAILED)
+
+    def _discard_exited_process(self) -> None:
+        process, self._process = self._process, None
+        stdout = getattr(process, "stdout", None)
+        if stdout is not None:
+            try:
+                stdout.close()
+            except OSError:
+                pass
 
     def close(self) -> None:
         process = self._process

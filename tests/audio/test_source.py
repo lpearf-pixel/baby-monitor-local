@@ -141,6 +141,27 @@ def test_decoder_start_failure_is_source_unavailable() -> None:
     assert result.failure_reason is AudioFailureReason.AUDIO_SOURCE_UNAVAILABLE
 
 
+def test_decoder_reopens_after_a_terminated_ffmpeg_child() -> None:
+    processes = iter(
+        (
+            FakeProcess([b""], code=1),
+            FakeProcess([b"\x00\x01"]),
+        )
+    )
+    opened: list[FakeProcess] = []
+
+    def opener(*_args: object, **_kwargs: object) -> FakeProcess:
+        process = next(processes)
+        opened.append(process)
+        return process
+
+    decoder = FixedAudioDecoder(AudioSettings(), opener=opener)
+
+    assert decoder.read(2).failure_reason is AudioFailureReason.DECODER_FAILED
+    assert decoder.read(2) == DecoderRead(b"\x00\x01")
+    assert len(opened) == 2
+
+
 def test_decoder_rejects_malformed_partial_pcm_sample() -> None:
     decoder = FixedAudioDecoder(
         AudioSettings(), opener=lambda *_args, **_kwargs: FakeProcess([b"x"])

@@ -18,7 +18,17 @@ _REASONS = {
 
 def main(argv: list[str] | None = None) -> int:
     args = argv if argv is not None else sys.argv[1:]
-    path = Path(args[0]) if len(args) == 1 else Path("runtime/status/voice.json")
+    required_mode: str | None = None
+    if not args:
+        path = Path("runtime/status/voice.json")
+    elif len(args) == 1:
+        path = Path(args[0])
+    elif len(args) == 3 and args[1] == "--require-mode":
+        path = Path(args[0])
+        required_mode = args[2]
+    else:
+        print("voice_status=unavailable")
+        return 2
     try:
         payload = json.loads(path.read_text(encoding="ascii"))
         if set(payload) != {
@@ -39,6 +49,7 @@ def main(argv: list[str] | None = None) -> int:
         if (
             payload["schema_version"] != 2
             or mode not in {"disabled", "listen_only", "care"}
+            or (required_mode is not None and mode != required_mode)
             or state not in {"disabled", "healthy", "degraded"}
             or reason not in _REASONS
             or type(count) is not int

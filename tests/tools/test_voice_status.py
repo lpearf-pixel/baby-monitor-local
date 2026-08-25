@@ -54,3 +54,24 @@ def test_status_cli_rejects_transcript_even_when_other_fields_are_valid(
 
     assert main([str(path)]) == 2
     assert capsys.readouterr().out == "voice_status=unavailable\n"
+
+
+def test_status_cli_can_require_listen_only_mode(tmp_path: Path, capsys) -> None:
+    path = tmp_path / "voice.json"
+    path.write_text(
+        json.dumps(
+            {
+                "schema_version": 2,
+                "checked_at": "2026-08-25T00:00:00+00:00",
+                "mode": "listen_only",
+                "worker_state": "healthy",
+                "reason": "listen_only_idle",
+                "processed_count": 0,
+                "last_latency_ms": None,
+            }
+        ),
+        encoding="ascii",
+    )
+
+    assert main([str(path), "--require-mode", "listen_only"]) == 0
+    assert "mode=listen_only" in capsys.readouterr().out
