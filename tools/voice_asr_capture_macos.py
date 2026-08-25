@@ -14,6 +14,7 @@ import time
 from collections.abc import Callable, Sequence
 from contextlib import contextmanager
 from dataclasses import dataclass
+from enum import Enum
 from pathlib import Path
 from typing import Iterator
 
@@ -64,6 +65,19 @@ class _RequestOwnership:
 class _ClaimedRequest:
     request: _Request
     ownership: _RequestOwnership
+
+
+@dataclass(frozen=True)
+class _BlockedOwnership:
+    request_id: str
+    device: int
+    inode: int
+
+
+class _OperatorState(Enum):
+    RUNNING = "running"
+    STOPPED = "stopped"
+    UNKNOWN = "unknown"
 
 
 def parse_capture_result(
@@ -273,10 +287,19 @@ def main(argv: Sequence[str] | None = None) -> int:
     record.add_argument("--prompt-id", required=True, choices=tuple(PRIVATE_ASR_PROMPTS))
     subparsers.add_parser("paraformer")
     subparsers.add_parser("vad-diagnostic")
+    subparsers.add_parser("recover")
     subparsers.add_parser("login-job")
     subparsers.add_parser("terminal-job")
     arguments = parser.parse_args(argv)
     root = Path.cwd().resolve(strict=True)
+    if arguments.operation == "recover":
+        try:
+            return recover_login_job(root)
+        except (Exception, KeyboardInterrupt):
+            print("result=FAIL")
+            print("operation=recover")
+            print(f"reason={CAPTURE_UNAVAILABLE}")
+            return 1
     if arguments.operation in {"login-job", "terminal-job"}:
         claim: _ClaimedRequest | None = None
         try:
@@ -362,8 +385,8 @@ def run_login_capture(
                 sleeper(1)
             printer("capture_now=true")
             ownership = _write_request(request_path, request)
-            launched = True
             _kickstart_operator(opener, target)
+            launched = True
             _wait_for_status(status_path, "capture_job_complete=true\n", sleeper)
             result = parse_capture_result(
                 status_path.read_text(encoding="utf-8"),
@@ -411,8 +434,8 @@ def run_login_evaluation(
             status_path.write_text("", encoding="utf-8")
             status_path.chmod(0o600)
             ownership = _write_request(request_path, request)
-            launched = True
             _kickstart_operator(opener, target)
+            launched = True
             _wait_for_status(status_path, "login_job_complete=true\n", sleeper)
             rendered = parse_evaluation_result(
                 status_path.read_text(encoding="utf-8"),
@@ -432,6 +455,71 @@ def run_login_evaluation(
         finally:
             if ownership is not None and not preserve_request:
                 _cleanup_owned_request(root, ownership)
+
+
+def recover_login_job(
+    project_root: Path,
+    *,
+    opener: Runner = subprocess.run,
+    printer: Printer = print,
+    platform_name: str = sys.platform,
+    uid_getter: UidGetter = os.getuid,
+) -> int:
+    root = project_root.resolve(strict=True)
+    if platform_name != "darwin":
+        raise ValueError(CAPTURE_UNAVAILABLE)
+    with _parent_request_lock(root):
+        domain = f"gui/{uid_getter()}"
+        target = f"{domain}/{_OPERATOR_LABEL}"
+        _run(
+            opener,
+            ["/bin/launchctl", "bootout", target],
+            check=False,
+            capture_output=True,
+        )
+        if not _operator_label_is_absent(opener, domain):
+            raise ValueError(CAPTURE_UNAVAILABLE)
+
+        request_ownership: list[tuple[Path, _RequestOwnership]] = []
+        request_ids: set[str] = set()
+        for relative in (_REQUEST_RELATIVE, _ACTIVE_REQUEST_RELATIVE):
+            path = root / relative
+            if path.is_symlink():
+                raise ValueError(CAPTURE_UNAVAILABLE)
+            if path.exists():
+                request = _read_request_path(path)
+                ownership = _request_ownership(path, request.request_id)
+                request_ownership.append((path, ownership))
+                request_ids.add(request.request_id)
+
+        blocked_path = root / _BLOCKED_RELATIVE
+        blocked_ownership: _BlockedOwnership | None = None
+        if blocked_path.is_symlink():
+            raise ValueError(CAPTURE_UNAVAILABLE)
+        if blocked_path.exists():
+            blocked_ownership = _read_blocked_ownership(blocked_path)
+            request_ids.add(blocked_ownership.request_id)
+        if len(request_ids) > 1:
+            raise ValueError(CAPTURE_UNAVAILABLE)
+
+        for path, ownership in request_ownership:
+            _remove_owned_request(path, ownership)
+        if blocked_ownership is not None:
+            _remove_owned_blocked(blocked_path, blocked_ownership)
+        if any(
+            path.is_symlink() or path.exists()
+            for path in (
+                root / _REQUEST_RELATIVE,
+                root / _ACTIVE_REQUEST_RELATIVE,
+                blocked_path,
+            )
+        ):
+            raise ValueError(CAPTURE_UNAVAILABLE)
+
+        printer("result=PASS")
+        printer("operation=recover")
+        printer("state=cleared" if request_ids else "state=clean")
+        return 0
 
 
 def _prepare_login_job(root: Path) -> tuple[Path, Path]:
@@ -579,6 +667,41 @@ def _mark_blocked(project_root: Path, ownership: _RequestOwnership) -> None:
     temporary.replace(blocked)
 
 
+def _read_blocked_ownership(blocked: Path) -> _BlockedOwnership:
+    if blocked.is_symlink() or not blocked.is_file():
+        raise ValueError(CAPTURE_UNAVAILABLE)
+    value = blocked.read_text(encoding="ascii")
+    lines = value.splitlines()
+    if (
+        len(lines) != 2
+        or value != "\n".join(lines) + "\n"
+        or lines[0] != "reason=operator_exit_unconfirmed"
+        or not lines[1].startswith("request_id=")
+    ):
+        raise ValueError(CAPTURE_UNAVAILABLE)
+    request_id = lines[1].split("=", 1)[1]
+    _validate_request_id(request_id)
+    metadata = blocked.stat()
+    if not stat.S_ISREG(metadata.st_mode):
+        raise ValueError(CAPTURE_UNAVAILABLE)
+    return _BlockedOwnership(
+        request_id=request_id,
+        device=metadata.st_dev,
+        inode=metadata.st_ino,
+    )
+
+
+def _remove_owned_blocked(
+    blocked: Path, ownership: _BlockedOwnership
+) -> None:
+    try:
+        current = _read_blocked_ownership(blocked)
+        if current == ownership:
+            blocked.unlink()
+    except Exception:
+        return
+
+
 @contextmanager
 def _parent_request_lock(project_root: Path) -> Iterator[None]:
     lock_path = project_root / _PARENT_LOCK_RELATIVE
@@ -635,14 +758,14 @@ def _wait_for_operator_exit(
 ) -> bool:
     deadline = time.monotonic() + _STOP_WAIT_SECONDS
     while True:
-        if not _operator_is_running(opener, target):
+        if _operator_is_running(opener, target) is _OperatorState.STOPPED:
             return True
         if time.monotonic() >= deadline:
             return False
         sleeper(0.1)
 
 
-def _operator_is_running(opener: Runner, target: str) -> bool:
+def _operator_is_running(opener: Runner, target: str) -> _OperatorState:
     try:
         result = _run(
             opener,
@@ -651,13 +774,40 @@ def _operator_is_running(opener: Runner, target: str) -> bool:
             capture_output=True,
         )
     except Exception:
-        return True
+        return _OperatorState.UNKNOWN
     if result.returncode != 0:
-        return False
+        return _OperatorState.UNKNOWN
     output = result.stdout
     if type(output) is not str or len(output) > 16_384:
-        return True
-    return re.search(r"(?m)^\s*(?:state = running|pid = [0-9]+)\s*$", output) is not None
+        return _OperatorState.UNKNOWN
+    if re.search(r"(?m)^\s*(?:state = running|pid = [1-9][0-9]*)\s*$", output):
+        return _OperatorState.RUNNING
+    if re.search(r"(?m)^\s*state = (?:exited|not running)\s*$", output):
+        return _OperatorState.STOPPED
+    return _OperatorState.UNKNOWN
+
+
+def _operator_label_is_absent(opener: Runner, domain: str) -> bool:
+    try:
+        result = _run(
+            opener,
+            ["/bin/launchctl", "print", domain],
+            check=False,
+            capture_output=True,
+        )
+    except Exception:
+        return False
+    output = result.stdout
+    return (
+        result.returncode == 0
+        and type(output) is str
+        and len(output) <= 65_536
+        and re.search(
+            rf"(?m)^\s*{re.escape(domain)} = \{{\s*$", output
+        )
+        is not None
+        and _OPERATOR_LABEL not in output
+    )
 
 
 def _wait_for_status(status_path: Path, sentinel: str, sleeper: Sleeper) -> None:

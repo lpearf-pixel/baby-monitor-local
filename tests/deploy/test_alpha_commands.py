@@ -971,6 +971,21 @@ def test_private_asr_calibration_commands_use_fixed_local_module() -> None:
     assert "-m tools.voice_asr_capture_macos vad-diagnostic" in content
 
 
+def test_makefile_exposes_explicit_headless_voice_recovery() -> None:
+    result = subprocess.run(
+        ["make", "-n", "alpha-voice-asr-recover"],
+        cwd=ROOT,
+        check=False,
+        capture_output=True,
+        text=True,
+    )
+
+    assert result.returncode == 0
+    assert result.stdout.strip() == (
+        "./.venv-alpha/bin/python -m tools.voice_asr_capture_macos recover"
+    )
+
+
 def test_makefile_exposes_fixed_voice_keychain_helper_lifecycle() -> None:
     build = subprocess.run(
         ["make", "-n", "alpha-voice-keychain-helper-build"],
