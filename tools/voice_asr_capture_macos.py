@@ -46,6 +46,9 @@ JobRunner = Callable[[Path, str], int]
 EvaluationJobRunner = Callable[[Path, str], int]
 UidGetter = Callable[[], int]
 _EVALUATIONS = frozenset({"paraformer", "vad-diagnostic", "preflight"})
+_LEGACY_OPERATIONS = frozenset(PRIVATE_ASR_PROMPTS) | frozenset(
+    {"paraformer", "vad-diagnostic"}
+)
 _REQUEST_ID_PATTERN = re.compile(r"[0-9a-f]{32}")
 
 
@@ -71,6 +74,13 @@ class _ClaimedRequest:
 @dataclass(frozen=True)
 class _BlockedOwnership:
     request_id: str
+    device: int
+    inode: int
+
+
+@dataclass(frozen=True)
+class _LegacyRequestOwnership:
+    operation: str
     device: int
     inode: int
 
@@ -576,16 +586,28 @@ def recover_login_job(
             raise ValueError(CAPTURE_UNAVAILABLE)
 
         request_ownership: list[tuple[Path, _RequestOwnership]] = []
+        legacy_ownership: tuple[Path, _LegacyRequestOwnership] | None = None
         request_ids: set[str] = set()
         for relative in (_REQUEST_RELATIVE, _ACTIVE_REQUEST_RELATIVE):
             path = root / relative
             if path.is_symlink():
                 raise ValueError(CAPTURE_UNAVAILABLE)
             if path.exists():
-                request = _read_request_path(path)
-                ownership = _request_ownership(path, request.request_id)
-                request_ownership.append((path, ownership))
-                request_ids.add(request.request_id)
+                try:
+                    request = _read_request_path(path)
+                    ownership = _request_ownership(path, request.request_id)
+                except ValueError:
+                    if (
+                        relative != _REQUEST_RELATIVE
+                        or legacy_ownership is not None
+                        or (root / _ACTIVE_REQUEST_RELATIVE).exists()
+                        or (root / _BLOCKED_RELATIVE).exists()
+                    ):
+                        raise
+                    legacy_ownership = (path, _legacy_request_ownership(path))
+                else:
+                    request_ownership.append((path, ownership))
+                    request_ids.add(request.request_id)
 
         blocked_path = root / _BLOCKED_RELATIVE
         blocked_ownership: _BlockedOwnership | None = None
@@ -599,6 +621,8 @@ def recover_login_job(
 
         for path, ownership in request_ownership:
             _remove_owned_request(path, ownership)
+        if legacy_ownership is not None:
+            _remove_legacy_request(*legacy_ownership)
         if blocked_ownership is not None:
             _remove_owned_blocked(blocked_path, blocked_ownership)
         if any(
@@ -613,7 +637,11 @@ def recover_login_job(
 
         printer("result=PASS")
         printer("operation=recover")
-        printer("state=cleared" if request_ids else "state=clean")
+        printer(
+            "state=cleared"
+            if request_ids or legacy_ownership is not None
+            else "state=clean"
+        )
         return 0
 
 
@@ -667,6 +695,49 @@ def _read_request_path(request_path: Path) -> _Request:
     )
     _validate_request(request)
     return request
+
+
+def _legacy_request_ownership(path: Path) -> _LegacyRequestOwnership:
+    descriptor = -1
+    try:
+        if path.is_symlink():
+            raise ValueError
+        descriptor = os.open(path, os.O_RDONLY | os.O_NOFOLLOW)
+        metadata = os.fstat(descriptor)
+        payload = os.read(descriptor, 65)
+        if (
+            not stat.S_ISREG(metadata.st_mode)
+            or stat.S_IMODE(metadata.st_mode) != 0o600
+            or not 1 <= metadata.st_size <= 64
+            or len(payload) != metadata.st_size
+        ):
+            raise ValueError
+        value = payload.decode("ascii")
+        if not value.endswith("\n") or value.count("\n") != 1:
+            raise ValueError
+        operation = value[:-1]
+        if operation not in _LEGACY_OPERATIONS:
+            raise ValueError
+        return _LegacyRequestOwnership(
+            operation=operation,
+            device=metadata.st_dev,
+            inode=metadata.st_ino,
+        )
+    except Exception:
+        raise ValueError(CAPTURE_UNAVAILABLE) from None
+    finally:
+        if descriptor >= 0:
+            os.close(descriptor)
+
+
+def _remove_legacy_request(
+    path: Path, ownership: _LegacyRequestOwnership
+) -> None:
+    try:
+        if _legacy_request_ownership(path) == ownership:
+            path.unlink()
+    except Exception:
+        return
 
 
 def _new_request(operation: str) -> _Request:

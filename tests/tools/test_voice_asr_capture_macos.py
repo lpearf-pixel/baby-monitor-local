@@ -956,6 +956,68 @@ def test_recovery_boots_out_exact_operator_then_clears_one_owned_request(
     assert not blocked.exists()
 
 
+def test_recovery_accepts_only_one_exact_legacy_pending_request(tmp_path: Path) -> None:
+    from tools import voice_asr_capture_macos as capture_macos
+
+    root = tmp_path / "repo"
+    status = root / "runtime/status"
+    status.mkdir(parents=True)
+    pending = status / "voice-asr-capture.request"
+    pending.write_text("negative_weather\n", encoding="ascii")
+    pending.chmod(0o600)
+
+    def opener(command: list[str], **_: object) -> _Result:
+        if command[1] == "bootout":
+            return _Result()
+        return _Result(stdout="gui/501 = {\nservices = {\n}\n}\n")
+
+    printed: list[str] = []
+    assert (
+        capture_macos.recover_login_job(
+            root,
+            opener=opener,
+            printer=printed.append,
+            platform_name="darwin",
+            uid_getter=lambda: 501,
+        )
+        == 0
+    )
+    assert printed == ["result=PASS", "operation=recover", "state=cleared"]
+    assert not pending.exists()
+
+
+@pytest.mark.parametrize(
+    "payload",
+    ("private_request\n", "negative_weather\nextra\n"),
+)
+def test_recovery_preserves_unknown_legacy_pending_request(
+    tmp_path: Path, payload: str
+) -> None:
+    from tools import voice_asr_capture_macos as capture_macos
+
+    root = tmp_path / "repo"
+    status = root / "runtime/status"
+    status.mkdir(parents=True)
+    pending = status / "voice-asr-capture.request"
+    pending.write_text(payload, encoding="ascii")
+    pending.chmod(0o600)
+
+    def opener(command: list[str], **_: object) -> _Result:
+        if command[1] == "bootout":
+            return _Result()
+        return _Result(stdout="gui/501 = {\nservices = {\n}\n}\n")
+
+    with pytest.raises(ValueError, match="^voice_asr_capture_unavailable$"):
+        capture_macos.recover_login_job(
+            root,
+            opener=opener,
+            printer=lambda _: None,
+            platform_name="darwin",
+            uid_getter=lambda: 501,
+        )
+    assert pending.read_text(encoding="ascii") == payload
+
+
 @pytest.mark.parametrize(
     ("domain_output", "should_recover"),
     (
