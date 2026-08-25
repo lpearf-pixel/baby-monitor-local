@@ -18,6 +18,7 @@ from enum import Enum
 from pathlib import Path
 from typing import Iterator
 
+from services.voice.asr_calibration import ASR_CALIBRATION_FAILED
 from services.voice.asr_corpus import PRIVATE_ASR_PROMPTS
 
 
@@ -50,6 +51,7 @@ _LEGACY_OPERATIONS = frozenset(PRIVATE_ASR_PROMPTS) | frozenset(
     {"paraformer", "vad-diagnostic"}
 )
 _REQUEST_ID_PATTERN = re.compile(r"[0-9a-f]{32}")
+_CAPTURE_FAILURE_STAGES = frozenset({"preflight", "capture", "vad", "storage"})
 
 
 @dataclass(frozen=True)
@@ -102,13 +104,10 @@ def parse_capture_result(
 ) -> tuple[str, ...]:
     _validate_prompt_id(prompt_id)
     _validate_request_id(request_id)
-    expected = {
+    common = {
         "prompt_id": prompt_id,
         "prompt": PRIVATE_ASR_PROMPTS[prompt_id],
-        "result": "PASS",
         "operation": "capture-fixed",
-        "duration_ms": str(_EXPECTED_DURATION_MS),
-        "encrypted_clip_persisted": "true",
         "request_id": request_id,
         "capture_job_complete": "true",
     }
@@ -117,18 +116,63 @@ def parse_capture_result(
         if not line or "=" not in line:
             raise ValueError(CAPTURE_UNAVAILABLE)
         key, value = line.split("=", 1)
-        if key in values or key not in expected:
+        if key in values:
             raise ValueError(CAPTURE_UNAVAILABLE)
         values[key] = value
+    if values.get("result") == "PASS":
+        expected = common | {
+            "result": "PASS",
+            "duration_ms": str(_EXPECTED_DURATION_MS),
+            "encrypted_clip_persisted": "true",
+        }
+        if values != expected:
+            raise ValueError(CAPTURE_UNAVAILABLE)
+        return (
+            "result=PASS",
+            "operation=capture-fixed",
+            f"prompt_id={prompt_id}",
+            f"duration_ms={_EXPECTED_DURATION_MS}",
+            "encrypted_clip_persisted=true",
+        )
+    failure_stage = values.get("failure_stage")
+    if failure_stage not in _CAPTURE_FAILURE_STAGES:
+        raise ValueError(CAPTURE_UNAVAILABLE)
+    expected = common | {
+        "result": "FAIL",
+        "reason": ASR_CALIBRATION_FAILED,
+        "failure_stage": failure_stage,
+    }
+    metric: str | None = None
+    if failure_stage == "vad":
+        count = values.get("detected_segment_count")
+        if count is None or not count.isascii() or not count.isdecimal():
+            raise ValueError(CAPTURE_UNAVAILABLE)
+        if not 0 <= int(count) <= 64:
+            raise ValueError(CAPTURE_UNAVAILABLE)
+        expected["detected_segment_count"] = count
+        metric = f"detected_segment_count={count}"
+    elif failure_stage == "capture":
+        captured_ms = values.get("captured_ms")
+        if (
+            captured_ms is None
+            or not captured_ms.isascii()
+            or not captured_ms.isdecimal()
+            or not 0 <= int(captured_ms) <= 30_000
+        ):
+            raise ValueError(CAPTURE_UNAVAILABLE)
+        expected["captured_ms"] = captured_ms
+        metric = f"captured_ms={captured_ms}"
     if values != expected:
         raise ValueError(CAPTURE_UNAVAILABLE)
-    return (
-        "result=PASS",
+    rendered = [
+        "result=FAIL",
         "operation=capture-fixed",
-        f"prompt_id={prompt_id}",
-        f"duration_ms={_EXPECTED_DURATION_MS}",
-        "encrypted_clip_persisted=true",
-    )
+        f"reason={ASR_CALIBRATION_FAILED}",
+        f"failure_stage={failure_stage}",
+    ]
+    if metric is not None:
+        rendered.append(metric)
+    return tuple(rendered)
 
 
 def parse_evaluation_result(
@@ -488,7 +532,7 @@ def run_login_capture(
             )
             for line in result:
                 printer(line)
-            return 0
+            return 0 if result[0] == "result=PASS" else 1
         except (Exception, KeyboardInterrupt):
             if (
                 kickstart_state is not _KickstartState.DEFINITE_FAILURE

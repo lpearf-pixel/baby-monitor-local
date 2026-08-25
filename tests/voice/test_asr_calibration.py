@@ -159,10 +159,36 @@ def test_fixed_window_capture_rejects_silence_without_replacing_existing_clip() 
         corpus=corpus,
     )
 
-    with pytest.raises(ValueError, match=f"^{ASR_CALIBRATION_FAILED}$"):
+    with pytest.raises(
+        AsrCalibrationFailure, match=f"^{ASR_CALIBRATION_FAILED}$"
+    ) as error:
         capture.capture("negative_weather")
 
+    assert error.value.stage == "vad"
+    assert error.value.detected_segment_count == 0
     assert corpus.clips == [("negative_weather", old_pcm)]
+
+
+def test_fixed_window_capture_reports_storage_failure_without_replacing_clip() -> None:
+    class FailingCorpus(Corpus):
+        def put(self, prompt_id: str, pcm: bytes) -> None:
+            raise RuntimeError("private storage detail")
+
+    corpus = FailingCorpus()
+    capture = FixedWindowAsrCalibrationCapture(
+        capture_window=lambda: b"f" * 256_000,
+        segmenter=Segmenter((SpeechSpan(8_000, 40_000, 0.91),)),
+        corpus=corpus,
+    )
+
+    with pytest.raises(
+        AsrCalibrationFailure, match=f"^{ASR_CALIBRATION_FAILED}$"
+    ) as error:
+        capture.capture("negative_weather")
+
+    assert error.value.stage == "storage"
+    assert error.value.detected_segment_count is None
+    assert corpus.clips == []
 
 
 def test_batch_capture_maps_six_spans_to_fixed_prompts_in_one_publication() -> None:

@@ -41,6 +41,17 @@ def _capture_success(request_id: str) -> str:
     )
 
 
+def _capture_vad_failure(request_id: str, segment_count: int) -> str:
+    return (
+        "prompt_id=negative_weather\nprompt=今天天气不错\n"
+        "result=FAIL\noperation=capture-fixed\n"
+        "reason=voice_asr_calibration_failed\n"
+        "failure_stage=vad\n"
+        f"detected_segment_count={segment_count}\n"
+        f"request_id={request_id}\ncapture_job_complete=true\n"
+    )
+
+
 def _large_launchctl_domain(*, size: int, include_operator: bool) -> str:
     prefix = "gui/501 = {\nservices = {\n"
     operator = (
@@ -280,27 +291,35 @@ def test_login_capture_waits_for_the_terminal_success_sentinel(tmp_path: Path) -
 def test_login_capture_fails_closed_when_terminal_job_fails(tmp_path: Path) -> None:
     root = tmp_path / "repo"
     root.mkdir()
+    output: list[str] = []
 
-    def opener(_command: list[str], **_: object) -> _Result:
-        status = root / "runtime/status/voice-asr-capture.txt"
-        status.write_text(
-            "result=FAIL\noperation=capture-fixed\n"
-            "reason=voice_asr_calibration_failed\n"
-            "capture_job_complete=true\n",
-            encoding="utf-8",
-        )
-        return _Result()
+    def sleeper(_: float) -> None:
+        request = root / "runtime/status/voice-asr-capture.request"
+        if request.exists():
+            (root / "runtime/status/voice-asr-capture.txt").write_text(
+                _capture_vad_failure(_pending_request_id(root), 2),
+                encoding="utf-8",
+            )
 
-    with pytest.raises(ValueError, match="^voice_asr_capture_unavailable$"):
+    assert (
         run_login_capture(
             root,
             "negative_weather",
-            opener=opener,
-            sleeper=lambda _: None,
-            printer=lambda _: None,
+            opener=lambda _command, **_kwargs: _Result(),
+            sleeper=sleeper,
+            printer=output.append,
             platform_name="darwin",
             uid_getter=lambda: 501,
         )
+        == 1
+    )
+    assert output[-5:] == [
+        "result=FAIL",
+        "operation=capture-fixed",
+        "reason=voice_asr_calibration_failed",
+        "failure_stage=vad",
+        "detected_segment_count=2",
+    ]
 
 
 def test_fixed_terminal_runner_keeps_path_and_invocation_source_controlled() -> None:

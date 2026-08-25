@@ -403,6 +403,31 @@ def test_operator_reports_only_allowlisted_vad_failure_count(tmp_path: Path) -> 
     ]
 
 
+def test_fixed_capture_reports_only_allowlisted_vad_failure_count(
+    tmp_path: Path,
+) -> None:
+    output: list[str] = []
+
+    result = voice_asr_calibrate.main(
+        ["capture-fixed", "--prompt-id", "negative_weather"],
+        project_root=tmp_path,
+        fixed_capture_builder=lambda _root: (_ for _ in ()).throw(
+            AsrCalibrationFailure("vad", detected_segment_count=2)
+        ),
+        input_fn=lambda _prompt: "",
+        printer=output.append,
+    )
+
+    assert result == 1
+    assert output[-5:] == [
+        "result=FAIL",
+        "operation=capture-fixed",
+        f"reason={ASR_CALIBRATION_FAILED}",
+        "failure_stage=vad",
+        "detected_segment_count=2",
+    ]
+
+
 def test_operator_reports_only_bounded_capture_progress(tmp_path: Path) -> None:
     output: list[str] = []
 

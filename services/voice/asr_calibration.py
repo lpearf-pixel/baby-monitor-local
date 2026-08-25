@@ -479,15 +479,20 @@ class FixedWindowAsrCalibrationCapture:
         self._corpus = corpus
 
     def capture(self, prompt_id: str) -> FixedWindowCaptureReport:
+        stage = "preflight"
         try:
             if prompt_id not in PRIVATE_ASR_PROMPTS:
                 raise ValueError
+            stage = "capture"
             pcm = self._capture_window()
             if type(pcm) is not bytes or len(pcm) != SAMPLE_RATE_HZ * 2 * 8:
                 raise ValueError
+            stage = "vad"
             spans = self._segmenter.segment(pcm)
             if len(spans) != 1:
-                raise ValueError
+                raise AsrCalibrationFailure(
+                    "vad", detected_segment_count=len(spans)
+                )
             span = spans[0]
             if (
                 not isinstance(span, SpeechSpan)
@@ -496,10 +501,13 @@ class FixedWindowAsrCalibrationCapture:
                 or span.end_sample > SAMPLE_RATE_HZ * 8
             ):
                 raise ValueError
+            stage = "storage"
             self._corpus.put(prompt_id, pcm)
             return FixedWindowCaptureReport(prompt_id)
+        except AsrCalibrationFailure:
+            raise
         except Exception:
-            raise ValueError(ASR_CALIBRATION_FAILED) from None
+            raise AsrCalibrationFailure(stage) from None
 
 
 class BoundedCalibrationPcmCapture:
