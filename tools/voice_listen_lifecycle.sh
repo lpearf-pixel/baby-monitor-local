@@ -8,7 +8,15 @@ ACTION="${1:-}"
 
 case "$ACTION" in
   start)
-    bash "$ROOT/tools/start_alpha.sh" --voice-only
+    start_attempt=0
+    while ! bash "$ROOT/tools/start_alpha.sh" --voice-only; do
+      start_attempt=$((start_attempt + 1))
+      if [[ "$start_attempt" -ge 3 ]]; then
+        echo "voice_listen=unavailable" >&2
+        exit 1
+      fi
+      sleep 1
+    done
     attempt=0
     while [[ "$attempt" -lt 30 ]]; do
       if "$PYTHON" "$ROOT/tools/voice_status.py" "$STATUS" \
