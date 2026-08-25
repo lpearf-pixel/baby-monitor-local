@@ -12,16 +12,21 @@ from pathlib import Path
 
 def parser() -> argparse.ArgumentParser:
     command = argparse.ArgumentParser(description="Train pinned YOLOX-Tiny on Intel CPU")
-    command.add_argument("--source", type=Path, required=True)
-    command.add_argument("--dataset", type=Path, required=True)
+    command.add_argument("--source", type=Path)
+    command.add_argument("--dataset", type=Path)
     command.add_argument("--checkpoint", type=Path, required=True)
     command.add_argument("--epochs", type=int, default=80)
     command.add_argument("--batch-size", type=int, default=4)
+    command.add_argument("--read-checkpoint-provenance", action="store_true")
     return command
 
 
 def main() -> int:
     arguments = parser().parse_args()
+    if arguments.read_checkpoint_provenance:
+        return _emit_checkpoint_training_provenance(arguments.checkpoint)
+    if arguments.source is None or arguments.dataset is None:
+        return 2
     if not 1 <= arguments.epochs <= 300 or not 1 <= arguments.batch_size <= 16:
         return 2
     sys.path.insert(0, str(arguments.source))
@@ -124,6 +129,46 @@ def _training_provenance(
         "best_epoch": best_epoch,
         "configured_epochs": configured_epochs,
         "dataset_manifest_sha256": _digest(dataset / "manifest.json"),
+    }
+
+
+def _emit_checkpoint_training_provenance(checkpoint: Path) -> int:
+    try:
+        import torch
+
+        payload = torch.load(checkpoint, map_location="cpu", weights_only=True)
+        if not isinstance(payload, dict):
+            raise ValueError("ws2021_training_failed")
+        provenance = _validate_training_provenance(payload.get("training_provenance"))
+        print(json.dumps(provenance, sort_keys=True, separators=(",", ":")))
+        return 0
+    except Exception:
+        return 2
+
+
+def _validate_training_provenance(value: object) -> dict[str, object]:
+    if not isinstance(value, dict) or set(value) != {
+        "best_epoch",
+        "configured_epochs",
+        "dataset_manifest_sha256",
+    }:
+        raise ValueError("ws2021_training_failed")
+    configured_epochs = value["configured_epochs"]
+    best_epoch = value["best_epoch"]
+    manifest_digest = value["dataset_manifest_sha256"]
+    if (
+        type(configured_epochs) is not int
+        or type(best_epoch) is not int
+        or not 1 <= best_epoch <= configured_epochs <= 300
+        or not isinstance(manifest_digest, str)
+        or len(manifest_digest) != 64
+        or any(character not in "0123456789abcdef" for character in manifest_digest)
+    ):
+        raise ValueError("ws2021_training_failed")
+    return {
+        "best_epoch": best_epoch,
+        "configured_epochs": configured_epochs,
+        "dataset_manifest_sha256": manifest_digest,
     }
 
 

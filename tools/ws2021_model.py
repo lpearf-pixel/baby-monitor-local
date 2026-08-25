@@ -226,13 +226,35 @@ def _checkpoint_provenance(artifacts: Path) -> dict[str, object]:
         raise ValueError("ws2021_model_invalid")
     if payload["checkpoint_sha256"] != _digest(checkpoint):
         raise ValueError("ws2021_model_invalid")
-    return _validate_training_provenance(
+    sidecar_provenance = _validate_training_provenance(
         {
             "best_epoch": payload["best_epoch"],
             "configured_epochs": payload["configured_epochs"],
             "dataset_manifest_sha256": payload["dataset_manifest_sha256"],
         }
     )
+    if _read_checkpoint_training_provenance(checkpoint) != sidecar_provenance:
+        raise ValueError("ws2021_model_invalid")
+    return sidecar_provenance
+
+
+def _read_checkpoint_training_provenance(checkpoint: Path) -> dict[str, object]:
+    training_python = checkpoint.parent.parent / "venv/bin/python"
+    completed = subprocess.run(
+        (
+            str(training_python),
+            str(Path(__file__).with_name("ws2021_cpu_train.py")),
+            "--checkpoint",
+            str(checkpoint),
+            "--read-checkpoint-provenance",
+        ),
+        check=True,
+        stdout=subprocess.PIPE,
+        stderr=subprocess.DEVNULL,
+        text=True,
+        timeout=30,
+    )
+    return _validate_training_provenance(json.loads(completed.stdout))
 
 
 def _validate_training_provenance(value: object) -> dict[str, object]:

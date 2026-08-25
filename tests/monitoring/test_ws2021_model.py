@@ -177,7 +177,9 @@ def test_artifact_check_requires_complete_training_provenance(tmp_path: Path) ->
         ws2021_model._verify_artifacts(artifacts)
 
 
-def test_exported_metadata_carries_checkpoint_training_provenance(tmp_path: Path) -> None:
+def test_exported_metadata_carries_checkpoint_training_provenance(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
     artifacts = tmp_path / "model"
     artifacts.mkdir()
     for name in ("ws2021.onnx", "ws2021.xml", "ws2021.bin"):
@@ -198,11 +200,61 @@ def test_exported_metadata_carries_checkpoint_training_provenance(tmp_path: Path
         ),
         encoding="ascii",
     )
+    monkeypatch.setattr(
+        ws2021_model,
+        "_read_checkpoint_training_provenance",
+        lambda path: expected,
+        raising=False,
+    )
 
     ws2021_model._write_metadata(artifacts)
 
     metadata = json.loads((artifacts / "metadata.json").read_text(encoding="ascii"))
     assert metadata["training_provenance"] == expected
+
+
+@pytest.mark.parametrize(
+    "embedded",
+    [
+        None,
+        {
+            "best_epoch": 18,
+            "configured_epochs": 80,
+            "dataset_manifest_sha256": "a" * 64,
+        },
+    ],
+    ids=("absent", "conflicts_with_sidecar"),
+)
+def test_export_rejects_checkpoint_provenance_that_is_absent_or_conflicts(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch, embedded: dict[str, object] | None
+) -> None:
+    artifacts = tmp_path / "model"
+    artifacts.mkdir()
+    checkpoint = artifacts / "best_ckpt.pth"
+    checkpoint.write_bytes(b"checkpoint")
+    expected = {
+        "best_epoch": 17,
+        "configured_epochs": 80,
+        "dataset_manifest_sha256": "a" * 64,
+    }
+    (artifacts / "best_ckpt.provenance.json").write_text(
+        json.dumps(
+            {
+                **expected,
+                "checkpoint_sha256": sha256(checkpoint.read_bytes()).hexdigest(),
+            }
+        ),
+        encoding="ascii",
+    )
+    monkeypatch.setattr(
+        ws2021_model,
+        "_read_checkpoint_training_provenance",
+        lambda path: embedded,
+        raising=False,
+    )
+
+    with pytest.raises(ValueError, match="ws2021_model_invalid"):
+        ws2021_model._checkpoint_provenance(artifacts)
 
 
 def test_artifact_check_rejects_a_different_dataset_manifest(
