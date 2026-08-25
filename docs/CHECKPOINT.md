@@ -946,3 +946,15 @@ below control. Fresh focused gates were 39 and 15 passed, and the final Voice su
 Voice remains disabled with `asr_candidate_unavailable` and
 `vad_candidate_unavailable`; Task 5D/enrollment require a separate approved ASR model/
 runtime/license amendment and a passing unchanged Silero gate.
+
+2026-08-25 完成批准的 Voice Care Gate V2 Paraformer Mandarin ASR 修订实现，业务提交
+`4677fec`。固定 Apache-2.0 INT8 工件与完整五分布 hash lock 通过全新 staging venv 和
+macOS 原子发布安装；实际运行用 `python -I`、单一非阻塞写读 deadline、子进程组结算和
+child-private 已校验模型快照，严格要求恰好六段公开 prompt ID。新鲜软件门为 Voice
+250/250、完整 Python 1,302/1,302，compile、Make dry-run、diff/privacy checks PASS；
+独立复审无 Critical/Important。exact-head user-launchd 实机门对 6/6 加密 clips 可用，
+p50 509 ms、p95 529 ms，但只有 5/6 exact、1/6 wake；唯一 exact mismatch 为公开 ID
+`negative_weather`，aggregate edit distance 2。因此仍返回
+`asr_candidate_unavailable`，Voice disabled；未输出 transcript、PCM、Keychain 值、
+私有路径或写入 Baby Care。下一 Voice 切片是独立设计 punctuation-free wake/KWS 边界，
+并干净重录公开 negative control；不得降低现有 ASR/VAD 门槛。

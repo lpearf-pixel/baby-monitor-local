@@ -171,7 +171,11 @@ now pass real user-launchd access. The approved base/small x four-profile one-sh
 has been exhausted: no candidate reached 6/6 exact, although base care-hotword profiles
 reached 5/6 with acceptable latency. Official Silero passes its generated control and
 5/6 prompts; `negative_weather` splits into two spans, and gain is inapplicable because
-the private signal is not 12 dB below control. Voice remains disabled.
+the private signal is not 12 dB below control. The approved pinned Paraformer amendment
+is also implementation-complete: its exact-head i9 run evaluated 6/6 clips at p50
+509 ms / p95 529 ms, but achieved only 5/6 exact and 1/6 wake; `negative_weather` was
+the sole exact mismatch. It failed closed as `asr_candidate_unavailable`. Voice remains
+disabled.
 
 **Prerequisites:** The current design approval permits synthetic/public-media software
 work before P0–P2 complete. P0–P2 and A7 remain prerequisites for household
@@ -188,10 +192,11 @@ never provide household audio for Git or chat.
 Test timing, deduplication, quiet/adult-speech negatives and privacy using generated or
 explicitly public media. Software tests do not prove household accuracy.
 
-**Next:** Approve a separate ASR model/runtime/license amendment, then rerun the same
-encrypted six-prompt exact/wake/latency gate. Resolve the one remaining Silero split
-without lowering 0.50. Replay/overlap, Dad/Mom enrollment and Baby Care binding remain
-blocked until both gates pass. P4 remains the next independent product stage.
+**Next:** Design a deterministic punctuation-free wake/KWS boundary and rerecord the
+clean public `negative_weather` control, then rerun the unchanged six-prompt exact/wake/
+latency and Silero gates without lowering thresholds. Replay/overlap, Dad/Mom enrollment
+and Baby Care binding remain blocked until both gates pass. P4 remains the next
+independent product stage.
 
 ## P4 — Authenticated private remote access
 

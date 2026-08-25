@@ -1,6 +1,6 @@
 # Baby Monitor Local Project Summary
 
-Updated: 2026-08-24
+Updated: 2026-08-25
 
 ## Snapshot
 
@@ -9,7 +9,8 @@ Updated: 2026-08-24
 - Active implementation line: `codex/voice-care-v1-gate-v1`, based on the approved
   `codex/voice-care-v1-design` checkpoint. The Gate V2 ECAPA runtime implementation is
   published through `7dd0155`; exact-head CI run `32699249559` passed. The current local
-  ASR-first line is through `305232f` and has not been pushed.
+  ASR-first implementation line includes `4677fec`; exact remote branch state must be
+  checked against `origin/codex/voice-care-v1-gate-v1` during takeover.
 - The evidence-retention line is based on the published Dashboard snapshot `69e2d5b`;
   the Dashboard remains complete and its published branch is not rewritten.
 - Remote branch `codex/baby-guardian-event-loop` remains at its earlier squash snapshot
@@ -407,6 +408,17 @@ legacy branch into this line without a separate integration decision.
   two spans. It correctly skipped gain because private audio was not 12 dB quieter.
   Voice remains disabled with `asr_candidate_unavailable` and
   `vad_candidate_unavailable`; fresh Voice software evidence is 233/233.
+- The approved Paraformer Mandarin amendment is implemented at `4677fec`. It adds the
+  Apache-2.0 revision-pinned INT8 artifact, a complete hash-locked five-distribution
+  x86_64 runtime installed through a clean staging venv and atomic macOS publication,
+  an isolated reusable child with one write/read deadline, child-private verified model
+  snapshots and the unchanged aggregate six-clip gate. The exact-head user-launchd run
+  was available for 6/6 clips at p50 509 ms / p95 529 ms, but reached 5/6 exact and only
+  1/6 wake; `negative_weather` was the sole exact mismatch with aggregate edit distance
+  2. It therefore failed closed as `asr_candidate_unavailable`. Voice stays disabled;
+  no transcript, PCM, private path or Keychain value was emitted. Fresh evidence is
+  Voice 250/250 and full Python 1,302/1,302, with independent review clean of Critical/
+  Important findings.
 - Remote private viewing and the 72-hour release gate remain unfinished.
 - This system does not detect breathing, heart rate, suffocation or medical emergencies.
 
@@ -423,11 +435,12 @@ legacy branch into this line without a separate integration decision.
 4. Continue the approved audio/cry plan at Stage A8; a production model and
    license are still required before enablement; household audio remains
    memory-only.
-5. Keep Voice Care disabled. The approved base/small closed matrix is exhausted and no
-   candidate reached 6/6; Silero also remains 5/6. The next Voice slice is a separately
-   approved ASR model/runtime/license amendment, followed by the same encrypted-corpus
-   gate. Do not continue Dad/Mom enrollment or Baby Care binding before both ASR and VAD
-   pass unchanged thresholds.
+5. Keep Voice Care disabled. Base/small and the approved Paraformer candidate have now
+   all failed the unchanged six-clip gate; Silero also remains 5/6. The next Voice slice
+   is a separately designed deterministic wake/KWS boundary for punctuation-free local
+   ASR plus a clean rerecord of the public `negative_weather` control. Do not continue
+   Dad/Mom enrollment or Baby Care binding before both ASR and VAD pass unchanged
+   thresholds.
 6. Complete authenticated private remote access using Tailscale Serve/ACL only.
 7. Complete the final 72-hour release gate before any release/tag decision.
 8. Define per-parent acknowledgement and false-positive feedback only through a future

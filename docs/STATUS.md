@@ -352,7 +352,18 @@
   five private prompts, while `negative_weather` produced two spans. Gain correctly did
   not run because private RMS was not 12 dB below control. Current stable blockers are
   `asr_candidate_unavailable` and `vad_candidate_unavailable`; Voice stays disabled.
-  Local commits are `de499b7`, `f61e2ed` and `305232f`; fresh Voice tests are 233 passed.
+  Local commits are `de499b7`, `f61e2ed` and `305232f`; that baseline's Voice tests were
+  233 passed.
+- The approved Paraformer amendment is software-complete at `4677fec`. Its fixed public
+  artifact and complete hash-locked five-distribution x86_64 environment install through
+  a clean staging venv and atomic macOS publication. The isolated runner uses a single
+  deadline for nonblocking PCM write and response read, verifies model files into a
+  child-private snapshot and settles the process on failure. Exact-head user-launchd
+  acceptance evaluated all six encrypted clips at p50 509 ms / p95 529 ms, but only 5/6
+  were exact and 1/6 satisfied the unchanged wake boundary; the sole exact mismatch was
+  public ID `negative_weather` with edit distance 2. Result:
+  `asr_candidate_unavailable`; Voice remains disabled. Fresh Voice tests are 250/250,
+  full Python is 1,302/1,302, and independent review found no Critical/Important issue.
 - Installed-i9 audio-source discovery now verifies that the Xiaomi source exposes HEVC
   video plus Opus audio and that the fixed loopback `audio_analysis` alias exposes only
   Opus. The real input is supported 48 kHz stereo Opus; the fixed FFmpeg boundary

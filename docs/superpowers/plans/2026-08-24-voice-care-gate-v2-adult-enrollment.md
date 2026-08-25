@@ -617,11 +617,12 @@ git commit -m "fix: validate Xiaomi speech segmentation"
 - Modify: `services/voice/artifacts.py`
 - Create: `services/voice/paraformer.py`
 - Create: `tools/voice_asr_environment.py`
+- Create: `tools/voice_asr_install.py`
 - Create: `tools/voice_paraformer_runner.py`
+- Create: `tools/voice_paraformer_source.py`
 - Create: `config/voice-asr-requirements.txt`
 - Modify: `services/voice/asr_calibration.py`
 - Modify: `tools/voice_asr_calibrate.py`
-- Modify: `tools/voice_models.py`
 - Modify: `Makefile`
 - Modify: focused tests under `tests/contracts/`, `tests/voice/` and `tests/tools/`
 
@@ -632,14 +633,14 @@ git commit -m "fix: validate Xiaomi speech segmentation"
 - Produces: `ParaformerProcess.transcribe(pcm: bytes) -> AsrResult`, the fixed framed
   child protocol, and `make alpha-voice-asr-paraformer` aggregate-only acceptance.
 
-- [ ] **Step 1: Add registry, settings and isolated-environment RED tests**
+- [x] **Step 1: Add registry, settings and isolated-environment RED tests**
 
 Require artifact ID `sherpa-onnx-paraformer-zh-2023-09-14`, only
 `model.int8.onnx`/`tokens.txt`, Apache-2.0, exact source revision, a canonical manifest
 digest, Darwin x86_64 and `sherpa-onnx==1.13.6`. Reject parent/leaf symlinks, system site
 packages, wrong versions and extra model files before any runtime process is started.
 
-- [ ] **Step 2: Run registry/environment RED, then implement minimal GREEN**
+- [x] **Step 2: Run registry/environment RED, then implement minimal GREEN**
 
 ```bash
 .venv-alpha/bin/python -m pytest -q tests/contracts/test_voice_settings.py tests/voice/test_artifacts.py tests/tools/test_voice_asr_environment.py
@@ -649,14 +650,14 @@ Add the fifth optional settings digest, closed artifact registry entry, pinned i
 requirements and path/version validator. Keep Voice disabled and preserve the existing
 Whisper artifact fields for historical validation and rollback evidence.
 
-- [ ] **Step 3: Add child-protocol and parent-process RED tests**
+- [x] **Step 3: Add child-protocol and parent-process RED tests**
 
 Exercise two sequential requests through one child, exact mono 16 kHz s16le bounds,
 canonical UTF-8 JSON, Mandarin language, 3,000 ms request timeout, child settlement,
 offline sanitized environment and absence of PCM/transcript persistence. Malformed or
 extra response fields, timeout and child exit must destroy the child and fail closed.
 
-- [ ] **Step 4: Run protocol RED, then implement minimal GREEN**
+- [x] **Step 4: Run protocol RED, then implement minimal GREEN**
 
 ```bash
 .venv-alpha/bin/python -m pytest -q tests/voice/test_paraformer.py tests/tools/test_voice_paraformer_runner.py
@@ -667,7 +668,7 @@ hotword file, expected phrase, punctuation model, ITN, network client or fallbac
 engine. The parent passes PCM only over anonymous stdin and receives text only over
 stdout; stderr is discarded.
 
-- [ ] **Step 5: Add aggregate calibration/CLI RED tests, then implement GREEN**
+- [x] **Step 5: Add aggregate calibration/CLI RED tests, then implement GREEN**
 
 Require a single candidate named `paraformer`, six evaluated public prompt IDs, 6/6
 exact, 6/6 wake and P95 at most 3,000 ms. Output may contain only counts, public prompt
@@ -678,7 +679,7 @@ Keychain details.
 .venv-alpha/bin/python -m pytest -q tests/voice/test_asr_calibration.py tests/tools/test_voice_asr_calibrate.py
 ```
 
-- [ ] **Step 6: Install public runtime/model and run the real encrypted-corpus gate**
+- [x] **Step 6: Install public runtime/model and run the real encrypted-corpus gate**
 
 ```bash
 make alpha-voice-asr-install
@@ -691,7 +692,14 @@ operator step. The installed worker never downloads. Accept only 6/6 exact, 6/6 
 P95 at most 3,000 ms and `VoiceCareSettings.enabled=false`; otherwise report
 `asr_candidate_unavailable` and retain Voice disabled.
 
-- [ ] **Step 7: Run full verification, update handoff state and commit Task 5E**
+Exact-head i9 result on 2026-08-25: the pinned candidate was available for all six
+encrypted clips at p50 509 ms / p95 529 ms, but reached only 5/6 exact and 1/6 wake;
+the only exact mismatch was public prompt ID `negative_weather`, with aggregate edit
+distance 2. The unchanged gate therefore failed closed as `asr_candidate_unavailable`.
+No transcript, PCM, Keychain value or private path was emitted, and Voice remained
+disabled.
+
+- [x] **Step 7: Run full verification, update handoff state and commit Task 5E**
 
 ```bash
 make alpha-voice-test
@@ -704,6 +712,11 @@ git diff --check
 Record the exact real gate result without transcript/audio. Commit only tracked
 implementation, tests, spec, plan and handoff documents; never stage runtime artifacts,
 private corpus, settings, Keychain data or `uv.lock`.
+
+Implementation checkpoint: `4677fec`. Fresh verification recorded 250/250 Voice tests,
+1,302/1,302 full Python tests, Python compilation, the three Make dry-runs, diff/privacy
+checks and an independent review with no remaining Critical or Important finding. This
+completes the approved amendment implementation, not the ASR accuracy gate.
 
 #### Task 5D: Installed Non-Interactive Voice Preflight
 
@@ -758,13 +771,14 @@ git commit -m "test: gate installed Voice runtime preflight"
 **Next:** Only after this gate passes, continue Dad/Mom enrollment below.
 
 Current installed evidence: Task 5A is complete and helper-owned v2 passes two fresh
-non-interactive launchd reads. Task 5B is exhausted and blocked as
-`asr_candidate_unavailable`; the best approved base profiles reached 5/6 exact and 6/6
-wake within latency. Task 5C is blocked as `vad_candidate_unavailable`; its generated
-control and 5/6 private prompts pass, while `negative_weather` produces two spans. Task
-5D and Task 6 remain unchecked. These failures require a separate ASR model/runtime/
-license amendment and a compliant Silero result, not weaker privacy, exact-match, wake,
-VAD or latency gates.
+non-interactive launchd reads. Task 5B and Task 5E are exhausted and blocked as
+`asr_candidate_unavailable`: the best approved base profiles reached 5/6 exact and 6/6
+wake within latency, while Paraformer reached 5/6 exact and 1/6 wake at p95 529 ms.
+Task 5C is blocked as `vad_candidate_unavailable`; its generated control and 5/6 private
+prompts pass, while `negative_weather` produces two spans. Task 5D and Task 6 remain
+unchecked. These failures require a separately designed punctuation-free wake/KWS
+boundary, a clean public negative-control rerecord and a compliant Silero result, not
+weaker privacy, exact-match, wake, VAD or latency gates.
 
 ### Task 6: Installed i9 Human Enrollment Gate
 
