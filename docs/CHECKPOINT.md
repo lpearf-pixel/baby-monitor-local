@@ -713,3 +713,16 @@ Baby Guardian 观察门，必须有成人持续监督，不得摆拍危险姿势
 分层诊断显示透视校正本身成功；湿度圆的清晰度/圆检测失败，温度圆的 ROI 越界。该
 结果说明当前 schema-v2 双圆几何与实时画面不一致，按 fail-closed 要求先重新标定，
 不绕过几何门禁，也不提前接入 OCR。
+
+## WS2021 final-artifact provenance checkpoint
+
+2026-08-25，Task 15 的训练/export/check 工具增加了最终工件来源证明：checkpoint、
+私有 sidecar 与导出 metadata 共同绑定 configured epochs、exact dataset-manifest
+SHA-256 和 best epoch；checkpoint 内嵌来源缺失、与 sidecar 冲突或 check 时数据集不匹配
+均以稳定错误码 fail closed。专项模型/locator 验证 `25 passed`，Python compilation、
+Make dry-run、diff/privacy scope checks 均通过。该软件证据不证明当前私有模型质量。
+
+同日无落盘实时预检成功获取 5 帧，但当前候选以 `gauge_box_invalid` 被拒绝；没有写入
+家庭画面、crop 或坐标，也没有降低 0.75 置信度、1/10 宽度或布局门。当前 installed
+artifact 早于新的来源证明合同，Task 15.4b/15.6b 仍需位置 2–5、夜间/IR 采集以及最终
+80-epoch train/export/check 和确定性读表实机门。

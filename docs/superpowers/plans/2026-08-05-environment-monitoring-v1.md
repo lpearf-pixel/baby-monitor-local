@@ -580,12 +580,15 @@ environment acceptance gate, executed in this order without changing business co
   be rejected as `unavailable`.
 - [ ] **E3 — Fail-closed scenes:** verify darkness/infrared, glare, occlusion and gauge
   movement. Unreliable scenes and invalidated geometry must not publish values.
-- [ ] **E4 — Independence:** take M2/Ollama offline and confirm gauge sampling, SQLite
-  writes, environment state and notification handling continue independently.
-- [ ] **E5 — 24-hour stability:** run the gauge/watchdog path for 24 hours, confirm
+- [x] **E4 — Independence:** take M2/Ollama offline and confirm gauge sampling, SQLite
+  writes, environment state and notification handling continue independently. Passed
+  on the installed i9 after a controlled bridge interruption and recovery.
+- [x] **E5 — 24-hour stability:** run the gauge/watchdog path for 24 hours, confirm
   60-second scheduling does not build a backlog, and inspect trend gaps and bounded
   health output. The state/notification, load-shedding and two-phone payload checks
-  remain part of this same real-device gate.
+  remain part of this same real-device gate. Passed on the installed i9 with 1,414
+  readings and no scheduling backlog; the observed 82.105-second maximum interval is
+  retained as a performance follow-up rather than a weakened acceptance threshold.
 
 After E1–E5 pass with redacted evidence, proceed to the existing three-browser HD gate
 in `2026-08-04-dashboard-hybrid-hd-streaming.md`; only after that gate and the remaining
@@ -644,7 +647,12 @@ overlap with persisted crops.
   loop's upstream zero warmup rate and live-state checkpoint aliasing were fixed, and
   deterministic generated backgrounds/negative samples were added. The corrected
   20-epoch bootstrap trained, exported and passed exact artifact checks; live installed
-  localization remains the acceptance boundary.
+  localization remains the acceptance boundary. On 2026-08-25 the training/export/check
+  contract added bounded provenance for configured epochs, the exact dataset-manifest
+  SHA-256 and best epoch, bound to both the checkpoint and exported metadata. Missing,
+  conflicting or wrong-dataset provenance now fails closed. The installed artifact
+  predates this contract, so a final post-collection training/export/check run is still
+  required and this checkbox remains open.
 - [x] **15.5 Gauge-worker integration:** locate on the first frame of each burst, refine
   the box to an outer quadrilateral plus two-circle layout, migrate schema-v2 geometry,
   and apply the same migrated calibration to all five frames. Missing or ambiguous
@@ -666,7 +674,9 @@ overlap with persisted crops.
   Layout validation now safely filters before ambiguity resolution. A fresh calibrated
   collection attempt was entirely privacy-rejected and persisted nothing. More private
   position diversity remains required before positions 2–5, night/IR, final training
-  and reading acceptance can continue.
+  and reading acceptance can continue. A fresh no-persistence five-frame preflight on
+  2026-08-25 captured the source successfully but rejected the current live candidate
+  as `gauge_box_invalid`; no crop was written and no threshold was changed.
 
 **Human work:** first confirm no baby is present and collect the current calibrated
 position, then place the gauge in five upright, front-facing positions for 30 seconds
@@ -677,4 +687,6 @@ overlap is discarded; model absence and every detection ambiguity fail closed; m
 the upright gauge anywhere in frame re-localizes without manual coordinates; published
 readings still satisfy all existing geometry, five-frame, confidence and physical gates.
 
-**Next:** complete the 30 daylight E2 comparisons, then E3–E5 unchanged.
+**Next:** complete positions 2–5 and night/IR collection, final training/export/check
+and the deterministic live reading gate; then complete E2 and E3. E4 and E5 already
+have installed-i9 PASS evidence and must not be repeated as substitutes for E2/E3.

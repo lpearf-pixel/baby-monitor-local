@@ -1,6 +1,6 @@
 # Baby Monitor Local Project Summary
 
-Updated: 2026-08-17
+Updated: 2026-08-25
 
 ## Snapshot
 
@@ -37,7 +37,12 @@ Updated: 2026-08-17
   out of bounds and fail the strict outer-frame/two-dial layout. The validator now
   filters candidates before ambiguity resolution. A new calibrated capture was fully
   privacy-rejected with zero persistence; more safe private position diversity is
-  still required.
+  still required. The final-artifact tooling now binds configured epochs, exact
+  dataset-manifest SHA-256 and best epoch across checkpoint, sidecar and exported
+  metadata, and rejects missing or conflicting provenance. The installed artifact
+  predates that contract. A fresh five-frame no-persistence preflight still returns
+  `gauge_box_invalid`; positions 2–5, night/IR and final training/export/check remain
+  the active gate.
 - 2026-08-17 fixed-ROI follow-up: a schema-v2 lower-right ROI and bounded consecutive-
   frame stabilizer now run before the trained detector when automatic localization is
   enabled. Same-aspect 2560x1440 to 1280x720 scaling is accepted; aspect-ratio drift
@@ -104,7 +109,8 @@ Important ownership boundaries:
 - Ollama tunnel direction is fixed: normal operation is i9 `-L` to M2 loopback. An
   M2→i9 SSH login without explicit reverse `-R` does not provide the bridge; verify
   `/api/tags` HTTP 200 instead of trusting launchd `running`. The latest stale listener
-  was stopped; E4 controlled isolation/recovery remains pending.
+  was stopped. E4 later passed its controlled isolation/recovery gate; the formal
+  i9→M2 `-L` topology remains the production target.
 
 ## Completed Capabilities
 

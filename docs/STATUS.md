@@ -199,7 +199,8 @@
   metrics, and the realtime model available. Ollama bridge health requires loopback
   HTTP 200; launchd `running` alone is insufficient. A recent M2→i9 login did not
   establish the configured i9→M2 `-L` forward (`http=000`); the stale listener was
-  stopped and E4 controlled recovery remains pending.
+  stopped. A later controlled interruption/recovery completed E4; the formal i9→M2
+  `-L` topology remains the production target.
 - Runtime checks from `chatgpt-agent` are not authoritative for services in the
   `kandysmith` GUI domain. Launch future operational Codex sessions directly from the
   `kandysmith` SSH login; do not grant broad disk or sudo access.
@@ -293,6 +294,13 @@
   now runs before ambiguity resolution and still fails closed. A subsequent calibrated
   collection attempt rejected all 11 frames at the privacy gate and persisted zero
   crops; no privacy rule was bypassed.
+- The 2026-08-25 final-artifact evidence slice now records configured epochs, the exact
+  dataset-manifest SHA-256 and best epoch in the checkpoint, binds the same values to
+  the exported metadata and rejects missing, conflicting or wrong-dataset provenance.
+  Focused model/locator verification passed 25 tests. The current installed artifact
+  predates this evidence contract; a fresh five-frame live preflight still rejects the
+  current candidate as `gauge_box_invalid`, so positions 2–5, night/IR and the final
+  training/export/check remain open.
 - After Task 15, resume environment-plan E2–E5 with 30 daylight comparisons,
   darkness/infrared/glare/occlusion/gauge-movement fail-closed checks, M2/Ollama outage
   isolation and the independent 24-hour run.
