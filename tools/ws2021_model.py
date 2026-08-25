@@ -101,7 +101,8 @@ def _run_action(action: str, root: Path) -> None:
         _write_metadata(artifacts)
     elif action == "check":
         _verify_source(source)
-        _verify_artifacts(artifacts)
+        _require_dataset(dataset)
+        _verify_artifacts(artifacts, dataset=dataset)
     else:
         raise ValueError("ws2021_model_invalid")
 
@@ -180,6 +181,7 @@ def _write_metadata(artifacts: Path) -> None:
         "model_version": f"ws2021-{YOLOX_COMMIT[:12]}",
         "openvino_precision": "FP16",
         "sha256": {name: _digest(artifacts / name) for name in files},
+        "training_provenance": _checkpoint_provenance(artifacts),
         "yolox_commit": YOLOX_COMMIT,
     }
     _write_private(
@@ -188,9 +190,10 @@ def _write_metadata(artifacts: Path) -> None:
     )
 
 
-def _verify_artifacts(artifacts: Path) -> None:
+def _verify_artifacts(artifacts: Path, *, dataset: Path | None = None) -> None:
     metadata = json.loads((artifacts / "metadata.json").read_text(encoding="ascii"))
     digests = metadata.get("sha256")
+    provenance = _validate_training_provenance(metadata.get("training_provenance"))
     if (
         metadata.get("yolox_commit") != YOLOX_COMMIT
         or metadata.get("input_size") != 640
@@ -201,6 +204,61 @@ def _verify_artifacts(artifacts: Path) -> None:
     for name, expected in digests.items():
         if name not in {"ws2021.onnx", "ws2021.xml", "ws2021.bin"} or _digest(artifacts / name) != expected:
             raise ValueError("ws2021_model_invalid")
+    if (
+        dataset is not None
+        and _digest(dataset / "manifest.json")
+        != provenance["dataset_manifest_sha256"]
+    ):
+        raise ValueError("ws2021_model_invalid")
+
+
+def _checkpoint_provenance(artifacts: Path) -> dict[str, object]:
+    checkpoint = artifacts / "best_ckpt.pth"
+    payload = json.loads(
+        checkpoint.with_suffix(".provenance.json").read_text(encoding="ascii")
+    )
+    if not isinstance(payload, dict) or set(payload) != {
+        "best_epoch",
+        "checkpoint_sha256",
+        "configured_epochs",
+        "dataset_manifest_sha256",
+    }:
+        raise ValueError("ws2021_model_invalid")
+    if payload["checkpoint_sha256"] != _digest(checkpoint):
+        raise ValueError("ws2021_model_invalid")
+    return _validate_training_provenance(
+        {
+            "best_epoch": payload["best_epoch"],
+            "configured_epochs": payload["configured_epochs"],
+            "dataset_manifest_sha256": payload["dataset_manifest_sha256"],
+        }
+    )
+
+
+def _validate_training_provenance(value: object) -> dict[str, object]:
+    if not isinstance(value, dict) or set(value) != {
+        "best_epoch",
+        "configured_epochs",
+        "dataset_manifest_sha256",
+    }:
+        raise ValueError("ws2021_model_invalid")
+    configured_epochs = value["configured_epochs"]
+    best_epoch = value["best_epoch"]
+    manifest_digest = value["dataset_manifest_sha256"]
+    if (
+        type(configured_epochs) is not int
+        or type(best_epoch) is not int
+        or not 1 <= best_epoch <= configured_epochs <= 300
+        or not isinstance(manifest_digest, str)
+        or len(manifest_digest) != 64
+        or any(character not in "0123456789abcdef" for character in manifest_digest)
+    ):
+        raise ValueError("ws2021_model_invalid")
+    return {
+        "best_epoch": best_epoch,
+        "configured_epochs": configured_epochs,
+        "dataset_manifest_sha256": manifest_digest,
+    }
 
 
 def _digest(path: Path) -> str:

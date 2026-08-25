@@ -122,6 +122,11 @@ def test_artifact_check_requires_exact_files_and_digests(tmp_path: Path) -> None
             {
                 "input_size": 640,
                 "sha256": digests,
+                "training_provenance": {
+                    "best_epoch": 17,
+                    "configured_epochs": 80,
+                    "dataset_manifest_sha256": "a" * 64,
+                },
                 "yolox_commit": ws2021_model.YOLOX_COMMIT,
             }
         ),
@@ -135,6 +140,11 @@ def test_artifact_check_requires_exact_files_and_digests(tmp_path: Path) -> None
             {
                 "input_size": 640,
                 "sha256": digests,
+                "training_provenance": {
+                    "best_epoch": 17,
+                    "configured_epochs": 80,
+                    "dataset_manifest_sha256": "a" * 64,
+                },
                 "yolox_commit": ws2021_model.YOLOX_COMMIT,
             }
         ),
@@ -142,6 +152,109 @@ def test_artifact_check_requires_exact_files_and_digests(tmp_path: Path) -> None
     )
     with pytest.raises(ValueError, match="ws2021_model_invalid"):
         ws2021_model._verify_artifacts(artifacts)
+
+
+def test_artifact_check_requires_complete_training_provenance(tmp_path: Path) -> None:
+    artifacts = tmp_path / "model"
+    artifacts.mkdir()
+    digests: dict[str, str] = {}
+    for name in ("ws2021.onnx", "ws2021.xml", "ws2021.bin"):
+        payload = name.encode("ascii")
+        (artifacts / name).write_bytes(payload)
+        digests[name] = sha256(payload).hexdigest()
+    (artifacts / "metadata.json").write_text(
+        json.dumps(
+            {
+                "input_size": 640,
+                "sha256": digests,
+                "yolox_commit": ws2021_model.YOLOX_COMMIT,
+            }
+        ),
+        encoding="ascii",
+    )
+
+    with pytest.raises(ValueError, match="ws2021_model_invalid"):
+        ws2021_model._verify_artifacts(artifacts)
+
+
+def test_exported_metadata_carries_checkpoint_training_provenance(tmp_path: Path) -> None:
+    artifacts = tmp_path / "model"
+    artifacts.mkdir()
+    for name in ("ws2021.onnx", "ws2021.xml", "ws2021.bin"):
+        (artifacts / name).write_bytes(name.encode("ascii"))
+    checkpoint = artifacts / "best_ckpt.pth"
+    checkpoint.write_bytes(b"checkpoint")
+    expected = {
+        "best_epoch": 17,
+        "configured_epochs": 80,
+        "dataset_manifest_sha256": "a" * 64,
+    }
+    (artifacts / "best_ckpt.provenance.json").write_text(
+        json.dumps(
+            {
+                **expected,
+                "checkpoint_sha256": sha256(checkpoint.read_bytes()).hexdigest(),
+            }
+        ),
+        encoding="ascii",
+    )
+
+    ws2021_model._write_metadata(artifacts)
+
+    metadata = json.loads((artifacts / "metadata.json").read_text(encoding="ascii"))
+    assert metadata["training_provenance"] == expected
+
+
+def test_artifact_check_rejects_a_different_dataset_manifest(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    artifacts = tmp_path / "model"
+    artifacts.mkdir()
+    digests: dict[str, str] = {}
+    for name in ("ws2021.onnx", "ws2021.xml", "ws2021.bin"):
+        payload = name.encode("ascii")
+        (artifacts / name).write_bytes(payload)
+        digests[name] = sha256(payload).hexdigest()
+    (artifacts / "metadata.json").write_text(
+        json.dumps(
+            {
+                "input_size": 640,
+                "sha256": digests,
+                "training_provenance": {
+                    "best_epoch": 17,
+                    "configured_epochs": 80,
+                    "dataset_manifest_sha256": "a" * 64,
+                },
+                "yolox_commit": ws2021_model.YOLOX_COMMIT,
+            }
+        ),
+        encoding="ascii",
+    )
+    dataset = tmp_path / "dataset"
+    dataset.mkdir()
+    (dataset / "manifest.json").write_bytes(b'{"input_size":640,"samples":[{}]}')
+    (tmp_path / "YOLOX").mkdir()
+    monkeypatch.setattr(ws2021_model, "_verify_source", lambda path: None)
+
+    with pytest.raises(ValueError, match="ws2021_model_invalid"):
+        ws2021_model._run_action("check", tmp_path)
+
+
+def test_training_provenance_uses_the_exact_dataset_manifest(tmp_path: Path) -> None:
+    dataset = tmp_path / "dataset"
+    dataset.mkdir()
+    manifest = b'{"input_size":640,"samples":[{}]}'
+    (dataset / "manifest.json").write_bytes(manifest)
+
+    provenance = ws2021_cpu_train._training_provenance(
+        dataset, configured_epochs=80, best_epoch=17
+    )
+
+    assert provenance == {
+        "best_epoch": 17,
+        "configured_epochs": 80,
+        "dataset_manifest_sha256": sha256(manifest).hexdigest(),
+    }
 
 
 def test_cli_failure_is_redacted(

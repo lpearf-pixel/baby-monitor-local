@@ -2,8 +2,11 @@ from __future__ import annotations
 
 import argparse
 import json
+import os
 import random
 import sys
+import tempfile
+from hashlib import sha256
 from pathlib import Path
 
 
@@ -41,6 +44,7 @@ def main() -> int:
         samples = _load_samples(arguments.dataset)
         best_loss = float("inf")
         best_state = None
+        best_epoch = None
         for epoch in range(arguments.epochs):
             order = list(range(len(samples)))
             random.Random(20210816 + epoch).shuffle(order)
@@ -61,11 +65,27 @@ def main() -> int:
             if epoch_loss < best_loss:
                 best_loss = epoch_loss
                 best_state = _snapshot_state(model.state_dict())
-        if best_state is None:
+                best_epoch = epoch + 1
+        if best_state is None or best_epoch is None:
             return 2
         arguments.checkpoint.parent.mkdir(parents=True, exist_ok=True)
-        torch.save({"model": best_state}, arguments.checkpoint)
+        provenance = _training_provenance(
+            arguments.dataset,
+            configured_epochs=arguments.epochs,
+            best_epoch=best_epoch,
+        )
+        torch.save(
+            {"model": best_state, "training_provenance": provenance},
+            arguments.checkpoint,
+        )
         arguments.checkpoint.chmod(0o600)
+        _write_private_json(
+            arguments.checkpoint.with_suffix(".provenance.json"),
+            {
+                **provenance,
+                "checkpoint_sha256": _digest(arguments.checkpoint),
+            },
+        )
         return 0
     except Exception:
         return 2
@@ -93,6 +113,44 @@ def _snapshot_state(state: dict[str, object]) -> dict[str, object]:
         key: value.detach().cpu().clone()
         for key, value in state.items()
     }
+
+
+def _training_provenance(
+    dataset: Path, *, configured_epochs: int, best_epoch: int
+) -> dict[str, object]:
+    if not 1 <= best_epoch <= configured_epochs <= 300:
+        raise ValueError("ws2021_training_failed")
+    return {
+        "best_epoch": best_epoch,
+        "configured_epochs": configured_epochs,
+        "dataset_manifest_sha256": _digest(dataset / "manifest.json"),
+    }
+
+
+def _digest(path: Path) -> str:
+    return sha256(path.read_bytes()).hexdigest()
+
+
+def _write_private_json(path: Path, payload: dict[str, object]) -> None:
+    path.parent.mkdir(parents=True, exist_ok=True, mode=0o700)
+    descriptor, temporary_name = tempfile.mkstemp(dir=path.parent, prefix=f".{path.name}.")
+    temporary = Path(temporary_name)
+    try:
+        with os.fdopen(descriptor, "w", encoding="ascii") as output:
+            output.write(json.dumps(payload, sort_keys=True, separators=(",", ":")))
+            output.flush()
+            os.fsync(output.fileno())
+            os.fchmod(output.fileno(), 0o600)
+        descriptor = -1
+        os.replace(temporary, path)
+        os.chmod(path, 0o600)
+    finally:
+        try:
+            if descriptor >= 0:
+                os.close(descriptor)
+        except OSError:
+            pass
+        temporary.unlink(missing_ok=True)
 
 
 def _load_samples(dataset: Path) -> list[dict[str, object]]:
