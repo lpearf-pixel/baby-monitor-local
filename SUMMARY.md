@@ -451,6 +451,9 @@ legacy branch into this line without a separate integration decision.
    splits into two spans. The next Voice action is one clean operator rerecord of that
    fixed prompt, then both unchanged aggregate gates. Do not continue Dad/Mom enrollment
    or Baby Care binding before both ASR and VAD pass unchanged thresholds.
+   The installed non-interactive Task 5D preflight is complete at `41da786`: following
+   approved stale-request recovery at `aacefd9`, Keychain plus the fixed Paraformer and
+   Silero artifacts all reported available without audio capture or inference.
 6. Complete authenticated private remote access using Tailscale Serve/ACL only.
 7. Complete the final 72-hour release gate before any release/tag decision.
 8. Define per-parent acknowledgement and false-positive feedback only through a future

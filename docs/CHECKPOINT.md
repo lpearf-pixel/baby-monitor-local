@@ -969,3 +969,12 @@ exact-head 聚合门为 Paraformer 5/6 exact、6/6 wake、p50 506 ms、p95 540 m
 mismatch 仍是公开 ID `negative_weather`（edit distance 2）；Silero 同一 clip 仍为 2 spans，其余
 5 条为 1 span。未输出 transcript/audio/key/private path，Voice 保持 disabled。下一步
 只重录固定公开 `negative_weather` 提示，再原样复跑 ASR 和 VAD 门。
+
+2026-08-25 完成 Voice Care Gate V2 Task 5D 安装态非交互预检。业务提交 `41da786`
+增加 disabled-mode login-LaunchAgent 预检，只读取固定 Keychain helper 并验证固定
+Paraformer/Silero 工件，不解码音频、不运行推理、不重启其他 worker。经用户明确批准，
+`make alpha-voice-asr-recover` 删除一个旧 legacy pending request，返回
+`state=cleared`；兼容恢复提交为 `aacefd9`。随后两个 Voice launchd label 均注册，
+`make alpha-voice-preflight` 返回 PASS，Keychain、ASR artifact 和 Silero artifact
+全部 available。没有删除加密语料、模型、Keychain 或护理记录。Voice 仍 disabled；
+Task 5 总门仍需干净重录公开 `negative_weather` 并通过不变的 ASR/VAD 6/6 门。

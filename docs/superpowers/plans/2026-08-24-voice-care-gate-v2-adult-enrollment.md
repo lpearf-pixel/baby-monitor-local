@@ -780,26 +780,26 @@ fixed public `negative_weather` prompt, followed by both unchanged aggregate gat
   artifact/profile and Silero artifact without capturing audio or writing Baby Care.
 - Consumes: passing Tasks 5A-5C; it does not enable the Voice worker.
 
-- [ ] **Step 1: Write RED launchd preflight tests**
+- [x] **Step 1: Write RED launchd preflight tests**
 
 Require `voice_preflight=available` only when helper identity, fixed selected ASR profile
 and Silero artifact all validate. Keychain/model failure must report one stable reason,
 must not open the decoder and must not restart any sibling service.
 
-- [ ] **Step 2: Run RED tests**
+- [x] **Step 2: Run RED tests**
 
 ```bash
 .venv-alpha/bin/python -m pytest -q tests/voice/test_worker.py tests/deploy/test_voice_worker_deploy.py
 ```
 
-- [ ] **Step 3: Implement and run GREEN installed gate**
+- [x] **Step 3: Implement and run GREEN installed gate**
 
 Keep `voice_care.enabled=false`. Add a bounded `--preflight` path to the installed Voice
 launchd executable, invoked by `make alpha-voice-preflight`; it validates only artifacts
 and one helper read, emits aggregate state and exits. Run focused tests, Voice full tests,
 compile, plist lint, shell syntax, Make dry-run and `git diff --check`.
 
-- [ ] **Step 4: Record the exact evidence and commit Task 5D**
+- [x] **Step 4: Record the exact evidence and commit Task 5D**
 
 Check Task 5 complete only if Task 5A is non-interactive on its second run, one ASR
 candidate is 6/6 exact and wake with P95 at most 3,000 ms, and Silero is one-span-per-
@@ -820,8 +820,11 @@ wake within latency. Task 5F corrected the deterministic punctuation-free bounda
 Paraformer now reaches 5/6 exact and 6/6 wake at p95 540 ms; only the fixed public
 `negative_weather` clip remains an exact mismatch.
 Task 5C is blocked as `vad_candidate_unavailable`; its generated control and 5/6 private
-prompts pass, while `negative_weather` produces two spans. Task 5D and Task 6 remain
-unchecked. These failures now require one clean public negative-control rerecord and a
+prompts pass, while `negative_weather` produces two spans. Task 5D is implementation-
+complete at `41da786`; after approved removal of one stale legacy pending request by
+`aacefd9`, the installed login-LaunchAgent gate passed with helper, fixed Paraformer
+artifact and fixed Silero artifact all available. Task 6 remains unchecked. These
+failures now require one clean public negative-control rerecord and a
 compliant Silero result, not weaker privacy, exact-match, wake, VAD or latency gates.
 
 ### Task 6: Installed i9 Human Enrollment Gate

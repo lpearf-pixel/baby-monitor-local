@@ -200,6 +200,11 @@ lowering thresholds. The punctuation-free wake/KWS boundary is complete. Replay/
 Dad/Mom enrollment and Baby Care binding remain blocked until both gates pass. P4
 remains the next independent product stage.
 
+Installed non-interactive Voice preflight is complete at `41da786`: after the explicitly
+approved removal of one stale legacy pending request through `aacefd9`, the login
+LaunchAgent reported Keychain, fixed Paraformer and fixed Silero artifacts available.
+Voice remains disabled and this does not change the required ASR/VAD 6/6 gate above.
+
 ## P4 — Authenticated private remote access
 
 **Status:** Pending. Public exposure remains prohibited.

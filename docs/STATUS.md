@@ -372,6 +372,13 @@
   evidence is 5/6 exact, 6/6 wake, p50 506 ms and p95 540 ms. `negative_weather`
   remains the only exact mismatch at edit distance 2 and still yields two Silero spans. Voice remains
   disabled; fresh software evidence is Voice 267/267 and full Python 1,319/1,319.
+- Task 5D installed non-interactive preflight is complete at `41da786`. Its fixed
+  disabled-mode login-LaunchAgent path reads only the Voice helper and validates the
+  fixed Paraformer and Silero artifacts; it does not decode audio or run inference.
+  After explicitly approved recovery removed one stale legacy pending request through
+  `aacefd9`, the installed command passed with Keychain and both artifacts available.
+  Task 5 as a whole remains blocked on the unchanged `negative_weather` ASR/VAD 6/6
+  requirement, so Voice remains disabled and Dad/Mom enrollment has not started.
 - Installed-i9 audio-source discovery now verifies that the Xiaomi source exposes HEVC
   video plus Opus audio and that the fixed loopback `audio_analysis` alias exposes only
   Opus. The real input is supported 48 kHz stereo Opus; the fixed FFmpeg boundary
