@@ -103,7 +103,7 @@ git commit -m "feat: add closed Voice listen-only mode"
 - Produces: `ExactFrameAudioPump.read_frame() -> PumpFrame`; `warm_up(cancelled) -> bool`; `begin_duck()`, `end_duck()`, `close()`.
 - Fixed values: 3,200-byte/100-ms frames, bounded 500-ms warm-up, no more than 14 frames buffered, no disk path.
 
-- [ ] **Step 1: Write RED tests for partial reads, warm-up, ducking, close, and bounds**
+- [x] **Step 1: Write RED tests for partial reads, warm-up, ducking, close, and bounds**
 
 ```python
 def test_partial_reads_form_one_exact_frame_without_loss() -> None:
@@ -119,21 +119,21 @@ def test_warmup_and_duck_drop_frames_and_resume_empty() -> None:
 
 Add cases for EOF/failure, oversized partial input, cancellation, idempotent close, and zeroizing the mutable assembler.
 
-- [ ] **Step 2: Run RED**
+- [x] **Step 2: Run RED**
 
 Run: `.venv-alpha/bin/python -m pytest -q tests/voice/test_audio_pump.py`
 
 Expected: import failure for `services.voice.audio_pump`.
 
-- [ ] **Step 3: Implement the bounded pump**
+- [x] **Step 3: Implement the bounded pump**
 
 Use a `bytearray` assembler, pull only the remaining bytes, return only immutable exact frames, clear/overwrite the assembler on reset, and never create files or background unbounded queues. Duck mode continues consuming and dropping decoder data.
 
-- [ ] **Step 4: Run GREEN and compile**
+- [x] **Step 4: Run GREEN and compile**
 
 Run: `.venv-alpha/bin/python -m pytest -q tests/voice/test_audio_pump.py && .venv-alpha/bin/python -m py_compile services/voice/audio_pump.py`
 
-- [ ] **Step 5: Commit Task 2**
+- [x] **Step 5: Commit Task 2**
 
 ```bash
 git add services/voice/audio_pump.py tests/voice/test_audio_pump.py
