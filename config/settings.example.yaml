@@ -63,6 +63,9 @@ audio:
   recovery_seconds: 5
   model_path: runtime/models/cry-classifier.onnx
   model_sha256: null
+voice_care:
+  enabled: false
+  listen_only_enabled: false
 visual:
   enabled: false
   model: qwen3-vl:8b-instruct-q4_K_M

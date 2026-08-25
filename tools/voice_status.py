@@ -11,6 +11,8 @@ _REASONS = {
     "voice_disabled", "voice_runtime_unavailable", "voice_startup_failed",
     "voice_worker_unavailable", "voice_audio_unavailable", "voice_model_unavailable",
     "voice_output_unavailable", "idle", "ignored",
+    "listen_only_idle", "listen_only_ignored", "listen_only_acknowledging",
+    "listen_only_armed", "listen_only_acknowledged", "listen_only_timeout",
 }
 
 
@@ -22,6 +24,7 @@ def main(argv: list[str] | None = None) -> int:
         if set(payload) != {
             "schema_version",
             "checked_at",
+            "mode",
             "worker_state",
             "reason",
             "processed_count",
@@ -29,11 +32,13 @@ def main(argv: list[str] | None = None) -> int:
         }:
             raise ValueError
         state = payload["worker_state"]
+        mode = payload["mode"]
         reason = payload["reason"]
         count = payload["processed_count"]
         latency = payload["last_latency_ms"]
         if (
-            payload["schema_version"] != 1
+            payload["schema_version"] != 2
+            or mode not in {"disabled", "listen_only", "care"}
             or state not in {"disabled", "healthy", "degraded"}
             or reason not in _REASONS
             or type(count) is not int
@@ -49,7 +54,7 @@ def main(argv: list[str] | None = None) -> int:
         return 2
     latency_text = "none" if latency is None else str(latency)
     print(
-        f"voice_status={state} reason={reason} processed_count={count} "
+        f"voice_status={state} mode={mode} reason={reason} processed_count={count} "
         f"last_latency_ms={latency_text}"
     )
     return 0 if state in {"disabled", "healthy"} else 1

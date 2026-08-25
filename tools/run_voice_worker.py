@@ -68,6 +68,7 @@ def main(
         settings = AppSettings.load(args.settings)
         if not settings.voice_care.enabled:
             status.write(
+                mode="disabled",
                 worker_state="disabled",
                 reason="voice_disabled",
                 processed_count=0,
@@ -76,6 +77,7 @@ def main(
             return 0
         if worker_factory is None:
             status.write(
+                mode="care",
                 worker_state="degraded",
                 reason="voice_runtime_unavailable",
                 processed_count=0,
@@ -86,6 +88,7 @@ def main(
     except Exception:
         try:
             status.write(
+                mode="care" if settings.voice_care.enabled else "listen_only",
                 worker_state="degraded",
                 reason="voice_startup_failed",
                 processed_count=0,

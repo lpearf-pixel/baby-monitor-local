@@ -50,6 +50,12 @@ _STATUS_REASONS = {
     "voice_output_unavailable",
     "idle",
     "ignored",
+    "listen_only_idle",
+    "listen_only_ignored",
+    "listen_only_acknowledging",
+    "listen_only_armed",
+    "listen_only_acknowledged",
+    "listen_only_timeout",
 }
 _FRAME_BYTES = 3_200
 _CLAIM = re.compile(r"^我是(爸爸|妈妈)[,，、\s]+(.+)$")
@@ -307,13 +313,15 @@ class VoiceStatusWriter:
     def write(
         self,
         *,
+        mode: str,
         worker_state: str,
         reason: str,
         processed_count: int,
         last_latency_ms: int | None,
     ) -> None:
         if (
-            worker_state not in {"disabled", "healthy", "degraded"}
+            mode not in {"disabled", "listen_only", "care"}
+            or worker_state not in {"disabled", "healthy", "degraded"}
             or reason not in _STATUS_REASONS
             or type(processed_count) is not int
             or not 0 <= processed_count <= 9_007_199_254_740_991
@@ -327,8 +335,9 @@ class VoiceStatusWriter:
         if checked_at.tzinfo is None or checked_at.utcoffset() is None:
             raise ValueError(VOICE_WORKER_UNAVAILABLE)
         payload = {
-            "schema_version": 1,
+            "schema_version": 2,
             "checked_at": checked_at.isoformat(),
+            "mode": mode,
             "worker_state": worker_state,
             "reason": reason,
             "processed_count": processed_count,
@@ -362,7 +371,10 @@ class VoiceWorker:
         status_writer: VoiceStatusWriter,
         clock: Callable[[], datetime] | None = None,
         monotonic_ns: Callable[[], int] = time.monotonic_ns,
+        mode: str = "care",
     ) -> None:
+        if mode not in {"listen_only", "care"}:
+            raise ValueError(VOICE_WORKER_UNAVAILABLE)
         self._decoder = decoder
         self._vad = vad
         self._collector = collector
@@ -371,6 +383,7 @@ class VoiceWorker:
         self._status_writer = status_writer
         self._clock = clock or (lambda: datetime.now().astimezone())
         self._monotonic_ns = monotonic_ns
+        self._mode = mode
         self._processed_count = 0
 
     def step(self, cancelled: StopEvent) -> None:
@@ -419,6 +432,7 @@ class VoiceWorker:
 
     def _write(self, state: str, reason: str, latency: int | None) -> None:
         self._status_writer.write(
+            mode=self._mode,
             worker_state=state,
             reason=reason,
             processed_count=self._processed_count,

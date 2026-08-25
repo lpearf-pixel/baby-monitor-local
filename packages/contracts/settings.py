@@ -203,6 +203,7 @@ class VoiceCareSettings(StrictSettingsModel):
     """Closed local-only configuration for the separately supervised Voice Care worker."""
 
     enabled: bool = False
+    listen_only_enabled: bool = False
     stream_name: Literal["audio_analysis"] = "audio_analysis"
     max_utterance_ms: Literal[8_000] = 8_000
     pre_roll_ms: Literal[500] = 500
@@ -227,6 +228,8 @@ class VoiceCareSettings(StrictSettingsModel):
 
     @model_validator(mode="after")
     def require_artifact_digests_when_enabled(self) -> "VoiceCareSettings":
+        if self.enabled and self.listen_only_enabled:
+            raise ValueError("VOICE_MODE_CONFLICT")
         if self.enabled and any(
             digest is None
             for digest in (
@@ -238,6 +241,14 @@ class VoiceCareSettings(StrictSettingsModel):
             )
         ):
             raise ValueError("VOICE_ARTIFACT_DIGEST_REQUIRED")
+        if self.listen_only_enabled and any(
+            digest is None
+            for digest in (
+                self.silero_vad_manifest_sha256,
+                self.paraformer_zh_manifest_sha256,
+            )
+        ):
+            raise ValueError("VOICE_LISTEN_ONLY_ARTIFACT_DIGEST_REQUIRED")
         return self
 
 

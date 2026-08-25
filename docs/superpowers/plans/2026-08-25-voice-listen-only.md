@@ -40,7 +40,7 @@
 - Produces: `VoiceCareSettings.listen_only_enabled: bool`; `VoiceStatusWriter.write(mode: Literal["disabled", "listen_only", "care"], ...)`; status schema version 2.
 - Preserves: the existing full-care `enabled` artifact requirements and preflight behavior.
 
-- [ ] **Step 1: Write failing settings and status tests**
+- [x] **Step 1: Write failing settings and status tests**
 
 ```python
 def test_listen_only_is_disabled_by_default_and_exclusive() -> None:
@@ -59,13 +59,13 @@ def test_status_v2_has_only_closed_mode_and_aggregate_fields(tmp_path: Path) -> 
     }
 ```
 
-- [ ] **Step 2: Run the RED tests**
+- [x] **Step 2: Run the RED tests**
 
 Run: `.venv-alpha/bin/python -m pytest -q tests/contracts/test_voice_settings.py tests/voice/test_worker.py tests/tools/test_voice_status.py`
 
 Expected: failures for missing `listen_only_enabled`, `mode`, and schema v2.
 
-- [ ] **Step 3: Add the minimal closed fields and validators**
+- [x] **Step 3: Add the minimal closed fields and validators**
 
 ```python
 class VoiceCareSettings(StrictSettingsModel):
@@ -81,11 +81,11 @@ class VoiceCareSettings(StrictSettingsModel):
 
 Extend `_STATUS_REASONS` with the exact spec reasons, require a closed `mode`, emit schema 2, and update every current writer call explicitly.
 
-- [ ] **Step 4: Run the same focused tests GREEN**
+- [x] **Step 4: Run the same focused tests GREEN**
 
 Run the Step 2 command. Expected: all pass.
 
-- [ ] **Step 5: Commit Task 1**
+- [x] **Step 5: Commit Task 1**
 
 ```bash
 git add packages/contracts/settings.py services/voice/worker.py tools/voice_status.py config/settings.example.yaml tests/contracts/test_voice_settings.py tests/voice/test_worker.py tests/tools/test_voice_status.py
@@ -343,4 +343,3 @@ Run `make alpha-install`, enable only the ignored `listen_only_enabled: true`, t
 - [ ] **Step 6: Commit Task 6 and handoff checkpoint**
 
 Update `SUMMARY.md`, `docs/STATUS.md`, `docs/CHECKPOINT.md`, `docs/NEXT.md`, and this plan's checkboxes with exact evidence. Commit lifecycle/code separately from evidence docs. Do not push or merge.
-

@@ -129,9 +129,10 @@ def test_worker_processes_one_memory_only_utterance_and_writes_bounded_status(tm
     assert payload == {
         "checked_at": "2026-08-24T01:00:00+00:00",
         "last_latency_ms": 80,
+        "mode": "care",
         "processed_count": 1,
         "reason": "saved",
-        "schema_version": 1,
+        "schema_version": 2,
         "worker_state": "healthy",
     }
     serialized = status_path.read_bytes().lower()
@@ -278,12 +279,38 @@ def test_status_writer_rejects_unlisted_reason_instead_of_echoing_it(tmp_path: P
     )
     with pytest.raises(ValueError, match="^voice_worker_unavailable$"):
         writer.write(
+            mode="listen_only",
             worker_state="degraded",
             reason="private_password",
             processed_count=0,
             last_latency_ms=None,
         )
     assert not (tmp_path / "voice.json").exists()
+
+
+def test_status_writer_emits_closed_schema_v2_listen_only_status(tmp_path: Path) -> None:
+    writer = VoiceStatusWriter(
+        tmp_path / "voice.json",
+        clock=lambda: datetime(2026, 8, 24, 1, tzinfo=UTC),
+    )
+
+    writer.write(
+        mode="listen_only",
+        worker_state="healthy",
+        reason="listen_only_idle",
+        processed_count=3,
+        last_latency_ms=80,
+    )
+
+    assert json.loads((tmp_path / "voice.json").read_text(encoding="ascii")) == {
+        "checked_at": "2026-08-24T01:00:00+00:00",
+        "last_latency_ms": 80,
+        "mode": "listen_only",
+        "processed_count": 3,
+        "reason": "listen_only_idle",
+        "schema_version": 2,
+        "worker_state": "healthy",
+    }
 
 
 class Asr:
