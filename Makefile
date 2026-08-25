@@ -40,8 +40,8 @@ help:
 	@echo "  make alpha-voice-enroll-dad Privately enroll Dad on this i9"
 	@echo "  make alpha-voice-enroll-mom Privately enroll Mom on this i9"
 	@echo "  make alpha-voice-asr-capture PROMPT=<id> Save one encrypted fixed test phrase"
-	@echo "  make alpha-voice-asr-capture-fixed PROMPT=<id> Save one supervised 8-second test clip"
-	@echo "  make alpha-voice-asr-capture-fixed-all Save all six supervised 8-second clips"
+	@echo "  make alpha-voice-asr-capture-fixed PROMPT=<id> Rerecord one clip through macOS login launchd"
+	@echo "  make alpha-voice-asr-capture-fixed-all Rerecord all six clips through macOS login launchd"
 	@echo "  make alpha-voice-asr-capture-all Save the six fixed phrases in one session"
 	@echo "  make alpha-voice-asr-evaluate Re-evaluate the encrypted fixed phrase corpus"
 	@echo "  make alpha-voice-asr-bakeoff Run the closed local ASR decode matrix"
@@ -292,12 +292,12 @@ alpha-voice-asr-capture:
 	@$(PYTHON) -m tools.voice_asr_calibrate capture --prompt-id "$(PROMPT)"
 
 alpha-voice-asr-capture-fixed:
-	@$(PYTHON) -m tools.voice_asr_calibrate capture-fixed --prompt-id "$(PROMPT)"
+	@$(PYTHON) -m tools.voice_asr_capture_macos record --prompt-id "$(PROMPT)"
 
 alpha-voice-asr-capture-fixed-all:
 	@set -eu; \
 	for prompt in feeding_start_dad feeding_start_mom feeding_amount feeding_finish care_cancel negative_weather; do \
-		$(PYTHON) -m tools.voice_asr_calibrate capture-fixed --prompt-id "$$prompt"; \
+		$(PYTHON) -m tools.voice_asr_capture_macos record --prompt-id "$$prompt"; \
 	done
 
 alpha-voice-asr-capture-all:
@@ -310,10 +310,10 @@ alpha-voice-asr-bakeoff:
 	@$(PYTHON) -m tools.voice_asr_calibrate bakeoff
 
 alpha-voice-asr-paraformer:
-	@$(PYTHON) -m tools.voice_asr_calibrate paraformer
+	@$(PYTHON) -m tools.voice_asr_capture_macos paraformer
 
 alpha-voice-vad-diagnostic:
-	@$(PYTHON) -m tools.voice_vad_diagnostic
+	@$(PYTHON) -m tools.voice_asr_capture_macos vad-diagnostic
 
 alpha-voice-models-install:
 	@set -eu; \

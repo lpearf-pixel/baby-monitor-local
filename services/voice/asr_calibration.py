@@ -55,6 +55,8 @@ class _Corpus(Protocol):
 
     def append_many(self, values: tuple[tuple[str, bytes], ...]) -> None: ...
 
+    def put(self, prompt_id: str, pcm: bytes) -> None: ...
+
     def read_all(self) -> tuple[tuple[str, bytes], ...]: ...
 
 
@@ -402,8 +404,8 @@ def _evaluate_candidate_metrics(
     latencies: list[int] = []
     mismatch_prompt_ids: list[str] = []
     edit_distance_total = 0
-    try:
-        for prompt_id, pcm in clips:
+    for prompt_id, pcm in clips:
+        try:
             expected = PRIVATE_ASR_PROMPTS[prompt_id]
             result = engine.transcribe(pcm)
             if (
@@ -427,8 +429,20 @@ def _evaluate_candidate_metrics(
                 validate_wake_prefix(result.text).accepted == expected_wake
             )
             latencies.append(result.duration_ms)
-    except Exception:
-        return CalibrationModelMetrics(model, False, 0, 0, 0, None, None, False)
+        except Exception:
+            mismatch_prompt_ids.append(prompt_id)
+            return CalibrationModelMetrics(
+                model,
+                False,
+                len(latencies),
+                exact_matches,
+                wake_matches,
+                _nearest_rank(latencies, 0.50) if latencies else None,
+                _nearest_rank(latencies, 0.95) if latencies else None,
+                False,
+                tuple(mismatch_prompt_ids),
+                edit_distance_total,
+            )
     p50 = _nearest_rank(latencies, 0.50)
     p95 = _nearest_rank(latencies, 0.95)
     passed = (
@@ -453,8 +467,15 @@ def _evaluate_candidate_metrics(
 class FixedWindowAsrCalibrationCapture:
     """Persist one explicit fixed prompt from one exact eight-second window."""
 
-    def __init__(self, *, capture_window: Callable[[], bytes], corpus: _Corpus) -> None:
+    def __init__(
+        self,
+        *,
+        capture_window: Callable[[], bytes],
+        segmenter: _Segmenter,
+        corpus: _Corpus,
+    ) -> None:
         self._capture_window = capture_window
+        self._segmenter = segmenter
         self._corpus = corpus
 
     def capture(self, prompt_id: str) -> FixedWindowCaptureReport:
@@ -464,7 +485,18 @@ class FixedWindowAsrCalibrationCapture:
             pcm = self._capture_window()
             if type(pcm) is not bytes or len(pcm) != SAMPLE_RATE_HZ * 2 * 8:
                 raise ValueError
-            self._corpus.append(prompt_id, pcm)
+            spans = self._segmenter.segment(pcm)
+            if len(spans) != 1:
+                raise ValueError
+            span = spans[0]
+            if (
+                not isinstance(span, SpeechSpan)
+                or span.start_sample < 0
+                or span.end_sample <= span.start_sample
+                or span.end_sample > SAMPLE_RATE_HZ * 8
+            ):
+                raise ValueError
+            self._corpus.put(prompt_id, pcm)
             return FixedWindowCaptureReport(prompt_id)
         except Exception:
             raise ValueError(ASR_CALIBRATION_FAILED) from None

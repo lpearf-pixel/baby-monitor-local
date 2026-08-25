@@ -8,6 +8,7 @@ WATCHDOG_LABEL="com.babymonitor.environment-watchdog"
 VISUAL_LABEL="com.babymonitor.visual"
 AUDIO_LABEL="com.babymonitor.audio"
 VOICE_LABEL="com.babymonitor.voice"
+VOICE_ASR_OPERATOR_LABEL="com.babymonitor.voice-asr-operator"
 TUNNEL_LABEL="com.babymonitor.ollama-tunnel"
 VOICE_ONLY_STOP=0
 
@@ -42,6 +43,9 @@ if [[ "$VOICE_ONLY_STOP" -eq 1 ]]; then
     if launchctl print "${VOICE_DOMAIN}/${VOICE_LABEL}" >/dev/null 2>&1; then
       launchctl bootout "${VOICE_DOMAIN}/${VOICE_LABEL}" >/dev/null
     fi
+    if launchctl print "${VOICE_DOMAIN}/${VOICE_ASR_OPERATOR_LABEL}" >/dev/null 2>&1; then
+      launchctl bootout "${VOICE_DOMAIN}/${VOICE_ASR_OPERATOR_LABEL}" >/dev/null
+    fi
   else
     stop_pidfile "$ROOT/runtime/pids/voice.pid"
   fi
@@ -63,6 +67,9 @@ if [[ "$(uname -s)" == "Darwin" ]] && command -v launchctl >/dev/null 2>&1; then
   fi
   if launchctl print "${GAUGE_DOMAIN}/${VOICE_LABEL}" >/dev/null 2>&1; then
     launchctl bootout "${GAUGE_DOMAIN}/${VOICE_LABEL}"
+  fi
+  if launchctl print "${GAUGE_DOMAIN}/${VOICE_ASR_OPERATOR_LABEL}" >/dev/null 2>&1; then
+    launchctl bootout "${GAUGE_DOMAIN}/${VOICE_ASR_OPERATOR_LABEL}"
   fi
   if launchctl print "${GAUGE_DOMAIN}/${TUNNEL_LABEL}" >/dev/null 2>&1; then
     launchctl bootout "${GAUGE_DOMAIN}/${TUNNEL_LABEL}"

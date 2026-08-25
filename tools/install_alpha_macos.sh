@@ -55,6 +55,9 @@ sed "s|__PROJECT_ROOT__|$ROOT|g" \
 sed "s|__PROJECT_ROOT__|$ROOT|g" \
   "$ROOT/deploy/launchd/com.babymonitor.voice.plist.example" \
   >"$ROOT/runtime/launchd/com.babymonitor.voice.plist"
+sed "s|__PROJECT_ROOT__|$ROOT|g" \
+  "$ROOT/deploy/launchd/com.babymonitor.voice-asr-operator.plist.example" \
+  >"$ROOT/runtime/launchd/com.babymonitor.voice-asr-operator.plist"
 mkdir -p "$HOME/Library/LaunchAgents"
 cp "$ROOT/runtime/launchd/com.babymonitor.go2rtc.plist" \
   "$HOME/Library/LaunchAgents/com.babymonitor.go2rtc.plist"
@@ -68,6 +71,8 @@ cp "$ROOT/runtime/launchd/com.babymonitor.audio.plist" \
   "$HOME/Library/LaunchAgents/com.babymonitor.audio.plist"
 cp "$ROOT/runtime/launchd/com.babymonitor.voice.plist" \
   "$HOME/Library/LaunchAgents/com.babymonitor.voice.plist"
+cp "$ROOT/runtime/launchd/com.babymonitor.voice-asr-operator.plist" \
+  "$HOME/Library/LaunchAgents/com.babymonitor.voice-asr-operator.plist"
 
 if [[ ! -f "$ROOT/runtime/alpha.env" ]]; then
   password="$(openssl rand -hex 20 | cut -c 1-28)"

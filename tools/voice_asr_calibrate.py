@@ -266,11 +266,15 @@ def _build_batch_capture(project_root: Path) -> AsrCalibrationCapture:
 
 
 def _build_fixed_capture(project_root: Path) -> FixedWindowAsrCalibrationCapture:
-    _load_disabled_settings(project_root)
+    settings = _load_disabled_settings(project_root)
     return FixedWindowAsrCalibrationCapture(
         capture_window=BoundedCalibrationPcmCapture(
             AudioSettings(), capture_seconds=8
         ).capture,
+        segmenter=SileroOnnxSegmenter(
+            voice_artifact_spec(settings, "silero-vad-v6.2"),
+            project_root=project_root,
+        ),
         corpus=_private_corpus(project_root),
     )
 

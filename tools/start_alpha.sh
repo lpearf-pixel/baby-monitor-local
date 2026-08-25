@@ -28,6 +28,8 @@ AUDIO_LABEL="com.babymonitor.audio"
 AUDIO_PLIST="$HOME/Library/LaunchAgents/${AUDIO_LABEL}.plist"
 VOICE_LABEL="com.babymonitor.voice"
 VOICE_PLIST="$HOME/Library/LaunchAgents/${VOICE_LABEL}.plist"
+VOICE_ASR_OPERATOR_LABEL="com.babymonitor.voice-asr-operator"
+VOICE_ASR_OPERATOR_PLIST="$HOME/Library/LaunchAgents/${VOICE_ASR_OPERATOR_LABEL}.plist"
 TUNNEL_LABEL="com.babymonitor.ollama-tunnel"
 TUNNEL_PLIST="$HOME/Library/LaunchAgents/${TUNNEL_LABEL}.plist"
 
@@ -284,6 +286,11 @@ if [[ "$(uname -s)" == "Darwin" ]] && command -v launchctl >/dev/null 2>&1; then
   if [[ -f "$VOICE_PLIST" ]]; then
     if ! launchctl print "${GAUGE_DOMAIN}/${VOICE_LABEL}" >/dev/null 2>&1; then
       launchctl bootstrap "$GAUGE_DOMAIN" "$VOICE_PLIST"
+    fi
+  fi
+  if [[ -f "$VOICE_ASR_OPERATOR_PLIST" ]]; then
+    if ! launchctl print "${GAUGE_DOMAIN}/${VOICE_ASR_OPERATOR_LABEL}" >/dev/null 2>&1; then
+      launchctl bootstrap "$GAUGE_DOMAIN" "$VOICE_ASR_OPERATOR_PLIST"
     fi
   fi
   if ! launchctl print "${GAUGE_DOMAIN}/${WATCHDOG_LABEL}" >/dev/null 2>&1; then

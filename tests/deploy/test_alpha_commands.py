@@ -944,12 +944,22 @@ def test_private_asr_calibration_commands_use_fixed_local_module() -> None:
     assert "alpha-voice-asr-paraformer:" in content
     assert "alpha-voice-vad-diagnostic:" in content
     assert "-m tools.voice_asr_calibrate capture --prompt-id \"$(PROMPT)\"" in content
-    assert "-m tools.voice_asr_calibrate capture-fixed --prompt-id \"$(PROMPT)\"" in content
+    assert (
+        "-m tools.voice_asr_capture_macos record --prompt-id \"$(PROMPT)\""
+        in content
+    )
+    assert (
+        "-m tools.voice_asr_calibrate capture-fixed --prompt-id \"$(PROMPT)\""
+        not in content
+    )
     assert "for prompt in feeding_start_dad feeding_start_mom feeding_amount feeding_finish care_cancel negative_weather" in content
     assert "-m tools.voice_asr_calibrate capture-all" in content
     assert "-m tools.voice_asr_calibrate evaluate" in content
     assert "-m tools.voice_asr_calibrate bakeoff" in content
-    assert "-m tools.voice_asr_calibrate paraformer" in content
+    assert "-m tools.voice_asr_capture_macos paraformer" in content
+    assert "-m tools.voice_asr_capture_macos vad-diagnostic" in content
+    assert "-m tools.voice_asr_calibrate paraformer" not in content
+    assert "$(PYTHON) -m tools.voice_vad_diagnostic" not in content
     assert (ROOT / "config/voice-asr-requirements.txt").is_file()
     assert "-m tools.voice_asr_install --project-root . --base-python" in content
     asr_install = content.split("alpha-voice-asr-install:", 1)[1].split(
@@ -958,7 +968,7 @@ def test_private_asr_calibration_commands_use_fixed_local_module() -> None:
     assert "venv --upgrade" not in asr_install
     assert "pip install" not in asr_install
     assert 'artifact "sherpa-onnx-paraformer-zh-2023-09-14"' in content
-    assert "-m tools.voice_vad_diagnostic" in content
+    assert "-m tools.voice_asr_capture_macos vad-diagnostic" in content
 
 
 def test_makefile_exposes_fixed_voice_keychain_helper_lifecycle() -> None:

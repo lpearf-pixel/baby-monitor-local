@@ -19,7 +19,7 @@ from services.voice.asr_calibration import (
     FixedWindowAsrCalibrationCapture,
 )
 from services.voice.asr_corpus import PRIVATE_ASR_PROMPTS
-from services.voice.silero_runtime import SpeechSpan
+from services.voice.silero_runtime import SileroAnalysis, SpeechSpan
 
 
 class Corpus:
@@ -34,6 +34,14 @@ class Corpus:
         self.batches.append(values)
         self.clips.extend(values)
 
+    def put(self, prompt_id: str, pcm: bytes) -> None:
+        replacement = (prompt_id, pcm)
+        for index, (existing_prompt_id, _existing_pcm) in enumerate(self.clips):
+            if existing_prompt_id == prompt_id:
+                self.clips[index] = replacement
+                return
+        self.clips.append(replacement)
+
     def read_all(self):
         return tuple(self.clips)
 
@@ -44,6 +52,12 @@ class Segmenter:
 
     def segment(self, _pcm: bytes) -> tuple[SpeechSpan, ...]:
         return self.spans
+
+    def analyze(self, _pcm: bytes) -> SileroAnalysis:
+        return SileroAnalysis(
+            self.spans,
+            max((span.peak_probability for span in self.spans), default=0.0),
+        )
 
 
 def test_capture_persists_only_the_unique_bounded_speech_span() -> None:
@@ -85,6 +99,7 @@ def test_fixed_window_capture_persists_one_exact_supervised_eight_second_clip() 
     corpus = Corpus()
     capture = FixedWindowAsrCalibrationCapture(
         capture_window=lambda: pcm,
+        segmenter=Segmenter((SpeechSpan(8_000, 40_000, 0.91),)),
         corpus=corpus,
     )
 
@@ -96,10 +111,35 @@ def test_fixed_window_capture_persists_one_exact_supervised_eight_second_clip() 
     assert report.encrypted_clip_persisted is True
 
 
+def test_fixed_window_capture_replaces_only_the_selected_prompt() -> None:
+    old_pcm = b"o" * 256_000
+    new_pcm = b"n" * 256_000
+    corpus = Corpus(
+        (
+            ("feeding_start_dad", b"d" * 256_000),
+            ("negative_weather", old_pcm),
+        )
+    )
+    capture = FixedWindowAsrCalibrationCapture(
+        capture_window=lambda: new_pcm,
+        segmenter=Segmenter((SpeechSpan(8_000, 40_000, 0.91),)),
+        corpus=corpus,
+    )
+
+    report = capture.capture("negative_weather")
+
+    assert corpus.clips == [
+        ("feeding_start_dad", b"d" * 256_000),
+        ("negative_weather", new_pcm),
+    ]
+    assert report.prompt_id == "negative_weather"
+
+
 def test_fixed_window_capture_rejects_non_eight_second_or_free_form_input() -> None:
     corpus = Corpus()
     capture = FixedWindowAsrCalibrationCapture(
         capture_window=lambda: b"f" * 255_998,
+        segmenter=Segmenter((SpeechSpan(8_000, 40_000, 0.91),)),
         corpus=corpus,
     )
 
@@ -108,6 +148,21 @@ def test_fixed_window_capture_rejects_non_eight_second_or_free_form_input() -> N
     with pytest.raises(ValueError, match=f"^{ASR_CALIBRATION_FAILED}$"):
         capture.capture("free_form")
     assert corpus.clips == []
+
+
+def test_fixed_window_capture_rejects_silence_without_replacing_existing_clip() -> None:
+    old_pcm = b"o" * 256_000
+    corpus = Corpus((("negative_weather", old_pcm),))
+    capture = FixedWindowAsrCalibrationCapture(
+        capture_window=lambda: b"\0" * 256_000,
+        segmenter=Segmenter(()),
+        corpus=corpus,
+    )
+
+    with pytest.raises(ValueError, match=f"^{ASR_CALIBRATION_FAILED}$"):
+        capture.capture("negative_weather")
+
+    assert corpus.clips == [("negative_weather", old_pcm)]
 
 
 def test_batch_capture_maps_six_spans_to_fixed_prompts_in_one_publication() -> None:
@@ -158,6 +213,17 @@ class Engine:
 
     def transcribe(self, pcm: bytes) -> AsrResult:
         return AsrResult(self.texts[pcm], "zh", self.duration_ms)
+
+
+class FailingEngine(Engine):
+    def __init__(self, texts: dict[bytes, str], duration_ms: int, failed: bytes) -> None:
+        super().__init__(texts, duration_ms)
+        self.failed = failed
+
+    def transcribe(self, pcm: bytes) -> AsrResult:
+        if pcm == self.failed:
+            raise ValueError("voice_model_unavailable")
+        return super().transcribe(pcm)
 
 
 def test_evaluator_compares_identical_encrypted_clips_without_transcript_output() -> None:
@@ -336,6 +402,32 @@ def test_single_candidate_evaluator_applies_the_same_exact_gate() -> None:
     assert report.models[0].exact_matches == 6
     assert report.models[0].wake_matches == 6
     assert report.models[0].latency_p95_ms == 700
+
+
+def test_single_candidate_evaluator_reports_completed_samples_before_one_failure() -> None:
+    clips = {prompt_id: prompt_id.encode("ascii") * 100 for prompt_id in PRIVATE_ASR_PROMPTS}
+    texts = dict(PRIVATE_ASR_PROMPTS)
+    evaluator = SingleAsrCalibrationEvaluator(
+        corpus=Corpus(tuple(clips.items())),
+        model="paraformer",
+        engine=FailingEngine(
+            {clips[key]: value for key, value in texts.items()},
+            700,
+            clips["negative_weather"],
+        ),
+    )
+
+    report = evaluator.evaluate()
+
+    metrics = report.models[0]
+    assert report.gate_passed is False
+    assert metrics.available is False
+    assert metrics.samples_evaluated == 5
+    assert metrics.exact_matches == 5
+    assert metrics.wake_matches == 5
+    assert metrics.latency_p50_ms == 700
+    assert metrics.latency_p95_ms == 700
+    assert metrics.mismatch_prompt_ids == ("negative_weather",)
 
 
 def test_single_candidate_evaluator_rejects_unapproved_model_name() -> None:

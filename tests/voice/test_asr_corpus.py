@@ -83,6 +83,46 @@ def test_corpus_atomically_appends_a_fixed_prompt_batch(tmp_path: Path) -> None:
     assert store.read_all() == clips
 
 
+def test_corpus_atomically_replaces_one_fixed_prompt_in_place(tmp_path: Path) -> None:
+    store, _backend, path = corpus(tmp_path)
+    original = (
+        ("feeding_start_dad", b"\x01\0" * 4_000),
+        ("negative_weather", b"\x02\0" * 4_000),
+    )
+    replacement = b"\x03\0" * 4_000
+    store.append_many(original)
+    before = json.loads(path.read_text(encoding="ascii"))
+
+    store.put("negative_weather", replacement)
+
+    after = json.loads(path.read_text(encoding="ascii"))
+    assert store.read_all() == (original[0], ("negative_weather", replacement))
+    assert len(after["clips"]) == 2
+    assert after["clips"][0] == before["clips"][0]
+    assert after["clips"][1]["nonce"] != before["clips"][1]["nonce"]
+    assert after["clips"][1]["ciphertext"] != before["clips"][1]["ciphertext"]
+
+
+def test_corpus_failed_replacement_preserves_original_bytes(tmp_path: Path) -> None:
+    backend = FakeKeychain()
+    path = tmp_path / "runtime/private/voice-asr-calibration.json"
+    store = PrivateAsrCorpus(
+        path,
+        KeychainSecretStore(backend, random_bytes=lambda size: b"k" * size),
+        boundary=tmp_path,
+        random_bytes=lambda size: b"n" * size,
+    )
+    original = b"\x01\0" * 4_000
+    store.append("negative_weather", original)
+    original_envelope = path.read_bytes()
+
+    with pytest.raises(ValueError, match=f"^{ASR_CORPUS_UNAVAILABLE}$"):
+        store.put("negative_weather", b"\x02\0" * 4_000)
+
+    assert path.read_bytes() == original_envelope
+    assert store.read_all() == (("negative_weather", original),)
+
+
 def test_corpus_rejects_unknown_prompt_invalid_pcm_tamper_and_overflow(
     tmp_path: Path,
 ) -> None:

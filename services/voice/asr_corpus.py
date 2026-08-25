@@ -61,6 +61,17 @@ class PrivateAsrCorpus:
         self.append_many(((prompt_id, pcm),))
 
     def append_many(self, values: tuple[tuple[str, bytes], ...]) -> None:
+        self._write(values, replace_prompt_id=None)
+
+    def put(self, prompt_id: str, pcm: bytes) -> None:
+        self._write(((prompt_id, pcm),), replace_prompt_id=prompt_id)
+
+    def _write(
+        self,
+        values: tuple[tuple[str, bytes], ...],
+        *,
+        replace_prompt_id: str | None,
+    ) -> None:
         key_created = False
         try:
             if type(values) is not tuple or not values:
@@ -74,11 +85,14 @@ class PrivateAsrCorpus:
                 ):
                     raise ValueError
                 checked_values.append((value[0], _validated_pcm(value[1])))
+            if replace_prompt_id is not None and (
+                len(checked_values) != 1
+                or checked_values[0][0] != replace_prompt_id
+            ):
+                raise ValueError
             self._validate_boundary()
             existing = self._read_envelope()
             clips = [] if existing is None else list(existing["clips"])
-            if len(clips) + len(checked_values) > _MAX_CLIPS:
-                raise ValueError
             key = self._keychain.read(ASR_CORPUS_KEY_ACCOUNT, size=32)
             if key is None:
                 if existing is not None:
@@ -90,6 +104,20 @@ class PrivateAsrCorpus:
             used_nonces = {
                 base64.b64decode(clip["nonce"], validate=True) for clip in clips
             }
+            replacement_index: int | None = None
+            if replace_prompt_id is not None:
+                matching_indexes = [
+                    index
+                    for index, clip in enumerate(clips)
+                    if clip["promptId"] == replace_prompt_id
+                ]
+                if len(matching_indexes) > 1:
+                    raise ValueError
+                if matching_indexes:
+                    replacement_index = matching_indexes[0]
+                    clips.pop(replacement_index)
+            if len(clips) + len(checked_values) > _MAX_CLIPS:
+                raise ValueError
             for prompt_id, checked_pcm in checked_values:
                 nonce = self._random_bytes(12)
                 if type(nonce) is not bytes or len(nonce) != 12 or nonce in used_nonces:
@@ -99,13 +127,16 @@ class PrivateAsrCorpus:
                 ciphertext = AESGCM(key).encrypt(
                     nonce, checked_pcm, _canonical_json(metadata)
                 )
-                clips.append(
-                    {
-                        **metadata,
-                        "ciphertext": base64.b64encode(ciphertext).decode("ascii"),
-                        "nonce": base64.b64encode(nonce).decode("ascii"),
-                    }
-                )
+                clip = {
+                    **metadata,
+                    "ciphertext": base64.b64encode(ciphertext).decode("ascii"),
+                    "nonce": base64.b64encode(nonce).decode("ascii"),
+                }
+                if replacement_index is None:
+                    clips.append(clip)
+                else:
+                    clips.insert(replacement_index, clip)
+                    replacement_index = None
             payload = _canonical_json(
                 {"clips": clips, "schemaVersion": _SCHEMA_VERSION}
             )
