@@ -25,6 +25,6 @@
   <key>StandardOutPath</key>
   <string>__PROJECT_ROOT__/runtime/status/voice-asr-capture.txt</string>
   <key>StandardErrorPath</key>
-  <string>__PROJECT_ROOT__/runtime/status/voice-asr-operator.err</string>
+  <string>/dev/null</string>
 </dict>
 </plist>

@@ -43,7 +43,10 @@ elif [[ "$#" -ne 0 ]]; then
 fi
 
 if [[ "$VOICE_ONLY_START" -eq 1 ]]; then
-  if [[ "$(uname -s)" != "Darwin" ]] || ! command -v launchctl >/dev/null 2>&1 || [[ ! -f "$VOICE_PLIST" ]]; then
+  if [[ "$(uname -s)" != "Darwin" ]] || \
+    ! command -v launchctl >/dev/null 2>&1 || \
+    [[ ! -f "$VOICE_PLIST" ]] || \
+    [[ ! -f "$VOICE_ASR_OPERATOR_PLIST" ]]; then
     echo "voice_start=FAIL reason=service_unavailable" >&2
     exit 1
   fi
@@ -52,6 +55,9 @@ if [[ "$VOICE_ONLY_START" -eq 1 ]]; then
     launchctl bootstrap "$VOICE_DOMAIN" "$VOICE_PLIST" >/dev/null
   else
     launchctl kickstart -k "${VOICE_DOMAIN}/${VOICE_LABEL}" >/dev/null
+  fi
+  if ! launchctl print "${VOICE_DOMAIN}/${VOICE_ASR_OPERATOR_LABEL}" >/dev/null 2>&1; then
+    launchctl bootstrap "$VOICE_DOMAIN" "$VOICE_ASR_OPERATOR_PLIST" >/dev/null
   fi
   echo "voice_start=PASS"
   exit 0

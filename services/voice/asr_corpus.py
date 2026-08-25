@@ -3,13 +3,16 @@
 from __future__ import annotations
 
 import base64
+import fcntl
 import json
 import os
 import secrets
 import stat
 import tempfile
 from collections.abc import Callable
+from contextlib import contextmanager
 from pathlib import Path
+from typing import Iterator
 
 from cryptography.hazmat.primitives.ciphers.aead import AESGCM
 
@@ -91,58 +94,63 @@ class PrivateAsrCorpus:
             ):
                 raise ValueError
             self._validate_boundary()
-            existing = self._read_envelope()
-            clips = [] if existing is None else list(existing["clips"])
-            key = self._keychain.read(ASR_CORPUS_KEY_ACCOUNT, size=32)
-            if key is None:
-                if existing is not None:
-                    raise ValueError
-                key = self._keychain.get_or_create(ASR_CORPUS_KEY_ACCOUNT, size=32)
-                key_created = True
-            elif existing is not None:
-                self._decrypt_clips(existing, key)
-            used_nonces = {
-                base64.b64decode(clip["nonce"], validate=True) for clip in clips
-            }
-            replacement_index: int | None = None
-            if replace_prompt_id is not None:
-                matching_indexes = [
-                    index
-                    for index, clip in enumerate(clips)
-                    if clip["promptId"] == replace_prompt_id
-                ]
-                if len(matching_indexes) > 1:
-                    raise ValueError
-                if matching_indexes:
-                    replacement_index = matching_indexes[0]
-                    clips.pop(replacement_index)
-            if len(clips) + len(checked_values) > _MAX_CLIPS:
-                raise ValueError
-            for prompt_id, checked_pcm in checked_values:
-                nonce = self._random_bytes(12)
-                if type(nonce) is not bytes or len(nonce) != 12 or nonce in used_nonces:
-                    raise ValueError
-                used_nonces.add(nonce)
-                metadata = {"pcmBytes": len(checked_pcm), "promptId": prompt_id}
-                ciphertext = AESGCM(key).encrypt(
-                    nonce, checked_pcm, _canonical_json(metadata)
-                )
-                clip = {
-                    **metadata,
-                    "ciphertext": base64.b64encode(ciphertext).decode("ascii"),
-                    "nonce": base64.b64encode(nonce).decode("ascii"),
+            with self._writer_lock():
+                existing = self._read_envelope()
+                clips = [] if existing is None else list(existing["clips"])
+                key = self._keychain.read(ASR_CORPUS_KEY_ACCOUNT, size=32)
+                if key is None:
+                    if existing is not None:
+                        raise ValueError
+                    key = self._keychain.get_or_create(ASR_CORPUS_KEY_ACCOUNT, size=32)
+                    key_created = True
+                elif existing is not None:
+                    self._decrypt_clips(existing, key)
+                used_nonces = {
+                    base64.b64decode(clip["nonce"], validate=True) for clip in clips
                 }
-                if replacement_index is None:
-                    clips.append(clip)
-                else:
-                    clips.insert(replacement_index, clip)
-                    replacement_index = None
-            payload = _canonical_json(
-                {"clips": clips, "schemaVersion": _SCHEMA_VERSION}
-            )
-            if len(payload) > _MAX_CORPUS_BYTES:
-                raise ValueError
-            self._publish(payload)
+                replacement_index: int | None = None
+                if replace_prompt_id is not None:
+                    matching_indexes = [
+                        index
+                        for index, clip in enumerate(clips)
+                        if clip["promptId"] == replace_prompt_id
+                    ]
+                    if len(matching_indexes) > 1:
+                        raise ValueError
+                    if matching_indexes:
+                        replacement_index = matching_indexes[0]
+                        clips.pop(replacement_index)
+                if len(clips) + len(checked_values) > _MAX_CLIPS:
+                    raise ValueError
+                for prompt_id, checked_pcm in checked_values:
+                    nonce = self._random_bytes(12)
+                    if (
+                        type(nonce) is not bytes
+                        or len(nonce) != 12
+                        or nonce in used_nonces
+                    ):
+                        raise ValueError
+                    used_nonces.add(nonce)
+                    metadata = {"pcmBytes": len(checked_pcm), "promptId": prompt_id}
+                    ciphertext = AESGCM(key).encrypt(
+                        nonce, checked_pcm, _canonical_json(metadata)
+                    )
+                    clip = {
+                        **metadata,
+                        "ciphertext": base64.b64encode(ciphertext).decode("ascii"),
+                        "nonce": base64.b64encode(nonce).decode("ascii"),
+                    }
+                    if replacement_index is None:
+                        clips.append(clip)
+                    else:
+                        clips.insert(replacement_index, clip)
+                        replacement_index = None
+                payload = _canonical_json(
+                    {"clips": clips, "schemaVersion": _SCHEMA_VERSION}
+                )
+                if len(payload) > _MAX_CORPUS_BYTES:
+                    raise ValueError
+                self._publish(payload)
         except Exception:
             if key_created and not self._path.exists() and not self._path.is_symlink():
                 try:
@@ -253,6 +261,31 @@ class PrivateAsrCorpus:
                 os.close(descriptor)
             if temporary.exists():
                 temporary.unlink()
+
+    @contextmanager
+    def _writer_lock(self) -> Iterator[None]:
+        parent = self._path.parent
+        parent.mkdir(mode=0o700, parents=True, exist_ok=True)
+        self._validate_boundary()
+        parent.chmod(0o700)
+        lock_path = self._path.with_suffix(self._path.suffix + ".lock")
+        if lock_path.is_symlink():
+            raise ValueError
+        descriptor = os.open(
+            lock_path,
+            os.O_CREAT | os.O_RDWR | os.O_NOFOLLOW,
+            0o600,
+        )
+        try:
+            os.fchmod(descriptor, 0o600)
+            fcntl.flock(descriptor, fcntl.LOCK_EX)
+            yield
+        finally:
+            try:
+                fcntl.flock(descriptor, fcntl.LOCK_UN)
+            except OSError:
+                pass
+            os.close(descriptor)
 
     def _validate_boundary(self) -> None:
         try:

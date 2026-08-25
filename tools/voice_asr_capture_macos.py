@@ -3,13 +3,18 @@
 from __future__ import annotations
 
 import argparse
+import fcntl
 import os
 import re
+import secrets
 import subprocess
 import sys
 import time
 from collections.abc import Callable, Sequence
+from contextlib import contextmanager
+from dataclasses import dataclass
 from pathlib import Path
+from typing import Iterator
 
 from services.voice.asr_corpus import PRIVATE_ASR_PROMPTS
 
@@ -18,6 +23,8 @@ CAPTURE_UNAVAILABLE = "voice_asr_capture_unavailable"
 FIXED_EXECUTION_PATH = "/usr/local/bin:/usr/bin:/bin:/usr/sbin:/sbin"
 _STATUS_RELATIVE = Path("runtime/status/voice-asr-capture.txt")
 _REQUEST_RELATIVE = Path("runtime/status/voice-asr-capture.request")
+_ACTIVE_REQUEST_RELATIVE = Path("runtime/status/voice-asr-capture.active")
+_PARENT_LOCK_RELATIVE = Path("runtime/status/voice-asr-capture.lock")
 _COMMAND_RELATIVE = Path("tools/voice_asr_capture_macos.command")
 _TERMINAL_APP = "/System/Applications/Utilities/Terminal.app"
 _OPERATOR_LABEL = "com.babymonitor.voice-asr-operator"
@@ -34,10 +41,20 @@ JobRunner = Callable[[Path, str], int]
 EvaluationJobRunner = Callable[[Path, str], int]
 UidGetter = Callable[[], int]
 _EVALUATIONS = frozenset({"paraformer", "vad-diagnostic"})
+_REQUEST_ID_PATTERN = re.compile(r"[0-9a-f]{32}")
 
 
-def parse_capture_result(output: str, prompt_id: str) -> tuple[str, ...]:
+@dataclass(frozen=True)
+class _Request:
+    request_id: str
+    operation: str
+
+
+def parse_capture_result(
+    output: str, prompt_id: str, request_id: str
+) -> tuple[str, ...]:
     _validate_prompt_id(prompt_id)
+    _validate_request_id(request_id)
     expected = {
         "prompt_id": prompt_id,
         "prompt": PRIVATE_ASR_PROMPTS[prompt_id],
@@ -45,6 +62,7 @@ def parse_capture_result(output: str, prompt_id: str) -> tuple[str, ...]:
         "operation": "capture-fixed",
         "duration_ms": str(_EXPECTED_DURATION_MS),
         "encrypted_clip_persisted": "true",
+        "request_id": request_id,
         "capture_job_complete": "true",
     }
     values: dict[str, str] = {}
@@ -66,9 +84,12 @@ def parse_capture_result(output: str, prompt_id: str) -> tuple[str, ...]:
     )
 
 
-def parse_evaluation_result(output: str, operation: str) -> tuple[str, ...]:
+def parse_evaluation_result(
+    output: str, operation: str, request_id: str
+) -> tuple[str, ...]:
     if operation not in _EVALUATIONS:
         raise ValueError(CAPTURE_UNAVAILABLE)
+    _validate_request_id(request_id)
     lines = output.splitlines()
     if not lines or lines[-1] != "login_job_complete=true":
         raise ValueError(CAPTURE_UNAVAILABLE)
@@ -81,13 +102,16 @@ def parse_evaluation_result(output: str, operation: str) -> tuple[str, ...]:
         if key in values:
             raise ValueError(CAPTURE_UNAVAILABLE)
         values[key] = value
-        rendered.append(line)
+        if key != "request_id":
+            rendered.append(line)
     allowed = _paraformer_keys(values) if operation == "paraformer" else _vad_keys()
     if set(values) != allowed or values.get("operation") != operation:
         raise ValueError(CAPTURE_UNAVAILABLE)
     if values.get("result") not in {"PASS", "FAIL"}:
         raise ValueError(CAPTURE_UNAVAILABLE)
     if values.get("gate_passed") not in {"true", "false"}:
+        raise ValueError(CAPTURE_UNAVAILABLE)
+    if values.get("request_id") != request_id:
         raise ValueError(CAPTURE_UNAVAILABLE)
     if (values["result"] == "PASS") != (values["gate_passed"] == "true"):
         raise ValueError(CAPTURE_UNAVAILABLE)
@@ -111,6 +135,7 @@ def _paraformer_keys(values: dict[str, str]) -> set[str]:
         "paraformer_mismatch_prompt_ids",
         "paraformer_edit_distance_total",
         "paraformer_passed",
+        "request_id",
     }
     if values.get("result") == "FAIL":
         keys.add("reason")
@@ -126,6 +151,7 @@ def _vad_keys() -> set[str]:
         "control_rms_dbfs_milli",
         "control_peak_milli",
         "control_span_count",
+        "request_id",
     }
     for index in range(1, 7):
         keys.update(
@@ -155,6 +181,11 @@ def _bounded_aggregate_value(key: str, value: str) -> bool:
 
 def _validate_prompt_id(prompt_id: str) -> None:
     if type(prompt_id) is not str or prompt_id not in PRIVATE_ASR_PROMPTS:
+        raise ValueError(CAPTURE_UNAVAILABLE)
+
+
+def _validate_request_id(request_id: str) -> None:
+    if type(request_id) is not str or _REQUEST_ID_PATTERN.fullmatch(request_id) is None:
         raise ValueError(CAPTURE_UNAVAILABLE)
 
 
@@ -190,22 +221,30 @@ def run_terminal_job(
     evaluation_runner: EvaluationJobRunner = _evaluation_job,
     require_confirmation: bool = True,
     countdown_seconds: int = _COUNTDOWN_SECONDS,
+    claimed_request: _Request | None = None,
 ) -> int:
-    request = _read_request(project_root)
-    if request in _EVALUATIONS:
-        return evaluation_runner(project_root, request)
-    prompt_id = request
-    printer(f"prompt={PRIVATE_ASR_PROMPTS[prompt_id]}")
-    if require_confirmation:
-        printer("press_enter_to_start_countdown=")
-        if input_fn("") != "":
+    request = claimed_request or _claim_request(project_root)
+    owns_claim = claimed_request is None
+    try:
+        if request.operation in _EVALUATIONS:
+            return evaluation_runner(project_root, request.operation)
+        prompt_id = request.operation
+        printer(f"prompt={PRIVATE_ASR_PROMPTS[prompt_id]}")
+        if require_confirmation:
+            printer("press_enter_to_start_countdown=")
+            if input_fn("") != "":
+                raise ValueError(CAPTURE_UNAVAILABLE)
+        if type(countdown_seconds) is not int or not 0 <= countdown_seconds <= 10:
             raise ValueError(CAPTURE_UNAVAILABLE)
-    if type(countdown_seconds) is not int or not 0 <= countdown_seconds <= 10:
-        raise ValueError(CAPTURE_UNAVAILABLE)
-    for remaining in range(countdown_seconds, 0, -1):
-        printer(f"capture_starts_in_seconds={remaining}")
-        sleeper(1)
-    return job_runner(project_root, prompt_id)
+        for remaining in range(countdown_seconds, 0, -1):
+            printer(f"capture_starts_in_seconds={remaining}")
+            sleeper(1)
+        return job_runner(project_root, prompt_id)
+    finally:
+        if owns_claim:
+            _remove_owned_request(
+                project_root / _ACTIVE_REQUEST_RELATIVE, request.request_id
+            )
 
 
 def main(argv: Sequence[str] | None = None) -> int:
@@ -222,18 +261,21 @@ def main(argv: Sequence[str] | None = None) -> int:
     arguments = parser.parse_args(argv)
     root = Path.cwd().resolve(strict=True)
     if arguments.operation in {"login-job", "terminal-job"}:
+        request: _Request | None = None
         try:
-            request = _read_request(root)
+            request = _claim_request(root)
             return_code = run_terminal_job(
                 root,
                 require_confirmation=arguments.operation == "terminal-job",
                 countdown_seconds=(
                     _COUNTDOWN_SECONDS if arguments.operation == "terminal-job" else 0
                 ),
+                claimed_request=request,
             )
+            print(f"request_id={request.request_id}")
             print(
                 "login_job_complete=true"
-                if request in _EVALUATIONS
+                if request.operation in _EVALUATIONS
                 else "capture_job_complete=true"
             )
             return return_code
@@ -241,8 +283,20 @@ def main(argv: Sequence[str] | None = None) -> int:
             print("result=FAIL")
             print("operation=login-job")
             print(f"reason={CAPTURE_UNAVAILABLE}")
-            print("login_job_complete=true")
+            if request is not None:
+                print(f"request_id={request.request_id}")
+            print(
+                "capture_job_complete=true"
+                if request is not None
+                and request.operation not in _EVALUATIONS
+                else "login_job_complete=true"
+            )
             return 1
+        finally:
+            if request is not None:
+                _remove_owned_request(
+                    root / _ACTIVE_REQUEST_RELATIVE, request.request_id
+                )
     if arguments.operation in _EVALUATIONS:
         try:
             return run_login_evaluation(root, str(arguments.operation))
@@ -274,46 +328,37 @@ def run_login_capture(
     _validate_prompt_id(prompt_id)
     if platform_name != "darwin":
         raise ValueError(CAPTURE_UNAVAILABLE)
-    status_path = root / _STATUS_RELATIVE
-    request_path = root / _REQUEST_RELATIVE
-    status_path.parent.mkdir(mode=0o700, parents=True, exist_ok=True)
-    status_path.parent.chmod(0o700)
-    if request_path.is_symlink() or status_path.is_symlink():
-        raise ValueError(CAPTURE_UNAVAILABLE)
-    temporary = request_path.with_suffix(".request.tmp")
-    if temporary.is_symlink():
-        raise ValueError(CAPTURE_UNAVAILABLE)
-    temporary.write_text(f"{prompt_id}\n", encoding="ascii")
-    temporary.chmod(0o600)
-    temporary.replace(request_path)
-    request_path.chmod(0o600)
-    status_path.write_text("", encoding="utf-8")
-    status_path.chmod(0o600)
-    printer(f"prompt={PRIVATE_ASR_PROMPTS[prompt_id]}")
-    for remaining in range(_COUNTDOWN_SECONDS, 0, -1):
-        printer(f"capture_starts_in_seconds={remaining}")
-        sleeper(1)
-    printer("capture_now=true")
-    _run(
-        opener,
-        [
-            "/bin/launchctl",
-            "kickstart",
-            "-k",
-            f"gui/{uid_getter()}/{_OPERATOR_LABEL}",
-        ],
-        capture_output=True,
-    )
-    deadline = time.monotonic() + _WAIT_SECONDS
-    while time.monotonic() < deadline:
-        output = status_path.read_text(encoding="utf-8")
-        if output.endswith("capture_job_complete=true\n"):
-            break
-        sleeper(0.25)
-    result = parse_capture_result(status_path.read_text(encoding="utf-8"), prompt_id)
-    for line in result:
-        printer(line)
-    return 0
+    with _parent_request_lock(root):
+        status_path, request_path = _prepare_login_job(root)
+        request = _new_request(prompt_id)
+        target = f"gui/{uid_getter()}/{_OPERATOR_LABEL}"
+        launched = False
+        try:
+            _write_request(request_path, request)
+            status_path.write_text("", encoding="utf-8")
+            status_path.chmod(0o600)
+            printer(f"prompt={PRIVATE_ASR_PROMPTS[prompt_id]}")
+            for remaining in range(_COUNTDOWN_SECONDS, 0, -1):
+                printer(f"capture_starts_in_seconds={remaining}")
+                sleeper(1)
+            printer("capture_now=true")
+            launched = True
+            _kickstart_operator(opener, target)
+            _wait_for_status(status_path, "capture_job_complete=true\n", sleeper)
+            result = parse_capture_result(
+                status_path.read_text(encoding="utf-8"),
+                prompt_id,
+                request.request_id,
+            )
+            for line in result:
+                printer(line)
+            return 0
+        except (Exception, KeyboardInterrupt):
+            if launched:
+                _stop_operator(opener, target)
+            raise
+        finally:
+            _cleanup_owned_request(root, request.request_id)
 
 
 def run_login_evaluation(
@@ -331,32 +376,32 @@ def run_login_evaluation(
     root = project_root.resolve(strict=True)
     if platform_name != "darwin":
         raise ValueError(CAPTURE_UNAVAILABLE)
-    status_path, request_path = _prepare_login_job(root)
-    _write_request(request_path, operation)
-    status_path.write_text("", encoding="utf-8")
-    status_path.chmod(0o600)
-    _run(
-        opener,
-        [
-            "/bin/launchctl",
-            "kickstart",
-            "-k",
-            f"gui/{uid_getter()}/{_OPERATOR_LABEL}",
-        ],
-        capture_output=True,
-    )
-    deadline = time.monotonic() + _WAIT_SECONDS
-    while time.monotonic() < deadline:
-        output = status_path.read_text(encoding="utf-8")
-        if output.endswith("login_job_complete=true\n"):
-            break
-        sleeper(0.25)
-    rendered = parse_evaluation_result(
-        status_path.read_text(encoding="utf-8"), operation
-    )
-    for line in rendered:
-        printer(line)
-    return 0 if rendered[0] == "result=PASS" else 1
+    with _parent_request_lock(root):
+        status_path, request_path = _prepare_login_job(root)
+        request = _new_request(operation)
+        target = f"gui/{uid_getter()}/{_OPERATOR_LABEL}"
+        launched = False
+        try:
+            _write_request(request_path, request)
+            status_path.write_text("", encoding="utf-8")
+            status_path.chmod(0o600)
+            launched = True
+            _kickstart_operator(opener, target)
+            _wait_for_status(status_path, "login_job_complete=true\n", sleeper)
+            rendered = parse_evaluation_result(
+                status_path.read_text(encoding="utf-8"),
+                operation,
+                request.request_id,
+            )
+            for line in rendered:
+                printer(line)
+            return 0 if rendered[0] == "result=PASS" else 1
+        except (Exception, KeyboardInterrupt):
+            if launched:
+                _stop_operator(opener, target)
+            raise
+        finally:
+            _cleanup_owned_request(root, request.request_id)
 
 
 def _prepare_login_job(root: Path) -> tuple[Path, Path]:
@@ -364,34 +409,149 @@ def _prepare_login_job(root: Path) -> tuple[Path, Path]:
     request_path = root / _REQUEST_RELATIVE
     status_path.parent.mkdir(mode=0o700, parents=True, exist_ok=True)
     status_path.parent.chmod(0o700)
-    if request_path.is_symlink() or status_path.is_symlink():
+    active_path = root / _ACTIVE_REQUEST_RELATIVE
+    if (
+        request_path.is_symlink()
+        or active_path.is_symlink()
+        or active_path.exists()
+        or status_path.is_symlink()
+    ):
         raise ValueError(CAPTURE_UNAVAILABLE)
     return status_path, request_path
 
 
-def _write_request(request_path: Path, value: str) -> None:
-    if value not in _EVALUATIONS and value not in PRIVATE_ASR_PROMPTS:
-        raise ValueError(CAPTURE_UNAVAILABLE)
+def _write_request(request_path: Path, request: _Request) -> None:
+    _validate_request(request)
     temporary = request_path.with_suffix(".request.tmp")
     if temporary.is_symlink():
         raise ValueError(CAPTURE_UNAVAILABLE)
-    temporary.write_text(f"{value}\n", encoding="ascii")
+    temporary.write_text(_request_payload(request), encoding="ascii")
     temporary.chmod(0o600)
     temporary.replace(request_path)
     request_path.chmod(0o600)
 
 
-def _read_request(project_root: Path) -> str:
-    request_path = project_root / _REQUEST_RELATIVE
+def _read_request_path(request_path: Path) -> _Request:
     if request_path.is_symlink() or not request_path.is_file():
         raise ValueError(CAPTURE_UNAVAILABLE)
     value = request_path.read_text(encoding="ascii")
-    if not value.endswith("\n") or value.count("\n") != 1:
+    lines = value.splitlines()
+    if len(lines) != 2 or value != "\n".join(lines) + "\n":
         raise ValueError(CAPTURE_UNAVAILABLE)
-    request = value[:-1]
-    if request not in _EVALUATIONS:
-        _validate_prompt_id(request)
+    if not lines[0].startswith("request_id=") or not lines[1].startswith(
+        "operation="
+    ):
+        raise ValueError(CAPTURE_UNAVAILABLE)
+    request = _Request(
+        request_id=lines[0].split("=", 1)[1],
+        operation=lines[1].split("=", 1)[1],
+    )
+    _validate_request(request)
     return request
+
+
+def _new_request(operation: str) -> _Request:
+    request = _Request(request_id=secrets.token_hex(16), operation=operation)
+    _validate_request(request)
+    return request
+
+
+def _validate_request(request: _Request) -> None:
+    if type(request) is not _Request:
+        raise ValueError(CAPTURE_UNAVAILABLE)
+    _validate_request_id(request.request_id)
+    if request.operation not in _EVALUATIONS:
+        _validate_prompt_id(request.operation)
+
+
+def _request_payload(request: _Request) -> str:
+    return f"request_id={request.request_id}\noperation={request.operation}\n"
+
+
+def _claim_request(project_root: Path) -> _Request:
+    pending = project_root / _REQUEST_RELATIVE
+    active = project_root / _ACTIVE_REQUEST_RELATIVE
+    request = _read_request_path(pending)
+    if active.is_symlink() or active.exists():
+        raise ValueError(CAPTURE_UNAVAILABLE)
+    try:
+        os.link(pending, active, follow_symlinks=False)
+        active.chmod(0o600)
+        pending.unlink()
+    except Exception:
+        _remove_owned_request(active, request.request_id)
+        raise ValueError(CAPTURE_UNAVAILABLE) from None
+    return request
+
+
+def _remove_owned_request(path: Path, request_id: str) -> None:
+    try:
+        if path.is_symlink() or not path.is_file():
+            return
+        request = _read_request_path(path)
+        if request.request_id == request_id:
+            path.unlink()
+    except Exception:
+        return
+
+
+def _cleanup_owned_request(project_root: Path, request_id: str) -> None:
+    _remove_owned_request(project_root / _REQUEST_RELATIVE, request_id)
+    _remove_owned_request(project_root / _ACTIVE_REQUEST_RELATIVE, request_id)
+
+
+@contextmanager
+def _parent_request_lock(project_root: Path) -> Iterator[None]:
+    lock_path = project_root / _PARENT_LOCK_RELATIVE
+    lock_path.parent.mkdir(mode=0o700, parents=True, exist_ok=True)
+    lock_path.parent.chmod(0o700)
+    if lock_path.is_symlink():
+        raise ValueError(CAPTURE_UNAVAILABLE)
+    descriptor = -1
+    try:
+        descriptor = os.open(
+            lock_path,
+            os.O_CREAT | os.O_RDWR | os.O_NOFOLLOW,
+            0o600,
+        )
+        os.fchmod(descriptor, 0o600)
+        fcntl.flock(descriptor, fcntl.LOCK_EX | fcntl.LOCK_NB)
+        yield
+    except (BlockingIOError, OSError):
+        raise ValueError(CAPTURE_UNAVAILABLE) from None
+    finally:
+        if descriptor >= 0:
+            try:
+                fcntl.flock(descriptor, fcntl.LOCK_UN)
+            except OSError:
+                pass
+            os.close(descriptor)
+
+
+def _kickstart_operator(opener: Runner, target: str) -> None:
+    _run(
+        opener,
+        ["/bin/launchctl", "kickstart", "-k", target],
+        capture_output=True,
+    )
+
+
+def _stop_operator(opener: Runner, target: str) -> None:
+    _run(
+        opener,
+        ["/bin/launchctl", "kill", "SIGTERM", target],
+        capture_output=True,
+    )
+
+
+def _wait_for_status(status_path: Path, sentinel: str, sleeper: Sleeper) -> None:
+    deadline = time.monotonic() + _WAIT_SECONDS
+    while time.monotonic() < deadline:
+        output = status_path.read_text(encoding="utf-8")
+        if output.endswith(sentinel):
+            return
+        sleeper(0.25)
+    raise ValueError(CAPTURE_UNAVAILABLE)
 
 
 def _run(

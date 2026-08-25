@@ -1,7 +1,9 @@
 from __future__ import annotations
 
+import fcntl
 import json
 import stat
+import threading
 from pathlib import Path
 
 import pytest
@@ -121,6 +123,83 @@ def test_corpus_failed_replacement_preserves_original_bytes(tmp_path: Path) -> N
 
     assert path.read_bytes() == original_envelope
     assert store.read_all() == (("negative_weather", original),)
+
+
+def test_all_corpus_writers_serialize_the_complete_read_modify_publish(
+    tmp_path: Path,
+) -> None:
+    backend = FakeKeychain()
+    keychain = KeychainSecretStore(backend, random_bytes=lambda size: b"k" * size)
+    path = tmp_path / "runtime/private/voice-asr-calibration.json"
+    first = PrivateAsrCorpus(
+        path,
+        keychain,
+        boundary=tmp_path,
+        random_bytes=lambda size: b"a" * size,
+    )
+    second = PrivateAsrCorpus(
+        path,
+        keychain,
+        boundary=tmp_path,
+        random_bytes=lambda size: b"b" * size,
+    )
+    first_at_publish = threading.Event()
+    release_first = threading.Event()
+    original_publish = first._publish
+
+    def delayed_publish(payload: bytes) -> None:
+        first_at_publish.set()
+        assert release_first.wait(timeout=2)
+        original_publish(payload)
+
+    first._publish = delayed_publish
+    errors: list[BaseException] = []
+
+    def append(store: PrivateAsrCorpus, prompt_id: str, pcm: bytes) -> None:
+        try:
+            store.append(prompt_id, pcm)
+        except BaseException as error:  # pragma: no cover - asserted below
+            errors.append(error)
+
+    first_thread = threading.Thread(
+        target=append,
+        args=(first, "feeding_start_dad", b"\x01\0" * 4_000),
+    )
+    second_thread = threading.Thread(
+        target=append,
+        args=(second, "feeding_start_mom", b"\x02\0" * 4_000),
+    )
+    first_thread.start()
+    assert first_at_publish.wait(timeout=2)
+    second_thread.start()
+    second_thread.join(timeout=1)
+    release_first.set()
+    first_thread.join(timeout=2)
+    second_thread.join(timeout=2)
+
+    assert errors == []
+    assert first.read_all() == (
+        ("feeding_start_dad", b"\x01\0" * 4_000),
+        ("feeding_start_mom", b"\x02\0" * 4_000),
+    )
+
+
+def test_corpus_lock_failure_preserves_prior_envelope(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    store, _backend, path = corpus(tmp_path)
+    original = b"\x01\0" * 4_000
+    store.append("negative_weather", original)
+    before = path.read_bytes()
+
+    def fail_lock(_descriptor: int, _operation: int) -> None:
+        raise OSError("synthetic lock failure")
+
+    monkeypatch.setattr(fcntl, "flock", fail_lock)
+    with pytest.raises(ValueError, match=f"^{ASR_CORPUS_UNAVAILABLE}$"):
+        store.put("negative_weather", b"\x02\0" * 4_000)
+
+    assert path.read_bytes() == before
 
 
 def test_corpus_rejects_unknown_prompt_invalid_pcm_tamper_and_overflow(

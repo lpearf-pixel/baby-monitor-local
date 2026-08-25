@@ -1,12 +1,19 @@
 from __future__ import annotations
 
 import json
+import os
 import plistlib
+import shutil
 import subprocess
 from pathlib import Path
 
 
 ROOT = Path(__file__).resolve().parents[2]
+
+
+def _write_executable(path: Path, content: str) -> None:
+    path.write_text(content, encoding="ascii")
+    path.chmod(0o755)
 
 
 def test_voice_launchd_is_independent_interactive_and_private() -> None:
@@ -68,6 +75,107 @@ def test_install_start_stop_and_guardian_gate_keep_voice_as_one_sibling() -> Non
     for body in (voice_only_start, voice_only_stop):
         for sibling in ("go2rtc", "visual", "gauge", "watchdog", "audio"):
             assert sibling not in body.lower()
+
+
+def test_voice_only_start_stop_is_symmetric_for_worker_and_operator(
+    tmp_path: Path,
+) -> None:
+    project = tmp_path / "project"
+    (project / "tools").mkdir(parents=True)
+    shutil.copy2(ROOT / "tools/start_alpha.sh", project / "tools/start_alpha.sh")
+    shutil.copy2(ROOT / "tools/stop_alpha.sh", project / "tools/stop_alpha.sh")
+    home = tmp_path / "home"
+    agents = home / "Library/LaunchAgents"
+    agents.mkdir(parents=True)
+    labels = ("com.babymonitor.voice", "com.babymonitor.voice-asr-operator")
+    for label in labels:
+        (agents / f"{label}.plist").write_text("synthetic plist\n", encoding="ascii")
+    fake_bin = tmp_path / "bin"
+    fake_bin.mkdir()
+    state = tmp_path / "state"
+    state.mkdir()
+    calls = state / "calls"
+    _write_executable(fake_bin / "uname", "#!/bin/sh\necho Darwin\n")
+    _write_executable(fake_bin / "id", "#!/bin/sh\necho 501\n")
+    _write_executable(
+        fake_bin / "launchctl",
+        """#!/bin/sh
+set -eu
+command=$1
+target=$2
+label=${target##*/}
+marker=$VOICE_LIFECYCLE_STATE/$label
+case $command in
+  print)
+    test -f "$marker"
+    ;;
+  bootstrap)
+    label=${3##*/}
+    label=${label%.plist}
+    : > "$VOICE_LIFECYCLE_STATE/$label"
+    printf 'bootstrap %s\n' "$label" >> "$VOICE_LIFECYCLE_CALLS"
+    ;;
+  kickstart)
+    printf 'kickstart %s\n' "$label" >> "$VOICE_LIFECYCLE_CALLS"
+    ;;
+  bootout)
+    rm -f "$marker"
+    printf 'bootout %s\n' "$label" >> "$VOICE_LIFECYCLE_CALLS"
+    ;;
+  *) exit 2 ;;
+esac
+""",
+    )
+    environment = os.environ.copy()
+    environment.update(
+        {
+            "HOME": str(home),
+            "PATH": f"{fake_bin}:{environment['PATH']}",
+            "VOICE_LIFECYCLE_STATE": str(state),
+            "VOICE_LIFECYCLE_CALLS": str(calls),
+        }
+    )
+
+    start = subprocess.run(
+        ["bash", "tools/start_alpha.sh", "--voice-only"],
+        cwd=project,
+        env=environment,
+        check=False,
+        capture_output=True,
+        text=True,
+    )
+    assert start.returncode == 0, start.stderr
+    assert all((state / label).exists() for label in labels)
+
+    stop = subprocess.run(
+        ["bash", "tools/stop_alpha.sh", "--voice-only"],
+        cwd=project,
+        env=environment,
+        check=False,
+        capture_output=True,
+        text=True,
+    )
+    assert stop.returncode == 0, stop.stderr
+    assert all(not (state / label).exists() for label in labels)
+
+    restarted = subprocess.run(
+        ["bash", "tools/start_alpha.sh", "--voice-only"],
+        cwd=project,
+        env=environment,
+        check=False,
+        capture_output=True,
+        text=True,
+    )
+    assert restarted.returncode == 0, restarted.stderr
+    assert all((state / label).exists() for label in labels)
+    assert calls.read_text(encoding="ascii").splitlines() == [
+        "bootstrap com.babymonitor.voice",
+        "bootstrap com.babymonitor.voice-asr-operator",
+        "bootout com.babymonitor.voice",
+        "bootout com.babymonitor.voice-asr-operator",
+        "bootstrap com.babymonitor.voice",
+        "bootstrap com.babymonitor.voice-asr-operator",
+    ]
 
 
 def test_disabled_runner_exits_without_opening_audio_or_models(tmp_path: Path) -> None:
