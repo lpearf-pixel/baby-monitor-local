@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import pytest
 
-from services.voice.wake import validate_wake_prefix
+from services.voice.wake import classify_wake, validate_wake_prefix
 
 
 @pytest.mark.parametrize("text", ["小小，我是爸爸", "  小小 我要喂奶了。"])
@@ -70,6 +70,25 @@ def test_missing_post_prefix_command_fails_without_exposing_text() -> None:
     assert result.accepted is False
     assert result.command is None
     assert result.reason == "wake_command_missing"
+
+
+@pytest.mark.parametrize(
+    ("text", "kind", "command"),
+    [
+        ("小小", "standalone_wake", None),
+        (" 。小小， ", "standalone_wake", None),
+        ("小小，开始喂奶", "wake_with_command", "开始喂奶"),
+        ("小小今天天气", "not_wake", None),
+        ("你好小小", "not_wake", None),
+    ],
+)
+def test_listen_only_wake_classifier_is_exact_and_closed(
+    text: str, kind: str, command: str | None
+) -> None:
+    result = classify_wake(text)
+
+    assert result.kind == kind
+    assert result.command == command
 
 
 @pytest.mark.parametrize("text", ["", "  ，。  "])

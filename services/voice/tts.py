@@ -21,6 +21,8 @@ RESPONSE_PHRASES = {
     "state_conflict": "当前记录状态有变化，请人工确认。",
     "temporarily_unavailable": "我听到了，但还没有保存，请稍后确认。",
     "rejected": "这次请求未被接受，请人工确认。",
+    "listen_only_ready": "我在，请说。",
+    "listen_only_received": "我听到了。",
 }
 _SAY_TIMEOUT_SECONDS = 10.0
 _PLAYBACK_TIMEOUT_SECONDS = 10.0

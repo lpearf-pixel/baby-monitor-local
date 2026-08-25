@@ -41,6 +41,8 @@ class RecordingDucker:
         ("saved", "好的，已经记录。"),
         ("accepted_pending", "好的，已经开始记录，结束后我会再确认。"),
         ("temporarily_unavailable", "我听到了，但还没有保存，请稍后确认。"),
+        ("listen_only_ready", "我在，请说。"),
+        ("listen_only_received", "我听到了。"),
     ],
 )
 def test_semantic_response_uses_only_fixed_phrases(code: str, phrase: str) -> None:
@@ -54,6 +56,8 @@ def test_semantic_response_uses_only_fixed_phrases(code: str, phrase: str) -> No
         "state_conflict",
         "temporarily_unavailable",
         "rejected",
+        "listen_only_ready",
+        "listen_only_received",
     }
 
 

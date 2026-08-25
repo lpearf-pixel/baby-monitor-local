@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import unicodedata
 from dataclasses import dataclass
+from typing import Literal
 
 
 WAKE_PREFIX = "小小"
@@ -29,6 +30,26 @@ class WakeResult:
     accepted: bool
     command: str | None
     reason: str | None
+
+
+@dataclass(frozen=True)
+class WakeClassification:
+    kind: Literal["standalone_wake", "wake_with_command", "not_wake"]
+    command: str | None
+
+
+def classify_wake(text: str) -> WakeClassification:
+    """Classify the exact listen-only wake without changing full-care validation."""
+
+    if not isinstance(text, str):
+        return WakeClassification("not_wake", None)
+    normalized = _strip_boundary_characters(text)
+    if normalized == WAKE_PREFIX:
+        return WakeClassification("standalone_wake", None)
+    validated = validate_wake_prefix(text)
+    if validated.accepted and validated.command is not None:
+        return WakeClassification("wake_with_command", validated.command)
+    return WakeClassification("not_wake", None)
 
 
 def validate_wake_prefix(text: str) -> WakeResult:

@@ -199,7 +199,7 @@ git commit -m "feat: add streaming Silero voice activity"
 - `WakeClassification.kind` is one of `standalone_wake|wake_with_command|not_wake`.
 - `ListenOnlyOutcome.reason` and `response_code` are closed strings only; transcript never escapes.
 
-- [ ] **Step 1: Write the complete dialogue RED matrix**
+- [x] **Step 1: Write the complete dialogue RED matrix**
 
 ```python
 @pytest.mark.parametrize("text,kind", [("小小", "standalone_wake"),
@@ -217,11 +217,11 @@ def test_standalone_wake_acks_then_accepts_at_most_one_closed_command() -> None:
 
 Add one-utterance wake+closed command, unknown/malformed silence, armed eight-second expiry, deadline starting after TTS returns, speech-start-before-deadline completion, TTS/model error reset, and no identity/outbox/client calls.
 
-- [ ] **Step 2: Run RED**
+- [x] **Step 2: Run RED**
 
 Run: `.venv-alpha/bin/python -m pytest -q tests/voice/test_wake.py tests/voice/test_listen_only.py tests/voice/test_tts.py`
 
-- [ ] **Step 3: Implement pure classification and memory-only state**
+- [x] **Step 3: Implement pure classification and memory-only state**
 
 Keep `validate_wake_prefix` unchanged. Add fixed TTS codes:
 
@@ -234,11 +234,11 @@ RESPONSE_PHRASES.update({
 
 Use the existing deterministic care parser only for closed syntax, discard its result, and reset dialogue state in every success/failure/timeout path.
 
-- [ ] **Step 4: Run GREEN**
+- [x] **Step 4: Run GREEN**
 
 Run the Step 2 command. Expected: all pass.
 
-- [ ] **Step 5: Commit Task 4**
+- [x] **Step 5: Commit Task 4**
 
 ```bash
 git add services/voice/wake.py services/voice/listen_only.py services/voice/tts.py tests/voice/test_wake.py tests/voice/test_listen_only.py tests/voice/test_tts.py
