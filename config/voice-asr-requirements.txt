@@ -1,0 +1,10 @@
+numpy==2.3.5 \
+    --hash=sha256:872a5cf366aec6bb1147336480fef14c9164b154aeb6542327de4970282cd2f5
+pip==26.1.2 \
+    --hash=sha256:382ff9f685ee3bc25864f820aa50505825f10f5458ffff07e30a6d96e5715cab
+setuptools==83.0.0 \
+    --hash=sha256:29b23c360f22f414dc7336bb39178cc7bcbf6021ed2733cde173f09dba19abb3
+sherpa-onnx==1.13.6 \
+    --hash=sha256:8869610b4352da999fa60558c6fa9d5ab36f4bd4419af9ee5b2b9585a17debac
+sherpa-onnx-core==1.13.6 \
+    --hash=sha256:f5a672a02d42d1c369ddd129f8be57bfe8b7e785140a13976ff7633e27c4ffdd

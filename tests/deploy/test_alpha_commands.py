@@ -939,6 +939,9 @@ def test_private_asr_calibration_commands_use_fixed_local_module() -> None:
     assert "alpha-voice-asr-capture-all:" in content
     assert "alpha-voice-asr-evaluate:" in content
     assert "alpha-voice-asr-bakeoff:" in content
+    assert "alpha-voice-asr-install:" in content
+    assert "alpha-voice-paraformer-install:" in content
+    assert "alpha-voice-asr-paraformer:" in content
     assert "alpha-voice-vad-diagnostic:" in content
     assert "-m tools.voice_asr_calibrate capture --prompt-id \"$(PROMPT)\"" in content
     assert "-m tools.voice_asr_calibrate capture-fixed --prompt-id \"$(PROMPT)\"" in content
@@ -946,6 +949,15 @@ def test_private_asr_calibration_commands_use_fixed_local_module() -> None:
     assert "-m tools.voice_asr_calibrate capture-all" in content
     assert "-m tools.voice_asr_calibrate evaluate" in content
     assert "-m tools.voice_asr_calibrate bakeoff" in content
+    assert "-m tools.voice_asr_calibrate paraformer" in content
+    assert (ROOT / "config/voice-asr-requirements.txt").is_file()
+    assert "-m tools.voice_asr_install --project-root . --base-python" in content
+    asr_install = content.split("alpha-voice-asr-install:", 1)[1].split(
+        "alpha-voice-ecapa-source:", 1
+    )[0]
+    assert "venv --upgrade" not in asr_install
+    assert "pip install" not in asr_install
+    assert 'artifact "sherpa-onnx-paraformer-zh-2023-09-14"' in content
     assert "-m tools.voice_vad_diagnostic" in content
 
 

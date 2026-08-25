@@ -82,12 +82,14 @@ def settings_for_manifest(artifact_id: str, manifest_sha256: str) -> VoiceCareSe
         "silero_vad_manifest_sha256": "0" * 64,
         "whisper_base_manifest_sha256": "0" * 64,
         "whisper_small_manifest_sha256": "0" * 64,
+        "paraformer_zh_manifest_sha256": "0" * 64,
         "speechbrain_ecapa_manifest_sha256": "0" * 64,
     }
     field = {
         "silero-vad-v6.2": "silero_vad_manifest_sha256",
         "openai-whisper-base": "whisper_base_manifest_sha256",
         "openai-whisper-small": "whisper_small_manifest_sha256",
+        "sherpa-onnx-paraformer-zh-2023-09-14": "paraformer_zh_manifest_sha256",
         "speechbrain-ecapa-voxceleb": "speechbrain_ecapa_manifest_sha256",
     }[artifact_id]
     fields[field] = manifest_sha256
@@ -144,6 +146,7 @@ def test_registry_is_closed_and_uses_full_immutable_provenance() -> None:
         silero_vad_manifest_sha256="1" * 64,
         whisper_base_manifest_sha256="2" * 64,
         whisper_small_manifest_sha256="3" * 64,
+        paraformer_zh_manifest_sha256="5" * 64,
         speechbrain_ecapa_manifest_sha256="4" * 64,
     )
     specs = voice_artifact_specs(settings)
@@ -154,7 +157,16 @@ def test_registry_is_closed_and_uses_full_immutable_provenance() -> None:
     assert specs[1].source_revision == "e37978b90ca9030d5170a5c07aadb050351a65bb"
     assert specs[2].upstream_project == "https://huggingface.co/openai/whisper-small"
     assert specs[2].source_revision == "973afd24965f72e36ca33b3055d56a652f456b4d"
-    assert specs[3].source_revision == "0f99f2d0ebe89ac095bcc5903c4dd8f72b367286"
+    assert specs[3].artifact_id == "sherpa-onnx-paraformer-zh-2023-09-14"
+    assert specs[3].upstream_project == (
+        "https://huggingface.co/csukuangfj/"
+        "sherpa-onnx-paraformer-zh-2023-09-14"
+    )
+    assert specs[3].source_revision == "def027084691107096b5ebba69785756d63de6c5"
+    assert specs[3].spdx_license == "Apache-2.0"
+    assert specs[3].source_files == ("model.int8.onnx", "tokens.txt")
+    assert specs[3].required_files == ("model.int8.onnx", "tokens.txt")
+    assert specs[4].source_revision == "0f99f2d0ebe89ac095bcc5903c4dd8f72b367286"
     assert all(len(spec.source_revision) == 40 for spec in specs)
     assert all(spec.spdx_license in {"MIT", "Apache-2.0"} for spec in specs)
     for spec in specs[1:3]:
@@ -429,6 +441,7 @@ def write_source(
         "silero-vad-v6.2",
         "openai-whisper-base",
         "openai-whisper-small",
+        "sherpa-onnx-paraformer-zh-2023-09-14",
         "speechbrain-ecapa-voxceleb",
     ),
 )

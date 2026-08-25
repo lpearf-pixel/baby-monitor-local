@@ -242,7 +242,7 @@ class AsrCalibrationEvaluator:
         try:
             clips = self._corpus.read_all()
             if (
-                not clips
+                len(clips) != len(PRIVATE_ASR_PROMPTS)
                 or {prompt_id for prompt_id, _pcm in clips}
                 != set(PRIVATE_ASR_PROMPTS)
             ):
@@ -268,7 +268,7 @@ class AsrCalibrationEvaluator:
                 raise ValueError
             clips = self._corpus.read_all()
             if (
-                not clips
+                len(clips) != len(PRIVATE_ASR_PROMPTS)
                 or {prompt_id for prompt_id, _pcm in clips}
                 != set(PRIVATE_ASR_PROMPTS)
             ):
@@ -363,58 +363,91 @@ class AsrCalibrationEvaluator:
     def _evaluate_model(
         self, model: str, clips: tuple[tuple[str, bytes], ...]
     ) -> CalibrationModelMetrics:
-        exact_matches = 0
-        wake_matches = 0
-        latencies: list[int] = []
-        mismatch_prompt_ids: list[str] = []
-        edit_distance_total = 0
+        return _evaluate_candidate_metrics(model, self._engines[model], clips)
+
+
+class SingleAsrCalibrationEvaluator:
+    """Apply the unchanged fixed-corpus gate to one approved ASR candidate."""
+
+    def __init__(self, *, corpus: _Corpus, model: str, engine: _Engine) -> None:
+        if model != "paraformer":
+            raise ValueError(ASR_CALIBRATION_FAILED)
+        self._corpus = corpus
+        self._model = model
+        self._engine = engine
+
+    def evaluate(self) -> CalibrationGateReport:
         try:
-            engine = self._engines[model]
-            for prompt_id, pcm in clips:
-                expected = PRIVATE_ASR_PROMPTS[prompt_id]
-                result = engine.transcribe(pcm)
-                if (
-                    not isinstance(result, AsrResult)
-                    or result.language != "zh"
-                    or type(result.duration_ms) is not int
-                    or result.duration_ms < 0
-                ):
-                    raise ValueError
-                actual_normalized = _normalize_exact(result.text)
-                expected_normalized = _normalize_exact(expected)
-                exact = actual_normalized == expected_normalized
-                exact_matches += int(exact)
-                if not exact:
-                    mismatch_prompt_ids.append(prompt_id)
-                    edit_distance_total += _edit_distance(
-                        actual_normalized, expected_normalized
-                    )
-                expected_wake = prompt_id != "negative_weather"
-                wake_matches += int(
-                    validate_wake_prefix(result.text).accepted == expected_wake
-                )
-                latencies.append(result.duration_ms)
+            clips = self._corpus.read_all()
+            if (
+                len(clips) != len(PRIVATE_ASR_PROMPTS)
+                or {prompt_id for prompt_id, _pcm in clips}
+                != set(PRIVATE_ASR_PROMPTS)
+            ):
+                raise ValueError
+            metrics = _evaluate_candidate_metrics(self._model, self._engine, clips)
+            selected = self._model if metrics.passed else None
+            return CalibrationGateReport((metrics,), selected, selected is not None)
         except Exception:
-            return CalibrationModelMetrics(model, False, 0, 0, 0, None, None, False)
-        p50 = _nearest_rank(latencies, 0.50)
-        p95 = _nearest_rank(latencies, 0.95)
-        passed = (
-            exact_matches == len(clips)
-            and wake_matches == len(clips)
-            and p95 <= MAX_LATENCY_MS
-        )
-        return CalibrationModelMetrics(
-            model,
-            True,
-            len(clips),
-            exact_matches,
-            wake_matches,
-            p50,
-            p95,
-            passed,
-            tuple(mismatch_prompt_ids),
-            edit_distance_total,
-        )
+            raise ValueError(ASR_CALIBRATION_FAILED) from None
+
+
+def _evaluate_candidate_metrics(
+    model: str,
+    engine: _Engine,
+    clips: tuple[tuple[str, bytes], ...],
+) -> CalibrationModelMetrics:
+    exact_matches = 0
+    wake_matches = 0
+    latencies: list[int] = []
+    mismatch_prompt_ids: list[str] = []
+    edit_distance_total = 0
+    try:
+        for prompt_id, pcm in clips:
+            expected = PRIVATE_ASR_PROMPTS[prompt_id]
+            result = engine.transcribe(pcm)
+            if (
+                not isinstance(result, AsrResult)
+                or result.language != "zh"
+                or type(result.duration_ms) is not int
+                or result.duration_ms < 0
+            ):
+                raise ValueError
+            actual_normalized = _normalize_exact(result.text)
+            expected_normalized = _normalize_exact(expected)
+            exact = actual_normalized == expected_normalized
+            exact_matches += int(exact)
+            if not exact:
+                mismatch_prompt_ids.append(prompt_id)
+                edit_distance_total += _edit_distance(
+                    actual_normalized, expected_normalized
+                )
+            expected_wake = prompt_id != "negative_weather"
+            wake_matches += int(
+                validate_wake_prefix(result.text).accepted == expected_wake
+            )
+            latencies.append(result.duration_ms)
+    except Exception:
+        return CalibrationModelMetrics(model, False, 0, 0, 0, None, None, False)
+    p50 = _nearest_rank(latencies, 0.50)
+    p95 = _nearest_rank(latencies, 0.95)
+    passed = (
+        exact_matches == len(clips)
+        and wake_matches == len(clips)
+        and p95 <= MAX_LATENCY_MS
+    )
+    return CalibrationModelMetrics(
+        model,
+        True,
+        len(clips),
+        exact_matches,
+        wake_matches,
+        p50,
+        p95,
+        passed,
+        tuple(mismatch_prompt_ids),
+        edit_distance_total,
+    )
 
 
 class FixedWindowAsrCalibrationCapture:
@@ -590,6 +623,7 @@ __all__ = [
     "AsrCalibrationFailure",
     "AsrCalibrationCapture",
     "AsrCalibrationEvaluator",
+    "SingleAsrCalibrationEvaluator",
     "BoundedCalibrationPcmCapture",
     "CalibrationCaptureReport",
     "CalibrationGateReport",

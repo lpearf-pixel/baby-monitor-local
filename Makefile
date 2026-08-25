@@ -4,7 +4,7 @@ PYTHON311 ?= /usr/local/bin/python3.11
 BASH ?= /bin/bash
 .DEFAULT_GOAL := help
 
-.PHONY: help alpha-update alpha-install alpha-start alpha-stop alpha-restart alpha-go2rtc-restart alpha-status alpha-guardian-start alpha-guardian-test alpha-guardian-test-live alpha-guardian-scene-test alpha-audio-status alpha-audio-test alpha-voice-status alpha-voice-test alpha-voice-start alpha-voice-stop alpha-voice-v0-test alpha-voice-v0-probe alpha-voice-v0-stability alpha-voice-keychain-helper-build alpha-voice-keychain-migrate alpha-voice-keychain-check alpha-voice-converter-install alpha-voice-speaker-install alpha-voice-speaker-check alpha-voice-ecapa-source alpha-voice-ecapa-install alpha-voice-ecapa-probe alpha-voice-enroll-dad alpha-voice-enroll-mom alpha-voice-asr-capture alpha-voice-asr-capture-fixed alpha-voice-asr-capture-fixed-all alpha-voice-asr-capture-all alpha-voice-asr-evaluate alpha-voice-asr-bakeoff alpha-voice-vad-diagnostic alpha-voice-models-install alpha-voice-model-benchmark alpha-visual-status alpha-visual-performance alpha-visual-diagnostic alpha-visual-launchd-update alpha-logs alpha-quality-hd alpha-quality-info alpha-quality-rollback alpha-source-check alpha-subtype-probe alpha-subtype-apply alpha-go2rtc-info alpha-go2rtc-rebuild alpha-go2rtc-rollback alpha-realtime-models-check alpha-realtime-models-install alpha-ws2021-collect-calibrated alpha-ws2021-collect-model alpha-ws2021-dataset alpha-ws2021-model-train-bootstrap alpha-ws2021-model-train alpha-ws2021-model-export alpha-ws2021-model-check
+.PHONY: help alpha-update alpha-install alpha-start alpha-stop alpha-restart alpha-go2rtc-restart alpha-status alpha-guardian-start alpha-guardian-test alpha-guardian-test-live alpha-guardian-scene-test alpha-audio-status alpha-audio-test alpha-voice-status alpha-voice-test alpha-voice-start alpha-voice-stop alpha-voice-v0-test alpha-voice-v0-probe alpha-voice-v0-stability alpha-voice-keychain-helper-build alpha-voice-keychain-migrate alpha-voice-keychain-check alpha-voice-converter-install alpha-voice-speaker-install alpha-voice-speaker-check alpha-voice-asr-install alpha-voice-ecapa-source alpha-voice-ecapa-install alpha-voice-ecapa-probe alpha-voice-paraformer-install alpha-voice-enroll-dad alpha-voice-enroll-mom alpha-voice-asr-capture alpha-voice-asr-capture-fixed alpha-voice-asr-capture-fixed-all alpha-voice-asr-capture-all alpha-voice-asr-evaluate alpha-voice-asr-bakeoff alpha-voice-asr-paraformer alpha-voice-vad-diagnostic alpha-voice-models-install alpha-voice-model-benchmark alpha-visual-status alpha-visual-performance alpha-visual-diagnostic alpha-visual-launchd-update alpha-logs alpha-quality-hd alpha-quality-info alpha-quality-rollback alpha-source-check alpha-subtype-probe alpha-subtype-apply alpha-go2rtc-info alpha-go2rtc-rebuild alpha-go2rtc-rollback alpha-realtime-models-check alpha-realtime-models-install alpha-ws2021-collect-calibrated alpha-ws2021-collect-model alpha-ws2021-dataset alpha-ws2021-model-train-bootstrap alpha-ws2021-model-train alpha-ws2021-model-export alpha-ws2021-model-check
 
 help:
 	@echo "Baby Monitor Local Alpha commands:"
@@ -45,6 +45,9 @@ help:
 	@echo "  make alpha-voice-asr-capture-all Save the six fixed phrases in one session"
 	@echo "  make alpha-voice-asr-evaluate Re-evaluate the encrypted fixed phrase corpus"
 	@echo "  make alpha-voice-asr-bakeoff Run the closed local ASR decode matrix"
+	@echo "  make alpha-voice-asr-paraformer Evaluate the pinned Mandarin Paraformer candidate"
+	@echo "  make alpha-voice-asr-install Install the isolated pinned Paraformer runtime"
+	@echo "  make alpha-voice-paraformer-install Install the verified Paraformer model bundle"
 	@echo "  make alpha-voice-vad-diagnostic Run aggregate Silero signal diagnostics"
 	@echo "  make alpha-voice-models-install Install verified local Whisper base/small models"
 	@echo "  make alpha-voice-model-benchmark Run generated local Whisper base/small gate"
@@ -222,6 +225,15 @@ alpha-voice-speaker-check:
 	"$(PYTHON311)" tools/voice_speaker_environment.py --project-root . --expected-prefix "$$PWD/$$environment" >/dev/null 2>&1 || { echo "voice_speaker_check=unavailable"; exit 1; }; \
 	echo "voice_speaker_check=ready"
 
+alpha-voice-asr-install:
+	@set -eu; \
+	if [[ "$$(uname -s)" != "Darwin" || "$$(uname -m)" != "x86_64" || ! -x "$(PYTHON311)" ]]; then \
+		echo "voice_asr_install=unavailable"; \
+		exit 1; \
+	fi; \
+	"$(PYTHON311)" -m tools.voice_asr_install --project-root . --base-python "$(PYTHON311)" >/dev/null 2>&1 || { echo "voice_asr_install=failed"; exit 1; }; \
+	echo "voice_asr_install=ready"
+
 alpha-voice-ecapa-source:
 	@set -eu; \
 	environment="runtime/voice-speaker-venv"; \
@@ -249,6 +261,23 @@ alpha-voice-ecapa-install:
 	fi; \
 	$(PYTHON) -m tools.voice_models --settings "$$settings" --artifact "speechbrain-ecapa-voxceleb" --operation acquire --source-dir "$$source" --source-manifest "$$manifest" --source-manifest-sha256 "$$manifest_sha" --project-root . >/dev/null 2>&1 || { echo "voice_ecapa_install=failed"; exit 1; }; \
 	echo "voice_ecapa_install=ready"
+
+alpha-voice-paraformer-install:
+	@set -eu; \
+	settings="runtime/config/voice-care-models.json"; \
+	source="runtime/models/voice-care-sources/sherpa-onnx-paraformer-zh-2023-09-14/source"; \
+	manifest="runtime/models/voice-care-sources/sherpa-onnx-paraformer-zh-2023-09-14/source-manifest.json"; \
+	if [[ ! -x "$(PYTHON)" || ! -f "$$settings" || -L "$$settings" || ! -d "$$source" || -L "$$source" || ! -f "$$manifest" || -L "$$manifest" ]]; then \
+		echo "voice_paraformer_install=unavailable"; \
+		exit 1; \
+	fi; \
+	manifest_sha=$$(/usr/bin/shasum -a 256 "$$manifest" 2>/dev/null | /usr/bin/awk '{print $$1}') || { echo "voice_paraformer_install=unavailable"; exit 1; }; \
+	if [[ ! "$$manifest_sha" =~ ^[0-9a-f]{64}$$ ]]; then \
+		echo "voice_paraformer_install=unavailable"; \
+		exit 1; \
+	fi; \
+	$(PYTHON) -m tools.voice_models --settings "$$settings" --artifact "sherpa-onnx-paraformer-zh-2023-09-14" --operation acquire --source-dir "$$source" --source-manifest "$$manifest" --source-manifest-sha256 "$$manifest_sha" --project-root . >/dev/null 2>&1 || { echo "voice_paraformer_install=failed"; exit 1; }; \
+	echo "voice_paraformer_install=ready"
 
 alpha-voice-ecapa-probe:
 	@$(PYTHON) -c 'from tools.voice_ecapa_probe_cli import run; raise SystemExit(run())'
@@ -279,6 +308,9 @@ alpha-voice-asr-evaluate:
 
 alpha-voice-asr-bakeoff:
 	@$(PYTHON) -m tools.voice_asr_calibrate bakeoff
+
+alpha-voice-asr-paraformer:
+	@$(PYTHON) -m tools.voice_asr_calibrate paraformer
 
 alpha-voice-vad-diagnostic:
 	@$(PYTHON) -m tools.voice_vad_diagnostic

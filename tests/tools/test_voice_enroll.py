@@ -113,6 +113,7 @@ def test_operator_settings_preflight_rejects_enabled_or_symlinked_runtime(
         silero_vad_manifest_sha256="a" * 64,
         whisper_base_manifest_sha256="b" * 64,
         whisper_small_manifest_sha256="c" * 64,
+        paraformer_zh_manifest_sha256="e" * 64,
         speechbrain_ecapa_manifest_sha256="d" * 64,
     )
     (config / "voice-care-models.json").write_text(

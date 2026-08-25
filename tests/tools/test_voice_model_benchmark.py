@@ -335,8 +335,9 @@ def test_generated_cli_loads_base_and_small_and_prints_aggregate_only(
             {
                 "silero_vad_manifest_sha256": "1" * 64,
                 "whisper_base_manifest_sha256": "2" * 64,
-                "whisper_small_manifest_sha256": "3" * 64,
-                "speechbrain_ecapa_manifest_sha256": "4" * 64,
+                    "whisper_small_manifest_sha256": "3" * 64,
+                    "paraformer_zh_manifest_sha256": "5" * 64,
+                    "speechbrain_ecapa_manifest_sha256": "4" * 64,
             }
         ),
         encoding="ascii",

@@ -26,9 +26,11 @@ from services.voice.asr_calibration import (
     CalibrationProfileGateReport,
     FixedWindowAsrCalibrationCapture,
     FixedWindowCaptureReport,
+    SingleAsrCalibrationEvaluator,
 )
 from services.voice.asr_corpus import PRIVATE_ASR_PROMPTS, PrivateAsrCorpus
 from services.voice.helper_keychain import keychain_for_runtime
+from services.voice.paraformer import ParaformerProcess
 from services.voice.silero_runtime import SileroOnnxSegmenter
 
 
@@ -48,6 +50,12 @@ class _Evaluator(Protocol):
     ) -> CalibrationProfileGateReport: ...
 
 
+class _ClosableEvaluator(Protocol):
+    def evaluate(self) -> CalibrationGateReport: ...
+
+    def close(self) -> None: ...
+
+
 class _FixedCapture(Protocol):
     def capture(self, prompt_id: str) -> FixedWindowCaptureReport: ...
 
@@ -55,6 +63,7 @@ class _FixedCapture(Protocol):
 CaptureBuilder = Callable[[Path], _Capture]
 FixedCaptureBuilder = Callable[[Path], _FixedCapture]
 EvaluatorBuilder = Callable[[Path], _Evaluator]
+ParaformerEvaluatorBuilder = Callable[[Path], _ClosableEvaluator]
 InputFunction = Callable[[str], str]
 Printer = Callable[[str], None]
 
@@ -66,6 +75,7 @@ def main(
     capture_builder: CaptureBuilder | None = None,
     fixed_capture_builder: FixedCaptureBuilder | None = None,
     evaluator_builder: EvaluatorBuilder | None = None,
+    paraformer_evaluator_builder: ParaformerEvaluatorBuilder | None = None,
     input_fn: InputFunction = input,
     printer: Printer = print,
 ) -> int:
@@ -82,6 +92,7 @@ def main(
     subparsers.add_parser("capture-all")
     subparsers.add_parser("evaluate")
     subparsers.add_parser("bakeoff")
+    subparsers.add_parser("paraformer")
     arguments = parser.parse_args(argv)
     operation = str(arguments.operation)
     try:
@@ -131,8 +142,20 @@ def main(
             )
             printer("encrypted_clip_persisted=true")
             return 0
-        evaluator = (evaluator_builder or _build_evaluator)(root)
+        if operation == "paraformer":
+            paraformer_evaluator = (
+                paraformer_evaluator_builder or _build_paraformer_evaluator
+            )(root)
+            try:
+                report = paraformer_evaluator.evaluate()
+            finally:
+                paraformer_evaluator.close()
+            evaluator = None
+        else:
+            evaluator = (evaluator_builder or _build_evaluator)(root)
         if operation == "bakeoff":
+            if evaluator is None:
+                raise ValueError
             bakeoff = evaluator.evaluate_profiles(
                 (BASELINE, NO_HOTWORDS, CARE_HOTWORDS, CARE_BEAM10)
             )
@@ -172,9 +195,12 @@ def main(
                 )
                 printer(f"{prefix}_passed={_boolean(candidate.passed)}")
             return 0 if bakeoff.gate_passed else 1
-        report = evaluator.evaluate()
+        if evaluator is not None:
+            report = evaluator.evaluate()
         printer(f"result={'PASS' if report.gate_passed else 'FAIL'}")
-        printer("operation=evaluate")
+        printer(f"operation={operation}")
+        if operation == "paraformer" and not report.gate_passed:
+            printer("reason=asr_candidate_unavailable")
         printer(f"gate_passed={_boolean(report.gate_passed)}")
         printer(f"selected_model={report.selected_model or 'none'}")
         for model in report.models:
@@ -202,7 +228,12 @@ def main(
     except (Exception, KeyboardInterrupt) as error:
         printer("result=FAIL")
         printer(f"operation={operation}")
-        printer(f"reason={ASR_CALIBRATION_FAILED}")
+        reason = (
+            "asr_candidate_unavailable"
+            if operation == "paraformer"
+            else ASR_CALIBRATION_FAILED
+        )
+        printer(f"reason={reason}")
         if isinstance(error, AsrCalibrationFailure):
             printer(f"failure_stage={error.stage}")
             if error.detected_segment_count is not None:
@@ -259,6 +290,32 @@ def _build_evaluator(project_root: Path) -> AsrCalibrationEvaluator:
             ),
         },
     )
+
+
+class _ParaformerEvaluator:
+    def __init__(self, project_root: Path) -> None:
+        settings = _load_disabled_settings(project_root)
+        self._process = ParaformerProcess(
+            voice_artifact_spec(
+                settings, "sherpa-onnx-paraformer-zh-2023-09-14"
+            ),
+            project_root=project_root,
+        )
+        self._evaluator = SingleAsrCalibrationEvaluator(
+            corpus=_private_corpus(project_root),
+            model="paraformer",
+            engine=self._process,
+        )
+
+    def evaluate(self) -> CalibrationGateReport:
+        return self._evaluator.evaluate()
+
+    def close(self) -> None:
+        self._process.close()
+
+
+def _build_paraformer_evaluator(project_root: Path) -> _ParaformerEvaluator:
+    return _ParaformerEvaluator(project_root)
 
 
 def _private_corpus(

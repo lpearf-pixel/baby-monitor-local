@@ -31,6 +31,7 @@ def _whisper_spec_and_bundle(
                 whisper_base_manifest_sha256="0" * 64,
                 whisper_small_manifest_sha256="0" * 64,
                 silero_vad_manifest_sha256="0" * 64,
+                paraformer_zh_manifest_sha256="0" * 64,
                 speechbrain_ecapa_manifest_sha256="0" * 64,
             )
         )
@@ -59,6 +60,7 @@ def _whisper_spec_and_bundle(
             manifest_sha256 if artifact_id == "openai-whisper-small" else "0" * 64
         ),
         silero_vad_manifest_sha256="0" * 64,
+        paraformer_zh_manifest_sha256="0" * 64,
         speechbrain_ecapa_manifest_sha256="0" * 64,
     )
     spec = next(
@@ -187,6 +189,7 @@ def test_engine_rejects_non_whisper_artifact_before_runner_creation(tmp_path: Pa
         whisper_base_manifest_sha256="0" * 64,
         whisper_small_manifest_sha256="0" * 64,
         silero_vad_manifest_sha256="0" * 64,
+        paraformer_zh_manifest_sha256="0" * 64,
         speechbrain_ecapa_manifest_sha256="0" * 64,
     )
     spec = voice_artifact_specs(settings)[0]

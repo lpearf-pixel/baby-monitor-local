@@ -53,6 +53,9 @@ class Evaluator:
         assert isinstance(self.report, CalibrationProfileGateReport)
         return self.report
 
+    def close(self) -> None:
+        return None
+
 
 def test_capture_displays_fixed_prompt_before_confirmation_and_reports_aggregate_only(
     tmp_path: Path,
@@ -164,6 +167,110 @@ def test_evaluate_prints_only_candidate_counts_and_latency(tmp_path: Path) -> No
     ]
     assert "爸爸" not in "\n".join(output)
     assert "transcript" not in "\n".join(output)
+
+
+def test_paraformer_evaluate_uses_only_single_candidate_and_closes_it(
+    tmp_path: Path,
+) -> None:
+    report = CalibrationGateReport(
+        models=(
+            CalibrationModelMetrics(
+                "paraformer", True, 6, 6, 6, 500, 700, True, (), 0
+            ),
+        ),
+        selected_model="paraformer",
+        gate_passed=True,
+    )
+    evaluator = Evaluator(report)
+    closed: list[bool] = []
+    evaluator.close = lambda: closed.append(True)  # type: ignore[method-assign]
+    output: list[str] = []
+
+    result = voice_asr_calibrate.main(
+        ["paraformer"],
+        project_root=tmp_path,
+        paraformer_evaluator_builder=lambda _root: evaluator,
+        printer=output.append,
+    )
+
+    assert result == 0
+    assert output == [
+        "result=PASS",
+        "operation=paraformer",
+        "gate_passed=true",
+        "selected_model=paraformer",
+        "paraformer_available=true",
+        "paraformer_samples_evaluated=6",
+        "paraformer_exact_matches=6",
+        "paraformer_wake_matches=6",
+        "paraformer_latency_p50_ms=500",
+        "paraformer_latency_p95_ms=700",
+        "paraformer_mismatch_prompt_ids=none",
+        "paraformer_edit_distance_total=0",
+        "paraformer_passed=true",
+    ]
+    assert closed == [True]
+
+
+def test_paraformer_failure_reports_only_stable_candidate_reason(
+    tmp_path: Path,
+) -> None:
+    report = CalibrationGateReport(
+        models=(
+            CalibrationModelMetrics(
+                "paraformer",
+                True,
+                6,
+                5,
+                1,
+                500,
+                1_800,
+                False,
+                ("negative_weather",),
+                2,
+            ),
+        ),
+        selected_model=None,
+        gate_passed=False,
+    )
+    output: list[str] = []
+
+    result = voice_asr_calibrate.main(
+        ["paraformer"],
+        project_root=tmp_path,
+        paraformer_evaluator_builder=lambda _root: Evaluator(report),
+        printer=output.append,
+    )
+
+    assert result == 1
+    assert output[:3] == [
+        "result=FAIL",
+        "operation=paraformer",
+        "reason=asr_candidate_unavailable",
+    ]
+    assert "transcript" not in "\n".join(output)
+
+
+def test_paraformer_construction_failure_uses_the_same_stable_candidate_reason(
+    tmp_path: Path,
+) -> None:
+    output: list[str] = []
+
+    result = voice_asr_calibrate.main(
+        ["paraformer"],
+        project_root=tmp_path,
+        paraformer_evaluator_builder=lambda _root: (_ for _ in ()).throw(
+            ValueError("private detail")
+        ),
+        printer=output.append,
+    )
+
+    assert result == 1
+    assert output == [
+        "result=FAIL",
+        "operation=paraformer",
+        "reason=asr_candidate_unavailable",
+    ]
 
 
 def test_bakeoff_prints_only_closed_profile_aggregate_metrics(tmp_path: Path) -> None:

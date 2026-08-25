@@ -216,6 +216,9 @@ class VoiceCareSettings(StrictSettingsModel):
     whisper_small_manifest_sha256: str | None = Field(
         default=None, pattern=r"^[0-9a-f]{64}$"
     )
+    paraformer_zh_manifest_sha256: str | None = Field(
+        default=None, pattern=r"^[0-9a-f]{64}$"
+    )
     speechbrain_ecapa_manifest_sha256: str | None = Field(
         default=None, pattern=r"^[0-9a-f]{64}$"
     )
@@ -230,6 +233,7 @@ class VoiceCareSettings(StrictSettingsModel):
                 self.silero_vad_manifest_sha256,
                 self.whisper_base_manifest_sha256,
                 self.whisper_small_manifest_sha256,
+                self.paraformer_zh_manifest_sha256,
                 self.speechbrain_ecapa_manifest_sha256,
             )
         ):

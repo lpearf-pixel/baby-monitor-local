@@ -14,6 +14,7 @@ VOICE_ARTIFACT_IDS = (
     "silero-vad-v6.2",
     "openai-whisper-base",
     "openai-whisper-small",
+    "sherpa-onnx-paraformer-zh-2023-09-14",
     "speechbrain-ecapa-voxceleb",
 )
 
@@ -94,6 +95,18 @@ _REGISTRY = (
         ),
     ),
     _ArtifactDefinition(
+        artifact_id="sherpa-onnx-paraformer-zh-2023-09-14",
+        upstream_project=(
+            "https://huggingface.co/csukuangfj/"
+            "sherpa-onnx-paraformer-zh-2023-09-14"
+        ),
+        source_revision="def027084691107096b5ebba69785756d63de6c5",
+        spdx_license="Apache-2.0",
+        acquisition="collect",
+        source_files=("model.int8.onnx", "tokens.txt"),
+        required_files=("model.int8.onnx", "tokens.txt"),
+    ),
+    _ArtifactDefinition(
         artifact_id="speechbrain-ecapa-voxceleb",
         upstream_project="https://huggingface.co/speechbrain/spkrec-ecapa-voxceleb",
         source_revision="0f99f2d0ebe89ac095bcc5903c4dd8f72b367286",
@@ -152,12 +165,13 @@ class VoiceArtifactSpec:
 
 
 def voice_artifact_specs(settings: VoiceCareSettings) -> tuple[VoiceArtifactSpec, ...]:
-    """Build the closed registry using the four settings-pinned manifest digests."""
+    """Build the closed registry using settings-pinned manifest digests."""
 
     digests = (
         settings.silero_vad_manifest_sha256,
         settings.whisper_base_manifest_sha256,
         settings.whisper_small_manifest_sha256,
+        settings.paraformer_zh_manifest_sha256,
         settings.speechbrain_ecapa_manifest_sha256,
     )
     return tuple(
@@ -176,6 +190,7 @@ def voice_artifact_spec(
         "silero-vad-v6.2": "silero_vad_manifest_sha256",
         "openai-whisper-base": "whisper_base_manifest_sha256",
         "openai-whisper-small": "whisper_small_manifest_sha256",
+        "sherpa-onnx-paraformer-zh-2023-09-14": "paraformer_zh_manifest_sha256",
         "speechbrain-ecapa-voxceleb": "speechbrain_ecapa_manifest_sha256",
     }.get(artifact_id)
     if definition is None or digest_field is None:
@@ -192,6 +207,32 @@ def voice_artifact_manifest_sha256(
 
     return hashlib.sha256(
         _artifact_manifest_bytes(spec, bundle, source_manifest_sha256)
+    ).hexdigest()
+
+
+def voice_artifact_manifest_sha256_from_digests(
+    spec: VoiceArtifactSpec,
+    file_sha256: dict[str, str],
+    source_manifest_sha256: str,
+) -> str:
+    """Derive one artifact identity from already verified fixed source digests."""
+
+    if (
+        not _is_sha256(source_manifest_sha256)
+        or set(file_sha256) != set(spec.required_files)
+        or any(not _is_sha256(value) for value in file_sha256.values())
+    ):
+        raise ValueError("VOICE_ARTIFACT_INVALID")
+    return hashlib.sha256(
+        _canonical_json(
+            {
+                "artifact_id": spec.artifact_id,
+                "files": file_sha256,
+                "source_manifest_sha256": source_manifest_sha256,
+                "source_revision": spec.source_revision,
+                "spdx_license": spec.spdx_license,
+            }
+        )
     ).hexdigest()
 
 

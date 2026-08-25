@@ -11,6 +11,7 @@ def enabled_settings() -> VoiceCareSettings:
         silero_vad_manifest_sha256="1" * 64,
         whisper_base_manifest_sha256="2" * 64,
         whisper_small_manifest_sha256="3" * 64,
+        paraformer_zh_manifest_sha256="5" * 64,
         speechbrain_ecapa_manifest_sha256="4" * 64,
     )
 
@@ -36,6 +37,7 @@ def test_enabled_voice_accepts_all_pinned_manifest_digests() -> None:
     settings = enabled_settings()
 
     assert settings.silero_vad_manifest_sha256 == "1" * 64
+    assert settings.paraformer_zh_manifest_sha256 == "5" * 64
 
 
 @pytest.mark.parametrize(

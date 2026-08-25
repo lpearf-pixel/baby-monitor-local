@@ -13,6 +13,7 @@ from services.voice.asr_calibration import (
     AsrCalibrationCapture,
     AsrCalibrationFailure,
     AsrCalibrationEvaluator,
+    SingleAsrCalibrationEvaluator,
     BoundedCalibrationPcmCapture,
     FixedWindowAsrCalibrationCapture,
 )
@@ -282,6 +283,60 @@ def test_evaluator_rejects_incomplete_fixed_prompt_corpus() -> None:
             "base": Engine({pcm: "小小，我是爸爸，现在开始喂奶"}, 900),
             "small": Engine({pcm: "小小，我是爸爸，现在开始喂奶"}, 900),
         },
+    )
+
+    with pytest.raises(ValueError, match=f"^{ASR_CALIBRATION_FAILED}$"):
+        evaluator.evaluate()
+
+
+def test_single_candidate_evaluator_applies_the_same_exact_gate() -> None:
+    clips = {prompt_id: prompt_id.encode("ascii") * 100 for prompt_id in PRIVATE_ASR_PROMPTS}
+    texts = dict(PRIVATE_ASR_PROMPTS)
+    evaluator = SingleAsrCalibrationEvaluator(
+        corpus=Corpus(tuple(clips.items())),
+        model="paraformer",
+        engine=Engine({clips[key]: value for key, value in texts.items()}, 700),
+    )
+
+    report = evaluator.evaluate()
+
+    assert report.selected_model == "paraformer"
+    assert report.gate_passed is True
+    assert len(report.models) == 1
+    assert report.models[0].exact_matches == 6
+    assert report.models[0].wake_matches == 6
+    assert report.models[0].latency_p95_ms == 700
+
+
+def test_single_candidate_evaluator_rejects_unapproved_model_name() -> None:
+    with pytest.raises(ValueError, match=f"^{ASR_CALIBRATION_FAILED}$"):
+        SingleAsrCalibrationEvaluator(
+            corpus=Corpus(()), model="other", engine=Engine({}, 1)
+        )
+
+
+@pytest.mark.parametrize(
+    "clips",
+    (
+        tuple(
+            (prompt_id, prompt_id.encode("ascii"))
+            for prompt_id in PRIVATE_ASR_PROMPTS
+        )
+        + (("feeding_start_dad", b"duplicate"),),
+        tuple(
+            (prompt_id, prompt_id.encode("ascii"))
+            for prompt_id in PRIVATE_ASR_PROMPTS
+        )
+        + (("unknown_prompt", b"extra"),),
+    ),
+)
+def test_single_candidate_evaluator_requires_exactly_one_of_each_fixed_clip(
+    clips: tuple[tuple[str, bytes], ...],
+) -> None:
+    evaluator = SingleAsrCalibrationEvaluator(
+        corpus=Corpus(clips),
+        model="paraformer",
+        engine=Engine({}, 1),
     )
 
     with pytest.raises(ValueError, match=f"^{ASR_CALIBRATION_FAILED}$"):
