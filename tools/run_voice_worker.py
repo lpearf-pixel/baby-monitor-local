@@ -22,6 +22,7 @@ from services.voice.worker import (
 
 
 WorkerFactory = Callable[[AppSettings, Path], VoiceWorker]
+RuntimeBuilder = Callable[[AppSettings, Path], object]
 PreflightFactory = Callable[[VoiceCareSettings, Path], VoicePreflightReport]
 Printer = Callable[[str], None]
 _VOICE_MODELS_RELATIVE = Path("runtime/config/voice-care-models.json")
@@ -41,6 +42,7 @@ def main(
     *,
     project_root: Path = ROOT,
     worker_factory: WorkerFactory | None = None,
+    runtime_builder: RuntimeBuilder | None = None,
     preflight_factory: PreflightFactory = run_voice_preflight,
     printer: Printer = print,
 ) -> int:
@@ -65,8 +67,13 @@ def main(
     try:
         if args.settings is None:
             raise ValueError
-        settings = AppSettings.load(args.settings)
-        if not settings.voice_care.enabled:
+        model_settings = (
+            _load_voice_models(root, args.voice_models)
+            if args.voice_models is not None
+            else None
+        )
+        settings = AppSettings.load(args.settings, voice_models=model_settings)
+        if not settings.voice_care.enabled and not settings.voice_care.listen_only_enabled:
             status.write(
                 mode="disabled",
                 worker_state="disabled",
@@ -75,7 +82,15 @@ def main(
                 last_latency_ms=None,
             )
             return 0
-        if worker_factory is None:
+        if settings.voice_care.listen_only_enabled:
+            if model_settings is None:
+                raise ValueError
+            if runtime_builder is None:
+                from services.voice.listen_only_runtime import build_listen_only_worker
+
+                runtime_builder = build_listen_only_worker
+            worker = runtime_builder(settings, root)
+        elif worker_factory is None:
             status.write(
                 mode="care",
                 worker_state="degraded",
@@ -84,7 +99,8 @@ def main(
                 last_latency_ms=None,
             )
             return 2
-        worker = worker_factory(settings, root)
+        else:
+            worker = worker_factory(settings, root)
     except Exception:
         try:
             status.write(

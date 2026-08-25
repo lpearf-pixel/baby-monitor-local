@@ -196,6 +196,55 @@ def test_disabled_runner_exits_without_opening_audio_or_models(tmp_path: Path) -
     ) == 0
     status = json.loads((project / "runtime/status/voice.json").read_text())
     assert status["worker_state"] == "disabled"
+    assert status["mode"] == "disabled"
+
+
+def test_listen_only_runner_merges_fixed_model_manifest_and_builds_default_runtime(
+    tmp_path: Path,
+) -> None:
+    import yaml
+
+    from tools.run_voice_worker import main
+
+    project = tmp_path / "project"
+    runtime = project / "runtime"
+    models = runtime / "config/voice-care-models.json"
+    models.parent.mkdir(parents=True)
+    models.write_text(
+        json.dumps(
+            {
+                "enabled": False,
+                "silero_vad_manifest_sha256": "a" * 64,
+                "paraformer_zh_manifest_sha256": "b" * 64,
+            }
+        ),
+        encoding="ascii",
+    )
+    raw = yaml.safe_load((ROOT / "config/settings.example.yaml").read_text())
+    raw["voice_care"] = {"enabled": False, "listen_only_enabled": True}
+    settings_path = runtime / "settings.yaml"
+    settings_path.write_text(yaml.safe_dump(raw), encoding="utf-8")
+    built: list[object] = []
+
+    class Worker:
+        def run(self, stop_event) -> None:
+            built.append(stop_event)
+
+    result = main(
+        ["--settings", str(settings_path), "--voice-models", str(models)],
+        project_root=project,
+        runtime_builder=lambda settings, root: (
+            built.append((settings.voice_care, root)) or Worker()
+        ),
+    )
+
+    assert result == 0
+    voice, root = built[0]
+    assert voice.listen_only_enabled is True
+    assert voice.silero_vad_manifest_sha256 == "a" * 64
+    assert voice.paraformer_zh_manifest_sha256 == "b" * 64
+    assert voice.speechbrain_ecapa_manifest_sha256 is None
+    assert root == project
 
 
 def test_preflight_runner_is_aggregate_only_and_never_builds_worker(

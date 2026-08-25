@@ -259,7 +259,7 @@ git commit -m "feat: add bounded Voice wake dialogue"
 - Produces: `build_listen_only_worker(settings: AppSettings, project_root: Path) -> VoiceWorker`.
 - The builder validates only fixed Paraformer/Silero artifacts, opens the fixed loopback `audio_analysis` decoder, and constructs the pump/controller/TTS stack.
 
-- [ ] **Step 1: Write RED composition and privacy-boundary tests**
+- [x] **Step 1: Write RED composition and privacy-boundary tests**
 
 ```python
 def test_builder_constructs_only_listen_only_dependencies(monkeypatch, tmp_path: Path) -> None:
@@ -277,19 +277,19 @@ def test_runner_builds_default_listen_only_worker_but_not_full_care(tmp_path: Pa
 
 Also prove startup warm-up precedes ready, exact frames are used, duck/reset happens around TTS, stop closes decoder/VAD/ASR/TTS, and no transcript enters status/stdout/stderr.
 
-- [ ] **Step 2: Run RED**
+- [x] **Step 2: Run RED**
 
 Run: `.venv-alpha/bin/python -m pytest -q tests/voice/test_listen_only_runtime.py tests/voice/test_worker.py tests/deploy/test_voice_worker_deploy.py`
 
-- [ ] **Step 3: Implement the default builder and listen-only worker loop**
+- [x] **Step 3: Implement the default builder and listen-only worker loop**
 
 Move full-care-only imports out of the base worker module into their full-care boundary so importing listen-only does not load them. Validate `_VOICE_MODELS_RELATIVE`, require only pinned Paraformer and Silero digests for listen-only, run a bounded warm-up, process frames continuously, and use only closed status reasons.
 
-- [ ] **Step 4: Run GREEN and the full Voice gate**
+- [x] **Step 4: Run GREEN and the full Voice gate**
 
 Run: `.venv-alpha/bin/python -m pytest -q tests/voice/test_listen_only_runtime.py tests/voice/test_worker.py tests/deploy/test_voice_worker_deploy.py && make alpha-voice-test`
 
-- [ ] **Step 5: Commit Task 5**
+- [x] **Step 5: Commit Task 5**
 
 ```bash
 git add services/voice/listen_only_runtime.py services/voice/worker.py tools/run_voice_worker.py tests/voice/test_listen_only_runtime.py tests/voice/test_worker.py tests/deploy/test_voice_worker_deploy.py

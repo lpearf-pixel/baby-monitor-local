@@ -342,9 +342,27 @@ class AppSettings(StrictSettingsModel):
     security: SecuritySettings
 
     @classmethod
-    def load(cls, path: Path) -> "AppSettings":
+    def load(
+        cls,
+        path: Path,
+        *,
+        voice_models: VoiceCareSettings | None = None,
+    ) -> "AppSettings":
         raw = yaml.safe_load(path.read_text(encoding="utf-8"))
         if not isinstance(raw, dict):
             raise ValueError("settings file must contain a YAML mapping")
         _reject_literal_credentials(raw)
+        if voice_models is not None:
+            voice = raw.setdefault("voice_care", {})
+            if not isinstance(voice, dict):
+                raise ValueError("voice_care must be a mapping")
+            for field in (
+                "silero_vad_manifest_sha256",
+                "paraformer_zh_manifest_sha256",
+            ):
+                supplied = getattr(voice_models, field)
+                existing = voice.get(field)
+                if existing is not None and existing != supplied:
+                    raise ValueError("VOICE_MODEL_CONFIG_CONFLICT")
+                voice[field] = supplied
         return cls.model_validate(raw)
