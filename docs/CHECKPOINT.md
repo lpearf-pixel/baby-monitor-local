@@ -958,3 +958,13 @@ p50 509 ms、p95 529 ms，但只有 5/6 exact、1/6 wake；唯一 exact mismatch
 `asr_candidate_unavailable`，Voice disabled；未输出 transcript、PCM、Keychain 值、
 私有路径或写入 Baby Care。下一 Voice 切片是独立设计 punctuation-free wake/KWS 边界，
 并干净重录公开 negative control；不得降低现有 ASR/VAD 门槛。
+
+2026-08-25 完成 Voice Care Gate V2 Task 5F 的 deterministic punctuation-free wake
+boundary。新增固定护理词首只证明无标点 `小小` 的词边界；重复唤醒词、未知/句中/偶然
+匹配继续 fail closed，识别文本不被改写且完整命令仍由原 closed parser 独立验收。
+RED 捕获 9 个合法连续文本被拒绝，以及复审发现的内部重复 `小小` 和 `开始亲喂`
+缺口；GREEN 为 wake 27/27、Voice 267/267、完整 Python 1,319/1,319。真实 user-launchd
+聚合门为 Paraformer 5/6 exact、6/6 wake、p50 524 ms、p95 563 ms，唯一 mismatch 仍是
+公开 ID `negative_weather`（edit distance 2）；Silero 同一 clip 仍为 2 spans，其余
+5 条为 1 span。未输出 transcript/audio/key/private path，Voice 保持 disabled。下一步
+只重录固定公开 `negative_weather` 提示，再原样复跑 ASR 和 VAD 门。

@@ -419,6 +419,14 @@ legacy branch into this line without a separate integration decision.
   no transcript, PCM, private path or Keychain value was emitted. Fresh evidence is
   Voice 250/250 and full Python 1,302/1,302, with independent review clean of Critical/
   Important findings.
+- Task 5F now supplies the approved deterministic punctuation-free `小小` boundary.
+  Only fixed care-vocabulary prefixes can prove the missing Chinese word boundary;
+  repeated wake words, unknown continuations and incidental `小小` words still fail
+  closed, and the downstream parser remains independently authoritative. Fresh
+  user-launchd evidence reached 5/6 exact, 6/6 wake and p50 524 ms / p95 563 ms; the
+  sole mismatch remains public prompt ID `negative_weather` with edit distance 2. The
+  same clip still has two Silero spans while the other five have one. Voice remains
+  disabled. Fresh software evidence is Voice 267/267 and full Python 1,319/1,319.
 - Remote private viewing and the 72-hour release gate remain unfinished.
 - This system does not detect breathing, heart rate, suffocation or medical emergencies.
 
@@ -435,12 +443,12 @@ legacy branch into this line without a separate integration decision.
 4. Continue the approved audio/cry plan at Stage A8; a production model and
    license are still required before enablement; household audio remains
    memory-only.
-5. Keep Voice Care disabled. Base/small and the approved Paraformer candidate have now
-   all failed the unchanged six-clip gate; Silero also remains 5/6. The next Voice slice
-   is a separately designed deterministic wake/KWS boundary for punctuation-free local
-   ASR plus a clean rerecord of the public `negative_weather` control. Do not continue
-   Dad/Mom enrollment or Baby Care binding before both ASR and VAD pass unchanged
-   thresholds.
+5. Keep Voice Care disabled. The deterministic punctuation-free wake boundary is now
+   complete and Paraformer reaches 6/6 wake within latency, but exact remains 5/6 and
+   Silero remains 5/6 because the same public `negative_weather` clip mismatches and
+   splits into two spans. The next Voice action is one clean operator rerecord of that
+   fixed prompt, then both unchanged aggregate gates. Do not continue Dad/Mom enrollment
+   or Baby Care binding before both ASR and VAD pass unchanged thresholds.
 6. Complete authenticated private remote access using Tailscale Serve/ACL only.
 7. Complete the final 72-hour release gate before any release/tag decision.
 8. Define per-parent acknowledgement and false-positive feedback only through a future

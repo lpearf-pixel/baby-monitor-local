@@ -718,6 +718,49 @@ Implementation checkpoint: `4677fec`. Fresh verification recorded 250/250 Voice 
 checks and an independent review with no remaining Critical or Important finding. This
 completes the approved amendment implementation, not the ASR accuracy gate.
 
+#### Task 5F: Approved Punctuation-Free Wake Boundary Amendment
+
+**Files:**
+- Modify: `services/voice/wake.py`
+- Modify: `tests/voice/test_wake.py`
+- Modify: `tests/voice/test_asr_calibration.py`
+- Modify: this spec/plan and the authoritative handoff documents
+
+**Interfaces:**
+- Consumes: local ASR text held only in memory and the existing exact `小小` prefix.
+- Produces: the existing `WakeResult`; no transcript, audio, setting or new runtime
+  artifact is persisted.
+
+- [x] **Step 1: Lock the lexical boundary with RED tests**
+
+Accept punctuation-free text only when the exact leading `小小` is followed immediately
+by one fixed care-vocabulary prefix needed by the closed feeding/cancellation grammar or
+the fixed six-prompt calibration corpus. Continue to reject empty text, repeated wake
+words, unknown continuations, sentence-internal wake words, `小小鸟` and `小小小心`.
+
+- [x] **Step 2: Implement the minimal deterministic validator**
+
+Do not modify ASR text, add punctuation, replace phrases, use fuzzy/edit-distance
+matching or change the downstream parser. The fixed lexicon proves only that `小小` is
+a standalone prefix; the full command must still pass the existing closed parser.
+
+- [x] **Step 3: Run software and real encrypted-corpus gates**
+
+Run wake/calibration focused tests, the complete Voice suite and the full Python suite.
+Then rerun the exact-head aggregate Paraformer and Silero commands through the installed
+user-launchd context. Keep the unchanged requirements of 6/6 exact, 6/6 wake, P95 at
+most 3,000 ms and one Silero span per fixed prompt. If the existing `negative_weather`
+clip still fails, leave Voice disabled and require one clean operator rerecord; never
+rewrite, trim or replace encrypted household audio automatically.
+
+Worktree user-launchd evidence on 2026-08-25 showed the boundary change raised the
+Paraformer result from 1/6 to 6/6 wake while preserving 5/6 exact, edit distance 2 and
+the sole public mismatch ID `negative_weather`; p50 was 524 ms and p95 563 ms. The same
+clip still produced two Silero spans while the other five produced one each. Software
+evidence was 27/27 wake tests, 267/267 Voice tests and 1,319/1,319 full Python tests.
+Voice remains disabled; the next action is one clean operator rerecord of only the
+fixed public `negative_weather` prompt, followed by both unchanged aggregate gates.
+
 #### Task 5D: Installed Non-Interactive Voice Preflight
 
 **Files:**
@@ -773,12 +816,13 @@ git commit -m "test: gate installed Voice runtime preflight"
 Current installed evidence: Task 5A is complete and helper-owned v2 passes two fresh
 non-interactive launchd reads. Task 5B and Task 5E are exhausted and blocked as
 `asr_candidate_unavailable`: the best approved base profiles reached 5/6 exact and 6/6
-wake within latency, while Paraformer reached 5/6 exact and 1/6 wake at p95 529 ms.
+wake within latency. Task 5F corrected the deterministic punctuation-free boundary, so
+Paraformer now reaches 5/6 exact and 6/6 wake at p95 563 ms; only the fixed public
+`negative_weather` clip remains an exact mismatch.
 Task 5C is blocked as `vad_candidate_unavailable`; its generated control and 5/6 private
 prompts pass, while `negative_weather` produces two spans. Task 5D and Task 6 remain
-unchecked. These failures require a separately designed punctuation-free wake/KWS
-boundary, a clean public negative-control rerecord and a compliant Silero result, not
-weaker privacy, exact-match, wake, VAD or latency gates.
+unchecked. These failures now require one clean public negative-control rerecord and a
+compliant Silero result, not weaker privacy, exact-match, wake, VAD or latency gates.
 
 ### Task 6: Installed i9 Human Enrollment Gate
 

@@ -157,10 +157,15 @@ audio frames
 V1 does not add a separately trained keyword model. Silero VAD may open one bounded
 utterance window only after speech is observed. The window includes at most 500 ms of
 pre-roll, closes after 800 ms of terminal silence and never exceeds eight seconds. The
-local multilingual Whisper result must begin with the exact normalized prefix `小小`;
-normalization removes only surrounding whitespace and punctuation and does not accept
-homophones or fuzzy matches. A missing prefix returns `wake_not_detected`, produces no
-intent and cannot establish a caregiver session.
+local Mandarin ASR result must begin with the exact normalized prefix `小小`.
+Normalization removes only surrounding whitespace and punctuation and does not accept
+homophones or fuzzy matches. Because an approved local recognizer may omit Chinese
+punctuation, the prefix boundary may also be proven by one fixed, source-controlled
+post-wake care-vocabulary prefix. This is a lexical boundary only: an empty remainder,
+an unknown or repeated prefix, incidental words such as `小小鸟` and sentence-internal
+`小小` remain rejected, and the downstream closed intent parser must still accept the
+entire command independently. A missing prefix returns `wake_not_detected`, produces
+no intent and cannot establish a caregiver session.
 
 Normal audio stays in the existing 15-second memory ring. Raw samples for an utterance
 are discarded as soon as it reaches a terminal result. ASR text is held only long enough

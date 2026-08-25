@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import unicodedata
 from types import SimpleNamespace
 
 import pytest
@@ -206,6 +207,35 @@ def test_evaluator_compares_identical_encrypted_clips_without_transcript_output(
     assert report.models[1].passed is False
     assert "爸爸" not in repr(report)
     assert "天气" not in repr(report)
+
+
+def test_evaluator_accepts_exact_positive_prompts_without_asr_punctuation() -> None:
+    clips = {
+        prompt_id: prompt_id.encode("ascii") for prompt_id in PRIVATE_ASR_PROMPTS
+    }
+    punctuation_free = {
+        prompt_id: "".join(
+            character
+            for character in expected
+            if not unicodedata.category(character).startswith("P")
+        )
+        for prompt_id, expected in PRIVATE_ASR_PROMPTS.items()
+    }
+    evaluator = SingleAsrCalibrationEvaluator(
+        corpus=Corpus(tuple((prompt_id, clips[prompt_id]) for prompt_id in clips)),
+        model="paraformer",
+        engine=Engine(
+            {clips[prompt_id]: punctuation_free[prompt_id] for prompt_id in clips},
+            500,
+        ),
+    )
+
+    report = evaluator.evaluate()
+
+    assert report.gate_passed is True
+    assert report.selected_model == "paraformer"
+    assert report.models[0].exact_matches == 6
+    assert report.models[0].wake_matches == 6
 
 
 def test_evaluator_reports_only_fixed_prompt_ids_and_aggregate_edit_distance() -> None:
