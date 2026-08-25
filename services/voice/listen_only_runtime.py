@@ -103,6 +103,7 @@ class ListenOnlyVoiceWorker:
             expired = self._controller.expire(started_ns)
             if expired.reason == "listen_only_timeout":
                 self._write("healthy", expired.reason, None)
+                return
             frame = self._pump.read_frame()
             if frame.failure_reason is not None:
                 self._reset_capture()
@@ -119,7 +120,7 @@ class ListenOnlyVoiceWorker:
                 self._controller.on_speech_started(started_ns)
             utterance = self._collector.push(frame.pcm, vad)
             if utterance is None:
-                self._write("healthy", "listen_only_idle", None)
+                self._write("healthy", expired.reason, None)
                 return
             outcome: ListenOnlyOutcome = self._controller.handle(
                 utterance.pcm, cancelled

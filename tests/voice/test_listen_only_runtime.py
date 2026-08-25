@@ -69,14 +69,20 @@ class Collector:
 
 
 class Controller:
-    def __init__(self, outcome: ListenOnlyOutcome) -> None:
+    def __init__(
+        self,
+        outcome: ListenOnlyOutcome,
+        *,
+        expired: ListenOnlyOutcome | None = None,
+    ) -> None:
         self.outcome = outcome
+        self.expired = expired or ListenOnlyOutcome("listen_only_idle", None, "idle")
         self.started: list[int] = []
         self.handled: list[bytes] = []
         self.reset_count = 0
 
     def expire(self, _now_ns: int) -> ListenOnlyOutcome:
-        return ListenOnlyOutcome("listen_only_idle", None, "idle")
+        return self.expired
 
     def on_speech_started(self, now_ns: int) -> bool:
         self.started.append(now_ns)
@@ -160,6 +166,27 @@ def test_worker_source_failure_resets_only_voice_state_and_fails_closed() -> Non
     assert collector.reset_count == 1
     assert controller.reset_count == 1
     assert status.values[-1]["reason"] == "voice_audio_unavailable"
+
+
+def test_worker_keeps_armed_status_visible_while_waiting_for_followup() -> None:
+    pump = Pump([PumpFrame(b"p" * 3_200)])
+    controller = Controller(
+        ListenOnlyOutcome("listen_only_ignored", None, "idle"),
+        expired=ListenOnlyOutcome("listen_only_armed", None, "armed"),
+    )
+    status = Status()
+    worker = ListenOnlyVoiceWorker(
+        pump=pump,
+        vad=Vad(VadResult(False, 0.1)),
+        collector=Collector(None),
+        controller=controller,
+        asr_closer=AsrCloser(),
+        status_writer=status,
+    )
+
+    worker.step(threading.Event())
+
+    assert status.values[-1]["reason"] == "listen_only_armed"
 
 
 def test_playback_ducker_drains_audio_and_resets_capture_state() -> None:

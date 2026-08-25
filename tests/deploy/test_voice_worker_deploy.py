@@ -31,6 +31,9 @@ def test_voice_launchd_is_independent_interactive_and_private() -> None:
     ]
     assert payload["KeepAlive"] == {"SuccessfulExit": False}
     assert payload["ProcessType"] == "Interactive"
+    assert payload["EnvironmentVariables"] == {
+        "PATH": "/usr/local/bin:/usr/bin:/bin:/usr/sbin:/sbin"
+    }
     assert payload["StandardOutPath"].endswith("runtime/logs/voice.log")
     assert payload["StandardErrorPath"].endswith("runtime/logs/voice.log")
 
