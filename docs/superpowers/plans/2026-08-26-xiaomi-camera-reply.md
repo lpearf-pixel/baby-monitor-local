@@ -146,7 +146,7 @@ git commit -m "fix: preserve Xiaomi CS2 audio payloads"
 - Produces: `CameraReplyStatusWriter.write(status: CameraReplyStatus) -> None` with atomic mode-0600 publication.
 - Consumes: only generated regular files owned by the current user under its caller-owned mode-0700 temporary directory.
 
-- [ ] **Step 1: Write strict evidence-parser RED tests**
+- [x] **Step 1: Write strict evidence-parser RED tests**
 
 Use synthetic go2rtc JSON fixtures. Accept exactly one `source` stream with current
 HEVC receive media, incoming Opus `48000/2` and one audio sendonly Opus `48000/2`
@@ -157,7 +157,7 @@ the wrong type. Set the input cap to 1,048,576 bytes.
 Assert the returned object contains booleans and closed codec/protocol labels only. It
 must not preserve a producer URL, address, username, token, stream payload or raw JSON.
 
-- [ ] **Step 2: Write transport RED tests**
+- [x] **Step 2: Write transport RED tests**
 
 Inject a recording HTTP opener and assert all calls use two-second connection/read
 timeouts, maximum 1,048,576-byte responses and no proxy environment. Inspection may
@@ -183,7 +183,7 @@ Assert non-loopback origins, caller query fragments, symlinks, non-regular files
 wrong owner/mode, paths outside the supplied temporary directory, oversized files,
 timeouts and non-success HTTP status all fail closed without a retry.
 
-- [ ] **Step 3: Run RED**
+- [x] **Step 3: Run RED**
 
 ```bash
 .venv-alpha/bin/python -m pytest -q tests/voice/test_camera_reply.py
@@ -191,7 +191,7 @@ timeouts and non-success HTTP status all fail closed without a retry.
 
 Expected: collection fails because `services.voice.camera_reply` does not exist.
 
-- [ ] **Step 4: Implement the pure contract and bounded transport**
+- [x] **Step 4: Implement the pure contract and bounded transport**
 
 Use `urllib.request` with a fixed opener that ignores environment proxy settings.
 `start()` returns `CameraReplyResult(code, delivery_started)` and sets
@@ -203,14 +203,14 @@ Guard the transport with one nonblocking lock. A concurrent call returns
 `CAMERA_REPLY_BUSY`; it is never queued. Do not expose the constructed URL or input
 path through a return value or exception.
 
-- [ ] **Step 5: Prove timeout, cap and settlement behavior**
+- [x] **Step 5: Prove timeout, cap and settlement behavior**
 
 Use local fake openers that block, return oversized data and mutate after cancellation.
 Assert each public method returns within its bound, closes the response, leaves no
 background thread and emits no raw response. Assert repeated `stop()` is bounded and
 idempotent.
 
-- [ ] **Step 6: Run GREEN and commit**
+- [x] **Step 6: Run GREEN and commit**
 
 ```bash
 .venv-alpha/bin/python -m pytest -q tests/voice/test_camera_reply.py
