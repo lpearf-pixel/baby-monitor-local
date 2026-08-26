@@ -7,8 +7,8 @@ Updated: 2026-08-26
 - Repository: `lpearf-pixel/baby-monitor-local` (public).
 - Stable Xiaomi line: `stable/xiaomi-alpha` at `0df20ae`.
 - Active implementation line: `codex/voice-care-v1-gate-v1`. The continuous
-  memory-only listen-only implementation is local through `aa28cf3`; the remote branch
-  remains at `4eeab86`, so this checkout is 20 commits ahead and has not been pushed.
+  memory-only listen-only implementation is local through `3e9673d`; the remote branch
+  remains at `4eeab86` and these local commits have not been pushed.
 - The evidence-retention line is based on the published Dashboard snapshot `69e2d5b`;
   the Dashboard remains complete and its published branch is not rewritten.
 - Remote branch `codex/baby-guardian-event-loop` remains at its earlier squash snapshot
@@ -256,7 +256,7 @@ window, not 24/72-hour stability or unattended-care safety.
 |---|---|
 | Protected default branch | `main`; unchanged by guardian work |
 | Stable Xiaomi branch | `stable/xiaomi-alpha` at `0df20ae` |
-| Active feature branch | `codex/voice-care-v1-gate-v1` at listen-only implementation `aa28cf3` |
+| Active feature branch | `codex/voice-care-v1-gate-v1` at listen-only implementation `3e9673d` |
 | Guardian evidence-retention runtime implementation | `718af9a` |
 | Guardian evidence-retention safety closure | `e3cd69c` |
 | Guardian live-notification helper | `d862f2a` |
@@ -444,10 +444,13 @@ legacy branch into this line without a separate integration decision.
    license are still required before enablement; household audio remains
    memory-only.
 5. Complete supervised i9 acceptance for the separately approved continuous Voice
-   listen-only mode. Implementation `aa28cf3` keeps household PCM in memory, has no
+   listen-only mode. Implementation `3e9673d` keeps household PCM in memory, has no
    Baby Care client/write or family identity path, and the installed Voice-only job now
    reports `healthy / listen_only_idle` while the Xiaomi source gate remains PASS.
-   Software evidence is 321/321. The remaining gate is human acoustic evidence: 5
+   A real long-running trial exposed and closed a dead Paraformer child that previously
+   required manual service restart; one bounded rebuild/retry now restores it. Start
+   readiness also rejects status written before the current start. Software evidence
+   is 324/324. The remaining gate is human acoustic evidence: 5
    standalone wakes, 3 two-stage commands, 3 silent timeouts, 5 non-wake controls and
    no self-trigger. Full-care Voice remains disabled; its older private-corpus accuracy
    and Dad/Mom enrollment gates are not claimed complete by listen-only mode.

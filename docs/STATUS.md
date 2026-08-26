@@ -380,11 +380,17 @@
   Task 5 as a whole remains blocked on the unchanged `negative_weather` ASR/VAD 6/6
   requirement, so Voice remains disabled and Dad/Mom enrollment has not started.
 - The separately approved continuous listen-only mode is implemented locally through
-  `aa28cf3`. It composes the fixed Xiaomi audio alias, bounded in-memory PCM pump,
+  `3e9673d`. It composes the fixed Xiaomi audio alias, bounded in-memory PCM pump,
   stateful Silero VAD, local Paraformer, exact `小小` wake controller, an eight-second
   one-follow-up dialogue window and fixed i9-speaker TTS. It constructs no Baby Care
   client, signer, outbox, family identity or care-write path and does not persist raw
-  audio or ordinary transcripts. Fresh focused evidence is 321/321 Voice tests plus
+  audio or ordinary transcripts. A real repeated-utterance trial exposed that one
+  terminated Paraformer child left the long-running worker permanently unavailable;
+  `ce6dfb6` now performs one bounded local rebuild and retries the same memory-only PCM
+  once, while invalid PCM and a second failure remain closed. The real recovery path
+  replaced the child without replacing the Voice worker. `3e9673d` also requires
+  readiness status to be written after the current Voice start rather than accepting a
+  recently healthy stale file. Fresh focused evidence is 324/324 Voice tests plus
   Python compile, shell syntax, plist lint, Make dry-run and diff checks. On the actual
   i9, the Voice-only launchd job reports `healthy / listen_only_idle`, owns its FFmpeg
   audio child, and the Xiaomi source remains PASS. Supervised household acoustic

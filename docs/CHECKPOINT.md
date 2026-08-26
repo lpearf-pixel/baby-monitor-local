@@ -992,3 +992,15 @@ transcript。新鲜 Voice 门 321/321，compile、shell、plist、Make dry-run �
 重新进入 `healthy / listen_only_idle`；后续 source check 仍 PASS。
 真人 5 次唤醒、3 次两阶段命令、3 次静默超时、5 次非唤醒和无自触发仍待监督验收；
 合成 TTS 不替代该门。分支未 push/merge，main 未修改。
+
+同日继续真人交互时，单句 `小小` 两次进入 armed，组合唤醒加固定护理命令一次返回
+`listen_only_acknowledged`，端到端状态延迟 5,277ms；这些结构化状态不包含 transcript。
+随后连续请求在 36ms/118ms 内返回 `voice_model_unavailable`，进程核对确认 Voice worker
+仍在而 Paraformer child 已退出，既有对象永久 closed。TDD 提交 `ce6dfb6` 增加单次有界
+重建并对同一内存 PCM 重试一次；无效 PCM 和第二次失败仍 fail closed。聚焦 18/18、
+Voice 322/322，纯合成静音的真实模型恢复门确认 child_count=2 且 replacement_open=true。
+安装运行中又观察到 Voice worker PID 保持、Paraformer child PID 被替换后仍能识别
+`小小` 并进入 armed，证明无需人工重启即可恢复。随后提交 `3e9673d` 修复 Voice start
+误收旧健康状态：启动前固定 epoch，status 必须由本次启动之后写入；RED 2 项及畸形
+epoch fail-closed 测试转 GREEN，相关 51/51、Voice 324/324。真实 Voice-only stop/start
+再次 PASS，并返回新进程的 count=0 healthy idle。真人完整 5/3/3/5 矩阵仍未完成。

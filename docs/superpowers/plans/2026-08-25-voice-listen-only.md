@@ -340,7 +340,7 @@ git diff --check
 
 Run `make alpha-install`, enable only the ignored `listen_only_enabled: true`, then run the three listen-only Make targets. Record the spec's 5 standalone wakes, 3 two-stage commands, 3 silent timeouts, 5 non-wake controls, no self-trigger, bounded fault/restart, privacy file scan, no Baby Care write, clean stop, and Guardian health. Any missed wake remains a failed real-device gate; do not lower exact matching or VAD thresholds.
 
-Automated installed-i9 readiness is complete at implementation head `aa28cf3`: the
+Automated installed-i9 readiness is complete at implementation head `3e9673d`: the
 Voice-only launchd job runs with the fixed Intel Homebrew `PATH`, owns a live FFmpeg
 audio child, reports `healthy / listen_only_idle`, and leaves the Xiaomi source gate
 passing. The exact Voice-only stop/start lifecycle also returns `voice_stop=PASS` and
@@ -349,6 +349,13 @@ status check during decoder warm-up transiently reported
 `voice_audio_unavailable` and then recovered without restarting Guardian. The human
 5/3/3/5 wake/dialogue/timeout/non-wake matrix and acoustic self-trigger check remain
 pending and are not replaced by synthetic TTS.
+
+The first repeated real interaction exposed a terminated Paraformer child that left
+the persistent object closed. Commit `ce6dfb6` adds one bounded child rebuild and one
+retry of the same memory-only PCM; a second failure remains unavailable. Commit
+`3e9673d` requires readiness status newer than the current start epoch. Real child
+replacement and a fresh Voice-only stop/start both passed; the supervised matrix is
+still required.
 
 - [x] **Step 6: Commit Task 6 and handoff checkpoint**
 
