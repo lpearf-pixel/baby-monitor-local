@@ -379,8 +379,8 @@
   `aacefd9`, the installed command passed with Keychain and both artifacts available.
   Task 5 as a whole remains blocked on the unchanged `negative_weather` ASR/VAD 6/6
   requirement, so Voice remains disabled and Dad/Mom enrollment has not started.
-- The separately approved continuous listen-only mode is implemented locally through
-  `3e9673d`. It composes the fixed Xiaomi audio alias, bounded in-memory PCM pump,
+- The separately approved continuous listen-only mode is accepted locally through
+  `4590489`. It composes the fixed Xiaomi audio alias, bounded in-memory PCM pump,
   stateful Silero VAD, local Paraformer, exact `小小` wake controller, an eight-second
   one-follow-up dialogue window and fixed i9-speaker TTS. It constructs no Baby Care
   client, signer, outbox, family identity or care-write path and does not persist raw
@@ -390,12 +390,20 @@
   once, while invalid PCM and a second failure remain closed. The real recovery path
   replaced the child without replacing the Voice worker. `3e9673d` also requires
   readiness status to be written after the current Voice start rather than accepting a
-  recently healthy stale file. Fresh focused evidence is 324/324 Voice tests plus
+  recently healthy stale file; `15a2ff8` tightens that boundary to microseconds.
+  `07eef64` keeps the protocol alive after a bounded empty no-match, and `4590489`
+  resumes capture immediately after listen-only playback so the follow-up prefix is not
+  clipped while full-care retains its 0.5-second guard. Fresh focused evidence is
+  325/325 Voice tests plus
   Python compile, shell syntax, plist lint, Make dry-run and diff checks. On the actual
   i9, the Voice-only launchd job reports `healthy / listen_only_idle`, owns its FFmpeg
   audio child, and the Xiaomi source remains PASS. Supervised household acoustic
-  acceptance (5 wakes, 3 dialogues, 3 timeouts, 5 negatives and no self-trigger) is
-  still pending; software/readiness evidence does not prove recognition accuracy.
+  acceptance passed at least 5 standalone wakes, 3 dialogues, 3 timeouts, 5 negatives
+  and no self-trigger. The operator confirmed both replies were audible. Exact count
+  deltas matched the spoken trials, the Voice/model/audio PIDs remained stable through
+  the final matrix, source health stayed PASS and the recent raw-audio file count was
+  zero. This proves only the supervised room trial, not arbitrary speakers, noise or
+  unattended-care safety.
 - Installed-i9 audio-source discovery now verifies that the Xiaomi source exposes HEVC
   video plus Opus audio and that the fixed loopback `audio_analysis` alias exposes only
   Opus. The real input is supported 48 kHz stereo Opus; the fixed FFmpeg boundary

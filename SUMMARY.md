@@ -7,7 +7,7 @@ Updated: 2026-08-26
 - Repository: `lpearf-pixel/baby-monitor-local` (public).
 - Stable Xiaomi line: `stable/xiaomi-alpha` at `0df20ae`.
 - Active implementation line: `codex/voice-care-v1-gate-v1`. The continuous
-  memory-only listen-only implementation is local through `3e9673d`; the remote branch
+  memory-only listen-only implementation is local through `4590489`; the remote branch
   remains at `4eeab86` and these local commits have not been pushed.
 - The evidence-retention line is based on the published Dashboard snapshot `69e2d5b`;
   the Dashboard remains complete and its published branch is not rewritten.
@@ -256,7 +256,7 @@ window, not 24/72-hour stability or unattended-care safety.
 |---|---|
 | Protected default branch | `main`; unchanged by guardian work |
 | Stable Xiaomi branch | `stable/xiaomi-alpha` at `0df20ae` |
-| Active feature branch | `codex/voice-care-v1-gate-v1` at listen-only implementation `3e9673d` |
+| Active feature branch | `codex/voice-care-v1-gate-v1` at listen-only implementation `4590489` |
 | Guardian evidence-retention runtime implementation | `718af9a` |
 | Guardian evidence-retention safety closure | `e3cd69c` |
 | Guardian live-notification helper | `d862f2a` |
@@ -443,17 +443,14 @@ legacy branch into this line without a separate integration decision.
 4. Continue the approved audio/cry plan at Stage A8; a production model and
    license are still required before enablement; household audio remains
    memory-only.
-5. Complete supervised i9 acceptance for the separately approved continuous Voice
-   listen-only mode. Implementation `3e9673d` keeps household PCM in memory, has no
-   Baby Care client/write or family identity path, and the installed Voice-only job now
-   reports `healthy / listen_only_idle` while the Xiaomi source gate remains PASS.
-   A real long-running trial exposed and closed a dead Paraformer child that previously
-   required manual service restart; one bounded rebuild/retry now restores it. Start
-   readiness also rejects status written before the current start. Software evidence
-   is 324/324. The remaining gate is human acoustic evidence: 5
-   standalone wakes, 3 two-stage commands, 3 silent timeouts, 5 non-wake controls and
-   no self-trigger. Full-care Voice remains disabled; its older private-corpus accuracy
-   and Dad/Mom enrollment gates are not claimed complete by listen-only mode.
+5. Voice listen-only is accepted on the i9 at implementation `4590489`. It keeps
+   household PCM in memory, has no Baby Care client/write or family identity path, and
+   the installed job remains `healthy / listen_only_idle` while the Xiaomi source is
+   PASS. Supervised evidence passed at least 5 standalone wakes, 3 two-stage dialogues,
+   3 silent timeouts, 5 non-wake controls and no self-trigger; both fixed replies were
+   heard. The final software gate is 325/325 and no recent raw audio file was created.
+   Full-care Voice remains disabled; its private-corpus accuracy and Dad/Mom enrollment
+   gates are not claimed complete by listen-only mode.
 6. Complete authenticated private remote access using Tailscale Serve/ACL only.
 7. Complete the final 72-hour release gate before any release/tag decision.
 8. Define per-parent acknowledgement and false-positive feedback only through a future

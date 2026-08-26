@@ -336,26 +336,36 @@ make -n alpha-voice-listen-start alpha-voice-listen-status alpha-voice-listen-st
 git diff --check
 ```
 
-- [ ] **Step 5: Install and run supervised i9 acceptance**
+- [x] **Step 5: Install and run supervised i9 acceptance**
 
 Run `make alpha-install`, enable only the ignored `listen_only_enabled: true`, then run the three listen-only Make targets. Record the spec's 5 standalone wakes, 3 two-stage commands, 3 silent timeouts, 5 non-wake controls, no self-trigger, bounded fault/restart, privacy file scan, no Baby Care write, clean stop, and Guardian health. Any missed wake remains a failed real-device gate; do not lower exact matching or VAD thresholds.
 
-Automated installed-i9 readiness is complete at implementation head `3e9673d`: the
+Installed-i9 acceptance is complete at implementation head `4590489`: the
 Voice-only launchd job runs with the fixed Intel Homebrew `PATH`, owns a live FFmpeg
 audio child, reports `healthy / listen_only_idle`, and leaves the Xiaomi source gate
 passing. The exact Voice-only stop/start lifecycle also returns `voice_stop=PASS` and
 `voice_start=PASS`, then returns to healthy without restarting any sibling. The first
 status check during decoder warm-up transiently reported
 `voice_audio_unavailable` and then recovered without restarting Guardian. The human
-5/3/3/5 wake/dialogue/timeout/non-wake matrix and acoustic self-trigger check remain
-pending and are not replaced by synthetic TTS.
+supervised matrix passed at least 5 standalone wakes, 3 successful two-stage commands,
+3 silent timeouts and 5 non-wake controls. The operator heard both fixed replies in the
+successful dialogues; exact count deltas matched the spoken trials with no self-trigger.
 
 The first repeated real interaction exposed a terminated Paraformer child that left
 the persistent object closed. Commit `ce6dfb6` adds one bounded child rebuild and one
 retry of the same memory-only PCM; a second failure remains unavailable. Commit
 `3e9673d` requires readiness status newer than the current start epoch. Real child
 replacement and a fresh Voice-only stop/start both passed; the supervised matrix is
-still required.
+recorded as completed by the follow-up evidence below.
+
+Follow-up acceptance exposed two final issues. `07eef64` treats a bounded empty ASR
+result as a safe no-match instead of terminating the model protocol, while malformed
+output remains unavailable. `15a2ff8` makes start readiness microsecond-fresh.
+`4590489` removes the 0.5-second post-playback guard only for listen-only so speech
+immediately after `我在，请说` is not clipped; full-care TTS retains the guard. The
+final Voice software gate is 325/325. Xiaomi source health stayed PASS, the three Voice
+processes stayed continuous during the final matrix, and no recent raw audio file was
+created.
 
 - [x] **Step 6: Commit Task 6 and handoff checkpoint**
 

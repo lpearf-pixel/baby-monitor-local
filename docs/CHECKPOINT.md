@@ -1004,3 +1004,14 @@ Voice 322/322，纯合成静音的真实模型恢复门确认 child_count=2 且 
 误收旧健康状态：启动前固定 epoch，status 必须由本次启动之后写入；RED 2 项及畸形
 epoch fail-closed 测试转 GREEN，相关 51/51、Voice 324/324。真实 Voice-only stop/start
 再次 PASS，并返回新进程的 count=0 healthy idle。真人完整 5/3/3/5 矩阵仍未完成。
+
+2026-08-26 完成 Voice listen-only 监督实机矩阵。真实跟进失败暴露 `/usr/bin/afplay`
+结束后额外 0.5 秒 duck 会裁掉立即回答的“开始”；TDD 提交 `4590489` 仅为 listen-only
+将 guard 设为 0，完整 Voice Care 默认保护保持不变。此前 `07eef64` 令 bounded empty
+no-match 可继续服务下一请求而不退出模型，`15a2ff8` 将 start freshness 收紧为微秒级。
+最终 Voice 门 325/325。真人实际通过至少 5 次独立 `小小` 唤醒、3 次两阶段命令、
+3 次唤醒后静默 10 秒超时及 5 句不含唤醒词的控制；操作者确认成功对话的“我在，请说”
+和“我听到了”均可听见。计数增量与人工发声严格一致，无额外自触发；最终非唤醒后
+count 保持 5。Voice worker、Paraformer、FFmpeg PID 在最终矩阵中保持不变，Xiaomi
+source check 仍 PASS，最近 30 分钟新增 wav/aiff/pcm/opus 文件为 0。该证据不证明任意
+成人、任意噪声、全护理写入或无人照护安全；full-care Voice 继续 disabled。

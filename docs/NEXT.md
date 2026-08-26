@@ -179,14 +179,16 @@ punctuation-free boundary. It now achieves 5/6 exact and 6/6 wake;
 the only clip with two Silero spans. It fails closed as `asr_candidate_unavailable` and
 `vad_candidate_unavailable`. Voice remains disabled.
 
-A separate approved listen-only mode is now implemented locally through `3e9673d`.
+A separate approved listen-only mode is now accepted locally through `4590489`.
 It does not bypass or modify the full-care accuracy/enrollment gate: it only provides
 continuous memory-only Xiaomi audio listening, exact `小小` wake, one bounded follow-up
 and fixed i9-speaker acknowledgements, with no Baby Care write or family identity path.
-Its long-running runtime now performs one bounded Paraformer child rebuild/retry after
-explicit model unavailability, and lifecycle readiness rejects status older than the
-current start. Its software gate is 324/324 and installed readiness is healthy while
-the Xiaomi source remains PASS. Supervised acoustic acceptance remains pending.
+Its long-running runtime performs one bounded Paraformer child rebuild/retry after
+explicit model unavailability, treats bounded empty recognition as a safe no-match,
+and requires microsecond-fresh lifecycle readiness. Its software gate is 325/325 and
+installed readiness is healthy while the Xiaomi source remains PASS. Supervised
+acoustic acceptance passed at least 5 wakes, 3 dialogues, 3 timeouts and 5 non-wake
+controls with both fixed replies audible and no self-trigger.
 
 **Prerequisites:** The current design approval permits synthetic/public-media software
 work before P0–P2 complete. P0–P2 and A7 remain prerequisites for household
@@ -203,12 +205,10 @@ never provide household audio for Git or chat.
 Test timing, deduplication, quiet/adult-speech negatives and privacy using generated or
 explicitly public media. Software tests do not prove household accuracy.
 
-**Next:** When the operator returns, run the listen-only 5 standalone wake, 3 two-stage
-command, 3 silent-timeout and 5 non-wake trials plus the no-self-trigger check. Any miss
-fails the real-device gate without lowering exact wake or VAD thresholds. Full-care
-Voice remains disabled; its `negative_weather` rerecord, replay/overlap, Dad/Mom
-enrollment and Baby Care binding remain deferred behind the unchanged full-care gates.
-P4 remains the next independent product stage.
+**Next:** Voice listen-only is complete. Full-care Voice remains disabled; its
+`negative_weather` rerecord, replay/overlap, Dad/Mom enrollment and Baby Care binding
+remain deferred behind the unchanged full-care gates. P4 authenticated private remote
+access is the next independent product stage.
 
 Installed non-interactive Voice preflight is complete at `41da786`: after the explicitly
 approved removal of one stale legacy pending request through `aacefd9`, the login
