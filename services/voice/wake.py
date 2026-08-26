@@ -6,6 +6,7 @@ from typing import Literal
 
 
 WAKE_PREFIX = "小小"
+_OPTIONAL_WAKE_LEAD = "嘿"
 WAKE_NOT_DETECTED = "wake_not_detected"
 WAKE_COMMAND_MISSING = "wake_command_missing"
 _PUNCTUATION_FREE_COMMAND_PREFIXES = (
@@ -13,6 +14,7 @@ _PUNCTUATION_FREE_COMMAND_PREFIXES = (
     "我是妈妈",
     "宝宝喝了",
     "我要开始",
+    "我要喂奶了",
     "开始喂",
     "开始亲喂",
     "喂奶结束",
@@ -43,7 +45,9 @@ def classify_wake(text: str) -> WakeClassification:
 
     if not isinstance(text, str):
         return WakeClassification("not_wake", None)
-    normalized = _strip_boundary_characters(text)
+    normalized = _normalize_wake_entry(text)
+    if normalized is None:
+        return WakeClassification("not_wake", None)
     if normalized == WAKE_PREFIX:
         return WakeClassification("standalone_wake", None)
     validated = validate_wake_prefix(text)
@@ -57,7 +61,9 @@ def validate_wake_prefix(text: str) -> WakeResult:
 
     if not isinstance(text, str):
         return WakeResult(False, None, WAKE_NOT_DETECTED)
-    normalized = _strip_boundary_characters(text)
+    normalized = _normalize_wake_entry(text)
+    if normalized is None:
+        return WakeResult(False, None, WAKE_NOT_DETECTED)
     if not normalized.startswith(WAKE_PREFIX):
         return WakeResult(False, None, WAKE_NOT_DETECTED)
     remainder = normalized[len(WAKE_PREFIX) :]
@@ -72,6 +78,18 @@ def validate_wake_prefix(text: str) -> WakeResult:
     if not command:
         return WakeResult(False, None, WAKE_COMMAND_MISSING)
     return WakeResult(True, command, None)
+
+
+def _normalize_wake_entry(value: str) -> str | None:
+    normalized = _strip_boundary_characters(value)
+    if not normalized.startswith(_OPTIONAL_WAKE_LEAD):
+        return normalized
+    remainder = normalized[len(_OPTIONAL_WAKE_LEAD) :]
+    if remainder.startswith(WAKE_PREFIX):
+        return remainder
+    if not remainder or not _is_boundary_character(remainder[0]):
+        return None
+    return _strip_boundary_characters(remainder)
 
 
 def _strip_boundary_characters(value: str) -> str:

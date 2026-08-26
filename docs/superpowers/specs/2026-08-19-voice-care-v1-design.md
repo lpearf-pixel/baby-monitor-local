@@ -157,11 +157,15 @@ audio frames
 V1 does not add a separately trained keyword model. Silero VAD may open one bounded
 utterance window only after speech is observed. The window includes at most 500 ms of
 pre-roll, closes after 800 ms of terminal silence and never exceeds eight seconds. The
-local Mandarin ASR result must begin with the exact normalized prefix `小小`.
-Normalization removes only surrounding whitespace and punctuation and does not accept
-homophones or fuzzy matches. Because an approved local recognizer may omit Chinese
-punctuation, the prefix boundary may also be proven by one fixed, source-controlled
-post-wake care-vocabulary prefix. This is a lexical boundary only: an empty remainder,
+local Mandarin ASR result must begin with the exact normalized wake entry `小小`, or
+with the single fixed optional lead `嘿` before `小小`. The optional lead may be
+separated by a punctuation/whitespace boundary or directly concatenated when the local
+ASR omits punctuation; both lexical tokens remain exact. Normalization removes only
+surrounding whitespace and punctuation and does not accept homophones, fuzzy matches,
+repeated wake words, sentence-internal wake words or any other lead. Because an approved
+local recognizer may omit Chinese punctuation, the prefix boundary may also be proven
+by one fixed, source-controlled post-wake care-vocabulary prefix. This is a lexical
+boundary only: an empty remainder,
 an unknown or repeated prefix, incidental words such as `小小鸟` and sentence-internal
 `小小` remain rejected, and the downstream closed intent parser must still accept the
 entire command independently. A missing prefix returns `wake_not_detected`, produces
@@ -682,10 +686,10 @@ worker isolation pass. No ASR or care write is required.
 
 Entry: V0 evidence and approved cross-product contracts.
 Exit: pinned local artifacts and licenses pass validation; public/synthetic audio drives
-VAD, exact `小小` wake validation, ASR, explicit identity, signed intent, pending feeding,
-confirmation and final Baby Care write with complete security and privacy tests. Missing
-or failing models, fuzzy wake text and uncertain identity create no care write or success
-phrase.
+VAD, exact `小小`/`嘿，小小` wake validation, ASR, explicit identity, signed intent,
+pending feeding, confirmation and final Baby Care write with complete security and
+privacy tests. Missing or failing models, fuzzy wake text and uncertain identity create
+no care write or success phrase.
 
 ### Gate V2: supervised Dad/Mom feeding pilot
 

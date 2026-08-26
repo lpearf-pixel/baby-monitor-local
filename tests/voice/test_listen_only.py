@@ -78,6 +78,24 @@ def test_wake_with_closed_command_acknowledges_once_without_arming() -> None:
     assert synth.codes == ["listen_only_received"]
 
 
+def test_user_gold_phrase_acknowledges_once_and_returns_idle() -> None:
+    synth = Synth()
+    controller = ListenOnlyController(
+        asr=Asr(["嘿，小小，我要喂奶了"]),
+        synthesizer=synth,
+        monotonic_ns=Clock([1_000_000_000]),
+    )
+
+    outcome = controller.handle(PCM, threading.Event())
+
+    assert (outcome.reason, outcome.response_code, outcome.phase) == (
+        "listen_only_acknowledged",
+        "listen_only_received",
+        "idle",
+    )
+    assert synth.codes == ["listen_only_received"]
+
+
 def test_armed_timeout_is_silent_and_later_command_requires_new_wake() -> None:
     synth = Synth()
     controller = ListenOnlyController(

@@ -161,6 +161,7 @@ def parse_feeding_command(command: str, state: DialogueState) -> ParsedIntent:
 
     start_modes: dict[str, FeedingMode] = {
         "我要开始喂奶": "unknown",
+        "我要喂奶了": "unknown",
         "开始喂奶": "unknown",
         "开始喂配方奶": "bottle",
         "开始喂母乳": "bottle",

@@ -35,7 +35,7 @@ def test_fixed_care_vocabulary_proves_a_punctuation_free_boundary(text: str) -> 
 @pytest.mark.parametrize(
     "text",
     [
-        "嘿，小小，我是爸爸",
+        "你好，小小，我是爸爸",
         "晓晓，我是爸爸",
         "我叫小小",
         "小小鸟飞走了",
@@ -76,10 +76,17 @@ def test_missing_post_prefix_command_fails_without_exposing_text() -> None:
     ("text", "kind", "command"),
     [
         ("小小", "standalone_wake", None),
+        ("嘿，小小", "standalone_wake", None),
+        ("嘿小小", "standalone_wake", None),
         (" 。小小， ", "standalone_wake", None),
         ("小小，开始喂奶", "wake_with_command", "开始喂奶"),
+        ("嘿，小小，我要喂奶了", "wake_with_command", "我要喂奶了"),
+        ("嘿小小我要喂奶了", "wake_with_command", "我要喂奶了"),
         ("小小今天天气", "not_wake", None),
         ("你好小小", "not_wake", None),
+        ("嘿嘿，小小，我要喂奶了", "not_wake", None),
+        ("我说嘿，小小，我要喂奶了", "not_wake", None),
+        ("嘿，小小，小小，我要喂奶了", "not_wake", None),
     ],
 )
 def test_listen_only_wake_classifier_is_exact_and_closed(

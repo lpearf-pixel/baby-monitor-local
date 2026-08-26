@@ -23,6 +23,37 @@ def test_idle_state_accepts_only_closed_feeding_starts() -> None:
         "feeding_start",
         {"mode": "unknown", "startedAt": STARTED_AT},
     )
+    assert parse_feeding_command("我要喂奶了", state).as_pair() == (
+        "feeding_start",
+        {"mode": "unknown", "startedAt": STARTED_AT},
+    )
+
+
+def test_feeding_start_alias_conflicts_outside_idle() -> None:
+    pending = DialogueState.pending(
+        observed_at=OBSERVED_AT,
+        started_at=STARTED_AT,
+        expected_version=1,
+        mode="unknown",
+    )
+
+    result = parse_feeding_command("我要喂奶了", pending)
+
+    assert result.intent_type is None
+    assert result.payload is None
+    assert result.reason == "state_conflict"
+
+
+@pytest.mark.parametrize(
+    "command",
+    ["我要喂奶", "我准备喂奶了", "我要去喂奶了"],
+)
+def test_unapproved_feeding_start_near_matches_remain_uncertain(command: str) -> None:
+    result = parse_feeding_command(command, DialogueState.idle(observed_at=STARTED_AT))
+
+    assert result.intent_type is None
+    assert result.payload is None
+    assert result.reason == "intent_uncertain"
 
 
 def test_formula_finish_requires_actual_consumed_ml() -> None:
