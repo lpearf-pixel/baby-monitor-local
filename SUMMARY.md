@@ -6,12 +6,12 @@ Updated: 2026-08-26
 
 - Repository: `lpearf-pixel/baby-monitor-local` (public).
 - Stable Xiaomi line: `stable/xiaomi-alpha` at `0df20ae`.
-- Active implementation line: `codex/voice-care-v1-gate-v1`. The continuous
-  memory-only listen-only implementation is local through `4590489`; P4 private-access
-  software is implemented through `a265312`, with the repository Guardian fixture
-  synchronized at `5dca783`. The approved Voice Gate V3 camera-reply design/plan is the
-  next software slice. The remote branch remains at `4eeab86` and these local commits
-  have not been pushed.
+- Active implementation line: `codex/voice-care-v1-gate-v1`. Camera Reply Tasks 1–7
+  are local through `e358aaf`, with the real macOS TTY correction at `5768894`.
+  The supervised tone passed, but V3E failed closed after a stuck interaction,
+  unexpected camera movement, CS2 timeout and Voice audio EOF. Camera reply is disabled
+  and not accepted; the healthy listen-only Voice worker uses the prior i9 speaker.
+  The remote branch remains at `4eeab86`; local work has not been pushed.
 - The evidence-retention line is based on the published Dashboard snapshot `69e2d5b`;
   the Dashboard remains complete and its published branch is not rewritten.
 - Remote branch `codex/baby-guardian-event-loop` remains at its earlier squash snapshot
@@ -468,9 +468,9 @@ legacy branch into this line without a separate integration decision.
    gates are not claimed complete by listen-only mode.
 6. P4 private-access software is complete; keep installation/login, private grant merge,
    fixed Serve apply and two-iPhone cellular acceptance as a separate human gate.
-7. Implement approved Voice Gate V3 next: prove the pinned
-   CS2 payload path, pass one supervised generated-tone gate, then route only the two
-   fixed listen-only replies to the camera with pre-send-only i9 fallback.
+7. Keep Camera Reply V3 disabled: its single-tone gate passed but supervised interaction
+   failed closed. Complete P4 installed policy/Serve and two-iPhone cellular acceptance,
+   then explicitly retain i9-only output before the final release gate.
 8. Complete the final 72-hour release gate before any release/tag decision.
 9. Define per-parent acknowledgement and false-positive feedback only through a future
    contract where Baby Care consumes Guardian's read-only feed and owns identity/write
@@ -526,8 +526,8 @@ only the bounded log window needed to identify the first actionable failure.
 3. Verify repository root, remote, branch, HEAD, upstream, dirty state and recent log.
 4. Preserve `uv.lock` and any other user changes; do not reset or clean.
 5. Reconcile local and remote feature histories before any push or branch integration.
-6. Continue Voice Gate V3 as the next software slice; P4 installed/two-iPhone acceptance
-   may proceed independently when the human prerequisites are available.
+6. Do not re-enable Camera Reply V3 under its current plan. Continue P4 installed and
+   two-iPhone acceptance when the human prerequisites are available.
 7. Use focused tests for the slice and the full gate only at the next milestone or
    stable-branch integration.
 8. Do not push, create a PR, merge, tag or modify `main` without explicit approval.

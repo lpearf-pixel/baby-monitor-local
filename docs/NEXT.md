@@ -236,26 +236,27 @@ confirm both phones from outside the home network.
 Only the authenticated application is reachable; camera, go2rtc and SQLite remain
 private; no credentials enter Git, commands, reports or chat.
 
-**Next:** Voice Gate V3 Xiaomi camera reply is the next software slice. P4 installation,
-policy and phone acceptance may proceed independently but must not be inferred from the
-software checkpoint.
+**Next:** Complete the installed P4 policy/Serve and two-iPhone cellular acceptance when
+the human prerequisites are available. Camera Reply V3 failed closed and is not a
+release dependency unless a future approved redesign reopens it.
 
 ## Voice Gate V3 — Xiaomi camera reply
 
-**Status:** Approved design and implementation plan; implementation not started. The
-accepted i9 speaker remains the production reply output.
+**Status:** Software implemented, supervised generated-tone gate passed, but V3E failed
+closed during the first household interaction batch. The accepted i9 speaker remains
+the production reply output; camera reply is disabled and its marker is not accepted.
 
 **Prerequisites:** P4 software checkpoint complete. The real speaker gate additionally
 requires a healthy installed `cs2+udp` source, current pinned go2rtc build metadata and
 an adult at the camera. P4 phone installation/acceptance may proceed independently.
 
-**Codex can:** prove the suspected pinned CS2 payload defect with synthetic Go bytes,
-apply the minimal audited patch if confirmed, implement the closed loopback adapter,
-fixed reply generation, pre-send-only i9 fallback, software gates and redacted status.
+**Codex can:** preserve the failed evidence and keep the feature disabled. Any future
+work must begin with a separately approved design addressing Xiaomi backchannel sender
+lifecycle, reconnect cleanup and the observed camera movement; it may not resume with
+another household playback trial.
 
-**Human required:** confirm one generated tone came from the camera, explicitly enable
-the ignored local setting after the marker is current, and supervise at least 5 wakes,
-3 dialogues, 3 timeouts and 5 non-wake controls. No household audio enters Git/chat.
+**Human required:** no further camera-reply trial under the current plan. The completed
+single-tone confirmation does not override the failed interaction gate.
 
 **Acceptance and tests:** Follow
 `docs/superpowers/specs/2026-08-26-xiaomi-camera-reply-design.md` and
@@ -264,8 +265,9 @@ the ignored local setting after the marker is current, and supervise at least 5 
 self-triggers, stuck armed states or sibling-service regressions. Software tests never
 operate the real speaker.
 
-**Next:** P5 final 72-hour release gate. If V3 does not pass, leave it disabled and
-retain the accepted i9 speaker output; do not claim partial camera-reply support.
+**Next:** Retain the accepted i9 speaker output. Complete P4 installed/two-iPhone
+acceptance and make an explicit i9-only release-scope decision before P5; do not claim
+partial camera-reply support.
 
 ## P5 — Final 72-hour release gate
 

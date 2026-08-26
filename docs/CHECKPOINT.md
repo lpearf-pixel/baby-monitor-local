@@ -1034,3 +1034,21 @@ Voice 业务代码、播放摄像头、保存家庭音频、push、merge 或修�
 均 PASS。该证据只证明 parser、redaction、固定 argv、Basic Auth 与 same-origin 软件
 合同；没有安装/登录真实 Tailscale，没有合并私有 policy、应用 Serve 或运行两部
 iPhone 蜂窝网络验收。P4 installed/device gate 仍 pending，下一软件切片为 Voice Gate V3。
+
+2026-08-26 Voice Gate V3 installed-i9 验收在 V3E **fail closed**。Task 1–7
+实现提交为 `26eea4d`、`47c42ba`、`1bcc8da`、`53e0231`、`ca2822c`、
+`e548dfe` 和 `e358aaf`；真实 macOS 非 seekable TTY 修复为 `5768894`。
+固定 go2rtc 构建、CS2+UDP H.265 source、60 秒 Opus V0、Voice listen-only 和
+摄像头回复软件门均通过；成人明确听到一次 1 秒生成音，tone/post-health/marker
+门全部通过。启用忽略态私有开关后的第一组真人交互出现卡住和摄像头异常转动，
+本地聚合状态记录 4 次完成回复，随后固定日志窗口出现 CS2 UDP read timeout、
+音频转码 EOF 和 `voice_audio_unavailable`。这违反零重复/自触发、零 stuck state
+及 sibling-source 不回归要求，不能用单音通过替代 V3E。
+
+处置结果：Voice-only job 先停止，私有 `camera_reply_enabled` 恢复为 `false`，
+当前构建 acceptance marker 被置为不接受，`alpha-voice-camera-status` 返回
+`CAMERA_REPLY_NOT_PROVEN`；随后仅恢复既有 i9 speaker 的 listen-only Voice，状态
+重新为 healthy/idle，source check 再次 PASS（CS2+UDP、H.265、2560x1440、接收
+字节非零）。当前 source 无反向音频 consumer 残留。修复后的聚焦软件证据为 Voice
+406/406、camera reply 91/91、Python compile 和 diff check PASS。V3E 保持失败，
+摄像头回复不得重新启用；P5 需要明确采用 i9-only release scope 后才可继续。

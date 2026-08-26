@@ -413,7 +413,16 @@
   privacy scans passed. No real Tailscale software was installed or authenticated, no
   policy or Serve state was changed and no phone gate was run. Dashboard-health
   recovery, private grant merge, fixed Serve apply and two-iPhone cellular acceptance
-  remain pending; Voice Gate V3 is the next independent software slice.
+  remain pending.
+- Voice Gate V3 camera-reply software Tasks 1–7 are implemented through `e358aaf`,
+  with the real macOS TTY correction at `5768894`. The supervised generated-tone gate
+  passed, but V3E failed closed during the first interaction batch: the operator saw a
+  stuck interaction and unexpected camera movement, while bounded runtime evidence
+  recorded four reply completions followed by a CS2 UDP timeout and Voice audio EOF.
+  The private camera-reply flag is back to `false`, the current marker is not accepted,
+  the Voice worker is healthy on the prior i9-speaker path, and source health is PASS.
+  Camera Reply is not a delivered capability and must not be re-enabled without a new
+  approved design that resolves backchannel lifecycle/reconnect safety.
 - Installed-i9 audio-source discovery now verifies that the Xiaomi source exposes HEVC
   video plus Opus audio and that the fixed loopback `audio_analysis` alias exposes only
   Opus. The real input is supported 48 kHz stereo Opus; the fixed FFmpeg boundary

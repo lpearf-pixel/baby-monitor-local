@@ -610,6 +610,17 @@ git commit -m "docs: add Xiaomi camera reply operations"
 
 ### Task 8: Run installed i9 gates and record the V3 checkpoint
 
+**Status (2026-08-26): FAILED CLOSED at V3E.** Steps 1-4 were executed on the
+installed i9. The adult heard the one-second generated tone and the post-health
+gate passed. After enabling the private flag, the first supervised interaction
+batch produced a stuck interaction and unexpected camera movement. Aggregate
+runtime evidence then showed four completed reply attempts followed by a CS2 UDP
+read timeout and Voice audio EOF. Voice was stopped, the private flag was restored
+to `false`, the acceptance marker was invalidated, and listen-only Voice was
+restarted with the accepted i9 speaker path. No further camera sends are allowed
+under this plan. V3E remains failed; Steps 6-7 may record the failure but must not
+claim V3 or P5 eligibility.
+
 **Files:**
 - Modify after evidence: `docs/CHECKPOINT.md`
 - Modify after evidence: `docs/STATUS.md`
@@ -621,7 +632,7 @@ git commit -m "docs: add Xiaomi camera reply operations"
 - Consumes: the exact Task 1-7 implementation head and supervised Task 4 operator gate.
 - Produces: aggregate V3A-V3E evidence and the next ordered project stage.
 
-- [ ] **Step 1: Verify the installed environment before mutation**
+- [x] **Step 1: Verify the installed environment before mutation**
 
 ```bash
 uname -srm
@@ -635,7 +646,7 @@ make alpha-voice-camera-status
 Require Darwin x86_64, current source PASS, Voice healthy, one exact go2rtc listener
 and matching pinned metadata. Stop on a first stable blocker; do not restart the stack.
 
-- [ ] **Step 2: Rebuild and verify only the pinned go2rtc component**
+- [x] **Step 2: Rebuild and verify only the pinned go2rtc component**
 
 ```bash
 make alpha-go2rtc-rebuild
@@ -649,7 +660,7 @@ Require source H.265, incoming Opus, positive bytes, stable app identity, Voice 
 and all camera software tests. If any gate fails, use the existing go2rtc-only rollback,
 then re-run source and Voice checks. Do not touch the camera URI or private settings.
 
-- [ ] **Step 3: Run the supervised tone gate**
+- [x] **Step 3: Run the supervised tone gate**
 
 ```bash
 make alpha-voice-camera-probe
@@ -659,7 +670,7 @@ An adult confirms exact `YES` only after hearing the generated tone from the cam
 The command must then pass its post-health checks and publish a current marker. A tone
 not heard, uncertain origin, duplicate playback or health regression is a FAIL.
 
-- [ ] **Step 4: Enable the private flag and restart Voice only**
+- [x] **Step 4: Enable the private flag and restart Voice only**
 
 Set `voice_care.camera_reply_enabled: true` only in the ignored installed settings,
 then run:
@@ -674,7 +685,7 @@ make alpha-source-check
 
 Require `CAMERA_REPLY_READY`, healthy listen-only Voice and unchanged source health.
 
-- [ ] **Step 5: Complete V3E supervised interactions**
+- [ ] **Step 5: Complete V3E supervised interactions — FAILED CLOSED**
 
 Record aggregate counts only: at least 5 standalone wakes, 3 wake-plus-follow-up
 dialogues, 3 silent timeouts and 5 non-wake controls. Confirm both fixed replies come
@@ -682,7 +693,7 @@ from the camera, with zero duplicate replies, self-triggers, overlaps or stuck a
 states. Re-run source, Dashboard, Guardian, gauge, environment and Voice status after
 the interactions, and confirm Mi Home and microSD remain available.
 
-- [ ] **Step 6: Run the final exact-head software gate**
+- [ ] **Step 6: Run the final exact-head software gate — not an acceptance substitute**
 
 ```bash
 make alpha-guardian-test
@@ -696,7 +707,7 @@ git diff --check
 This gate proves software and installed component contracts only. It does not replace
 the supervised hearing/interaction evidence or the final 72-hour release gate.
 
-- [ ] **Step 7: Record the checkpoint and commit**
+- [x] **Step 7: Record the failed checkpoint and commit**
 
 Check V3A-V3E in this plan. Record exact implementation HEAD, fresh counts and only
 aggregate device results. Mark Camera Reply complete and P5 eligible only if P4 and
