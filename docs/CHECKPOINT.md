@@ -1066,3 +1066,21 @@ p95 568 ms，唯一 mismatch 为公开 prompt ID `negative_weather`。当前该 
 0 spans fail closed，未发布新的有效 clip。未降低阈值、未开始 Dad/Mom enrollment、
 未启用 full-care Voice、未写 Baby Care，也未保存自由语音。下一步需要真人在明确的
 `capture_now` 窗口内只说一次固定公开句“今天天气不错”，随后原样复跑 ASR/VAD 6/6。
+
+随后干净重录成功，Task 5 按不变门槛关闭：Paraformer 6/6 exact、6/6 wake、p50
+587 ms、p95 661 ms、mismatch none、edit distance 0；Silero 对 generated control 与
+六条 private prompt 均为 exactly one span。Source PASS，speaker environment ready，
+真实 i9 generated ECAPA 5/5、192 dimensions、p50 386 ms、p95 433 ms，原始音频未
+持久化。注册前发现 `tools/voice_enroll.py` 仍调用历史 Whisper base；规格 4.2.2 已
+批准 Paraformer 为替代候选，因此 TDD 提交 `24b8906` 固定注册使用 Paraformer，并
+在成功、失败和构建中断时关闭 ASR/ECAPA。聚焦 33/33、Voice 406/406、compile 与
+diff check PASS。
+
+Dad 实机注册尚未通过，也未创建 profile。多轮聊天驱动尝试暴露两个必须长期保留的
+操作边界：Codex sandbox PTY 连接固定 loopback RTSP 时 FFmpeg exit 255 / reason
+`operation_not_permitted`，不能作为真实 i9 音频证据；即使在真实 i9 用户上下文，工具
+调用会在聊天提示送达后立即打开五秒窗口，成人往往尚未看到/读完一次性口令。一次
+不输出 transcript 的 aggregate diagnostic 得到 exact=false、edit distance 17、length
+delta +6，wake/challenge/digit 三项均 false，说明抓到的是另一时段语音而非近似口令。
+原始 PCM 与识别文字均未持久化。下一步先实现本地固定 readiness/countdown；禁止跨
+聊天 turn 等待已签发的 60 秒 challenge、禁止继续盲试、延长 TTL 或放宽 exact gate。

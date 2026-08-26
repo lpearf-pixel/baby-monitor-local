@@ -365,7 +365,7 @@ audio log, Baby Care write, Voice enablement or automatic deletion.
   has mode 0600 under a mode-0700 parent.
 - [x] Establish the first exact baseline: base 4/6 exact, wake 6/6, P95 1,138 ms;
   small 1/6 exact, wake 6/6, P95 3,818 ms. Both fail; Voice remains disabled.
-- [ ] Complete Tasks 5A-5D below, then record aggregate evidence only. Keep enrollment
+- [x] Complete Tasks 5A-5D below, then record aggregate evidence only. Keep enrollment
   blocked on any Keychain, ASR or Silero failure.
 
 #### Task 5A: Stable Non-Interactive Keychain Identity
@@ -819,15 +819,11 @@ non-interactive launchd reads. Task 5B and Task 5E are exhausted and blocked as
 wake within latency. Task 5F corrected the deterministic punctuation-free boundary, so
 Paraformer now reaches 5/6 exact and 6/6 wake at p95 540 ms; only the fixed public
 `negative_weather` clip remains an exact mismatch.
-Task 5C is blocked as `vad_candidate_unavailable`; its generated control and 5/6 private
-prompts pass. A later bounded rerecord replaced `negative_weather` with a clip too quiet
-for Silero; the current aggregate is zero spans, and two subsequent human-timed capture
-windows also detected zero spans without publishing a replacement. Task 5D is
-implementation-complete at `41da786`; after approved removal of one stale legacy pending
-request by `aacefd9`, the installed login-LaunchAgent gate passed with helper, fixed
-Paraformer artifact and fixed Silero artifact all available. Task 6 remains unchecked.
-These failures now require one correctly timed clean public negative-control rerecord and a
-compliant Silero result, not weaker privacy, exact-match, wake, VAD or latency gates.
+The clean `negative_weather` rerecord now closes Task 5: Paraformer passed 6/6 exact and
+6/6 wake at p50 587 ms / p95 661 ms, and Silero passed all six prompts with exactly one
+span each. Task 5D remains complete at `41da786`; the installed login-LaunchAgent gate
+reports helper, fixed Paraformer and fixed Silero artifacts available. No threshold,
+normalization or privacy rule changed.
 
 ### Task 6: Installed i9 Human Enrollment Gate
 
@@ -843,7 +839,7 @@ compliant Silero result, not weaker privacy, exact-match, wake, VAD or latency g
 - Consumes: actual i9, Xiaomi audio, Dad and Mom separately, Tasks 1–4.
 - Produces: two encrypted local opaque profiles and aggregate-only acceptance evidence.
 
-- [ ] **Step 1: Verify preconditions without mutation**
+- [x] **Step 1: Verify preconditions without mutation**
 
 Run:
 
@@ -854,6 +850,28 @@ make alpha-voice-ecapa-probe
 ```
 
 Require Voice disabled, no existing Dad/Mom registry entry and Guardian services healthy.
+
+Fresh installed-i9 evidence: source PASS; speaker environment ready; generated ECAPA
+5/5 with 192 dimensions and p95 433 ms; no Dad/Mom registry exists; full-care Voice is
+disabled. Commit `24b8906` also replaces the stale Whisper enrollment adapter with the
+selected Paraformer and closes both model children on every exit (33 focused and 406
+Voice tests passed).
+
+- [ ] **Step 1A: Add a local enrollment readiness/countdown boundary**
+
+The current five-second capture begins from controller PTY input, but chat delivery and
+human speech are asynchronous. A real aggregate diagnostic captured a different longer
+utterance (`edit_distance=17`, length delta `+6`, no wake/challenge/digit prefix match),
+so no Dad profile was created. The next implementation must keep the challenge one-shot
+and exact while moving timing into the local i9 operator: after displaying a challenge,
+run one fixed bounded countdown (or equivalent local readiness signal) before opening
+the five-second capture. Do not wait across a chat turn after challenge issue, extend the
+60-second TTL, expose transcript, relax exact matching or add a remote capture API.
+
+Real audio acceptance must run in the logged-in i9 user context. A sandbox PTY probe
+reliably returned FFmpeg exit 255 / `operation_not_permitted` for the fixed loopback RTSP
+decoder; that result is not household microphone evidence. Add RED/GREEN timing tests,
+run focused/Voice gates, then retry Step 2 only through the corrected local boundary.
 
 - [ ] **Step 2: Enroll Dad privately**
 

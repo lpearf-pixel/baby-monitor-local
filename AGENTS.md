@@ -106,6 +106,20 @@
 ## macOS and Shell Compatibility
 
 - User-facing macOS commands must be short, copy-safe and ASCII-only.
+- Treat Codex chat delivery, PTY input and real i9 audio capture as three asynchronous
+  boundaries. Never start a bounded household recording immediately after posting a
+  chat prompt and assume the person has seen or spoken it. The local operator process
+  must own an explicit readiness gate or fixed visible/audible countdown before capture.
+- A one-time Voice challenge TTL starts when the challenge is issued. Never leave an
+  issued challenge waiting across a chat turn; issue it only inside a local bounded
+  workflow that leaves enough deterministic time to read and speak the phrase.
+- Run real Xiaomi/i9 audio acceptance in the actual logged-in user context. A Codex
+  sandbox PTY can reject the fixed loopback RTSP decoder with `operation_not_permitted`;
+  sandbox results are software diagnostics only and must not be reported as household
+  microphone evidence. Keep diagnostics aggregate-only and never print recognized text.
+- Full-care Voice enrollment must use the ASR candidate selected by the current formal
+  gate (currently the pinned Paraformer), never a historical Whisper fallback. Before
+  touching Voice capture/enrollment, read the current Voice spec, plan and handoff state.
 - Put reusable or long procedures in repository scripts; do not require multiline
   heredocs or large terminal pastes.
 - Repository shell scripts must be ASCII-only, UTF-8 with LF endings, compatible with
