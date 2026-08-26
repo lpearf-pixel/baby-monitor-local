@@ -428,7 +428,10 @@
   pass. A stale synthetic benchmark negative was synchronized to the approved wake
   behavior; benchmark passes 26/26 and the full Python repository passes 1634/1634.
   Listen-only still writes no Baby Care data. Real installed-i9 one-response acceptance
-  for the user gold phrase remains pending.
+  for the user gold phrase now passes: one audible acknowledgement, count 0 to 1,
+  final healthy/idle and source PASS. The first attempt exposed a blocked CoreAudio
+  output session; the macOS built-in Ping control also timed out, and restarting
+  `coreaudiod` restored playback before the passing run.
 - P4 authenticated private remote access is software-complete through `a265312`, with
   a repository Guardian fixture synchronization at `5dca783`. The pure bounded parser,
   read-only macOS audit, exact-confirmation fixed Serve adapter, four Make interfaces,

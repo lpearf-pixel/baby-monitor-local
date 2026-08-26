@@ -468,7 +468,11 @@ legacy branch into this line without a separate integration decision.
    gates are not claimed complete by listen-only mode.
    The bounded command-compatibility fix at `e786d2e` now accepts only the exact
    `小小`/`嘿，小小` entries and exact `我要喂奶了` alias; focused 72/72 and Voice
-   418/418 pass. A real installed-i9 one-response check remains pending.
+   418/418 pass. The real installed-i9 gold phrase produced exactly one audible
+   acknowledgement, incremented `processed_count` from 0 to 1, returned to healthy
+   idle and left the Xiaomi source PASS. CoreAudio first required a daemon restart
+   after even the built-in Ping sound timed out; this was an output-session fault,
+   not an ASR/wake failure.
 4. Defer WS2021 Task 15 and normal-care-only real-Baby Guardian observation until the
    current Voice work is complete and a Baby is available. The three-browser HD gate is
    already user-confirmed PASS.

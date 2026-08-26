@@ -1101,5 +1101,7 @@ exact match、Paraformer 与 ECAPA 门均未放宽。新鲜软件证据为 enrol
 `listen_only_received` 并回到 idle，不构造 Baby Care 写入。新鲜证据为 focused
 72/72、Voice 418/418、compile/diff/privacy PASS。首轮全仓门发现 4 个旧 synthetic
 benchmark 用例仍把已批准前导词当负例；同步为仍拒绝的任意前导语后，benchmark
-26/26、完整 Python 1634/1634 PASS。真实登录 i9 的单句一次回复复验仍 pending；
-完整过程记录于同目录 review-resolution 文档。
+26/26、完整 Python 1634/1634 PASS。随后真实登录 i9 单句复验通过：金句只产生一次
+可听确认，`processed_count` 从 0 增至 1 后回到 healthy/idle，source check 保持 PASS。
+首轮回复失败被定位为 CoreAudio 输出会话阻塞：连系统 Ping 控制音也超时；重启
+`coreaudiod` 后控制音和金句回复均恢复。完整过程记录于同目录 review-resolution 文档。

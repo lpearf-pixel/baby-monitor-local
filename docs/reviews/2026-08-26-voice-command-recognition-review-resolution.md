@@ -78,15 +78,19 @@ Voice v1 规格和 listen-only 手册。
 
 ## 5. 仍未证明的事项
 
-- 尚未在安装了 `e786d2e` 的真实登录 Intel i9 上说出用户金句并确认一次回复。
 - 软件测试不证明摄像头收音、房间噪声、实际 ASR 文本或扬声器播放质量。
 - Full-care Voice 仍 disabled；Dad/Mom 声纹注册、replay/overlap 和身份门仍未完成。
 - Listen-only 仍只回复固定确认语，不写 Baby Care 护理记录。
 - Camera Reply V3 仍失败关闭且保持 disabled；本修复未触碰该路径。
 
-## 6. 下一步复验
+## 6. 真实 i9 复验结果
 
-Web 审查业务提交 `e786d2e` 和本文后，在真实登录 i9 上安装该精确 HEAD，启动
-listen-only，并只说一次 `嘿，小小，我要喂奶了`。验收要求：只听到一次
-`我听到了`，`processed_count` 只增加 1，最终仍 healthy/idle，source 不回归，且没有
-新增原始音频文件或 Baby Care 记录。
+真实登录 i9 在当前分支启动 listen-only 后完成金句复验。第一次回复路径返回固定
+`voice_output_unavailable`；独立控制证明中文 AIFF 合成成功，但 `/usr/bin/afplay`
+以及 macOS 自带 Ping 均在五至十秒内超时。CoreAudio 进程和内置默认输出存在，执行
+`sudo killall coreaudiod` 由 macOS 自动重建 daemon 后，Ping 在 2.6 秒内完成。
+
+恢复后只说一次 `嘿，小小，我要喂奶了`，成人听到一次 `我听到了`。结构化状态依次为
+`listen_only_acknowledged`、`processed_count=1`、最终 `healthy / listen_only_idle`；
+`alpha-source-check` 同时保持 PASS。观察窗口还记录到此前一个 ignored 片段，计数未变，
+不会冒充成功。测试未保存家庭音频或 transcript，未写 Baby Care，也未启用 Camera Reply。

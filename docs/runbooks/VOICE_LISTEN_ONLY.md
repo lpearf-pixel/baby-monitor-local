@@ -31,6 +31,22 @@ make alpha-voice-listen-stop
 care, malformed or degraded status does not pass readiness. Voice start/stop does not
 restart go2rtc, Dashboard, visual, gauge, environment or Guardian workers.
 
+Before a supervised speech trial, run `make alpha-voice-listen-start` even if a prior
+status file says healthy. The start command requires a status timestamp from the new
+launch; `status` alone can describe a stopped job's stale file.
+
+If an accepted phrase reports `voice_output_unavailable`, first test the macOS built-in
+sound. When the built-in sound also blocks, restart only CoreAudio and retry:
+
+```bash
+/usr/bin/afplay -v 0.35 /System/Library/Sounds/Ping.aiff
+sudo killall coreaudiod
+```
+
+macOS automatically relaunches the daemon. Do not disable SIP; on supported macOS,
+`launchctl kickstart` for the protected system CoreAudio service is rejected by SIP.
+This recovery does not restart go2rtc, the Xiaomi source or Guardian.
+
 Expected interaction:
 
 1. Either say the single sentence `嘿，小小，我要喂奶了`, or say `小小` and wait for
