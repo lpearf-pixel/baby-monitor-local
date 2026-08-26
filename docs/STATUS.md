@@ -451,6 +451,14 @@
   the Voice worker is healthy on the prior i9-speaker path, and source health is PASS.
   Camera Reply is not a delivered capability and must not be re-enabled without a new
   approved design that resolves backchannel lifecycle/reconnect safety.
+- The follow-up lifecycle review is published at `f610d7b` on
+  `codex/xiaomi-camera-reply-lifecycle-review`. On the exact pinned upstream commit,
+  synthetic-only RED evidence reproduced command-channel overflow as
+  `cs2: pop buffer is full` followed by shared media failure. Five speaker lifecycle
+  cases and four Streams settlement cases also failed for the reviewed reasons, so the
+  root-cause gate is `H1_H2_CONFIRMED` with H3 independently confirmed. The replacement
+  lifecycle design and TDD plan are draft-only; no production patch, settings change,
+  camera playback, install or acceptance marker has been made.
 - Installed-i9 audio-source discovery now verifies that the Xiaomi source exposes HEVC
   video plus Opus audio and that the fixed loopback `audio_analysis` alias exposes only
   Opus. The real input is supported 48 kHz stereo Opus; the fixed FFmpeg boundary

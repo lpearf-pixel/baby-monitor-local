@@ -6,14 +6,21 @@ Updated: 2026-08-26
 
 - Repository: `lpearf-pixel/baby-monitor-local` (public).
 - Stable Xiaomi line: `stable/xiaomi-alpha` at `0df20ae`.
-- Active implementation line: `codex/voice-care-v1-gate-v1`. Camera Reply Tasks 1–7
-  are local through `e358aaf`, with the real macOS TTY correction at `5768894`.
+- Active Camera Reply review line: `codex/xiaomi-camera-reply-lifecycle-review`, based
+  on accepted Voice head `4d479b8`; its published review checkpoint is `f610d7b`.
+  Camera Reply Tasks 1–7 are local through `e358aaf`, with the real macOS TTY correction
+  at `5768894`.
   The supervised tone passed, but V3E failed closed after a stuck interaction,
   unexpected camera movement, CS2 timeout and Voice audio EOF. Camera reply is disabled
   and not accepted; the healthy listen-only Voice worker uses the prior i9 speaker.
-  The remote branch is at `1ab5c99`; local business implementation is at `e786d2e`
-  with the review/result documentation checkpoint following locally. It has not been
-  merged into a protected branch.
+  Pure-software fixed-upstream RED fixtures now establish `H1_H2_CONFIRMED` and H3:
+  command-response overflow closes shared media, speaker sessions are asymmetric,
+  channel-3 errors are lost, and Streams does not settle explicit/natural completion.
+  A replacement lifecycle spec and implementation plan are drafted; production repair
+  remains blocked on explicit spec approval and no real camera action is authorized.
+  The accepted Voice branch is published at `4d479b8`; the lifecycle-review branch is
+  published at `f610d7b` before the current draft documents. Neither has been merged
+  into a protected branch.
 - The evidence-retention line is based on the published Dashboard snapshot `69e2d5b`;
   the Dashboard remains complete and its published branch is not rewritten.
 - Remote branch `codex/baby-guardian-event-loop` remains at its earlier squash snapshot

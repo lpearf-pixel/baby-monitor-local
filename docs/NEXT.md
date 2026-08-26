@@ -251,31 +251,36 @@ return to remote access only after the local release work when the user explicit
 
 ## Voice Gate V3 — Xiaomi camera reply
 
-**Status:** Software implemented, supervised generated-tone gate passed, but V3E failed
-closed during the first household interaction batch. The accepted i9 speaker remains
-the production reply output; camera reply is disabled and its marker is not accepted.
+**Status:** Original V3 software reached supervised testing, but V3E failed closed.
+The accepted i9 speaker remains the production reply output; camera reply is disabled
+and its marker is not accepted. The exact-upstream synthetic investigation now records
+`H1_H2_CONFIRMED` plus H3: command responses can terminate shared media, speaker state
+is asymmetric, write errors are lost and Streams does not settle reply completion.
 
 **Prerequisites:** P4 software checkpoint complete. The real speaker gate additionally
 requires a healthy installed `cs2+udp` source, current pinned go2rtc build metadata and
 an adult at the camera. P4 phone installation/acceptance may proceed independently.
 
-**Codex can:** preserve the failed evidence and keep the feature disabled. Any future
-work must begin with a separately approved design addressing Xiaomi backchannel sender
-lifecycle, reconnect cleanup and the observed camera movement; it may not resume with
-another household playback trial.
+**Codex can:** after explicit approval of
+`docs/superpowers/specs/2026-08-26-xiaomi-camera-reply-lifecycle-design.md`, execute
+software Tasks 1–6 in
+`docs/superpowers/plans/2026-08-26-xiaomi-camera-reply-lifecycle.md`. These add a single
+command dispatcher, generation-owned speaker state, exactly-once Streams settlement,
+error propagation and fixed aggregate diagnostics. Software work keeps the feature
+disabled and never contacts the camera.
 
-**Human required:** no further camera-reply trial under the current plan. The completed
-single-tone confirmation does not override the failed interaction gate.
+**Human required:** approve the replacement lifecycle spec before production code.
+No camera-reply trial is allowed during the software plan. A later D0–D4 installed gate
+requires separate approval and adult supervision.
 
-**Acceptance and tests:** Follow
-`docs/superpowers/specs/2026-08-26-xiaomi-camera-reply-design.md` and
-`docs/superpowers/plans/2026-08-26-xiaomi-camera-reply.md`. Only the fixed replies
-`我在，请说。` and `我听到了。` may play. Require zero duplicate replies,
-self-triggers, stuck armed states or sibling-service regressions. Software tests never
-operate the real speaker.
+**Acceptance and tests:** The original fixed vocabulary and privacy boundaries remain
+in force. The replacement software gate requires all nine named lifecycle tests,
+20 clean synthetic generations, exact patch provenance, zero post-stop writes, zero
+pending responses/residual senders, propagated failures and no Voice/source regression.
+Software tests never operate the real speaker.
 
-**Next:** Retain the accepted i9 speaker output and local-only release scope before P5;
-do not claim partial camera-reply support.
+**Next:** approve or revise the draft lifecycle spec. Until then retain the accepted i9
+speaker output and do not implement, install or claim partial camera-reply support.
 
 ## P5 — Final 72-hour release gate
 

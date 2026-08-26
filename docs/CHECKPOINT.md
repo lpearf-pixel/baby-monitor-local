@@ -1105,3 +1105,15 @@ benchmark 用例仍把已批准前导词当负例；同步为仍拒绝的任意�
 可听确认，`processed_count` 从 0 增至 1 后回到 healthy/idle，source check 保持 PASS。
 首轮回复失败被定位为 CoreAudio 输出会话阻塞：连系统 Ping 控制音也超时；重启
 `coreaudiod` 后控制音和金句回复均恢复。完整过程记录于同目录 review-resolution 文档。
+
+同日开始 Camera Reply 生命周期根因门。远端审查分支
+`codex/xiaomi-camera-reply-lifecycle-review` 以 `4d479b8` 为父提交，审查文档提交为
+`f610d7b`。在固定 go2rtc upstream commit 的临时纯合成 fixture 中，向容量 10 的
+command channel 连续送入 11 个 speaker-start response 后，真实 worker 以
+`cs2: pop buffer is full` 退出并使 `ReadPacket` 观察到共享媒体失败。五个 speaker
+lifecycle RED 分别证明未消费 start response、接受重叠 start、stop 后仍写 channel 3、
+首个写错误被吞及 20 轮积压 20 个 response；四个 Streams RED 证明 empty stop、stop
+failure、natural end 和 cancel/natural race 都没有协议 settlement。因此根因结论为
+`H1_H2_CONFIRMED`，H3 独立确认。全部证据无网络、无摄像头、无家庭音频或私有配置。
+新的 lifecycle spec/plan 已形成草案；规格批准前不写生产补丁，不启用或安装 Camera
+Reply，也不执行实机 probe。
