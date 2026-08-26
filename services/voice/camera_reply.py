@@ -16,6 +16,7 @@ from typing import Any, Protocol
 from urllib.parse import urlencode
 from urllib.request import OpenerDirector, ProxyHandler, Request, build_opener
 
+from packages.monitoring.go2rtc_build import BuildMetadata
 from services.voice.tts import (
     CancelEvent,
     CaptureDucker,
@@ -40,6 +41,20 @@ _MAX_OPERATION_SECONDS = 10.0
 _STOP_RESERVE_SECONDS = 2.0
 _MAX_WAIT_INCREMENT_SECONDS = 0.05
 _MAX_GUARD_SECONDS = 0.5
+_ACCEPTANCE_RELATIVE = Path(
+    "runtime/status/voice-camera-reply-acceptance.json"
+)
+_ACCEPTANCE_FIELDS = frozenset(
+    {
+        "schema_version",
+        "accepted",
+        "upstream_commit",
+        "patch_sha256",
+        "binary_sha256",
+        "protocol",
+        "audio_codec",
+    }
+)
 
 
 class CameraReplyCode(StrEnum):
@@ -95,6 +110,146 @@ class CameraReplyStatus:
             or not 0 <= self.latency_ms <= 120_000
         ):
             raise ValueError(_UNAVAILABLE)
+
+
+class CameraReplyAcceptance:
+    @classmethod
+    def load(
+        cls, root: Path, build_metadata: BuildMetadata
+    ) -> CameraReplyEvidence | None:
+        path = root / _ACCEPTANCE_RELATIVE
+        if not cls._secure_leaf(root, path):
+            return None
+        try:
+            if path.stat().st_size > 4_096:
+                return None
+            payload = json.loads(
+                path.read_text(encoding="ascii"),
+                object_pairs_hook=_closed_object,
+            )
+        except (OSError, UnicodeDecodeError, json.JSONDecodeError, ValueError):
+            return None
+        if (
+            not isinstance(payload, dict)
+            or set(payload) != _ACCEPTANCE_FIELDS
+            or payload["schema_version"] != 1
+            or payload["accepted"] is not True
+            or payload["upstream_commit"] != build_metadata.upstream_commit
+            or payload["patch_sha256"] != build_metadata.patch_sha256
+            or payload["binary_sha256"] != build_metadata.binary_sha256
+            or payload["protocol"] != _PROTOCOL
+            or payload["audio_codec"] != "opus"
+        ):
+            return None
+        return CameraReplyEvidence(
+            source_ready=True,
+            video_ready=True,
+            incoming_audio_ready=True,
+            sendonly_audio_ready=True,
+            protocol=_PROTOCOL,
+            video_codec="HEVC",
+            incoming_audio_codec="OPUS",
+            sendonly_audio_codec="OPUS",
+        )
+
+    @classmethod
+    def publish(cls, root: Path, build_metadata: BuildMetadata) -> bool:
+        path = root / _ACCEPTANCE_RELATIVE
+        try:
+            root = root.resolve(strict=True)
+            parent = path.parent
+            if not parent.exists():
+                runtime = root / "runtime"
+                if not runtime.exists():
+                    runtime.mkdir(mode=0o700)
+                parent.mkdir(mode=0o700)
+            if not cls._secure_parents(root, parent):
+                return False
+            if path.exists() or path.is_symlink():
+                leaf = path.lstat()
+                if (
+                    stat.S_ISLNK(leaf.st_mode)
+                    or not stat.S_ISREG(leaf.st_mode)
+                    or leaf.st_uid != os.getuid()
+                    or stat.S_IMODE(leaf.st_mode) != 0o600
+                    or leaf.st_nlink != 1
+                ):
+                    return False
+            document = {
+                "schema_version": 1,
+                "accepted": True,
+                "upstream_commit": build_metadata.upstream_commit,
+                "patch_sha256": build_metadata.patch_sha256,
+                "binary_sha256": build_metadata.binary_sha256,
+                "protocol": _PROTOCOL,
+                "audio_codec": "opus",
+            }
+            payload = (
+                json.dumps(document, sort_keys=True, separators=(",", ":"))
+                + "\n"
+            ).encode("ascii")
+            descriptor, temporary_name = tempfile.mkstemp(
+                prefix=".voice-camera-acceptance-",
+                suffix=".tmp",
+                dir=parent,
+            )
+            temporary = Path(temporary_name)
+            try:
+                os.fchmod(descriptor, 0o600)
+                os.write(descriptor, payload)
+                os.fsync(descriptor)
+            finally:
+                os.close(descriptor)
+            os.replace(temporary, path)
+            directory_fd = os.open(parent, os.O_RDONLY)
+            try:
+                os.fsync(directory_fd)
+            finally:
+                os.close(directory_fd)
+            return True
+        except (OSError, RuntimeError, ValueError):
+            try:
+                temporary.unlink()
+            except (NameError, OSError):
+                pass
+            return False
+
+    @staticmethod
+    def _secure_parents(root: Path, parent: Path) -> bool:
+        try:
+            root = root.resolve(strict=True)
+            current = parent
+            while True:
+                item = current.lstat()
+                if (
+                    stat.S_ISLNK(item.st_mode)
+                    or not stat.S_ISDIR(item.st_mode)
+                    or item.st_uid != os.getuid()
+                ):
+                    return False
+                if current.resolve(strict=True) == root:
+                    return True
+                if not current.resolve(strict=True).is_relative_to(root):
+                    return False
+                current = current.parent
+        except (OSError, RuntimeError):
+            return False
+
+    @classmethod
+    def _secure_leaf(cls, root: Path, path: Path) -> bool:
+        try:
+            if not cls._secure_parents(root, path.parent):
+                return False
+            leaf = path.lstat()
+            return bool(
+                not stat.S_ISLNK(leaf.st_mode)
+                and stat.S_ISREG(leaf.st_mode)
+                and leaf.st_uid == os.getuid()
+                and stat.S_IMODE(leaf.st_mode) == 0o600
+                and leaf.st_nlink == 1
+            )
+        except OSError:
+            return False
 
 
 class _Response(Protocol):
@@ -611,6 +766,7 @@ class CameraReplyOutput:
 
 
 __all__ = [
+    "CameraReplyAcceptance",
     "CameraReplyCode",
     "CameraReplyEvidence",
     "CameraReplyOutput",

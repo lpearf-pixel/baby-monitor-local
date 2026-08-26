@@ -304,7 +304,7 @@ git commit -m "feat: play fixed replies through Xiaomi camera"
 - Produces: `CameraReplyAcceptance.load(root, build_metadata) -> CameraReplyEvidence`.
 - Writes only: `runtime/status/voice-camera-reply-acceptance.json` and `runtime/status/voice-camera-reply.json` as mode-0600 regular files under verified non-symlink parents.
 
-- [ ] **Step 1: Write acceptance-marker RED tests**
+- [x] **Step 1: Write acceptance-marker RED tests**
 
 Accept this exact schema with no additional fields:
 
@@ -324,7 +324,7 @@ The values must match `runtime/build/go2rtc.json`. Reject malformed JSON, wrong 
 wrong owner, symlink in any parent or leaf, FIFO/socket, stale digest, alternate
 protocol/codec and unknown fields. Never chmod, delete or repair invalid state.
 
-- [ ] **Step 2: Write operator-probe RED tests**
+- [x] **Step 2: Write operator-probe RED tests**
 
 Require Darwin x86_64, a controlling TTY, exact installed app identity, current build
 metadata, healthy source/media evidence and no active camera reply. Generate a one
@@ -342,7 +342,7 @@ other text cannot confirm. After confirmation, rerun the existing source health 
 Dashboard health, Voice status and camera media inspection before atomically publishing
 the marker. A failed check leaves the old marker absent or unchanged.
 
-- [ ] **Step 3: Run RED**
+- [x] **Step 3: Run RED**
 
 ```bash
 .venv-alpha/bin/python -m pytest -q tests/tools/test_voice_camera_reply.py tests/voice/test_camera_reply.py -k 'acceptance or probe or marker'
@@ -350,7 +350,7 @@ the marker. A failed check leaves the old marker absent or unchanged.
 
 Expected: collection or attribute failure for the missing operator/marker interfaces.
 
-- [ ] **Step 4: Implement the bounded operator flow**
+- [x] **Step 4: Implement the bounded operator flow**
 
 Use injected subprocess, TTY, clock and transport dependencies. Invoke the existing
 source checker through its fixed repository interface; never accept a command override.
@@ -371,7 +371,7 @@ acceptance_marker_current=true
 raw_audio_persisted=false
 ```
 
-- [ ] **Step 5: Run GREEN and commit**
+- [x] **Step 5: Run GREEN and commit**
 
 ```bash
 .venv-alpha/bin/python -m pytest -q tests/tools/test_voice_camera_reply.py tests/voice/test_camera_reply.py
