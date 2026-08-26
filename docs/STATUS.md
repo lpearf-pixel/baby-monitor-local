@@ -381,14 +381,18 @@
   Paraformer passed 6/6 exact and 6/6 wake at p50 587 ms / p95 661 ms, while Silero
   passed all six prompts with exactly one span each. Installed source/speaker/ECAPA
   preconditions also pass; the generated ECAPA gate is 5/5, 192 dimensions, p95 433 ms.
-  Dad enrollment remains unopened because the PTY/chat workflow started five-second
+  Dad enrollment is not yet accepted because the PTY/chat workflow started five-second
   captures before the remote operator could reliably see and speak the challenge. A
   transcript-free real diagnostic reported edit distance 17, length delta +6 and no
   wake/challenge/digit match, proving the wrong time window rather than a near miss.
   Sandbox PTY audio also fails independently as `operation_not_permitted`; only logged-in
-  i9 execution counts as real audio evidence. Voice remains disabled and no profile was
-  created. The next slice is a local bounded readiness/countdown gate, not another blind
-  enrollment attempt.
+  i9 execution counts as real audio evidence. A first local 15-second countdown retry
+  still failed exact matching because its decoder opened only after the countdown and
+  retained the fragile fixed five-second block. The software path now opens/warms the
+  source first, drains audio throughout the local countdown and uses fixed Silero to
+  return one complete utterance within a 12-second in-memory limit. Focused enrollment
+  tests pass 14/14 and Voice passes 406/406. Voice remains disabled, no profile was
+  created and the revised path still requires one real Dad run before acceptance.
 - The separately approved continuous listen-only mode is accepted locally through
   `4590489`. It composes the fixed Xiaomi audio alias, bounded in-memory PCM pump,
   stateful Silero VAD, local Paraformer, exact `小小` wake controller, an eight-second

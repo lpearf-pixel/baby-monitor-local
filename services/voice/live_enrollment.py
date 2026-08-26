@@ -6,7 +6,6 @@ import json
 import os
 import stat
 import tempfile
-import time
 from collections.abc import Callable
 from dataclasses import dataclass
 from pathlib import Path
@@ -14,14 +13,18 @@ from typing import Literal, Protocol
 from uuid import UUID
 
 from packages.contracts.settings import AudioSettings
-from services.audio.source import DecoderRead, FixedAudioDecoder
+from services.audio.source import FixedAudioDecoder
+from services.voice.audio_pump import ExactFrameAudioPump, PumpFrame
+from services.voice.capture import UtteranceResult
 from services.voice.challenge import EnrollmentChallenge
 from services.voice.speaker import VoiceProfile
+from services.voice.vad import VadResult
 
 
 ENROLLMENT_FAILED = "voice_enrollment_failed"
-CAPTURE_SECONDS = 5
-CAPTURE_TIMEOUT_SECONDS = 10.0
+_FRAMES_PER_SECOND = 10
+_MAX_SPEECH_WAIT_SECONDS = 12
+_FRAME_BYTES = 3_200
 _MAX_REGISTRY_BYTES = 4_096
 _ROLES = frozenset({"dad", "mom"})
 _FAILURE_STAGES = frozenset(
@@ -63,12 +66,33 @@ class _Store(Protocol):
     def delete(self) -> None: ...
 
 
-class _Decoder(Protocol):
-    def read(
-        self, maximum: int, *, timeout_seconds: float | None = None
-    ) -> DecoderRead: ...
+class _Pump(Protocol):
+    def warm_up(self, cancelled: object) -> bool: ...
+
+    def read_frame(self) -> PumpFrame: ...
 
     def close(self) -> None: ...
+
+
+class _Vad(Protocol):
+    def observe(self, frame: bytes) -> VadResult: ...
+
+    def reset(self) -> None: ...
+
+    def close(self) -> None: ...
+
+
+class _Collector(Protocol):
+    def push(self, frame: bytes, vad: VadResult) -> UtteranceResult | None: ...
+
+    def reset(self) -> None: ...
+
+    def close(self) -> None: ...
+
+
+class _NeverCancelled:
+    def is_set(self) -> bool:
+        return False
 
 
 @dataclass(frozen=True)
@@ -142,64 +166,93 @@ class LiveEnrollmentCoordinator:
 
 
 class BoundedLivePcmCapture:
-    """Receive one exact five-second PCM sample without a media file."""
+    """Drain to live edge, then return one VAD-bounded in-memory utterance."""
 
     def __init__(
         self,
         settings: AudioSettings,
         *,
-        decoder_factory: Callable[[AudioSettings], _Decoder] = FixedAudioDecoder,
-        clock: Callable[[], float] = time.monotonic,
+        pump_factory: Callable[[AudioSettings], _Pump] | None = None,
+        vad_factory: Callable[[], _Vad],
+        collector_factory: Callable[[], _Collector],
     ) -> None:
         self._settings = settings
-        self._decoder_factory = decoder_factory
-        self._clock = clock
+        self._pump_factory = pump_factory or (
+            lambda audio: ExactFrameAudioPump(FixedAudioDecoder(audio))
+        )
+        self._vad_factory = vad_factory
+        self._collector_factory = collector_factory
 
-    def capture(self) -> bytes:
-        buffer = bytearray()
-        decoder: _Decoder | None = None
+    def capture(
+        self, *, countdown_seconds: int, printer: Callable[[str], None]
+    ) -> bytes:
+        pump: _Pump | None = None
+        vad: _Vad | None = None
+        collector: _Collector | None = None
         try:
-            target = (
-                self._settings.sample_rate_hz
-                * self._settings.channels
-                * self._settings.sample_width_bytes
-                * CAPTURE_SECONDS
-            )
-            if target != 160_000:
+            if (
+                type(countdown_seconds) is not int
+                or not 1 <= countdown_seconds <= 30
+                or not callable(printer)
+                or self._settings.sample_rate_hz != 16_000
+                or self._settings.channels != 1
+                or self._settings.sample_width_bytes != 2
+            ):
                 raise ValueError(ENROLLMENT_FAILED)
-            decoder = self._decoder_factory(self._settings)
-            started = float(self._clock())
-            while len(buffer) < target:
-                if float(self._clock()) - started >= CAPTURE_TIMEOUT_SECONDS:
-                    raise ValueError(ENROLLMENT_FAILED)
-                remaining = target - len(buffer)
-                remaining_seconds = CAPTURE_TIMEOUT_SECONDS - (
-                    float(self._clock()) - started
-                )
-                if remaining_seconds <= 0:
-                    raise ValueError(ENROLLMENT_FAILED)
-                result = decoder.read(
-                    remaining, timeout_seconds=min(10.0, remaining_seconds)
-                )
+            pump = self._pump_factory(self._settings)
+            vad = self._vad_factory()
+            collector = self._collector_factory()
+            if not pump.warm_up(_NeverCancelled()):
+                raise ValueError(ENROLLMENT_FAILED)
+            for remaining in range(countdown_seconds, 0, -1):
+                printer(f"capture_starts_in_seconds={remaining}")
+                for _index in range(_FRAMES_PER_SECOND):
+                    self._require_frame(pump.read_frame())
+            vad.reset()
+            collector.reset()
+            printer("capture_now=true")
+            for _index in range(
+                _FRAMES_PER_SECOND * _MAX_SPEECH_WAIT_SECONDS
+            ):
+                frame = self._require_frame(pump.read_frame())
+                observation = vad.observe(frame)
                 if (
-                    not isinstance(result, DecoderRead)
-                    or result.failure_reason is not None
-                    or type(result.pcm) is not bytes
-                    or not result.pcm
-                    or len(result.pcm) > remaining
-                    or len(result.pcm) % self._settings.sample_width_bytes
+                    not isinstance(observation, VadResult)
+                    or observation.reason is not None
                 ):
                     raise ValueError(ENROLLMENT_FAILED)
-                buffer.extend(result.pcm)
-            return bytes(buffer)
+                utterance = collector.push(frame, observation)
+                if utterance is not None:
+                    if (
+                        not isinstance(utterance, UtteranceResult)
+                        or type(utterance.pcm) is not bytes
+                        or not utterance.pcm
+                        or len(utterance.pcm) > 256_000
+                    ):
+                        raise ValueError(ENROLLMENT_FAILED)
+                    return utterance.pcm
+            raise ValueError(ENROLLMENT_FAILED)
         except Exception:
             raise ValueError(ENROLLMENT_FAILED) from None
         finally:
-            for index in range(len(buffer)):
-                buffer[index] = 0
-            buffer.clear()
-            if decoder is not None:
-                decoder.close()
+            if collector is not None:
+                collector.close()
+            if vad is not None:
+                vad.close()
+            if pump is not None:
+                pump.close()
+
+    @staticmethod
+    def _require_frame(frame: PumpFrame) -> bytes:
+        if (
+            not isinstance(frame, PumpFrame)
+            or frame.failure_reason is not None
+            or frame.dropped
+            or type(frame.pcm) is not bytes
+            or len(frame.pcm) != _FRAME_BYTES
+        ):
+            raise ValueError(ENROLLMENT_FAILED)
+        return frame.pcm
 
 
 class VoiceProfileRegistry:

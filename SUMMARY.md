@@ -447,11 +447,12 @@ legacy branch into this line without a separate integration decision.
 
 ## Next Priorities
 
-1. Full-care Voice ASR/VAD now passes 6/6. Implement the local enrollment
-   readiness/countdown boundary before retrying Dad: Codex chat, PTY input and the real
-   five-second i9 capture are asynchronous, and sandbox PTY audio is not real-device
-   evidence. Then complete Dad/Mom enrollment and the separately supervised
-   replay/overlap slice. Voice remains disabled until these gates pass.
+1. Full-care Voice ASR/VAD passes 6/6. The local enrollment boundary now opens and
+   warms the Xiaomi source, drains it throughout the 15-second countdown, and then
+   returns one Silero-bounded utterance from at most 12 seconds of memory-only PCM.
+   Focused enrollment is 14/14 and Voice is 406/406; no Dad profile exists yet because
+   this revised path has not received its logged-in-i9 human run. Next complete Dad,
+   Mom and the supervised replay/overlap slice. Voice remains disabled until they pass.
 2. Continue the approved audio/cry plan at Stage A8; a production model and
    license are still required before enablement; household audio remains
    memory-only.

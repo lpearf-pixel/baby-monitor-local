@@ -857,7 +857,7 @@ disabled. Commit `24b8906` also replaces the stale Whisper enrollment adapter wi
 selected Paraformer and closes both model children on every exit (33 focused and 406
 Voice tests passed).
 
-- [ ] **Step 1A: Add a local enrollment readiness/countdown boundary**
+- [x] **Step 1A: Add a local enrollment readiness/countdown boundary**
 
 The current five-second capture begins from controller PTY input, but chat delivery and
 human speech are asynchronous. A real aggregate diagnostic captured a different longer
@@ -872,6 +872,18 @@ Real audio acceptance must run in the logged-in i9 user context. A sandbox PTY p
 reliably returned FFmpeg exit 255 / `operation_not_permitted` for the fixed loopback RTSP
 decoder; that result is not household microphone evidence. Add RED/GREEN timing tests,
 run focused/Voice gates, then retry Step 2 only through the corrected local boundary.
+
+The first implementation moved a fixed 15-second countdown onto the i9 but still opened
+a new decoder only at `capture_now` and consumed one fixed five-second block. A supervised
+Dad retry reached capture and failed the unchanged exact challenge gate; no profile or
+raw audio was persisted. The corrected software boundary now opens and warms the fixed
+decoder first, drains PCM throughout the 15-second local countdown to reach the live
+edge, then uses the already-approved Streaming Silero/utterance collector for at most
+12 seconds to return one complete memory-only utterance. Source, VAD, timeout, malformed
+frame and no-speech cases remain fail closed; the random challenge TTL and exact match
+are unchanged. Focused enrollment tests pass 14/14 and the Voice suite passes 406/406.
+This software evidence does not complete Step 2: one fresh logged-in-i9 Dad run is still
+required.
 
 - [ ] **Step 2: Enroll Dad privately**
 

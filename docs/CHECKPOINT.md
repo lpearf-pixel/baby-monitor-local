@@ -1084,3 +1084,11 @@ Dad 实机注册尚未通过，也未创建 profile。多轮聊天驱动尝试�
 delta +6，wake/challenge/digit 三项均 false，说明抓到的是另一时段语音而非近似口令。
 原始 PCM 与识别文字均未持久化。下一步先实现本地固定 readiness/countdown；禁止跨
 聊天 turn 等待已签发的 60 秒 challenge、禁止继续盲试、延长 TTL 或放宽 exact gate。
+
+随后首个本地 15 秒倒计时实现完成，但真实 Dad 尝试仍在 challenge 阶段 fail closed：
+它直到 `capture_now` 才新建解码器并读取固定五秒，摄像头/RTSP 建链与人工起说仍可能
+占用有效窗口。未创建 profile，未持久化原始音频。严格 TDD 将该边界改为先打开并预热
+固定音频源、在本地倒计时期间持续丢弃 PCM 追到 live edge，再由现有固定 Silero VAD
+和 utterance collector 在最多 12 秒内返回一段完整内存话语。随机数字、60 秒 TTL、
+exact match、Paraformer 与 ECAPA 门均未放宽。新鲜软件证据为 enrollment 14/14、Voice
+406/406、compile 与 diff check PASS；真实 logged-in-i9 Dad/Mom enrollment 仍待完成。

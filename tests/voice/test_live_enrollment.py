@@ -9,7 +9,8 @@ import pytest
 
 from packages.contracts.audio import AudioFailureReason
 from packages.contracts.settings import AudioSettings
-from services.audio.source import DecoderRead
+from services.voice.audio_pump import PumpFrame
+from services.voice.capture import UtteranceResult
 from services.voice.challenge import EnrollmentChallenge
 from services.voice.live_enrollment import (
     ENROLLMENT_FAILED,
@@ -20,6 +21,7 @@ from services.voice.live_enrollment import (
     VoiceProfileRegistry,
 )
 from services.voice.speaker import VoiceProfile
+from services.voice.vad import VadResult
 
 
 PROFILE_ID = "11111111-1111-4111-8111-111111111111"
@@ -177,56 +179,107 @@ def test_registry_publishes_only_canonical_mode_0600_role_mapping(
     }
 
 
-class Decoder:
-    def __init__(self, chunks: list[DecoderRead]) -> None:
-        self.chunks = chunks
+class Pump:
+    def __init__(self, frames: list[PumpFrame]) -> None:
+        self.frames = frames
+        self.warmed = False
         self.closed = False
 
-    def read(
-        self, _maximum: int, *, timeout_seconds: float | None = None
-    ) -> DecoderRead:
-        assert timeout_seconds is None or 0 < timeout_seconds <= 10.0
-        return self.chunks.pop(0)
+    def warm_up(self, cancelled: object) -> bool:
+        assert cancelled.is_set() is False
+        self.warmed = True
+        return True
+
+    def read_frame(self) -> PumpFrame:
+        return self.frames.pop(0)
 
     def close(self) -> None:
         self.closed = True
 
 
-def test_bounded_capture_returns_exact_memory_pcm_and_closes_decoder() -> None:
-    decoder = Decoder([DecoderRead(b"a" * 80_000), DecoderRead(b"b" * 80_000)])
+class Vad:
+    def __init__(self) -> None:
+        self.observed: list[bytes] = []
+        self.reset_count = 0
+        self.closed = False
+
+    def observe(self, pcm: bytes) -> VadResult:
+        self.observed.append(pcm)
+        return VadResult(True, 0.9)
+
+    def reset(self) -> None:
+        self.reset_count += 1
+
+    def close(self) -> None:
+        self.closed = True
+
+
+class Collector:
+    def __init__(self) -> None:
+        self.pushed: list[bytes] = []
+        self.reset_count = 0
+        self.closed = False
+
+    def push(self, pcm: bytes, _vad: VadResult) -> UtteranceResult | None:
+        self.pushed.append(pcm)
+        if len(self.pushed) == 2:
+            return UtteranceResult(b"complete utterance", "terminal_silence")
+        return None
+
+    def reset(self) -> None:
+        self.reset_count += 1
+
+    def close(self) -> None:
+        self.closed = True
+
+
+def test_bounded_capture_drains_countdown_then_returns_one_vad_utterance() -> None:
+    frames = [PumpFrame(b"d" * 3_200)] * 20 + [
+        PumpFrame(b"speech-1" * 400),
+        PumpFrame(b"speech-2" * 400),
+    ]
+    pump = Pump(frames)
+    vad = Vad()
+    collector = Collector()
+    output: list[str] = []
     capture = BoundedLivePcmCapture(
         AudioSettings(),
-        decoder_factory=lambda _settings: decoder,
-        clock=lambda: 0.0,
+        pump_factory=lambda _settings: pump,
+        vad_factory=lambda: vad,
+        collector_factory=lambda: collector,
     )
 
-    pcm = capture.capture()
+    pcm = capture.capture(countdown_seconds=2, printer=output.append)
 
-    assert pcm == b"a" * 80_000 + b"b" * 80_000
-    assert decoder.closed is True
+    assert pcm == b"complete utterance"
+    assert output == [
+        "capture_starts_in_seconds=2",
+        "capture_starts_in_seconds=1",
+        "capture_now=true",
+    ]
+    assert pump.warmed is True
+    assert pump.frames == []
+    assert vad.observed == [b"speech-1" * 400, b"speech-2" * 400]
+    assert pump.closed is True
+    assert vad.closed is True
+    assert collector.closed is True
 
 
-def test_bounded_capture_timeout_or_source_failure_is_closed() -> None:
-    times = iter((0.0, 11.0))
-    timeout_decoder = Decoder([])
+def test_bounded_capture_source_failure_during_countdown_is_closed() -> None:
+    pump = Pump([PumpFrame(b"", AudioFailureReason.AUDIO_SOURCE_UNAVAILABLE)])
+    vad = Vad()
+    collector = Collector()
     with pytest.raises(ValueError, match=f"^{ENROLLMENT_FAILED}$"):
         BoundedLivePcmCapture(
             AudioSettings(),
-            decoder_factory=lambda _settings: timeout_decoder,
-            clock=lambda: next(times),
-        ).capture()
-    failed_decoder = Decoder(
-        [DecoderRead(b"", AudioFailureReason.AUDIO_SOURCE_UNAVAILABLE)]
-    )
-    with pytest.raises(ValueError, match=f"^{ENROLLMENT_FAILED}$"):
-        BoundedLivePcmCapture(
-            AudioSettings(),
-            decoder_factory=lambda _settings: failed_decoder,
-            clock=lambda: 0.0,
-        ).capture()
+            pump_factory=lambda _settings: pump,
+            vad_factory=lambda: vad,
+            collector_factory=lambda: collector,
+        ).capture(countdown_seconds=1, printer=lambda _line: None)
 
-    assert timeout_decoder.closed is True
-    assert failed_decoder.closed is True
+    assert pump.closed is True
+    assert vad.closed is True
+    assert collector.closed is True
 
 
 def test_registry_refuses_symlinked_ancestor_without_external_write(

@@ -3,7 +3,6 @@ from __future__ import annotations
 import argparse
 import platform
 import signal
-import time
 from collections.abc import Callable
 from pathlib import Path
 from typing import Protocol
@@ -11,6 +10,7 @@ from uuid import uuid4
 
 from packages.contracts.settings import AudioSettings, VoiceCareSettings
 from services.voice.artifacts import voice_artifact_spec
+from services.voice.capture import UtteranceCollector
 from services.voice.challenge import EnrollmentChallengeSession
 from services.voice.ecapa import EcapaProcess
 from services.voice.enrollment import VoiceEnrollment, VoiceProfileStore
@@ -24,6 +24,7 @@ from services.voice.live_enrollment import (
     VoiceProfileRegistry,
 )
 from services.voice.paraformer import ParaformerProcess
+from services.voice.silero_runtime import StreamingSileroVad
 from services.voice.speaker_runtime import (
     EcapaObservationRunner,
     ecapa_model_version,
@@ -110,6 +111,7 @@ def _build_operator(
     paraformer = voice_artifact_spec(
         settings, "sherpa-onnx-paraformer-zh-2023-09-14"
     )
+    silero = voice_artifact_spec(settings, "silero-vad-v6.2")
     ecapa = voice_artifact_spec(settings, "speechbrain-ecapa-voxceleb")
     asr = ParaformerProcess(paraformer, project_root=project_root)
     process: EcapaProcess | None = None
@@ -138,7 +140,14 @@ def _build_operator(
             model_version=ecapa_model_version(ecapa),
             profile_id_factory=lambda: profile_id,
         )
-        capture = BoundedLivePcmCapture(AudioSettings())
+        capture = BoundedLivePcmCapture(
+            AudioSettings(),
+            vad_factory=lambda: StreamingSileroVad(
+                silero,
+                project_root=project_root,
+            ),
+            collector_factory=lambda: UtteranceCollector(settings),
+        )
         challenges = EnrollmentChallengeSession()
 
         def capture_phrase(phrase: str) -> bytes:
@@ -182,16 +191,14 @@ def _capture_after_countdown(
     capture: BoundedLivePcmCapture,
     input_fn: InputFunction,
     printer: Printer,
-    sleeper: Callable[[float], None] = time.sleep,
 ) -> bytes:
     printer(f"challenge={phrase}")
     if input_fn("press_enter_then_speak=") != "":
         raise ValueError(ENROLLMENT_FAILED)
-    for remaining in range(COUNTDOWN_SECONDS, 0, -1):
-        printer(f"capture_starts_in_seconds={remaining}")
-        sleeper(1.0)
-    printer("capture_now=true")
-    return capture.capture()
+    return capture.capture(
+        countdown_seconds=COUNTDOWN_SECONDS,
+        printer=printer,
+    )
 
 
 def _load_disabled_settings(project_root: Path) -> VoiceCareSettings:

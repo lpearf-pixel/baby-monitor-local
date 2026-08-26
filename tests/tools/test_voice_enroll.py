@@ -172,7 +172,11 @@ def test_operator_build_uses_selected_paraformer_and_closes_both_models(
     )
     monkeypatch.setattr(voice_enroll, "VoiceEnrollment", lambda **_kwargs: object())
     monkeypatch.setattr(voice_enroll, "ecapa_model_version", lambda _artifact: "ecapa-v1")
-    monkeypatch.setattr(voice_enroll, "BoundedLivePcmCapture", lambda _settings: object())
+    monkeypatch.setattr(
+        voice_enroll,
+        "BoundedLivePcmCapture",
+        lambda _settings, **_kwargs: object(),
+    )
     monkeypatch.setattr(voice_enroll, "EnrollmentChallengeSession", lambda: object())
 
     def build_coordinator(**kwargs: object) -> object:
@@ -186,6 +190,7 @@ def test_operator_build_uses_selected_paraformer_and_closes_both_models(
     assert built is coordinator
     assert artifacts == [
         "sherpa-onnx-paraformer-zh-2023-09-14",
+        "silero-vad-v6.2",
         "speechbrain-ecapa-voxceleb",
     ]
     assert closed == ["ecapa", "paraformer"]
@@ -232,7 +237,12 @@ def test_enrollment_challenge_waits_for_local_countdown_before_capture() -> None
     events: list[str] = []
 
     class Capture:
-        def capture(self) -> bytes:
+        def capture(self, *, countdown_seconds: int, printer: object) -> bytes:
+            assert countdown_seconds == 15
+            assert callable(printer)
+            for remaining in range(countdown_seconds, 0, -1):
+                printer(f"capture_starts_in_seconds={remaining}")
+            printer("capture_now=true")
             events.append("capture")
             return b"pcm"
 
@@ -241,18 +251,13 @@ def test_enrollment_challenge_waits_for_local_countdown_before_capture() -> None
         capture=Capture(),
         input_fn=lambda prompt: events.append(prompt) or "",
         printer=events.append,
-        sleeper=lambda seconds: events.append(f"sleep={seconds}"),
     )
 
     assert result == b"pcm"
     assert events == [
         "challenge=小小，我要说口令一二三四",
         "press_enter_then_speak=",
-        *[
-            item
-            for remaining in range(15, 0, -1)
-            for item in (f"capture_starts_in_seconds={remaining}", "sleep=1.0")
-        ],
+        *[f"capture_starts_in_seconds={remaining}" for remaining in range(15, 0, -1)],
         "capture_now=true",
         "capture",
     ]

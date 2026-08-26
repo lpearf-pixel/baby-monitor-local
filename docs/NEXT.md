@@ -205,12 +205,13 @@ never provide household audio for Git or chat.
 Test timing, deduplication, quiet/adult-speech negatives and privacy using generated or
 explicitly public media. Software tests do not prove household accuracy.
 
-**Next:** Voice listen-only is complete and the full-care ASR/VAD corpus now passes 6/6.
-Before another Dad/Mom attempt, implement the documented local enrollment
-readiness/countdown boundary so chat/PTY timing cannot open the five-second capture
-before the adult speaks. Then complete Dad/Mom enrollment and the separately supervised
-replay/overlap slice. Baby Care binding remains behind those gates. P4 authenticated
-private remote access is explicitly deferred to the final optional stage.
+**Next:** Voice listen-only is complete and the full-care ASR/VAD corpus passes 6/6.
+The revised enrollment boundary is software-complete: it warms/drains the Xiaomi audio
+during the local 15-second countdown and then captures one Silero-bounded utterance in
+memory instead of opening a fragile five-second decoder window. Next run one logged-in-
+i9 Dad enrollment, then Mom enrollment and the separately supervised replay/overlap
+slice. Baby Care binding remains behind those gates. P4 authenticated private remote
+access is explicitly deferred to the final optional stage.
 
 Installed non-interactive Voice preflight is complete at `41da786`: after the explicitly
 approved removal of one stale legacy pending request through `aacefd9`, the login
