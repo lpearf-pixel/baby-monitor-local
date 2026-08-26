@@ -25,6 +25,16 @@
 - Status and logs contain fixed codes and bounded counters only; never output source configuration, addresses, URLs, paths, reply text, household transcript, payloads or raw exceptions.
 - Do not push, merge, modify `main`, change private settings or enable production camera output during software implementation.
 
+## Gate mapping
+
+| Approved gate | Plan tasks | Exit condition |
+| --- | --- | --- |
+| V3A protocol/provenance | Task 1 | Synthetic packet RED/GREEN and pinned build gate pass |
+| V3B speaker feasibility | Task 4 and Task 8 Steps 1-3 | Generated tone heard from camera and post-health checks pass |
+| V3C fixed reply adapter | Tasks 2-3 and 7 | Closed transport, fixed media, status and side-effect-free software command pass |
+| V3D Voice integration | Tasks 5-6 | Camera-primary selection, pre-send-only fallback and echo recovery pass |
+| V3E supervised acceptance | Task 8 Steps 4-7 | Required interaction matrix and final installed/software gates pass |
+
 ---
 
 ### Task 1: Prove and close the pinned CS2 outbound payload defect
