@@ -273,6 +273,39 @@ designated => identifier "com.babymonitor.go2rtc"
 探针或每次变化的 `cdhash` 当成生产身份，也不要用放宽防火墙、修改摄像头 URI 或改为
 公网暴露来绕过权限。
 
+### 受监督的摄像头固定语音回复
+
+摄像头回复默认关闭。先按以下顺序验证；不要跳过前后健康检查：
+
+```bash
+make alpha-source-check
+make alpha-voice-listen-status
+make alpha-go2rtc-info
+make alpha-voice-camera-status
+make alpha-voice-camera-probe
+make alpha-source-check
+make alpha-voice-listen-status
+```
+
+`alpha-voice-camera-probe` 是唯一会操作扬声器的入口。它要求成人在摄像头旁、要求
+交互式 TTY，并只发送一秒生成音；它不录制家庭音频、不保留测试音，也不会自动启用
+生产回复。听见测试音且确认来源后，终端必须精确输入 `YES`。不确定来源、重复播放或
+任一后置健康检查失败都按失败处理。
+
+启用还要求当前 go2rtc 提交、补丁和二进制完全匹配的有效本机验收标记，以及忽略的
+`runtime/settings.yaml` 中 `voice_care.camera_reply_enabled: true`。设置后只运行：
+
+```bash
+make alpha-voice-listen-stop
+make alpha-voice-listen-start
+make alpha-voice-listen-status
+make alpha-voice-camera-status
+```
+
+Voice 回滚时把该私有设置恢复为 `false`，再只停止和启动 Voice。不要为摄像头回复失败
+重启整套 Alpha。若补丁版 go2rtc 本身导致 source 或入站音频失败，才使用现有的
+`make alpha-go2rtc-rollback`，随后重新运行 source 与 Voice 健康检查。
+
 ## 8. Go 工具链附带问题
 
 编译补丁版时曾出现：

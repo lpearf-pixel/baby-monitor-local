@@ -71,8 +71,11 @@ jobs:
           grep -F 'StartAtom("hvc1")' "$build_dir/source/pkg/iso/codecs.go"
           grep -F 'ListenUDP("udp4", nil)' \
             "$build_dir/source/pkg/xiaomi/miss/cs2/conn.go"
+          grep -F 'copy(req[offset+hdrSize:], payload)' \
+            "$build_dir/source/pkg/xiaomi/miss/cs2/conn.go"
           (
             cd "$build_dir/source"
+            go test ./pkg/xiaomi/miss/cs2 -run TestWritePacketCopiesPayload -count=1
             CGO_ENABLED=0 GOOS=darwin GOARCH=amd64 go build \
               -trimpath -ldflags='-s -w' -o "$build_dir/go2rtc" .
           )

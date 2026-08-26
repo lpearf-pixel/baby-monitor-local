@@ -518,6 +518,7 @@ git commit -m "fix: prevent camera reply echo loops"
 - Modify: `tests/deploy/test_alpha_commands.py`
 - Modify: `tests/deploy/test_voice_worker_deploy.py`
 - Modify: `tests/deploy/test_go2rtc_ci.py`
+- Modify: `.github/workflows/ci.yml`
 - Modify: `docs/runbooks/XIAOMI_CS2_MACOS_TROUBLESHOOTING.md`
 - Modify: `README.md`
 
@@ -525,7 +526,7 @@ git commit -m "fix: prevent camera reply echo loops"
 - Produces: `make alpha-voice-camera-test`, `make alpha-voice-camera-status` and `make alpha-voice-camera-probe`.
 - Extends: the installed Guardian artifact/provenance checks without operating the speaker.
 
-- [ ] **Step 1: Write Make/deployment RED tests**
+- [x] **Step 1: Write Make/deployment RED tests**
 
 Require:
 
@@ -545,7 +546,7 @@ camera operation. Assert only the probe target can play the tone and it requires
 Assert Guardian automatic acceptance checks patch, binary, test provenance and marker
 state but does not invoke the probe or synthesize a reply.
 
-- [ ] **Step 2: Run deployment RED**
+- [x] **Step 2: Run deployment RED**
 
 ```bash
 .venv-alpha/bin/python -m pytest -q tests/deploy/test_alpha_commands.py tests/deploy/test_voice_worker_deploy.py tests/deploy/test_go2rtc_ci.py -k 'camera or go2rtc or voice'
@@ -553,7 +554,7 @@ state but does not invoke the probe or synthesize a reply.
 
 Expected: failures for missing Make targets and installed checks.
 
-- [ ] **Step 3: Add commands and operator documentation**
+- [x] **Step 3: Add commands and operator documentation**
 
 Document this exact safe order:
 
@@ -573,7 +574,7 @@ marker plus private `camera_reply_enabled: true`, followed by a Voice-only resta
 Document Voice-only rollback by restoring the flag to false and restarting only Voice;
 go2rtc rollback remains a separate existing command if the protocol build itself fails.
 
-- [ ] **Step 4: Run documentation and deployment GREEN**
+- [x] **Step 4: Run documentation and deployment GREEN**
 
 ```bash
 .venv-alpha/bin/python -m pytest -q tests/deploy/test_alpha_commands.py tests/deploy/test_voice_worker_deploy.py tests/deploy/test_go2rtc_ci.py
@@ -584,7 +585,7 @@ bash -n tools/test_guardian.sh
 git diff --check
 ```
 
-- [ ] **Step 5: Run the full software and privacy gate**
+- [x] **Step 5: Run the full software and privacy gate**
 
 ```bash
 make alpha-voice-test
@@ -598,10 +599,10 @@ git diff --check
 Scan the tracked diff for credentials, private addresses, household media/audio,
 SQLite files, generated settings, runtime paths and unrestricted speaker/go2rtc inputs.
 
-- [ ] **Step 6: Commit Task 7**
+- [x] **Step 6: Commit Task 7**
 
 ```bash
-git add Makefile tools/test_guardian.sh tests/deploy/test_alpha_commands.py tests/deploy/test_voice_worker_deploy.py tests/deploy/test_go2rtc_ci.py docs/runbooks/XIAOMI_CS2_MACOS_TROUBLESHOOTING.md README.md
+git add Makefile tools/test_guardian.sh tests/deploy/test_alpha_commands.py tests/deploy/test_voice_worker_deploy.py tests/deploy/test_go2rtc_ci.py .github/workflows/ci.yml docs/runbooks/XIAOMI_CS2_MACOS_TROUBLESHOOTING.md README.md docs/superpowers/plans/2026-08-26-xiaomi-camera-reply.md
 git commit -m "docs: add Xiaomi camera reply operations"
 ```
 

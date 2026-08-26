@@ -9,6 +9,8 @@ GO2RTC_REQUIREMENT='designated => identifier "com.babymonitor.go2rtc"'
 VOICE_KEYCHAIN_APP="$ROOT/.local/VoiceKeychainHelper.app"
 VOICE_KEYCHAIN_EXECUTABLE="$VOICE_KEYCHAIN_APP/Contents/MacOS/voice-keychain-helper"
 VOICE_KEYCHAIN_REQUIREMENT='designated => identifier "com.babymonitor.voice-keychain-helper"'
+GO2RTC_PATCH="$ROOT/patches/go2rtc-macos-hybrid-hd.patch"
+GO2RTC_METADATA="$ROOT/runtime/build/go2rtc.json"
 PASS_COUNT=0
 FAIL_COUNT=0
 
@@ -120,7 +122,11 @@ check_required_binaries() {
     [[ -x "$ROOT/.venv-alpha/bin/uvicorn" ]] && \
     [[ -x "$ROOT/.local/bin/go2rtc" ]] && \
     [[ -x "$GO2RTC_EXECUTABLE" ]] && \
-    [[ -x "$VOICE_KEYCHAIN_EXECUTABLE" ]] || return 1
+    [[ -x "$VOICE_KEYCHAIN_EXECUTABLE" ]] && \
+    [[ -r "$GO2RTC_PATCH" ]] && \
+    [[ -r "$GO2RTC_METADATA" ]] && \
+    [[ -r "$ROOT/tests/voice/test_camera_reply.py" ]] && \
+    [[ -r "$ROOT/tests/tools/test_voice_camera_reply.py" ]] || return 1
 
   codesign --verify --deep --strict \
     --requirements "=$GO2RTC_REQUIREMENT" "$GO2RTC_APP" || return 1
@@ -138,7 +144,11 @@ check_required_binaries() {
   if [[ "$requirement" == *cdhash* ]]; then
     return 1
   fi
-  [[ "$requirement" == *"$VOICE_KEYCHAIN_REQUIREMENT"* ]]
+  [[ "$requirement" == *"$VOICE_KEYCHAIN_REQUIREMENT"* ]] && \
+    make -C "$ROOT" --no-print-directory alpha-voice-camera-test \
+      >/dev/null 2>&1 && \
+    "$PYTHON" "$ROOT/tools/voice_camera_reply.py" verify-marker \
+      >/dev/null 2>&1
 }
 
 check_runtime_config() {

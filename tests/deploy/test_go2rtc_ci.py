@@ -15,6 +15,8 @@ def test_ci_verifies_and_cross_builds_the_pinned_go2rtc_patch() -> None:
         "verify_and_apply_patch",
         'StartAtom("hvc1")',
         'ListenUDP("udp4", nil)',
+        'copy(req[offset+hdrSize:], payload)',
+        'go test ./pkg/xiaomi/miss/cs2 -run TestWritePacketCopiesPayload -count=1',
         "CGO_ENABLED=0 GOOS=darwin GOARCH=amd64 go build",
         "Mach-O 64-bit x86_64 executable",
     ):

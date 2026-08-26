@@ -1054,6 +1054,34 @@ def test_makefile_exposes_go2rtc_build_lifecycle(target: str, command: str) -> N
     assert f"tools/go2rtc_build.py {command}" in result.stdout
 
 
+def test_makefile_exposes_closed_camera_reply_operations() -> None:
+    outputs = {}
+    for target in (
+        "alpha-voice-camera-test",
+        "alpha-voice-camera-status",
+        "alpha-voice-camera-probe",
+    ):
+        result = subprocess.run(
+            ["make", "-n", target],
+            cwd=ROOT,
+            check=False,
+            capture_output=True,
+            text=True,
+        )
+        assert result.returncode == 0
+        outputs[target] = result.stdout
+
+    assert "tests/voice/test_camera_reply.py" in outputs["alpha-voice-camera-test"]
+    assert "tests/tools/test_voice_camera_reply.py" in outputs["alpha-voice-camera-test"]
+    assert "tools/voice_camera_reply.py status" in outputs["alpha-voice-camera-status"]
+    assert "tools/voice_camera_reply.py probe" in outputs["alpha-voice-camera-probe"]
+    for target in ("alpha-voice-camera-test", "alpha-voice-camera-status"):
+        output = outputs[target].lower()
+        assert "http://" not in output
+        assert "curl" not in output
+        assert "voice_camera_reply.py probe" not in output
+
+
 def test_installer_ensures_patched_build_instead_of_downloading_release() -> None:
     content = (ROOT / "tools/install_alpha_macos.sh").read_text(encoding="utf-8")
 

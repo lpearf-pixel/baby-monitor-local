@@ -92,6 +92,19 @@ loopback 音频流，将解码后的 PCM 立即丢弃，并在退出时释放独
 消费者。命令只输出 codec、采样率、声道、时长和字节计数等有界指标，不输出
 流地址、凭据或音频内容。
 
+小米摄像头固定语音回复默认关闭。软件测试与状态查询不会播放声音：
+
+```bash
+make alpha-voice-camera-test
+make alpha-voice-camera-status
+```
+
+只有 `make alpha-voice-camera-probe` 会在成人守候摄像头时播放一秒生成音，并要求
+在终端精确输入 `YES`；它不录音、不保存生成音，也不会自动启用生产回复。通过后，
+仍须在忽略的本机设置中把 `voice_care.camera_reply_enabled` 设为 `true`，然后只重启
+Voice。要回滚则把该值恢复为 `false`，同样只重启 Voice；仅当 go2rtc 协议构建本身
+失败时，才使用独立的 `make alpha-go2rtc-rollback`。
+
 ## 项目目标
 
 - 256GB microSD 负责全天循环录像，写满后覆盖最早内容。

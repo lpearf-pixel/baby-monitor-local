@@ -109,6 +109,22 @@ def test_install_start_stop_and_guardian_gate_keep_voice_as_one_sibling() -> Non
             assert sibling not in body.lower()
 
 
+def test_guardian_gate_checks_camera_reply_provenance_without_playback() -> None:
+    guardian = (ROOT / "tools/test_guardian.sh").read_text(encoding="ascii")
+    required = guardian.split("check_required_binaries() {", 1)[1].split(
+        "\n}\n\ncheck_runtime_config", 1
+    )[0]
+
+    assert 'patches/go2rtc-macos-hybrid-hd.patch' in guardian
+    assert 'runtime/build/go2rtc.json' in guardian
+    assert 'tests/voice/test_camera_reply.py' in required
+    assert 'tests/tools/test_voice_camera_reply.py' in required
+    assert 'alpha-voice-camera-test' in required
+    assert 'tools/voice_camera_reply.py" verify-marker' in required
+    assert "voice_camera_reply.py\" probe" not in required
+    assert "_write_tone" not in guardian
+
+
 def test_voice_only_start_stop_is_symmetric_for_worker_and_operator(
     tmp_path: Path,
 ) -> None:
