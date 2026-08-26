@@ -114,11 +114,15 @@ class FixedVoiceSynthesizer:
         ducker: CaptureDucker,
         temporary_directory: Path | None = None,
         sleep: Callable[[float], None] = time.sleep,
+        post_playback_guard_seconds: float = _POST_PLAYBACK_GUARD_SECONDS,
     ) -> None:
+        if not 0.0 <= post_playback_guard_seconds <= _POST_PLAYBACK_GUARD_SECONDS:
+            raise ValueError(VOICE_TTS_UNAVAILABLE)
         self._runner = runner
         self._ducker = ducker
         self._temporary_directory = temporary_directory
         self._sleep = sleep
+        self._post_playback_guard_seconds = post_playback_guard_seconds
 
     def speak_code(self, code: str, cancelled: CancelEvent) -> bool:
         phrase = phrase_for_semantic_code(code)
@@ -159,7 +163,8 @@ class FixedVoiceSynthesizer:
                     output.unlink()
                 except OSError:
                     pass
-            self._sleep(_POST_PLAYBACK_GUARD_SECONDS)
+            if self._post_playback_guard_seconds:
+                self._sleep(self._post_playback_guard_seconds)
             self._ducker.resume()
 
 

@@ -222,6 +222,7 @@ def build_listen_only_worker(
         synthesizer = FixedVoiceSynthesizer(
             runner=BoundedCommandRunner(),
             ducker=ducker,
+            post_playback_guard_seconds=0.0,
         )
         controller = ListenOnlyController(asr=asr, synthesizer=synthesizer)
         return ListenOnlyVoiceWorker(

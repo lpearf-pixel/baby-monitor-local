@@ -85,6 +85,25 @@ def test_synthesizer_uses_stdin_fixed_volume_ducking_and_guard(tmp_path: Path) -
     assert list(tmp_path.iterdir()) == []
 
 
+def test_synthesizer_can_resume_immediately_for_exact_wake_followup(
+    tmp_path: Path,
+) -> None:
+    runner = RecordingRunner()
+    ducker = RecordingDucker()
+    sleeps: list[float] = []
+    synth = FixedVoiceSynthesizer(
+        runner=runner,
+        ducker=ducker,
+        temporary_directory=tmp_path,
+        sleep=sleeps.append,
+        post_playback_guard_seconds=0.0,
+    )
+
+    assert synth.speak_code("listen_only_ready", threading.Event()) is True
+    assert ducker.events == ["pause", "resume"]
+    assert sleeps == []
+
+
 def test_synthesizer_resumes_capture_when_output_fails_or_is_cancelled(tmp_path: Path) -> None:
     for cancelled, outcomes in ((False, [False]), (True, [True, True])):
         runner = RecordingRunner(outcomes)
