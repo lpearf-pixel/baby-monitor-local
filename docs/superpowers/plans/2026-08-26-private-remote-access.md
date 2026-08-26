@@ -10,6 +10,8 @@
 
 **Spec:** docs/superpowers/specs/2026-08-26-private-remote-access-design.md
 
+**Status:** Tasks 1–5 software complete; Task 6 installed i9/two-iPhone gate pending.
+
 ## Global Constraints
 
 - Tailscale Serve HTTPS is private tailnet access only. Never invoke or enable Funnel, router forwarding, a subnet router, an exit node, Tailscale SSH or device sharing.
@@ -387,7 +389,7 @@ git commit -m "docs: add private remote access workflow"
 - Records the P4 software head and exact fresh gate counts.
 - Does not claim installation, policy, Serve or phone PASS unless observed.
 
-- [ ] **Step 1: Run focused and adjacent software gates**
+- [x] **Step 1: Run focused and adjacent software gates**
 
 ~~~bash
 make alpha-remote-test
@@ -399,7 +401,7 @@ node --test tests/frontend/*.test.mjs
 Expected: all pass. This proves parser, CLI, redaction, application-auth and same-origin
 contracts only, not Tailscale account policy or off-home access.
 
-- [ ] **Step 2: Run static/privacy gates**
+- [x] **Step 2: Run static/privacy gates**
 
 ~~~bash
 .venv-alpha/bin/python -m compileall -q packages/monitoring/private_remote_access.py tools/private_remote_access.py
@@ -414,7 +416,7 @@ Review every match. Loopback literals, explicit prohibitions and synthetic canar
 allowed; executable prohibited actions, private network literals, credentials, real
 identities or keys fail.
 
-- [ ] **Step 3: Update documents and commit**
+- [x] **Step 3: Update documents and commit**
 
 Set P4 to Software complete; installed/device gates pending. Record that Dashboard-health
 recovery, Tailscale install/login, private grant merge, Serve apply and two-iPhone

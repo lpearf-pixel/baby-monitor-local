@@ -1023,3 +1023,14 @@ source check 仍 PASS，最近 30 分钟新增 wav/aiff/pcm/opus 文件为 0。�
 P5 72 小时门前，且只允许两句现有固定回复。摄像头实机门通过前 i9 扬声器仍是生产
 输出；摄像头发送开始或结果不确定后禁止二次 i9 回退。当前仅完成文档，没有修改协议/
 Voice 业务代码、播放摄像头、保存家庭音频、push、merge 或修改 main。
+
+2026-08-26 完成 P4 authenticated private remote access 软件检查点。业务提交
+`a39340f`、`b2d0e88`、`f55d08c` 和 `a265312` 分别实现纯证据合同、只读有界 macOS
+适配器、精确 `/dev/tty` 确认后的固定 Serve 配置接口，以及 Make/grants/runbook
+工作流。全仓门首先发现 Guardian 测试 fixture 漏掉既有 `voice_preflight` 检查；没有
+降低生产门禁，测试同步提交 `5dca783` 后 Guardian 部署测试 31/31、完整 Python
+1,514/1,514。P4 门为 95 passed/1 个沙箱 Unix-socket fixture skip，邻接 API 123/123、
+前端 73/73；Python compile、shell syntax、Make dry-run、diff 和逐项审查后的隐私扫描
+均 PASS。该证据只证明 parser、redaction、固定 argv、Basic Auth 与 same-origin 软件
+合同；没有安装/登录真实 Tailscale，没有合并私有 policy、应用 Serve 或运行两部
+iPhone 蜂窝网络验收。P4 installed/device gate 仍 pending，下一软件切片为 Voice Gate V3。

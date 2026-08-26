@@ -8,9 +8,10 @@ Updated: 2026-08-26
 - Stable Xiaomi line: `stable/xiaomi-alpha` at `0df20ae`.
 - Active implementation line: `codex/voice-care-v1-gate-v1`. The continuous
   memory-only listen-only implementation is local through `4590489`; P4 private-access
-  design/plan and the approved Voice Gate V3 camera-reply design/plan are subsequent
-  local documentation checkpoints. The remote branch remains at `4eeab86` and these
-  local commits have not been pushed.
+  software is implemented through `a265312`, with the repository Guardian fixture
+  synchronized at `5dca783`. The approved Voice Gate V3 camera-reply design/plan is the
+  next software slice. The remote branch remains at `4eeab86` and these local commits
+  have not been pushed.
 - The evidence-retention line is based on the published Dashboard snapshot `69e2d5b`;
   the Dashboard remains complete and its published branch is not rewritten.
 - Remote branch `codex/baby-guardian-event-loop` remains at its earlier squash snapshot
@@ -220,7 +221,16 @@ Important ownership boundaries:
 
 ## Verification Evidence
 
-The latest complete software gate, including Guardian live-acceptance coverage, was:
+The 2026-08-26 P4 software checkpoint passed `make alpha-remote-test` with 95 passed
+and one sandbox-only Unix-socket fixture skip, adjacent Dashboard/API tests with
+123 passed, Dashboard Node tests with 73 passed, and the complete Python repository
+suite with 1,514 passed. Python compilation, changed shell syntax, Make dry-runs,
+`git diff --check` and reviewed prohibited-command/private-literal scans passed. This
+proves only the parser, bounded local adapter, fixed configure interface, Basic-auth and
+same-origin software contracts. Tailscale installation/login, private policy merge,
+Serve application and both off-Wi-Fi iPhone checks remain pending.
+
+An earlier installed Guardian gate, including live-acceptance coverage, was:
 
 - Python repository suite: `931 passed` on the installed Intel i9;
 - Dashboard Node suite: `73 passed`;
@@ -456,8 +466,9 @@ legacy branch into this line without a separate integration decision.
    heard. The final software gate is 325/325 and no recent raw audio file was created.
    Full-care Voice remains disabled; its private-corpus accuracy and Dad/Mom enrollment
    gates are not claimed complete by listen-only mode.
-6. Complete authenticated private remote access using Tailscale Serve/ACL only.
-7. Implement approved Voice Gate V3 after the P4 software checkpoint: prove the pinned
+6. P4 private-access software is complete; keep installation/login, private grant merge,
+   fixed Serve apply and two-iPhone cellular acceptance as a separate human gate.
+7. Implement approved Voice Gate V3 next: prove the pinned
    CS2 payload path, pass one supervised generated-tone gate, then route only the two
    fixed listen-only replies to the camera with pre-send-only i9 fallback.
 8. Complete the final 72-hour release gate before any release/tag decision.
@@ -515,8 +526,8 @@ only the bounded log window needed to identify the first actionable failure.
 3. Verify repository root, remote, branch, HEAD, upstream, dirty state and recent log.
 4. Preserve `uv.lock` and any other user changes; do not reset or clean.
 5. Reconcile local and remote feature histories before any push or branch integration.
-6. Continue the private WS2021 calibration and independent 24-hour environment gate;
-   do not restart completed Guardian milestones.
+6. Continue Voice Gate V3 as the next software slice; P4 installed/two-iPhone acceptance
+   may proceed independently when the human prerequisites are available.
 7. Use focused tests for the slice and the full gate only at the next milestone or
    stable-branch integration.
 8. Do not push, create a PR, merge, tag or modify `main` without explicit approval.

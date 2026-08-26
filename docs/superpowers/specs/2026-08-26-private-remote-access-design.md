@@ -1,7 +1,7 @@
 # P4 Authenticated Private Remote Access Design
 
 **Date:** 2026-08-26
-**Status:** Approved in chat; pending written-spec review
+**Status:** Approved
 **Owning stage:** `docs/NEXT.md` P4 and Baby Monitor Local V1 Task 7
 
 ## Goal

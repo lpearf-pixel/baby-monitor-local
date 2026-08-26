@@ -404,6 +404,16 @@
   the final matrix, source health stayed PASS and the recent raw-audio file count was
   zero. This proves only the supervised room trial, not arbitrary speakers, noise or
   unattended-care safety.
+- P4 authenticated private remote access is software-complete through `a265312`, with
+  a repository Guardian fixture synchronization at `5dca783`. The pure bounded parser,
+  read-only macOS audit, exact-confirmation fixed Serve adapter, four Make interfaces,
+  minimum synthetic `tcp:443` grant and private-access runbook are implemented. Fresh
+  gates are P4 95 passed/1 sandbox-only socket skip, adjacent API 123 passed, frontend
+  73 passed and full Python 1,514 passed; compilation, shell, Make, diff and reviewed
+  privacy scans passed. No real Tailscale software was installed or authenticated, no
+  policy or Serve state was changed and no phone gate was run. Dashboard-health
+  recovery, private grant merge, fixed Serve apply and two-iPhone cellular acceptance
+  remain pending; Voice Gate V3 is the next independent software slice.
 - Installed-i9 audio-source discovery now verifies that the Xiaomi source exposes HEVC
   video plus Opus audio and that the fixed loopback `audio_analysis` alias exposes only
   Opus. The real input is supported 48 kHz stereo Opus; the fixed FFmpeg boundary

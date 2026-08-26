@@ -217,13 +217,17 @@ Voice remains disabled and this does not change the required ASR/VAD 6/6 gate ab
 
 ## P4 — Authenticated private remote access
 
-**Status:** Pending. Public exposure remains prohibited.
+**Status:** Software complete. Installed i9 and two-iPhone acceptance pending; public
+exposure remains prohibited.
 
-**Prerequisites:** P3 complete unless the user separately approves resequencing; an
-approved private-access review and required local account permissions are available.
+**Prerequisites:** The software slice was explicitly approved and resequenced. The
+installed gate requires a healthy Dashboard, approved private policy review and the
+required local/account permissions.
 
-**Codex can:** reconcile V1 Task 7 with current iPhone clients, verify loopback binds,
-prepare bounded Tailscale Serve/ACL steps and run configuration/security checks.
+**Codex can:** run the implemented bounded preflight/status/software checks and, only
+after the human prerequisites pass, apply the one fixed Serve route through the exact
+TTY confirmation workflow. Parser, adapter, Make, grants example and runbook tasks are
+complete through `a265312`.
 
 **Human required:** authenticate devices/accounts, approve external service changes and
 confirm both phones from outside the home network.
@@ -232,7 +236,9 @@ confirm both phones from outside the home network.
 Only the authenticated application is reachable; camera, go2rtc and SQLite remain
 private; no credentials enter Git, commands, reports or chat.
 
-**Next:** Voice Gate V3 Xiaomi camera reply, then P5.
+**Next:** Voice Gate V3 Xiaomi camera reply is the next software slice. P4 installation,
+policy and phone acceptance may proceed independently but must not be inferred from the
+software checkpoint.
 
 ## Voice Gate V3 — Xiaomi camera reply
 
