@@ -12,6 +12,8 @@ import subprocess
 import sys
 import tempfile
 import wave
+from collections.abc import Iterator
+from contextlib import contextmanager
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Protocol, TextIO
@@ -56,6 +58,33 @@ class ProbeTransport(Protocol):
     def start(self, media: Path) -> CameraReplyResult: ...
 
     def stop(self) -> CameraReplyResult: ...
+
+
+class _ControllingTTY:
+    def __init__(self, reader: TextIO, writer: TextIO) -> None:
+        self._reader = reader
+        self._writer = writer
+
+    def isatty(self) -> bool:
+        return self._reader.isatty() and self._writer.isatty()
+
+    def readline(self, limit: int = -1) -> str:
+        return self._reader.readline(limit)
+
+    def write(self, value: str) -> int:
+        return self._writer.write(value)
+
+    def flush(self) -> None:
+        self._writer.flush()
+
+
+@contextmanager
+def open_controlling_tty(
+    path: Path = Path("/dev/tty"),
+) -> Iterator[_ControllingTTY]:
+    with path.open("r", encoding="ascii", buffering=1) as reader:
+        with path.open("w", encoding="ascii", buffering=1) as writer:
+            yield _ControllingTTY(reader, writer)
 
 
 @dataclass(frozen=True, slots=True)
@@ -373,7 +402,7 @@ def main(argv: list[str] | None = None) -> int:
         print_report(report)
         return 0 if report.acceptance_marker_current else 2
     try:
-        with open("/dev/tty", "r+", encoding="ascii", buffering=1) as tty:
+        with open_controlling_tty() as tty:
             report = run_probe(
                 ROOT,
                 transport=LoopbackCameraReplyTransport(

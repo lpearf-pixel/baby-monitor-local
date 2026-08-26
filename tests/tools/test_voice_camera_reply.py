@@ -3,11 +3,15 @@ from __future__ import annotations
 import io
 import json
 import os
+import pty
 import stat
+import tty as tty_module
 import wave
 from pathlib import Path
 
 import pytest
+
+import tools.voice_camera_reply as voice_camera_reply
 
 from packages.monitoring.go2rtc_build import BuildMetadata, sha256_file
 from services.voice.camera_reply import (
@@ -85,6 +89,23 @@ def _evidence() -> CameraReplyEvidence:
         incoming_audio_codec="OPUS",
         sendonly_audio_codec="OPUS",
     )
+
+
+def test_controlling_tty_supports_real_nonseekable_terminal_io() -> None:
+    master_fd, slave_fd = pty.openpty()
+    tty_module.setraw(slave_fd)
+    slave_path = Path(os.ttyname(slave_fd))
+    try:
+        with voice_camera_reply.open_controlling_tty(slave_path) as terminal:
+            assert terminal.isatty() is True
+            os.write(master_fd, b"YES\n")
+            assert terminal.readline(5) == "YES\n"
+            assert terminal.write("ready") == 5
+            terminal.flush()
+            assert os.read(master_fd, 5) == b"ready"
+    finally:
+        os.close(slave_fd)
+        os.close(master_fd)
 
 
 def test_acceptance_loads_only_exact_current_private_marker(tmp_path: Path) -> None:
