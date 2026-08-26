@@ -3,6 +3,7 @@ from __future__ import annotations
 import argparse
 import platform
 import signal
+import threading
 import time
 from collections.abc import Callable
 from pathlib import Path
@@ -27,6 +28,11 @@ from services.voice.paraformer import ParaformerProcess
 from services.voice.speaker_runtime import (
     EcapaObservationRunner,
     ecapa_model_version,
+)
+from services.voice.tts import (
+    BoundedCommandRunner,
+    FixedVoiceSynthesizer,
+    NoopCaptureDucker,
 )
 
 
@@ -140,6 +146,10 @@ def _build_operator(
         )
         capture = BoundedLivePcmCapture(AudioSettings())
         challenges = EnrollmentChallengeSession()
+        synthesizer = FixedVoiceSynthesizer(
+            runner=BoundedCommandRunner(),
+            ducker=NoopCaptureDucker(),
+        )
 
         def capture_phrase(phrase: str) -> bytes:
             return _capture_after_countdown(
@@ -147,6 +157,9 @@ def _build_operator(
                 capture=capture,
                 input_fn=input_fn,
                 printer=printer,
+                cue=lambda: synthesizer.speak_code(
+                    "listen_only_ready", threading.Event()
+                ),
             )
 
         coordinator = LiveEnrollmentCoordinator(
@@ -182,6 +195,7 @@ def _capture_after_countdown(
     capture: BoundedLivePcmCapture,
     input_fn: InputFunction,
     printer: Printer,
+    cue: Callable[[], bool],
     sleeper: Callable[[float], None] = time.sleep,
 ) -> bytes:
     printer(f"challenge={phrase}")
@@ -190,6 +204,8 @@ def _capture_after_countdown(
     for remaining in range(COUNTDOWN_SECONDS, 0, -1):
         printer(f"capture_starts_in_seconds={remaining}")
         sleeper(1.0)
+    if not cue():
+        raise ValueError(ENROLLMENT_FAILED)
     printer("capture_now=true")
     return capture.capture()
 

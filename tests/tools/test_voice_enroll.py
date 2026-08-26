@@ -242,6 +242,7 @@ def test_enrollment_challenge_waits_for_local_countdown_before_capture() -> None
         input_fn=lambda prompt: events.append(prompt) or "",
         printer=events.append,
         sleeper=lambda seconds: events.append(f"sleep={seconds}"),
+        cue=lambda: events.append("cue") or True,
     )
 
     assert result == b"pcm"
@@ -253,6 +254,7 @@ def test_enrollment_challenge_waits_for_local_countdown_before_capture() -> None
             for remaining in range(15, 0, -1)
             for item in (f"capture_starts_in_seconds={remaining}", "sleep=1.0")
         ],
+        "cue",
         "capture_now=true",
         "capture",
     ]
