@@ -10,7 +10,6 @@ from uuid import uuid4
 
 from packages.contracts.settings import AudioSettings, VoiceCareSettings
 from services.voice.artifacts import voice_artifact_spec
-from services.voice.asr import AsrEngine
 from services.voice.challenge import EnrollmentChallengeSession
 from services.voice.ecapa import EcapaProcess
 from services.voice.enrollment import VoiceEnrollment, VoiceProfileStore
@@ -23,6 +22,7 @@ from services.voice.live_enrollment import (
     LiveEnrollmentCoordinator,
     VoiceProfileRegistry,
 )
+from services.voice.paraformer import ParaformerProcess
 from services.voice.speaker_runtime import (
     EcapaObservationRunner,
     ecapa_model_version,
@@ -105,51 +105,71 @@ def _build_operator(
     if platform.system() != "Darwin" or platform.machine() != "x86_64":
         raise ValueError(ENROLLMENT_FAILED)
     settings = _load_disabled_settings(project_root)
-    whisper = voice_artifact_spec(settings, "openai-whisper-base")
+    paraformer = voice_artifact_spec(
+        settings, "sherpa-onnx-paraformer-zh-2023-09-14"
+    )
     ecapa = voice_artifact_spec(settings, "speechbrain-ecapa-voxceleb")
-    asr = AsrEngine(whisper, project_root=project_root)
-    keychain = keychain_for_runtime(project_root)
-    profile_id = str(uuid4())
-    store = VoiceProfileStore(
-        project_root / f"runtime/private/voice-profiles/{profile_id}.json",
-        keychain,
-        boundary=project_root,
-        profile_id=profile_id,
-    )
-    registry = VoiceProfileRegistry(
-        project_root / "runtime/private/voice-profile-bindings.json",
-        boundary=project_root,
-    )
-    process = EcapaProcess(ecapa, project_root=project_root)
-    runner = EcapaObservationRunner(
-        process=process,
-        supervised_single_speaker=True,
-    )
-    enrollment = VoiceEnrollment(
-        runner=runner,
-        store=store,
-        model_version=ecapa_model_version(ecapa),
-        profile_id_factory=lambda: profile_id,
-    )
-    capture = BoundedLivePcmCapture(AudioSettings())
-    challenges = EnrollmentChallengeSession()
+    asr = ParaformerProcess(paraformer, project_root=project_root)
+    process: EcapaProcess | None = None
+    runner: EcapaObservationRunner | None = None
+    try:
+        keychain = keychain_for_runtime(project_root)
+        profile_id = str(uuid4())
+        store = VoiceProfileStore(
+            project_root / f"runtime/private/voice-profiles/{profile_id}.json",
+            keychain,
+            boundary=project_root,
+            profile_id=profile_id,
+        )
+        registry = VoiceProfileRegistry(
+            project_root / "runtime/private/voice-profile-bindings.json",
+            boundary=project_root,
+        )
+        process = EcapaProcess(ecapa, project_root=project_root)
+        runner = EcapaObservationRunner(
+            process=process,
+            supervised_single_speaker=True,
+        )
+        enrollment = VoiceEnrollment(
+            runner=runner,
+            store=store,
+            model_version=ecapa_model_version(ecapa),
+            profile_id_factory=lambda: profile_id,
+        )
+        capture = BoundedLivePcmCapture(AudioSettings())
+        challenges = EnrollmentChallengeSession()
 
-    def capture_phrase(phrase: str) -> bytes:
-        printer(f"challenge={phrase}")
-        if input_fn("press_enter_then_speak=") != "":
-            raise ValueError(ENROLLMENT_FAILED)
-        return capture.capture()
+        def capture_phrase(phrase: str) -> bytes:
+            printer(f"challenge={phrase}")
+            if input_fn("press_enter_then_speak=") != "":
+                raise ValueError(ENROLLMENT_FAILED)
+            return capture.capture()
 
-    coordinator = LiveEnrollmentCoordinator(
-        role=role,
-        capture=capture_phrase,
-        asr=asr,
-        challenges=challenges,
-        enrollment=enrollment,
-        registry=registry,
-        store=store,
-    )
-    return coordinator, runner.close
+        coordinator = LiveEnrollmentCoordinator(
+            role=role,
+            capture=capture_phrase,
+            asr=asr,
+            challenges=challenges,
+            enrollment=enrollment,
+            registry=registry,
+            store=store,
+        )
+    except Exception:
+        if runner is not None:
+            runner.close()
+        elif process is not None:
+            process.close()
+        asr.close()
+        raise
+
+    def close() -> None:
+        try:
+            assert runner is not None
+            runner.close()
+        finally:
+            asr.close()
+
+    return coordinator, close
 
 
 def _load_disabled_settings(project_root: Path) -> VoiceCareSettings:

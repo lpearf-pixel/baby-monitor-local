@@ -133,3 +133,96 @@ def test_operator_settings_preflight_rejects_enabled_or_symlinked_runtime(
         voice_enroll._load_disabled_settings(tmp_path)
 
     assert list(outside.iterdir()) == []
+
+
+def test_operator_build_uses_selected_paraformer_and_closes_both_models(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    artifacts: list[str] = []
+    closed: list[str] = []
+    class Paraformer:
+        def close(self) -> None:
+            closed.append("paraformer")
+
+    paraformer = Paraformer()
+    coordinator = object()
+
+    monkeypatch.setattr(voice_enroll.platform, "system", lambda: "Darwin")
+    monkeypatch.setattr(voice_enroll.platform, "machine", lambda: "x86_64")
+    monkeypatch.setattr(voice_enroll, "_load_disabled_settings", lambda _root: object())
+    monkeypatch.setattr(
+        voice_enroll,
+        "voice_artifact_spec",
+        lambda _settings, artifact_id: artifacts.append(artifact_id) or artifact_id,
+    )
+    monkeypatch.setattr(
+        voice_enroll,
+        "ParaformerProcess",
+        lambda artifact, *, project_root: paraformer,
+        raising=False,
+    )
+    monkeypatch.setattr(voice_enroll, "keychain_for_runtime", lambda _root: object())
+    monkeypatch.setattr(voice_enroll, "VoiceProfileStore", lambda *_args, **_kwargs: object())
+    monkeypatch.setattr(voice_enroll, "VoiceProfileRegistry", lambda *_args, **_kwargs: object())
+    monkeypatch.setattr(voice_enroll, "EcapaProcess", lambda *_args, **_kwargs: object())
+    monkeypatch.setattr(
+        voice_enroll,
+        "EcapaObservationRunner",
+        lambda **_kwargs: type("Runner", (), {"close": lambda self: closed.append("ecapa")})(),
+    )
+    monkeypatch.setattr(voice_enroll, "VoiceEnrollment", lambda **_kwargs: object())
+    monkeypatch.setattr(voice_enroll, "ecapa_model_version", lambda _artifact: "ecapa-v1")
+    monkeypatch.setattr(voice_enroll, "BoundedLivePcmCapture", lambda _settings: object())
+    monkeypatch.setattr(voice_enroll, "EnrollmentChallengeSession", lambda: object())
+
+    def build_coordinator(**kwargs: object) -> object:
+        assert kwargs["asr"] is paraformer
+        return coordinator
+
+    monkeypatch.setattr(voice_enroll, "LiveEnrollmentCoordinator", build_coordinator)
+    built, close = voice_enroll._build_operator("dad", tmp_path, lambda _prompt: "", print)
+    close()
+
+    assert built is coordinator
+    assert artifacts == [
+        "sherpa-onnx-paraformer-zh-2023-09-14",
+        "speechbrain-ecapa-voxceleb",
+    ]
+    assert closed == ["ecapa", "paraformer"]
+
+
+def test_operator_build_closes_paraformer_when_ecapa_start_fails(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    closed: list[bool] = []
+
+    class Paraformer:
+        def close(self) -> None:
+            closed.append(True)
+
+    monkeypatch.setattr(voice_enroll.platform, "system", lambda: "Darwin")
+    monkeypatch.setattr(voice_enroll.platform, "machine", lambda: "x86_64")
+    monkeypatch.setattr(voice_enroll, "_load_disabled_settings", lambda _root: object())
+    monkeypatch.setattr(
+        voice_enroll,
+        "voice_artifact_spec",
+        lambda _settings, artifact_id: artifact_id,
+    )
+    monkeypatch.setattr(
+        voice_enroll,
+        "ParaformerProcess",
+        lambda _artifact, *, project_root: Paraformer(),
+    )
+    monkeypatch.setattr(voice_enroll, "keychain_for_runtime", lambda _root: object())
+    monkeypatch.setattr(voice_enroll, "VoiceProfileStore", lambda *_args, **_kwargs: object())
+    monkeypatch.setattr(voice_enroll, "VoiceProfileRegistry", lambda *_args, **_kwargs: object())
+    monkeypatch.setattr(
+        voice_enroll,
+        "EcapaProcess",
+        lambda *_args, **_kwargs: (_ for _ in ()).throw(ValueError("voice_model_unavailable")),
+    )
+
+    with pytest.raises(ValueError, match="^voice_model_unavailable$"):
+        voice_enroll._build_operator("dad", tmp_path, lambda _prompt: "", print)
+
+    assert closed == [True]
