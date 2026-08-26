@@ -978,3 +978,17 @@ Paraformer/Silero 工件，不解码音频、不运行推理、不重启其他 w
 `make alpha-voice-preflight` 返回 PASS，Keychain、ASR artifact 和 Silero artifact
 全部 available。没有删除加密语料、模型、Keychain 或护理记录。Voice 仍 disabled；
 Task 5 总门仍需干净重录公开 `negative_weather` 并通过不变的 ASR/VAD 6/6 门。
+
+2026-08-26 完成独立 Voice listen-only 软件与 installed-i9 readiness 检查点，实施
+HEAD `aa28cf3`。该模式持续读取 Xiaomi `audio_analysis`，仅在内存中完成固定帧、Silero
+VAD、Paraformer、精确 `小小` 唤醒与 8 秒单次跟进，并只通过 i9 扬声器播放两条固定
+回复；未构造 Baby Care 写入、家庭身份、签名或 outbox，未持久化原始家庭音频或普通
+transcript。新鲜 Voice 门 321/321，compile、shell、plist、Make dry-run 与 diff check
+均 PASS。安装态 Voice-only launchd 最终为 `healthy / listen_only_idle`，FFmpeg 音频
+子进程存在；同时 `alpha-source-check` PASS（CS2+UDP、H.265、2560x1440 到 1280x720、
+接收字节非零）。重启后首次状态查询曾在解码器预热窗口返回
+`voice_audio_unavailable`，随后由同一独立 Voice 进程自动恢复，未重启 Guardian。
+之后完整执行 Voice-only 生命周期，得到 `voice_stop=PASS`、`voice_start=PASS`，服务
+重新进入 `healthy / listen_only_idle`；后续 source check 仍 PASS。
+真人 5 次唤醒、3 次两阶段命令、3 次静默超时、5 次非唤醒和无自触发仍待监督验收；
+合成 TTS 不替代该门。分支未 push/merge，main 未修改。

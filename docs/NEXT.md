@@ -179,6 +179,13 @@ punctuation-free boundary. It now achieves 5/6 exact and 6/6 wake;
 the only clip with two Silero spans. It fails closed as `asr_candidate_unavailable` and
 `vad_candidate_unavailable`. Voice remains disabled.
 
+A separate approved listen-only mode is now implemented locally through `aa28cf3`.
+It does not bypass or modify the full-care accuracy/enrollment gate: it only provides
+continuous memory-only Xiaomi audio listening, exact `小小` wake, one bounded follow-up
+and fixed i9-speaker acknowledgements, with no Baby Care write or family identity path.
+Its software gate is 321/321 and installed readiness is healthy while the Xiaomi source
+remains PASS. Supervised acoustic acceptance remains pending.
+
 **Prerequisites:** The current design approval permits synthetic/public-media software
 work before P0–P2 complete. P0–P2 and A7 remain prerequisites for household
 real-device acceptance; the source-track prerequisite is verified.
@@ -194,11 +201,12 @@ never provide household audio for Git or chat.
 Test timing, deduplication, quiet/adult-speech negatives and privacy using generated or
 explicitly public media. Software tests do not prove household accuracy.
 
-**Next:** Make one clean operator rerecord of the fixed public `negative_weather`
-control, then rerun the unchanged six-prompt exact/wake/latency and Silero gates without
-lowering thresholds. The punctuation-free wake/KWS boundary is complete. Replay/overlap,
-Dad/Mom enrollment and Baby Care binding remain blocked until both gates pass. P4
-remains the next independent product stage.
+**Next:** When the operator returns, run the listen-only 5 standalone wake, 3 two-stage
+command, 3 silent-timeout and 5 non-wake trials plus the no-self-trigger check. Any miss
+fails the real-device gate without lowering exact wake or VAD thresholds. Full-care
+Voice remains disabled; its `negative_weather` rerecord, replay/overlap, Dad/Mom
+enrollment and Baby Care binding remain deferred behind the unchanged full-care gates.
+P4 remains the next independent product stage.
 
 Installed non-interactive Voice preflight is complete at `41da786`: after the explicitly
 approved removal of one stale legacy pending request through `aacefd9`, the login

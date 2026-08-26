@@ -1,16 +1,14 @@
 # Baby Monitor Local Project Summary
 
-Updated: 2026-08-25
+Updated: 2026-08-26
 
 ## Snapshot
 
 - Repository: `lpearf-pixel/baby-monitor-local` (public).
 - Stable Xiaomi line: `stable/xiaomi-alpha` at `0df20ae`.
-- Active implementation line: `codex/voice-care-v1-gate-v1`, based on the approved
-  `codex/voice-care-v1-design` checkpoint. The Gate V2 ECAPA runtime implementation is
-  published through `7dd0155`; exact-head CI run `32699249559` passed. The current local
-  ASR-first implementation line includes `4677fec`; exact remote branch state must be
-  checked against `origin/codex/voice-care-v1-gate-v1` during takeover.
+- Active implementation line: `codex/voice-care-v1-gate-v1`. The continuous
+  memory-only listen-only implementation is local through `aa28cf3`; the remote branch
+  remains at `4eeab86`, so this checkout is 20 commits ahead and has not been pushed.
 - The evidence-retention line is based on the published Dashboard snapshot `69e2d5b`;
   the Dashboard remains complete and its published branch is not rewritten.
 - Remote branch `codex/baby-guardian-event-loop` remains at its earlier squash snapshot
@@ -258,7 +256,7 @@ window, not 24/72-hour stability or unattended-care safety.
 |---|---|
 | Protected default branch | `main`; unchanged by guardian work |
 | Stable Xiaomi branch | `stable/xiaomi-alpha` at `0df20ae` |
-| Active feature branch | `codex/voice-care-v1-gate-v1` at `305232f` |
+| Active feature branch | `codex/voice-care-v1-gate-v1` at listen-only implementation `aa28cf3` |
 | Guardian evidence-retention runtime implementation | `718af9a` |
 | Guardian evidence-retention safety closure | `e3cd69c` |
 | Guardian live-notification helper | `d862f2a` |
@@ -445,15 +443,14 @@ legacy branch into this line without a separate integration decision.
 4. Continue the approved audio/cry plan at Stage A8; a production model and
    license are still required before enablement; household audio remains
    memory-only.
-5. Keep Voice Care disabled. The deterministic punctuation-free wake boundary is now
-   complete and Paraformer reaches 6/6 wake within latency, but exact remains 5/6 and
-   Silero remains 5/6 because the same public `negative_weather` clip mismatches and
-   splits into two spans. The next Voice action is one clean operator rerecord of that
-   fixed prompt, then both unchanged aggregate gates. Do not continue Dad/Mom enrollment
-   or Baby Care binding before both ASR and VAD pass unchanged thresholds.
-   The installed non-interactive Task 5D preflight is complete at `41da786`: following
-   approved stale-request recovery at `aacefd9`, Keychain plus the fixed Paraformer and
-   Silero artifacts all reported available without audio capture or inference.
+5. Complete supervised i9 acceptance for the separately approved continuous Voice
+   listen-only mode. Implementation `aa28cf3` keeps household PCM in memory, has no
+   Baby Care client/write or family identity path, and the installed Voice-only job now
+   reports `healthy / listen_only_idle` while the Xiaomi source gate remains PASS.
+   Software evidence is 321/321. The remaining gate is human acoustic evidence: 5
+   standalone wakes, 3 two-stage commands, 3 silent timeouts, 5 non-wake controls and
+   no self-trigger. Full-care Voice remains disabled; its older private-corpus accuracy
+   and Dad/Mom enrollment gates are not claimed complete by listen-only mode.
 6. Complete authenticated private remote access using Tailscale Serve/ACL only.
 7. Complete the final 72-hour release gate before any release/tag decision.
 8. Define per-parent acknowledgement and false-positive feedback only through a future
