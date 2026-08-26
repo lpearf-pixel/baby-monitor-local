@@ -206,9 +206,10 @@ Test timing, deduplication, quiet/adult-speech negatives and privacy using gener
 explicitly public media. Software tests do not prove household accuracy.
 
 **Next:** Voice listen-only is complete. Full-care Voice remains disabled; its
-`negative_weather` rerecord, replay/overlap, Dad/Mom enrollment and Baby Care binding
-remain deferred behind the unchanged full-care gates. P4 authenticated private remote
-access is the next independent product stage.
+`negative_weather` rerecord is the current local product gate, followed by unchanged
+ASR/VAD 6/6 evidence, Dad/Mom enrollment and the separately supervised replay/overlap
+slice. Baby Care binding remains behind those gates. P4 authenticated private remote
+access is explicitly deferred to the final optional stage.
 
 Installed non-interactive Voice preflight is complete at `41da786`: after the explicitly
 approved removal of one stale legacy pending request through `aacefd9`, the login

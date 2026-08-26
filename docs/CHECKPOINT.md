@@ -1057,3 +1057,12 @@ iPhone 蜂窝网络验收。P4 installed/device gate 仍 pending，下一软件�
 不运行两部 iPhone 蜂窝验收。P4 软件合同和测试证据保留，但 installed/device Tasks
 继续 unchecked；本地发布范围采用局域网 Dashboard 与 i9-only Voice，远程访问不再
 阻塞其余本地功能或最终本地稳定性门。
+
+同日恢复 Full-care Voice Gate V2。安装态非交互预检 PASS：Keychain、固定
+Paraformer 和固定 Silero 工件均 available，listen-only worker 保持 healthy/idle。
+正确的登录 LaunchAgent 聚合门仍为 Paraformer 5/6 exact、6/6 wake、p50 520 ms、
+p95 568 ms，唯一 mismatch 为公开 prompt ID `negative_weather`。当前该 clip 约为
+-41 dBFS 且 Silero 检出 0 spans；两次新的 10 秒倒计时录制窗口也均在 VAD 阶段以
+0 spans fail closed，未发布新的有效 clip。未降低阈值、未开始 Dad/Mom enrollment、
+未启用 full-care Voice、未写 Baby Care，也未保存自由语音。下一步需要真人在明确的
+`capture_now` 窗口内只说一次固定公开句“今天天气不错”，随后原样复跑 ASR/VAD 6/6。

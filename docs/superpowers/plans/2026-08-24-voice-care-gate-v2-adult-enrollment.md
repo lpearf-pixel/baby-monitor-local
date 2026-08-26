@@ -820,11 +820,13 @@ wake within latency. Task 5F corrected the deterministic punctuation-free bounda
 Paraformer now reaches 5/6 exact and 6/6 wake at p95 540 ms; only the fixed public
 `negative_weather` clip remains an exact mismatch.
 Task 5C is blocked as `vad_candidate_unavailable`; its generated control and 5/6 private
-prompts pass, while `negative_weather` produces two spans. Task 5D is implementation-
-complete at `41da786`; after approved removal of one stale legacy pending request by
-`aacefd9`, the installed login-LaunchAgent gate passed with helper, fixed Paraformer
-artifact and fixed Silero artifact all available. Task 6 remains unchecked. These
-failures now require one clean public negative-control rerecord and a
+prompts pass. A later bounded rerecord replaced `negative_weather` with a clip too quiet
+for Silero; the current aggregate is zero spans, and two subsequent human-timed capture
+windows also detected zero spans without publishing a replacement. Task 5D is
+implementation-complete at `41da786`; after approved removal of one stale legacy pending
+request by `aacefd9`, the installed login-LaunchAgent gate passed with helper, fixed
+Paraformer artifact and fixed Silero artifact all available. Task 6 remains unchecked.
+These failures now require one correctly timed clean public negative-control rerecord and a
 compliant Silero result, not weaker privacy, exact-match, wake, VAD or latency gates.
 
 ### Task 6: Installed i9 Human Enrollment Gate

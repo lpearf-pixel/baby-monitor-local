@@ -447,18 +447,14 @@ legacy branch into this line without a separate integration decision.
 
 ## Next Priorities
 
-1. Continue WS2021 Task 15 with daylight positions 2–5, then night/IR collection and
-   pinned i9-local training/OpenVINO export. Resume E2–E5 with 30 daylight comparisons,
-   fail-closed scene checks, M2/Ollama isolation and 24-hour stability. E1 and the
-   native-resolution continuous frame source are complete.
-2. Defer normal-care-only real-Baby Guardian observation until a Baby is available; the
-   three-browser HD gate is already user-confirmed PASS.
-3. Complete the supervised, normal-care-only real-Baby Guardian observation gate;
-   never stage a hazardous pose or persist household media/model prose.
-4. Continue the approved audio/cry plan at Stage A8; a production model and
+1. Complete the full-care Voice ASR/VAD gate: one correctly timed clean rerecord of the
+   fixed public `negative_weather` phrase must pass unchanged 6/6 checks. Then complete
+   private Dad/Mom enrollment and the separately supervised replay/overlap slice. Voice
+   remains disabled until these gates pass.
+2. Continue the approved audio/cry plan at Stage A8; a production model and
    license are still required before enablement; household audio remains
    memory-only.
-5. Voice listen-only is accepted on the i9 at implementation `4590489`. It keeps
+3. Voice listen-only is accepted on the i9 at implementation `4590489`. It keeps
    household PCM in memory, has no Baby Care client/write or family identity path, and
    the installed job remains `healthy / listen_only_idle` while the Xiaomi source is
    PASS. Supervised evidence passed at least 5 standalone wakes, 3 two-stage dialogues,
@@ -466,15 +462,18 @@ legacy branch into this line without a separate integration decision.
    heard. The final software gate is 325/325 and no recent raw audio file was created.
    Full-care Voice remains disabled; its private-corpus accuracy and Dad/Mom enrollment
    gates are not claimed complete by listen-only mode.
-6. P4 private-access software is complete, but installation/login, grants, Serve and
+4. Defer WS2021 Task 15 and normal-care-only real-Baby Guardian observation until the
+   current Voice work is complete and a Baby is available. The three-browser HD gate is
+   already user-confirmed PASS.
+5. P4 private-access software is complete, but installation/login, grants, Serve and
    two-iPhone acceptance are explicitly deferred until the final optional stage.
-7. Keep Camera Reply V3 disabled: its single-tone gate passed but supervised interaction
+6. Keep Camera Reply V3 disabled: its single-tone gate passed but supervised interaction
    failed closed. Retain i9-only output for the local release gate.
-8. Complete the final 72-hour release gate before any release/tag decision.
-9. Define per-parent acknowledgement and false-positive feedback only through a future
+7. Complete the final 72-hour release gate before any release/tag decision.
+8. Define per-parent acknowledgement and false-positive feedback only through a future
    contract where Baby Care consumes Guardian's read-only feed and owns identity/write
    state; do not create a second identity model inside Guardian.
-10. Consider the FFmpeg ring-buffer upgrade after the functional and real-device gates.
+9. Consider the FFmpeg ring-buffer upgrade after the functional and real-device gates.
 
 ## Operating Commands
 

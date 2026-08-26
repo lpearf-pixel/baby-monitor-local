@@ -377,8 +377,12 @@
   fixed Paraformer and Silero artifacts; it does not decode audio or run inference.
   After explicitly approved recovery removed one stale legacy pending request through
   `aacefd9`, the installed command passed with Keychain and both artifacts available.
-  Task 5 as a whole remains blocked on the unchanged `negative_weather` ASR/VAD 6/6
-  requirement, so Voice remains disabled and Dad/Mom enrollment has not started.
+  Fresh 2026-08-26 aggregate evidence still reports Paraformer 5/6 exact and 6/6 wake;
+  `negative_weather` remains the only mismatch. The current clip is too quiet for the
+  VAD gate and produces zero spans; two bounded rerecord windows also detected zero
+  spans. Task 5 therefore remains blocked on one human-timed clean rerecord and the
+  unchanged ASR/VAD 6/6 requirement. Voice remains disabled and Dad/Mom enrollment has
+  not started.
 - The separately approved continuous listen-only mode is accepted locally through
   `4590489`. It composes the fixed Xiaomi audio alias, bounded in-memory PCM pump,
   stateful Silero VAD, local Paraformer, exact `小小` wake controller, an eight-second
