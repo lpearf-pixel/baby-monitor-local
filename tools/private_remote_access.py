@@ -3,8 +3,10 @@
 from __future__ import annotations
 
 import argparse
+import dataclasses
 import json
 import os
+import secrets
 import selectors
 import signal
 import stat
@@ -15,7 +17,7 @@ import urllib.error
 import urllib.request
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Mapping, Protocol
+from typing import Callable, Mapping, Protocol
 
 if __package__ in {None, ""}:
     sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
@@ -34,6 +36,7 @@ from packages.monitoring.private_remote_access import (
 TAILSCALE = "/usr/local/bin/tailscale"
 LSOF = "/usr/sbin/lsof"
 COMMAND_TIMEOUT_SECONDS = 5.0
+CONFIGURE_TIMEOUT_SECONDS = 10.0
 HTTP_TIMEOUT_SECONDS = 2.0
 MAX_COMMAND_OUTPUT_BYTES = 1_048_576
 MAX_HTTP_BODY_BYTES = 4_096
@@ -47,6 +50,22 @@ _POLICY_DOCUMENT = {
     "policy_reviewed": True,
     "serve_applied": True,
 }
+_POLICY_BYTES = (
+    json.dumps(_POLICY_DOCUMENT, separators=(",", ":"), sort_keys=True) + "\n"
+).encode("ascii")
+_CONFIGURE_ARGV = (
+    TAILSCALE,
+    "serve",
+    "--bg",
+    "http://127.0.0.1:8080",
+)
+_CONFIGURE_PRE_STATES = frozenset(
+    {
+        RemoteCode.POLICY_UNVERIFIED,
+        RemoteCode.SERVE_UNCONFIGURED,
+        RemoteCode.READY_SOFTWARE,
+    }
+)
 
 
 @dataclass(frozen=True)
@@ -343,6 +362,171 @@ def read_policy_acknowledgement(root: Path | str) -> bool:
         return False
 
 
+def write_policy_acknowledgement(root: Path | str) -> bool:
+    root_path = Path(root)
+    status_directory = _ensure_status_directory(root_path)
+    if status_directory is None:
+        return False
+    path = status_directory / POLICY_RELATIVE_PATH.name
+    temporary = status_directory / (
+        f".private-remote-policy.{os.getpid()}.{secrets.token_hex(8)}"
+    )
+    descriptor: int | None = None
+    try:
+        if path.exists() or path.is_symlink():
+            existing = os.lstat(path)
+            if (
+                not stat.S_ISREG(existing.st_mode)
+                or stat.S_ISLNK(existing.st_mode)
+                or existing.st_uid != os.getuid()
+                or stat.S_IMODE(existing.st_mode) != 0o600
+            ):
+                return False
+        flags = (
+            os.O_WRONLY
+            | os.O_CREAT
+            | os.O_EXCL
+            | getattr(os, "O_NOFOLLOW", 0)
+        )
+        descriptor = os.open(temporary, flags, 0o600)
+        os.fchmod(descriptor, 0o600)
+        remaining = memoryview(_POLICY_BYTES)
+        while remaining:
+            written = os.write(descriptor, remaining)
+            if written <= 0:
+                raise OSError("policy write failed")
+            remaining = remaining[written:]
+        os.fsync(descriptor)
+        os.close(descriptor)
+        descriptor = None
+        os.replace(temporary, path)
+        directory_flags = os.O_RDONLY | getattr(os, "O_DIRECTORY", 0)
+        directory_descriptor = os.open(status_directory, directory_flags)
+        try:
+            os.fsync(directory_descriptor)
+        finally:
+            os.close(directory_descriptor)
+        return read_policy_acknowledgement(root_path)
+    except OSError:
+        return False
+    finally:
+        if descriptor is not None:
+            try:
+                os.close(descriptor)
+            except OSError:
+                pass
+        try:
+            temporary.unlink(missing_ok=True)
+        except OSError:
+            pass
+
+
+def _ensure_status_directory(root: Path) -> Path | None:
+    try:
+        root_status = os.lstat(root)
+        if (
+            not stat.S_ISDIR(root_status.st_mode)
+            or stat.S_ISLNK(root_status.st_mode)
+            or root_status.st_uid != os.getuid()
+        ):
+            return None
+        current = root
+        for component in ("runtime", "status"):
+            current = current / component
+            try:
+                os.mkdir(current, 0o700)
+            except FileExistsError:
+                pass
+            current_status = os.lstat(current)
+            if (
+                not stat.S_ISDIR(current_status.st_mode)
+                or stat.S_ISLNK(current_status.st_mode)
+                or current_status.st_uid != os.getuid()
+            ):
+                return None
+        return current
+    except OSError:
+        return None
+
+
+def configure_remote_access(
+    root: Path | str | None = None,
+    *,
+    runner: CommandRunner = run_bounded,
+    http_get: HttpGetter = bounded_http_get,
+    read_confirmation: Callable[[], str] | None = None,
+    printer: Callable[[str], object] = print,
+    policy_writer: Callable[[Path | str], bool] = write_policy_acknowledgement,
+) -> RemoteAccessReport:
+    project_root = (
+        Path(root) if root is not None else Path(__file__).resolve().parents[1]
+    )
+    before = collect_preflight(project_root, runner=runner, http_get=http_get)
+    if not _configure_preflight_is_safe(before):
+        return before
+
+    printer("policy_review_confirmation=required")
+    printer("type_yes_to_apply_fixed_private_serve=")
+    confirmation_reader = read_confirmation or _read_tty_confirmation
+    try:
+        confirmation = confirmation_reader()
+    except (OSError, UnicodeError):
+        return before
+    if confirmation != "YES":
+        return before
+
+    after = before
+    if not before.serve_fixed:
+        mutation = runner(_CONFIGURE_ARGV, CONFIGURE_TIMEOUT_SECONDS)
+        if mutation.returncode != 0:
+            return before
+        after = collect_preflight(project_root, runner=runner, http_get=http_get)
+        if not _post_apply_is_safe(after):
+            return after
+    if not policy_writer(project_root):
+        return after
+    return dataclasses.replace(
+        after,
+        code=RemoteCode.READY_SOFTWARE,
+        policy_reviewed=True,
+    )
+
+
+def _configure_preflight_is_safe(report: RemoteAccessReport) -> bool:
+    return bool(
+        report.code in _CONFIGURE_PRE_STATES
+        and report.tailnet_authenticated
+        and report.funnel_absent
+        and report.dashboard_healthy
+        and report.basic_auth_required
+        and report.go2rtc_private
+    )
+
+
+def _post_apply_is_safe(report: RemoteAccessReport) -> bool:
+    return bool(
+        report.code in {RemoteCode.POLICY_UNVERIFIED, RemoteCode.READY_SOFTWARE}
+        and report.tailnet_authenticated
+        and report.serve_fixed
+        and report.funnel_absent
+        and report.dashboard_healthy
+        and report.basic_auth_required
+        and report.go2rtc_private
+    )
+
+
+def _read_tty_confirmation() -> str:
+    descriptor = os.open("/dev/tty", os.O_RDONLY | getattr(os, "O_NOFOLLOW", 0))
+    try:
+        payload = os.read(descriptor, 16)
+    finally:
+        os.close(descriptor)
+    try:
+        return payload.decode("ascii").rstrip("\r\n")
+    except UnicodeDecodeError:
+        return ""
+
+
 def format_report(report: RemoteAccessReport) -> str:
     boolean = lambda value: "true" if value else "false"
     return "\n".join(
@@ -363,13 +547,17 @@ def parser() -> argparse.ArgumentParser:
     result = argparse.ArgumentParser(
         description="Audit fixed private Dashboard access without changing state"
     )
-    result.add_argument("command", choices=("preflight", "status"))
+    result.add_argument("command", choices=("preflight", "status", "configure"))
     return result
 
 
 def main(argv: list[str] | None = None) -> int:
-    parser().parse_args(argv)
-    report = collect_preflight()
+    options = parser().parse_args(argv)
+    report = (
+        configure_remote_access()
+        if options.command == "configure"
+        else collect_preflight()
+    )
     print(format_report(report))
     return 0 if report.code is RemoteCode.READY_SOFTWARE else 1
 
@@ -383,8 +571,10 @@ __all__ = [
     "HttpResult",
     "bounded_http_get",
     "collect_preflight",
+    "configure_remote_access",
     "format_report",
     "main",
     "read_policy_acknowledgement",
     "run_bounded",
+    "write_policy_acknowledgement",
 ]

@@ -18,9 +18,11 @@ from tools.private_remote_access import (
     CommandResult,
     HttpResult,
     collect_preflight,
+    configure_remote_access,
     format_report,
     read_policy_acknowledgement,
     run_bounded,
+    write_policy_acknowledgement,
 )
 
 
@@ -44,6 +46,24 @@ class RecordingRunner:
         self, argv: tuple[str, ...], timeout_seconds: float
     ) -> CommandResult:
         self.calls.append((argv, timeout_seconds))
+        return self.responses[argv]
+
+
+class SequentialRunner(RecordingRunner):
+    def __init__(
+        self,
+        responses: dict[tuple[str, ...], CommandResult],
+        serve_statuses: list[CommandResult],
+    ) -> None:
+        super().__init__(responses)
+        self.serve_statuses = serve_statuses
+
+    def __call__(
+        self, argv: tuple[str, ...], timeout_seconds: float
+    ) -> CommandResult:
+        self.calls.append((argv, timeout_seconds))
+        if argv == (TAILSCALE, "serve", "status", "--json"):
+            return self.serve_statuses.pop(0)
         return self.responses[argv]
 
 
@@ -398,7 +418,7 @@ def test_run_bounded_output_cap_stops_and_discards_oversized_child() -> None:
     assert result.stdout == b""
 
 
-def test_cli_help_exposes_only_read_only_commands() -> None:
+def test_cli_help_exposes_the_single_fixed_configure_command() -> None:
     result = subprocess.run(
         [sys.executable, str(Path(private_remote_access_module.__file__)), "--help"],
         check=False,
@@ -409,4 +429,334 @@ def test_cli_help_exposes_only_read_only_commands() -> None:
     assert result.returncode == 0
     assert "preflight" in result.stdout
     assert "status" in result.stdout
-    assert "configure" not in result.stdout
+    assert "configure" in result.stdout
+
+
+def _mutation_calls(runner: RecordingRunner) -> list[tuple[str, ...]]:
+    return [
+        argv
+        for argv, _timeout in runner.calls
+        if argv[:2] == (TAILSCALE, "serve")
+        and argv != (TAILSCALE, "serve", "status", "--json")
+    ]
+
+
+def test_configure_applies_only_the_fixed_route_after_exact_tty_confirmation(
+    tmp_path: Path,
+) -> None:
+    responses = _responses()
+    mutation = (TAILSCALE, "serve", "--bg", "http://127.0.0.1:8080")
+    responses[mutation] = _ok(b"private hostname must be discarded")
+    runner = SequentialRunner(responses, [_ok(b"{}"), _ok(SERVE)])
+    prompts: list[str] = []
+
+    report = configure_remote_access(
+        tmp_path,
+        runner=runner,
+        http_get=RecordingHttp(),
+        read_confirmation=lambda: "YES",
+        printer=prompts.append,
+    )
+
+    assert report.code is RemoteCode.READY_SOFTWARE
+    assert _mutation_calls(runner) == [mutation]
+    assert prompts == [
+        "policy_review_confirmation=required",
+        "type_yes_to_apply_fixed_private_serve=",
+    ]
+    marker = tmp_path / "runtime/status/private-remote-policy.json"
+    assert json.loads(marker.read_text(encoding="utf-8")) == {
+        "schema_version": 1,
+        "policy_reviewed": True,
+        "serve_applied": True,
+    }
+    assert stat.S_IMODE(marker.stat().st_mode) == 0o600
+
+
+@pytest.mark.parametrize("confirmation", ("", "yes", "YES ", "NO"))
+def test_configure_wrong_confirmation_preserves_serve_and_policy_state(
+    tmp_path: Path, confirmation: str
+) -> None:
+    responses = _responses()
+    mutation = (TAILSCALE, "serve", "--bg", "http://127.0.0.1:8080")
+    responses[mutation] = _ok(b"")
+    runner = SequentialRunner(responses, [_ok(b"{}")])
+
+    report = configure_remote_access(
+        tmp_path,
+        runner=runner,
+        http_get=RecordingHttp(),
+        read_confirmation=lambda: confirmation,
+        printer=lambda _line: None,
+    )
+
+    assert report.code is RemoteCode.POLICY_UNVERIFIED
+    assert _mutation_calls(runner) == []
+    assert not (tmp_path / "runtime/status/private-remote-policy.json").exists()
+
+
+def test_configure_missing_tty_preserves_serve_and_policy_state(
+    tmp_path: Path,
+) -> None:
+    runner = SequentialRunner(_responses(), [_ok(b"{}")])
+
+    def missing_tty() -> str:
+        raise OSError("private tty failure")
+
+    report = configure_remote_access(
+        tmp_path,
+        runner=runner,
+        http_get=RecordingHttp(),
+        read_confirmation=missing_tty,
+        printer=lambda _line: None,
+    )
+
+    assert report.code is RemoteCode.POLICY_UNVERIFIED
+    assert _mutation_calls(runner) == []
+
+
+@pytest.mark.parametrize(
+    ("command", "response", "serve_status", "http_result"),
+    (
+        (
+            (TAILSCALE, "status", "--json"),
+            CommandResult(False, None, b""),
+            _ok(b"{}"),
+            None,
+        ),
+        (
+            (TAILSCALE, "status", "--json"),
+            _ok(b'{"BackendState":"Stopped","Self":{"Online":false}}'),
+            _ok(b"{}"),
+            None,
+        ),
+        (
+            (LSOF, "-nP", "-iTCP:1984", "-sTCP:LISTEN"),
+            _ok(b"go2rtc 1 user 4u IPv4 0t0 TCP *:1984 (LISTEN)\n"),
+            _ok(b"{}"),
+            None,
+        ),
+        (
+            (TAILSCALE, "status", "--json"),
+            _ok(TAILNET),
+            _ok(
+                b'{"TCP":{"443":{"HTTPS":true}},'
+                b'"Web":{"node.example.invalid:443":{"Handlers":'
+                b'{"/":{"Proxy":"http://127.0.0.1:8080"}}}},'
+                b'"AllowFunnel":{"node.example.invalid:443":true}}'
+            ),
+            None,
+        ),
+        (
+            (TAILSCALE, "status", "--json"),
+            _ok(TAILNET),
+            _ok(b"{}"),
+            HttpResult(200, {}, b'{"status":"degraded"}'),
+        ),
+    ),
+)
+def test_configure_refuses_every_unsafe_preflight_before_tty_or_mutation(
+    tmp_path: Path,
+    command: tuple[str, ...],
+    response: CommandResult,
+    serve_status: CommandResult,
+    http_result: HttpResult | None,
+) -> None:
+    responses = _responses()
+    responses[command] = response
+    runner = SequentialRunner(responses, [serve_status])
+    prompts: list[str] = []
+
+    def http_get(url: str, timeout: float) -> HttpResult:
+        if http_result is not None and url.endswith("/healthz"):
+            return http_result
+        return RecordingHttp()(url, timeout)
+
+    report = configure_remote_access(
+        tmp_path,
+        runner=runner,
+        http_get=http_get,
+        read_confirmation=lambda: "YES",
+        printer=prompts.append,
+    )
+
+    assert report.code not in {
+        RemoteCode.POLICY_UNVERIFIED,
+        RemoteCode.SERVE_UNCONFIGURED,
+        RemoteCode.READY_SOFTWARE,
+    }
+    assert prompts == []
+    assert _mutation_calls(runner) == []
+
+
+def test_configure_command_failure_does_not_publish_policy_or_rollback(
+    tmp_path: Path,
+) -> None:
+    responses = _responses()
+    mutation = (TAILSCALE, "serve", "--bg", "http://127.0.0.1:8080")
+    responses[mutation] = CommandResult(True, 1, b"private failure")
+    runner = SequentialRunner(responses, [_ok(b"{}")])
+
+    report = configure_remote_access(
+        tmp_path,
+        runner=runner,
+        http_get=RecordingHttp(),
+        read_confirmation=lambda: "YES",
+        printer=lambda _line: None,
+    )
+
+    assert report.code is RemoteCode.POLICY_UNVERIFIED
+    assert _mutation_calls(runner) == [mutation]
+    assert not (tmp_path / "runtime/status/private-remote-policy.json").exists()
+
+
+def test_configure_command_timeout_does_not_publish_policy_or_rollback(
+    tmp_path: Path,
+) -> None:
+    responses = _responses()
+    mutation = (TAILSCALE, "serve", "--bg", "http://127.0.0.1:8080")
+    responses[mutation] = CommandResult(True, None, b"")
+    runner = SequentialRunner(responses, [_ok(b"{}")])
+
+    report = configure_remote_access(
+        tmp_path,
+        runner=runner,
+        http_get=RecordingHttp(),
+        read_confirmation=lambda: "YES",
+        printer=lambda _line: None,
+    )
+
+    assert report.code is RemoteCode.POLICY_UNVERIFIED
+    assert _mutation_calls(runner) == [mutation]
+    assert not (tmp_path / "runtime/status/private-remote-policy.json").exists()
+
+
+def test_configure_missing_basic_challenge_refuses_before_tty_or_mutation(
+    tmp_path: Path,
+) -> None:
+    runner = SequentialRunner(_responses(), [_ok(b"{}")])
+    prompts: list[str] = []
+
+    def http_get(url: str, _timeout: float) -> HttpResult:
+        if url.endswith("/healthz"):
+            return HEALTH
+        return HttpResult(200, {}, b"dashboard")
+
+    report = configure_remote_access(
+        tmp_path,
+        runner=runner,
+        http_get=http_get,
+        read_confirmation=lambda: "YES",
+        printer=prompts.append,
+    )
+
+    assert report.code is RemoteCode.DASHBOARD_UNHEALTHY
+    assert prompts == []
+    assert _mutation_calls(runner) == []
+
+
+def test_configure_invalid_post_apply_status_does_not_publish_policy(
+    tmp_path: Path,
+) -> None:
+    responses = _responses()
+    mutation = (TAILSCALE, "serve", "--bg", "http://127.0.0.1:8080")
+    responses[mutation] = _ok(b"")
+    runner = SequentialRunner(responses, [_ok(b"{}"), _ok(b"malformed")])
+
+    report = configure_remote_access(
+        tmp_path,
+        runner=runner,
+        http_get=RecordingHttp(),
+        read_confirmation=lambda: "YES",
+        printer=lambda _line: None,
+    )
+
+    assert report.code is RemoteCode.SERVE_CONFLICT
+    assert _mutation_calls(runner) == [mutation]
+    assert not (tmp_path / "runtime/status/private-remote-policy.json").exists()
+
+
+def test_configure_state_write_failure_preserves_post_apply_serve(
+    tmp_path: Path,
+) -> None:
+    responses = _responses()
+    mutation = (TAILSCALE, "serve", "--bg", "http://127.0.0.1:8080")
+    responses[mutation] = _ok(b"")
+    runner = SequentialRunner(responses, [_ok(b"{}"), _ok(SERVE)])
+
+    report = configure_remote_access(
+        tmp_path,
+        runner=runner,
+        http_get=RecordingHttp(),
+        read_confirmation=lambda: "YES",
+        printer=lambda _line: None,
+        policy_writer=lambda _root: False,
+    )
+
+    assert report.code is RemoteCode.POLICY_UNVERIFIED
+    assert _mutation_calls(runner) == [mutation]
+
+
+def test_policy_writer_refuses_invalid_existing_leaf_without_overwrite(
+    tmp_path: Path,
+) -> None:
+    path = _write_policy(tmp_path)
+    original = b"untrusted-existing-state"
+    path.write_bytes(original)
+    path.chmod(0o644)
+
+    assert write_policy_acknowledgement(tmp_path) is False
+    assert path.read_bytes() == original
+    assert stat.S_IMODE(path.stat().st_mode) == 0o644
+
+
+def test_policy_writer_refuses_symlink_parent_without_external_write(
+    tmp_path: Path,
+) -> None:
+    outside = tmp_path / "outside"
+    outside.mkdir()
+    root = tmp_path / "root"
+    root.mkdir()
+    (root / "runtime").symlink_to(outside, target_is_directory=True)
+
+    assert write_policy_acknowledgement(root) is False
+    assert list(outside.iterdir()) == []
+
+
+def test_configure_is_idempotent_for_an_already_fixed_route(tmp_path: Path) -> None:
+    _write_policy(tmp_path)
+    runner = SequentialRunner(_responses(), [_ok(SERVE)])
+
+    report = configure_remote_access(
+        tmp_path,
+        runner=runner,
+        http_get=RecordingHttp(),
+        read_confirmation=lambda: "YES",
+        printer=lambda _line: None,
+    )
+
+    assert report.code is RemoteCode.READY_SOFTWARE
+    assert _mutation_calls(runner) == []
+
+
+def test_configure_never_invokes_destructive_or_broad_tailscale_actions(
+    tmp_path: Path,
+) -> None:
+    responses = _responses()
+    mutation = (TAILSCALE, "serve", "--bg", "http://127.0.0.1:8080")
+    responses[mutation] = _ok(b"")
+    runner = SequentialRunner(responses, [_ok(b"{}"), _ok(SERVE)])
+
+    configure_remote_access(
+        tmp_path,
+        runner=runner,
+        http_get=RecordingHttp(),
+        read_confirmation=lambda: "YES",
+        printer=lambda _line: None,
+    )
+
+    flattened = " ".join(" ".join(argv) for argv, _timeout in runner.calls)
+    assert "reset" not in flattened
+    assert " logout" not in flattened
+    assert " funnel" not in flattened
+    assert "--https" not in flattened

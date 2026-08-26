@@ -249,7 +249,7 @@ git commit -m "feat: audit private remote access locally"
 - Executes only ("/usr/local/bin/tailscale", "serve", "--bg", "http://127.0.0.1:8080").
 - Produces the fixed mode-0600 policy acknowledgement only after the Serve command and fresh post-apply validation succeed.
 
-- [ ] **Step 1: Write configure RED tests**
+- [x] **Step 1: Write configure RED tests**
 
 Cover missing TTY, wrong confirmation, missing CLI, unauthenticated backend, unhealthy
 Dashboard, missing Basic challenge, non-loopback go2rtc, Funnel, conflicting Serve,
@@ -262,7 +262,7 @@ Serve status, atomically publishes exact policy JSON with mode 0600, fsyncs file
 parent directory, and emits a redacted ready report. An already-correct route performs
 no mutation and refreshes the acknowledgement only after policy reconfirmation.
 
-- [ ] **Step 2: Run configure RED**
+- [x] **Step 2: Run configure RED**
 
 ~~~bash
 .venv-alpha/bin/python -m pytest -q tests/tools/test_private_remote_access.py -k configure
@@ -270,7 +270,7 @@ no mutation and refreshes the acknowledgement only after policy reconfirmation.
 
 Expected: tests fail because configure is not a recognized subcommand.
 
-- [ ] **Step 3: Implement the minimum mutation**
+- [x] **Step 3: Implement the minimum mutation**
 
 Read confirmation from /dev/tty; piped stdin and environment variables cannot authorize
 the change. Print only:
@@ -282,12 +282,14 @@ type_yes_to_apply_fixed_private_serve=
 
 On failure, preserve Serve state and return a stable code. Do not auto-rollback. Accept
 no target, port, hostname, policy, identity or executable option. Before confirmation,
-configure requires every preflight fact except the not-yet-created policy marker; the
-only admissible pre-apply public state is REMOTE_POLICY_UNVERIFIED with all other
-booleans safe. The exact YES supplies the human policy-review assertion, so there is no
+configure requires installed/authenticated Tailscale, healthy Basic-authenticated
+Dashboard, private go2rtc listeners, no Funnel and no Serve conflict. The only
+admissible pre-apply public states are REMOTE_POLICY_UNVERIFIED,
+REMOTE_SERVE_UNCONFIGURED and REMOTE_READY_SOFTWARE; Serve may be empty or already the
+fixed route. The exact YES supplies the human policy-review assertion, so there is no
 circular requirement for the acknowledgement file to exist before its first creation.
 
-- [ ] **Step 4: Run GREEN and commit**
+- [x] **Step 4: Run GREEN and commit**
 
 ~~~bash
 .venv-alpha/bin/python -m pytest -q tests/tools/test_private_remote_access.py
