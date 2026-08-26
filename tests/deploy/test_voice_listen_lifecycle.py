@@ -57,6 +57,7 @@ def test_start_waits_for_listen_only_status_and_stop_is_voice_only(tmp_path: Pat
     assert lines[0] == "start --voice-only"
     assert lines[-1] == "stop --voice-only"
     assert any("--require-mode listen_only" in line for line in lines)
+    assert any("--not-before-epoch" in line for line in lines)
 
 
 def test_start_retries_a_transient_launchd_bootstrap_failure(tmp_path: Path) -> None:

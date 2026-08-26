@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import json
+from datetime import UTC, datetime
 from pathlib import Path
 
 from tools.voice_status import main
@@ -75,3 +76,49 @@ def test_status_cli_can_require_listen_only_mode(tmp_path: Path, capsys) -> None
 
     assert main([str(path), "--require-mode", "listen_only"]) == 0
     assert "mode=listen_only" in capsys.readouterr().out
+
+
+def test_status_cli_rejects_readiness_written_before_this_start(
+    tmp_path: Path, capsys,
+) -> None:
+    path = tmp_path / "voice.json"
+    payload = {
+        "schema_version": 2,
+        "checked_at": "2026-08-25T00:00:01+00:00",
+        "mode": "listen_only",
+        "worker_state": "healthy",
+        "reason": "listen_only_idle",
+        "processed_count": 0,
+        "last_latency_ms": None,
+    }
+    path.write_text(json.dumps(payload), encoding="ascii")
+    not_before = str(int(datetime(2026, 8, 25, tzinfo=UTC).timestamp()))
+    arguments = [
+        str(path), "--require-mode", "listen_only", "--not-before-epoch", not_before
+    ]
+
+    assert main(arguments) == 0
+    capsys.readouterr()
+
+    payload["checked_at"] = "2026-08-24T23:59:59+00:00"
+    path.write_text(json.dumps(payload), encoding="ascii")
+    assert main(arguments) == 2
+    assert capsys.readouterr().out == "voice_status=unavailable\n"
+
+
+def test_status_cli_rejects_malformed_start_epoch_without_raw_error(
+    tmp_path: Path, capsys,
+) -> None:
+    path = tmp_path / "voice.json"
+    path.write_text("{}", encoding="ascii")
+
+    assert main(
+        [
+            str(path),
+            "--require-mode",
+            "listen_only",
+            "--not-before-epoch",
+            "not-an-epoch",
+        ]
+    ) == 2
+    assert capsys.readouterr().out == "voice_status=unavailable\n"

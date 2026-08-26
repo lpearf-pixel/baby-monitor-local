@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import json
 import sys
+from datetime import datetime
 from pathlib import Path
 
 
@@ -19,6 +20,7 @@ _REASONS = {
 def main(argv: list[str] | None = None) -> int:
     args = argv if argv is not None else sys.argv[1:]
     required_mode: str | None = None
+    not_before_epoch: int | None = None
     if not args:
         path = Path("runtime/status/voice.json")
     elif len(args) == 1:
@@ -26,6 +28,21 @@ def main(argv: list[str] | None = None) -> int:
     elif len(args) == 3 and args[1] == "--require-mode":
         path = Path(args[0])
         required_mode = args[2]
+    elif (
+        len(args) == 5
+        and args[1] == "--require-mode"
+        and args[3] == "--not-before-epoch"
+    ):
+        path = Path(args[0])
+        required_mode = args[2]
+        try:
+            not_before_epoch = int(args[4])
+        except ValueError:
+            print("voice_status=unavailable")
+            return 2
+        if not 0 <= not_before_epoch <= 4_102_444_800:
+            print("voice_status=unavailable")
+            return 2
     else:
         print("voice_status=unavailable")
         return 2
@@ -46,6 +63,13 @@ def main(argv: list[str] | None = None) -> int:
         reason = payload["reason"]
         count = payload["processed_count"]
         latency = payload["last_latency_ms"]
+        checked_at = payload["checked_at"]
+        if not_before_epoch is not None:
+            if type(checked_at) is not str:
+                raise ValueError
+            checked = datetime.fromisoformat(checked_at)
+            if checked.tzinfo is None or checked.timestamp() < not_before_epoch:
+                raise ValueError
         if (
             payload["schema_version"] != 2
             or mode not in {"disabled", "listen_only", "care"}
