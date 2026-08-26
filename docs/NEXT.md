@@ -232,14 +232,42 @@ confirm both phones from outside the home network.
 Only the authenticated application is reachable; camera, go2rtc and SQLite remain
 private; no credentials enter Git, commands, reports or chat.
 
-**Next:** P5 final 72-hour release gate.
+**Next:** Voice Gate V3 Xiaomi camera reply, then P5.
+
+## Voice Gate V3 — Xiaomi camera reply
+
+**Status:** Approved design and implementation plan; implementation not started. The
+accepted i9 speaker remains the production reply output.
+
+**Prerequisites:** P4 software checkpoint complete. The real speaker gate additionally
+requires a healthy installed `cs2+udp` source, current pinned go2rtc build metadata and
+an adult at the camera. P4 phone installation/acceptance may proceed independently.
+
+**Codex can:** prove the suspected pinned CS2 payload defect with synthetic Go bytes,
+apply the minimal audited patch if confirmed, implement the closed loopback adapter,
+fixed reply generation, pre-send-only i9 fallback, software gates and redacted status.
+
+**Human required:** confirm one generated tone came from the camera, explicitly enable
+the ignored local setting after the marker is current, and supervise at least 5 wakes,
+3 dialogues, 3 timeouts and 5 non-wake controls. No household audio enters Git/chat.
+
+**Acceptance and tests:** Follow
+`docs/superpowers/specs/2026-08-26-xiaomi-camera-reply-design.md` and
+`docs/superpowers/plans/2026-08-26-xiaomi-camera-reply.md`. Only the fixed replies
+`我在，请说。` and `我听到了。` may play. Require zero duplicate replies,
+self-triggers, stuck armed states or sibling-service regressions. Software tests never
+operate the real speaker.
+
+**Next:** P5 final 72-hour release gate. If V3 does not pass, leave it disabled and
+retain the accepted i9 speaker output; do not claim partial camera-reply support.
 
 ## P5 — Final 72-hour release gate
 
 **Status:** Not started.
 
-**Prerequisites:** P0–P4 and all remaining V1 release prerequisites complete; no open
-high-risk release blocker.
+**Prerequisites:** P0–P4, Voice Gate V3 PASS or a separate explicit release-scope
+decision to retain i9-only output, and all remaining V1 release prerequisites complete;
+no open high-risk release blocker.
 
 **Codex can:** run the approved bounded sampler/checklist, aggregate machine-readable
 and Markdown results, diagnose recoverable failures and run full software/security

@@ -100,7 +100,7 @@ assets and sends one fixed go2rtc request to destination stream `source` through
 The adapter has no generic media API. It owns:
 
 - exact semantic-code allowlisting;
-- fixed asset digest and format validation;
+- fixed generated asset format, ownership and duration validation;
 - one in-flight playback slot;
 - a fixed maximum request and playback duration;
 - a fixed cooldown;
@@ -126,6 +126,12 @@ output. The i9 speaker is a pre-send fallback only:
 No automatic fallback is enabled until tests prove the output-selection state and the
 real camera gate proves the primary output. Before that checkpoint, the i9 speaker
 remains the production output.
+
+The supervised gate publishes an ignored mode-0600 acceptance marker only after the
+human confirmation and post-playback health checks pass. Production camera output
+requires both the closed configuration flag and a marker matching the current pinned
+go2rtc commit, patch digest and binary digest. Rebuilding or rolling back go2rtc makes
+the marker stale and restores the i9-only behavior until the speaker gate is repeated.
 
 ### Capture ducking and echo protection
 
@@ -167,8 +173,9 @@ assert that a human heard the camera. Only supervised device evidence may record
 ## Failure handling
 
 - Missing sendonly media, unsupported codec, invalid model metadata, malformed go2rtc
-  status, an unhealthy source, missing or changed reply asset, unexpected listener
-  scope or an unavailable API fails closed before playback.
+  status, an unhealthy source, invalid generated reply format or duration, stale
+  acceptance evidence, unexpected listener scope or an unavailable API fails closed
+  before playback.
 - HTTP failure, timeout, cancellation, process exit or unknown completion after send is
   settled as unavailable, timeout or ambiguous. No second backend plays that reply.
 - Stop is bounded and targets only the owned destination. Failure to confirm stop keeps
@@ -248,7 +255,15 @@ they do not authorize or expose the camera speaker.
 If V3 is enabled for the release candidate, its real acceptance must pass before P5
 starts and Camera Reply must remain healthy throughout the final 72-hour gate. If V3
 does not pass, it stays disabled and the accepted i9 speaker behavior remains the
-release behavior; no partial camera-output claim is made.
+release behavior only after a separate explicit release-scope decision; no partial
+camera-output claim is made.
+
+## Protocol references
+
+- go2rtc Xiaomi integration: `https://github.com/AlexxIT/go2rtc/blob/master/internal/xiaomi/README.md`
+- go2rtc stream-to-camera API: `https://github.com/AlexxIT/go2rtc/blob/master/internal/streams/README.md`
+- go2rtc v1.9.14 Xiaomi changes: `https://github.com/AlexxIT/go2rtc/releases/tag/v1.9.14`
+- known Xiaomi camera matrix: `https://github.com/AlexxIT/go2rtc/issues/1982`
 
 ## Explicitly deferred
 

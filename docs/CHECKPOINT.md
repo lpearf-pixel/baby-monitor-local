@@ -1015,3 +1015,11 @@ no-match 可继续服务下一请求而不退出模型，`15a2ff8` 将 start fre
 count 保持 5。Voice worker、Paraformer、FFmpeg PID 在最终矩阵中保持不变，Xiaomi
 source check 仍 PASS，最近 30 分钟新增 wav/aiff/pcm/opus 文件为 0。该证据不证明任意
 成人、任意噪声、全护理写入或无人照护安全；full-care Voice 继续 disabled。
+
+同日批准 Voice Gate V3 Xiaomi Camera Reply 设计与实施计划。官方 go2rtc Xiaomi/Streams
+手册及固定源码确认现有 MISS `cs2+udp` 路径具备 sendonly/双向音频结构，无需先切换
+传输协议；固定 commit 的 `WritePacket` 存在把 header 再次复制到 payload 区的强烈静态
+缺陷迹象，必须先以合成 Go 包验证 RED，再决定一行最小补丁。V3 排在 P4 软件检查点后、
+P5 72 小时门前，且只允许两句现有固定回复。摄像头实机门通过前 i9 扬声器仍是生产
+输出；摄像头发送开始或结果不确定后禁止二次 i9 回退。当前仅完成文档，没有修改协议/
+Voice 业务代码、播放摄像头、保存家庭音频、push、merge 或修改 main。

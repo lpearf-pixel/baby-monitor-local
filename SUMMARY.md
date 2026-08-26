@@ -7,8 +7,10 @@ Updated: 2026-08-26
 - Repository: `lpearf-pixel/baby-monitor-local` (public).
 - Stable Xiaomi line: `stable/xiaomi-alpha` at `0df20ae`.
 - Active implementation line: `codex/voice-care-v1-gate-v1`. The continuous
-  memory-only listen-only implementation is local through `4590489`; the remote branch
-  remains at `4eeab86` and these local commits have not been pushed.
+  memory-only listen-only implementation is local through `4590489`; P4 private-access
+  design/plan and the approved Voice Gate V3 camera-reply design/plan are subsequent
+  local documentation checkpoints. The remote branch remains at `4eeab86` and these
+  local commits have not been pushed.
 - The evidence-retention line is based on the published Dashboard snapshot `69e2d5b`;
   the Dashboard remains complete and its published branch is not rewritten.
 - Remote branch `codex/baby-guardian-event-loop` remains at its earlier squash snapshot
@@ -90,7 +92,9 @@ Baby Monitor Local is a local-first monitoring and candidate-alert system for:
 
 The product provides viewing, environment observations and bounded candidate safety
 events. It is not medical monitoring and does not authorize unattended care. Mi Home
-continues to own audio, two-way talk, PTZ and camera recording/history controls.
+continues to own manual two-way talk, PTZ and camera recording/history controls. An
+approved but not-yet-implemented Voice Gate V3 may add only two fixed local camera-
+speaker replies through the existing private go2rtc boundary.
 
 Baby Guardian is the local perception/event layer. The separate Baby Care product may
 later consume normalized Guardian events through a read-only integration; Guardian
@@ -427,7 +431,8 @@ legacy branch into this line without a separate integration decision.
   distance 2. The
   same clip still has two Silero spans while the other five have one. Voice remains
   disabled. Fresh software evidence is Voice 267/267 and full Python 1,319/1,319.
-- Remote private viewing and the 72-hour release gate remain unfinished.
+- Remote private viewing, fixed Xiaomi camera-speaker replies and the 72-hour release
+  gate remain unfinished.
 - This system does not detect breathing, heart rate, suffocation or medical emergencies.
 
 ## Next Priorities
@@ -452,11 +457,14 @@ legacy branch into this line without a separate integration decision.
    Full-care Voice remains disabled; its private-corpus accuracy and Dad/Mom enrollment
    gates are not claimed complete by listen-only mode.
 6. Complete authenticated private remote access using Tailscale Serve/ACL only.
-7. Complete the final 72-hour release gate before any release/tag decision.
-8. Define per-parent acknowledgement and false-positive feedback only through a future
+7. Implement approved Voice Gate V3 after the P4 software checkpoint: prove the pinned
+   CS2 payload path, pass one supervised generated-tone gate, then route only the two
+   fixed listen-only replies to the camera with pre-send-only i9 fallback.
+8. Complete the final 72-hour release gate before any release/tag decision.
+9. Define per-parent acknowledgement and false-positive feedback only through a future
    contract where Baby Care consumes Guardian's read-only feed and owns identity/write
    state; do not create a second identity model inside Guardian.
-9. Consider the FFmpeg ring-buffer upgrade after the functional and real-device gates.
+10. Consider the FFmpeg ring-buffer upgrade after the functional and real-device gates.
 
 ## Operating Commands
 

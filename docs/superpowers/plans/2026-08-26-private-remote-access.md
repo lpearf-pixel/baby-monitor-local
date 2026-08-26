@@ -413,7 +413,8 @@ identities or keys fail.
 
 Set P4 to Software complete; installed/device gates pending. Record that Dashboard-health
 recovery, Tailscale install/login, private grant merge, Serve apply and two-iPhone
-cellular acceptance remain pending. Do not make P5 ready.
+cellular acceptance remain pending. Set Voice Gate V3 as the next independent software
+slice; do not make P5 ready.
 
 ~~~bash
 git add SUMMARY.md docs/STATUS.md docs/CHECKPOINT.md docs/NEXT.md docs/superpowers/plans/2026-08-26-private-remote-access.md
@@ -509,8 +510,9 @@ git status --short --branch
 git diff --check
 ~~~
 
-If both phones pass, mark P4 complete and P5 next. Otherwise keep P4 pending with only
-the first stable code. Commit only the five documentation files:
+If both phones pass, mark P4 complete. Keep Voice Gate V3 next when it is incomplete;
+only make P5 next after V3 and every other release prerequisite pass. Otherwise keep P4
+pending with only the first stable code. Commit only the five documentation files:
 
 ~~~bash
 git add SUMMARY.md docs/STATUS.md docs/CHECKPOINT.md docs/NEXT.md docs/superpowers/plans/2026-08-26-private-remote-access.md

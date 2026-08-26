@@ -462,5 +462,7 @@
   30 daylight comparisons, night/IR/occlusion/movement gates or 24-hour stability.
 - Ordered later stages are the three-browser HD gate, normal-care-only real-Baby
   Guardian observation, separately approved audio/cry work, authenticated private
-  Tailscale access and the final 72-hour release gate. `docs/NEXT.md` owns the detailed
-  prerequisites, Codex/human boundary, acceptance and handoff for each stage.
+  Tailscale access, approved Voice Gate V3 fixed Xiaomi camera replies and the final
+  72-hour release gate. V3 remains unimplemented and the accepted i9 speaker remains
+  production output. `docs/NEXT.md` owns the detailed prerequisites, Codex/human
+  boundary, acceptance and handoff for each stage.
