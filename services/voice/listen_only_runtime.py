@@ -142,7 +142,13 @@ class ListenOnlyVoiceWorker:
             outcome: ListenOnlyOutcome = self._controller.handle(
                 utterance.pcm, cancelled
             )
-            self._vad.reset()
+            if outcome.reason in {
+                "voice_model_unavailable",
+                "voice_output_unavailable",
+            }:
+                self._reset_capture()
+            else:
+                self._vad.reset()
             latency_ms = min(
                 30_000,
                 max(0, (self._monotonic_ns() - started_ns) // 1_000_000),

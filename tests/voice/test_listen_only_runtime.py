@@ -178,6 +178,36 @@ def test_worker_source_failure_resets_only_voice_state_and_fails_closed() -> Non
     assert status.values[-1]["reason"] == "voice_audio_unavailable"
 
 
+def test_worker_output_failure_resets_collector_controller_and_remains_runnable() -> None:
+    pump = Pump(
+        [PumpFrame(b"p" * 3_200), PumpFrame(b"", dropped=True)]
+    )
+    vad = Vad(VadResult(True, 0.9))
+    collector = Collector(UtteranceResult(b"u" * 32_000, "terminal_silence"))
+    controller = Controller(
+        ListenOnlyOutcome("voice_output_unavailable", None, "idle")
+    )
+    status = Status()
+    worker = ListenOnlyVoiceWorker(
+        pump=pump,
+        vad=vad,
+        collector=collector,
+        controller=controller,
+        asr_closer=AsrCloser(),
+        status_writer=status,
+    )
+
+    worker.step(threading.Event())
+
+    assert vad.reset_count == 1
+    assert collector.reset_count == 1
+    assert controller.reset_count == 1
+    assert status.values[-1]["reason"] == "voice_output_unavailable"
+
+    worker.step(threading.Event())
+    assert pump.read_count == 2
+
+
 def test_worker_keeps_armed_status_visible_while_waiting_for_followup() -> None:
     pump = Pump([PumpFrame(b"p" * 3_200)])
     controller = Controller(

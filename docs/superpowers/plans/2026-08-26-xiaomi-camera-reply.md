@@ -463,7 +463,7 @@ git commit -m "feat: prefer proven camera Voice replies"
 - Preserves: `ListenOnlyController.handle()`, `on_speech_started()`, `expire()` and `reset()`.
 - Consumes: the unchanged `Synthesizer.speak_code()` protocol and existing `PlaybackDucker`.
 
-- [ ] **Step 1: Write echo and recovery RED tests**
+- [x] **Step 1: Write echo and recovery RED tests**
 
 Inject synthetic utterances matching `我在，请说。`, `我听到了。`, their punctuation-
 free ASR forms and the two replies followed by valid care words. During playback and
@@ -480,7 +480,7 @@ exception cases, assert:
 - no output call overlaps another;
 - the worker remains runnable on the next synthetic frame.
 
-- [ ] **Step 2: Run RED**
+- [x] **Step 2: Run RED**
 
 ```bash
 .venv-alpha/bin/python -m pytest -q tests/voice/test_listen_only.py tests/voice/test_listen_only_runtime.py -k 'echo or camera or output'
@@ -489,7 +489,7 @@ exception cases, assert:
 Expected: at least the camera-result recovery matrix fails before the runtime owns the
 new output lifecycle.
 
-- [ ] **Step 3: Implement only the required state cleanup**
+- [x] **Step 3: Implement only the required state cleanup**
 
 Keep the current exact wake classifier, closed feeding grammar, reply phrases and
 eight-second deadline unchanged. Route camera results through the existing boolean
@@ -497,7 +497,7 @@ synthesizer boundary, and ensure every false or exception path calls the same co
 reset already used by i9 output failure. Do not add transcript matching as the primary
 echo guard; the input ducker and state reset remain authoritative.
 
-- [ ] **Step 4: Run Voice GREEN and commit**
+- [x] **Step 4: Run Voice GREEN and commit**
 
 ```bash
 .venv-alpha/bin/python -m pytest -q tests/voice/test_camera_reply.py tests/voice/test_tts.py tests/voice/test_listen_only.py tests/voice/test_listen_only_runtime.py

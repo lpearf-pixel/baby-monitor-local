@@ -146,3 +146,27 @@ def test_model_or_tts_failure_resets_to_idle_without_reprompt() -> None:
 
     assert result.reason == "voice_output_unavailable"
     assert result.phase == "idle"
+
+
+def test_fixed_reply_echoes_never_wake_arm_or_generate_output() -> None:
+    texts = [
+        "我在请说",
+        "我听到了",
+        "我在请说开始喂奶",
+        "我听到了开始喂奶",
+    ]
+    synth = Synth()
+    controller = ListenOnlyController(
+        asr=Asr(texts.copy()),
+        synthesizer=synth,
+        monotonic_ns=Clock([1, 2, 3, 4]),
+    )
+
+    outcomes = [controller.handle(PCM, threading.Event()) for _ in texts]
+
+    assert [outcome.reason for outcome in outcomes] == [
+        "listen_only_ignored"
+    ] * 4
+    assert [outcome.phase for outcome in outcomes] == ["idle"] * 4
+    assert synth.codes == []
+    assert controller.expire(10_000_000_000).reason == "listen_only_idle"
