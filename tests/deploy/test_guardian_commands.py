@@ -31,6 +31,7 @@ AUTOMATIC_CHECKS = (
     "required_binaries",
     "runtime_config",
     "launchd_definitions",
+    "voice_preflight",
     "source_check",
     "guardian_focused",
 )
@@ -215,7 +216,7 @@ def test_guardian_test_runs_every_phase_and_reports_pass(tmp_path: Path) -> None
         ["repository", "software", "installation", "service", "media", "isolation"],
     )
     lines = result.stdout.splitlines()
-    assert lines[-2] == "SUMMARY pass=19 fail=0"
+    assert lines[-2] == "SUMMARY pass=20 fail=0"
     assert lines[-1] == "guardian_test=PASS"
     assert result.stderr == ""
     assert not (hooks / "notification.calls").exists()
@@ -233,7 +234,7 @@ def test_guardian_test_collects_later_safe_results_after_failure(
     assert "FAIL software python_regression check_failed" in result.stdout
     assert "FAIL media source_check check_failed" in result.stdout
     assert "PASS isolation guardian_focused" in result.stdout
-    assert result.stdout.splitlines()[-2] == "SUMMARY pass=17 fail=2"
+    assert result.stdout.splitlines()[-2] == "SUMMARY pass=18 fail=2"
     assert result.stdout.splitlines()[-1] == "guardian_test=FAIL"
     assert "synthetic-secret" not in result.stdout + result.stderr
     assert result.stderr == ""
