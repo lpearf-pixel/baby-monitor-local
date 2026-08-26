@@ -327,8 +327,8 @@ legacy branch into this line without a separate integration decision.
   independent 24-hour environment gate and three-browser HD acceptance are already
   user-confirmed PASS; iPhone layout remains a UX follow-up.
 - Complete the deferred real-Baby normal-care observation, audio/cry A8 model/license
-  decision, authenticated private remote access and final 72-hour release gate before
-  any `v0.1.0` tag decision.
+  decision and final 72-hour local release gate before any `v0.1.0` tag decision.
+  Authenticated private remote access is deferred to the final optional stage.
 
 ## Known Limitations
 
@@ -466,11 +466,10 @@ legacy branch into this line without a separate integration decision.
    heard. The final software gate is 325/325 and no recent raw audio file was created.
    Full-care Voice remains disabled; its private-corpus accuracy and Dad/Mom enrollment
    gates are not claimed complete by listen-only mode.
-6. P4 private-access software is complete; keep installation/login, private grant merge,
-   fixed Serve apply and two-iPhone cellular acceptance as a separate human gate.
+6. P4 private-access software is complete, but installation/login, grants, Serve and
+   two-iPhone acceptance are explicitly deferred until the final optional stage.
 7. Keep Camera Reply V3 disabled: its single-tone gate passed but supervised interaction
-   failed closed. Complete P4 installed policy/Serve and two-iPhone cellular acceptance,
-   then explicitly retain i9-only output before the final release gate.
+   failed closed. Retain i9-only output for the local release gate.
 8. Complete the final 72-hour release gate before any release/tag decision.
 9. Define per-parent acknowledgement and false-positive feedback only through a future
    contract where Baby Care consumes Guardian's read-only feed and owns identity/write
@@ -526,8 +525,8 @@ only the bounded log window needed to identify the first actionable failure.
 3. Verify repository root, remote, branch, HEAD, upstream, dirty state and recent log.
 4. Preserve `uv.lock` and any other user changes; do not reset or clean.
 5. Reconcile local and remote feature histories before any push or branch integration.
-6. Do not re-enable Camera Reply V3 under its current plan. Continue P4 installed and
-   two-iPhone acceptance when the human prerequisites are available.
+6. Do not re-enable Camera Reply V3 under its current plan. Do not resume P4 installed
+   or two-iPhone work until the user explicitly returns to remote access at the end.
 7. Use focused tests for the slice and the full gate only at the next milestone or
    stable-branch integration.
 8. Do not push, create a PR, merge, tag or modify `main` without explicit approval.

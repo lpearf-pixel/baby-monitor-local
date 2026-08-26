@@ -1052,3 +1052,8 @@ iPhone 蜂窝网络验收。P4 installed/device gate 仍 pending，下一软件�
 字节非零）。当前 source 无反向音频 consumer 残留。修复后的聚焦软件证据为 Voice
 406/406、camera reply 91/91、Python compile 和 diff check PASS。V3E 保持失败，
 摄像头回复不得重新启用；P5 需要明确采用 i9-only release scope 后才可继续。
+
+同日用户明确将 Tailscale/外网访问移到最后，当前不安装、不登录、不配置 Serve，也
+不运行两部 iPhone 蜂窝验收。P4 软件合同和测试证据保留，但 installed/device Tasks
+继续 unchecked；本地发布范围采用局域网 Dashboard 与 i9-only Voice，远程访问不再
+阻塞其余本地功能或最终本地稳定性门。

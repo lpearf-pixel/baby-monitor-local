@@ -413,7 +413,7 @@
   privacy scans passed. No real Tailscale software was installed or authenticated, no
   policy or Serve state was changed and no phone gate was run. Dashboard-health
   recovery, private grant merge, fixed Serve apply and two-iPhone cellular acceptance
-  remain pending.
+  remain pending and are explicitly deferred by the user to the final optional stage.
 - Voice Gate V3 camera-reply software Tasks 1–7 are implemented through `e358aaf`,
   with the real macOS TTY correction at `5768894`. The supervised generated-tone gate
   passed, but V3E failed closed during the first interaction batch: the operator saw a
@@ -479,9 +479,9 @@
   bounded frame stabilization are integrated; 95 gauge/environment tests, model
   artifact check and live source check passed. This does not prove real-device reads,
   30 daylight comparisons, night/IR/occlusion/movement gates or 24-hour stability.
-- Ordered later stages are the three-browser HD gate, normal-care-only real-Baby
-  Guardian observation, separately approved audio/cry work, authenticated private
-  Tailscale access, approved Voice Gate V3 fixed Xiaomi camera replies and the final
-  72-hour release gate. V3 remains unimplemented and the accepted i9 speaker remains
-  production output. `docs/NEXT.md` owns the detailed prerequisites, Codex/human
-  boundary, acceptance and handoff for each stage.
+- Ordered later stages retain normal-care-only real-Baby Guardian observation,
+  separately approved audio/cry work and the final 72-hour local release gate. Private
+  Tailscale access is deferred until last and is not a current prerequisite. Voice Gate
+  V3 failed closed and remains disabled; the accepted i9 speaker remains production
+  output. `docs/NEXT.md` owns the detailed prerequisites, Codex/human boundary,
+  acceptance and handoff for each stage.

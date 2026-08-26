@@ -10,7 +10,12 @@
 
 **Spec:** docs/superpowers/specs/2026-08-26-private-remote-access-design.md
 
-**Status:** Tasks 1–5 software complete; Task 6 installed i9/two-iPhone gate pending.
+**Priority status (2026-08-26): DEFERRED BY USER.** Private off-home access is moved
+to the final optional stage. Do not install or authenticate Tailscale, merge grants,
+apply Serve, or request two-iPhone cellular checks while local product work remains.
+The completed P4 software contracts stay preserved; installed Tasks remain unchecked.
+
+**Status:** Tasks 1–5 software complete; Task 6 installed i9/two-iPhone gate deferred.
 
 ## Global Constraints
 

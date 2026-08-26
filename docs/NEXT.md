@@ -217,8 +217,8 @@ Voice remains disabled and this does not change the required ASR/VAD 6/6 gate ab
 
 ## P4 — Authenticated private remote access
 
-**Status:** Software complete. Installed i9 and two-iPhone acceptance pending; public
-exposure remains prohibited.
+**Status:** Software complete. Installed i9 and two-iPhone acceptance are explicitly
+deferred by the user to the final optional stage; public exposure remains prohibited.
 
 **Prerequisites:** The software slice was explicitly approved and resequenced. The
 installed gate requires a healthy Dashboard, approved private policy review and the
@@ -236,9 +236,8 @@ confirm both phones from outside the home network.
 Only the authenticated application is reachable; camera, go2rtc and SQLite remain
 private; no credentials enter Git, commands, reports or chat.
 
-**Next:** Complete the installed P4 policy/Serve and two-iPhone cellular acceptance when
-the human prerequisites are available. Camera Reply V3 failed closed and is not a
-release dependency unless a future approved redesign reopens it.
+**Next:** Do not install or configure Tailscale now. Continue local-only product gates;
+return to remote access only after the local release work when the user explicitly asks.
 
 ## Voice Gate V3 — Xiaomi camera reply
 
@@ -265,17 +264,16 @@ single-tone confirmation does not override the failed interaction gate.
 self-triggers, stuck armed states or sibling-service regressions. Software tests never
 operate the real speaker.
 
-**Next:** Retain the accepted i9 speaker output. Complete P4 installed/two-iPhone
-acceptance and make an explicit i9-only release-scope decision before P5; do not claim
-partial camera-reply support.
+**Next:** Retain the accepted i9 speaker output and local-only release scope before P5;
+do not claim partial camera-reply support.
 
 ## P5 — Final 72-hour release gate
 
 **Status:** Not started.
 
-**Prerequisites:** P0–P4, Voice Gate V3 PASS or a separate explicit release-scope
-decision to retain i9-only output, and all remaining V1 release prerequisites complete;
-no open high-risk release blocker.
+**Prerequisites:** All remaining local V1 release prerequisites complete, explicit
+i9-only Voice output, and no open high-risk local release blocker. Installed P4 remote
+access is deferred and is not a prerequisite for this local-only release gate.
 
 **Codex can:** run the approved bounded sampler/checklist, aggregate machine-readable
 and Markdown results, diagnose recoverable failures and run full software/security
