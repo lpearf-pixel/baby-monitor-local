@@ -53,6 +53,10 @@ outbox 或护理事实。
 4. 标点缺失 RED：对本地 ASR 可能产生的 `嘿小小` / `嘿小小我要喂奶了` 得到
    2 failed / 37 passed；仅增加精确连接形式和精确 post-wake 词法项后
    wake 39/39 passed。
+5. 首轮全仓门在 synthetic benchmark 暴露 4 failed / 1630 passed：该 fixture 仍把
+   已批准的 `嘿，小小，我是爸爸` 当作 negative，因而正确的新语法被误计为 false
+   wake。仅将该 synthetic negative 换成仍被拒绝的任意前导语后，benchmark 26/26、
+   第二轮全仓 1634/1634 passed。
 
 没有删除或放宽原有负例、模型阈值、VAD 门、声纹门或身份门。
 
@@ -60,13 +64,16 @@ outbox 或护理事实。
 
 ```text
 focused wake/intent/listen-only/runtime: 72 passed
+synthetic Voice model benchmark: 26 passed
 make alpha-voice-test: 418 passed
+full Python repository: 1634 passed
 python compileall services/voice: PASS
 git diff --check: PASS
 tracked diff private/runtime/media/credential scan: 0 matches
 ```
 
-修改范围只有 wake、intent、三组相邻测试、Voice v1 规格和 listen-only 手册。
+修改范围只有 wake、intent、三组相邻行为测试、一个 synthetic benchmark fixture、
+Voice v1 规格和 listen-only 手册。
 没有模型、家庭音频、transcript、凭据、私有路径、运行时数据库或生成配置进入 Git。
 
 ## 5. 仍未证明的事项

@@ -425,8 +425,10 @@
   exact idle-state feeding-start alias. Arbitrary leads, homophones, sentence-internal
   or repeated wake words, near-match commands and state conflicts remain closed.
   Focused tests pass 72/72 and Voice passes 418/418; compile, diff and privacy checks
-  pass. Listen-only still writes no Baby Care data. Real installed-i9 one-response
-  acceptance for the user gold phrase remains pending.
+  pass. A stale synthetic benchmark negative was synchronized to the approved wake
+  behavior; benchmark passes 26/26 and the full Python repository passes 1634/1634.
+  Listen-only still writes no Baby Care data. Real installed-i9 one-response acceptance
+  for the user gold phrase remains pending.
 - P4 authenticated private remote access is software-complete through `a265312`, with
   a repository Guardian fixture synchronization at `5dca783`. The pure bounded parser,
   read-only macOS audit, exact-confirmation fixed Serve adapter, four Make interfaces,

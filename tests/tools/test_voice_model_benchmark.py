@@ -124,7 +124,7 @@ def test_macos_synthesizer_uses_the_installed_mandarin_voice_name(
 
 def _passing_transcripts() -> list[str]:
     return [f"小小，{command}" for command in POSITIVE_COMMANDS * 4] + [
-        "嘿，小小，我是爸爸"
+        "你好，小小，我是爸爸"
     ] * 48
 
 
@@ -355,7 +355,7 @@ def test_generated_cli_loads_base_and_small_and_prints_aggregate_only(
             if index < 24:
                 text = f"小小，{POSITIVE_COMMANDS[index % 6]}"
             else:
-                text = "嘿，小小，我是爸爸"
+                text = "你好，小小，我是爸爸"
             return AsrResult(text=text, language="zh", duration_ms=100)
 
     def synthesize(_text: str, rate: int, destination: Path) -> None:

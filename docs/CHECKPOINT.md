@@ -1099,5 +1099,7 @@ exact match、Paraformer 与 ECAPA 门均未放宽。新鲜软件证据为 enrol
 精确 punctuation-free ASR 形式和精确 idle-state 别名 `我要喂奶了`。任意前导语、同音、
 句中或重复 wake、近似命令和状态冲突继续 fail closed。用户金句端到端只返回一次
 `listen_only_received` 并回到 idle，不构造 Baby Care 写入。新鲜证据为 focused
-72/72、Voice 418/418、compile/diff/privacy PASS。真实登录 i9 的单句一次回复复验仍
-pending；完整过程记录于同目录 review-resolution 文档。
+72/72、Voice 418/418、compile/diff/privacy PASS。首轮全仓门发现 4 个旧 synthetic
+benchmark 用例仍把已批准前导词当负例；同步为仍拒绝的任意前导语后，benchmark
+26/26、完整 Python 1634/1634 PASS。真实登录 i9 的单句一次回复复验仍 pending；
+完整过程记录于同目录 review-resolution 文档。
