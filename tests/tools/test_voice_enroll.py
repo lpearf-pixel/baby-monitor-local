@@ -226,3 +226,33 @@ def test_operator_build_closes_paraformer_when_ecapa_start_fails(
         voice_enroll._build_operator("dad", tmp_path, lambda _prompt: "", print)
 
     assert closed == [True]
+
+
+def test_enrollment_challenge_waits_for_local_countdown_before_capture() -> None:
+    events: list[str] = []
+
+    class Capture:
+        def capture(self) -> bytes:
+            events.append("capture")
+            return b"pcm"
+
+    result = voice_enroll._capture_after_countdown(
+        "小小，我要说口令一二三四",
+        capture=Capture(),
+        input_fn=lambda prompt: events.append(prompt) or "",
+        printer=events.append,
+        sleeper=lambda seconds: events.append(f"sleep={seconds}"),
+    )
+
+    assert result == b"pcm"
+    assert events == [
+        "challenge=小小，我要说口令一二三四",
+        "press_enter_then_speak=",
+        *[
+            item
+            for remaining in range(15, 0, -1)
+            for item in (f"capture_starts_in_seconds={remaining}", "sleep=1.0")
+        ],
+        "capture_now=true",
+        "capture",
+    ]

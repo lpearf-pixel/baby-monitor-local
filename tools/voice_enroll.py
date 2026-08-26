@@ -3,6 +3,7 @@ from __future__ import annotations
 import argparse
 import platform
 import signal
+import time
 from collections.abc import Callable
 from pathlib import Path
 from typing import Protocol
@@ -37,6 +38,7 @@ InputFunction = Callable[[str], str]
 Printer = Callable[[str], None]
 Closer = Callable[[], None]
 Builder = Callable[[str, Path, InputFunction, Printer], tuple[_Coordinator, Closer]]
+COUNTDOWN_SECONDS = 15
 
 
 def main(
@@ -140,10 +142,12 @@ def _build_operator(
         challenges = EnrollmentChallengeSession()
 
         def capture_phrase(phrase: str) -> bytes:
-            printer(f"challenge={phrase}")
-            if input_fn("press_enter_then_speak=") != "":
-                raise ValueError(ENROLLMENT_FAILED)
-            return capture.capture()
+            return _capture_after_countdown(
+                phrase,
+                capture=capture,
+                input_fn=input_fn,
+                printer=printer,
+            )
 
         coordinator = LiveEnrollmentCoordinator(
             role=role,
@@ -170,6 +174,24 @@ def _build_operator(
             asr.close()
 
     return coordinator, close
+
+
+def _capture_after_countdown(
+    phrase: str,
+    *,
+    capture: BoundedLivePcmCapture,
+    input_fn: InputFunction,
+    printer: Printer,
+    sleeper: Callable[[float], None] = time.sleep,
+) -> bytes:
+    printer(f"challenge={phrase}")
+    if input_fn("press_enter_then_speak=") != "":
+        raise ValueError(ENROLLMENT_FAILED)
+    for remaining in range(COUNTDOWN_SECONDS, 0, -1):
+        printer(f"capture_starts_in_seconds={remaining}")
+        sleeper(1.0)
+    printer("capture_now=true")
+    return capture.capture()
 
 
 def _load_disabled_settings(project_root: Path) -> VoiceCareSettings:
