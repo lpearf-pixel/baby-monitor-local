@@ -4,6 +4,7 @@ import json
 import os
 import socket
 import stat
+import struct
 import threading
 from pathlib import Path
 from urllib.parse import parse_qs, urlsplit
@@ -14,15 +15,27 @@ import pytest
 from services.voice.camera_reply import (
     CameraReplyCode,
     CameraReplyEvidence,
+    CameraReplyOutput,
     CameraReplyResult,
     CameraReplyStatus,
     CameraReplyStatusWriter,
+    FixedReplyRenderer,
     LoopbackCameraReplyTransport,
+    RenderedReply,
     parse_source_media,
 )
 
 
 MAX_RESPONSE_BYTES = 1_048_576
+
+
+def _aiff(frames: int = 8_000) -> bytes:
+    sample_rate = b"\x40\x0c\xfa\x00\x00\x00\x00\x00\x00\x00"
+    comm = struct.pack(">hIh", 1, frames, 16) + sample_rate
+    sound = struct.pack(">II", 0, 0) + (b"\x00\x01" * frames)
+    chunks = b"COMM" + struct.pack(">I", len(comm)) + comm
+    chunks += b"SSND" + struct.pack(">I", len(sound)) + sound
+    return b"FORM" + struct.pack(">I", 4 + len(chunks)) + b"AIFF" + chunks
 
 
 def _stream_payload(*, medias: list[object] | None = None) -> bytes:
@@ -421,3 +434,413 @@ def test_status_writer_atomically_publishes_only_bounded_fields(tmp_path: Path) 
     }
     assert stat.S_IMODE(status_path.stat().st_mode) == 0o600
     assert list(status_path.parent.iterdir()) == [status_path]
+
+
+class RenderingRunner:
+    def __init__(self, writer=None, *, outcome: bool = True) -> None:
+        self.writer = writer or (lambda path: path.write_bytes(_aiff()))
+        self.outcome = outcome
+        self.calls: list[tuple[tuple[str, ...], bytes | None, float]] = []
+
+    def run(self, command, *, input_bytes, timeout_seconds, cancelled) -> bool:
+        command = tuple(command)
+        self.calls.append((command, input_bytes, timeout_seconds))
+        output = Path(command[command.index("-o") + 1])
+        self.writer(output)
+        return self.outcome and not cancelled.is_set()
+
+
+@pytest.mark.parametrize(
+    ("code", "phrase"),
+    [
+        ("listen_only_ready", "我在，请说。"),
+        ("listen_only_received", "我听到了。"),
+    ],
+)
+def test_renderer_generates_only_fixed_linear_pcm_aiff(
+    tmp_path: Path, code: str, phrase: str
+) -> None:
+    tmp_path.chmod(0o700)
+    runner = RenderingRunner()
+    renderer = FixedReplyRenderer(runner=runner, temporary_root=tmp_path)
+
+    rendered = renderer.render(code, threading.Event())
+
+    assert rendered is not None
+    assert rendered.temporary_root == tmp_path.resolve()
+    assert rendered.duration_seconds == 0.5
+    assert rendered.path.parent == tmp_path.resolve()
+    assert stat.S_IMODE(rendered.path.stat().st_mode) == 0o600
+    command, input_bytes, timeout = runner.calls[0]
+    assert command == (
+        "/usr/bin/say",
+        "-v",
+        "Tingting",
+        "-r",
+        "180",
+        "-f",
+        "-",
+        "-o",
+        str(rendered.path),
+        "--file-format=AIFF",
+        "--data-format=BEI16@16000",
+        "--channels=1",
+    )
+    assert input_bytes == phrase.encode("utf-8")
+    assert timeout == 10.0
+    rendered.path.unlink()
+
+
+def test_renderer_rejects_non_camera_code_before_file_or_subprocess(
+    tmp_path: Path,
+) -> None:
+    runner = RenderingRunner()
+    renderer = FixedReplyRenderer(runner=runner, temporary_root=tmp_path)
+
+    assert renderer.render("saved", threading.Event()) is None
+    assert runner.calls == []
+    assert list(tmp_path.iterdir()) == []
+
+
+def test_renderer_redacts_unexpected_runner_failure_and_cleans_file(
+    tmp_path: Path,
+) -> None:
+    class RaisingRunner:
+        def run(self, command, **kwargs):
+            raise KeyError("private-marker")
+
+    renderer = FixedReplyRenderer(
+        runner=RaisingRunner(), temporary_root=tmp_path
+    )
+
+    assert renderer.render("listen_only_ready", threading.Event()) is None
+    assert list(tmp_path.iterdir()) == []
+
+
+@pytest.mark.parametrize(
+    "kind",
+    [
+        "malformed",
+        "mode",
+        "hardlink",
+        "duration",
+        "symlink",
+        "fifo",
+        "oversized",
+    ],
+)
+def test_renderer_rejects_invalid_generated_aiff(tmp_path: Path, kind: str) -> None:
+    def writer(path: Path) -> None:
+        if kind == "malformed":
+            path.write_bytes(b"not-aiff")
+        elif kind == "oversized":
+            path.write_bytes(b"x" * (MAX_RESPONSE_BYTES + 1))
+        else:
+            frames = 72_000 if kind == "duration" else 8_000
+            path.write_bytes(_aiff(frames))
+        if kind == "mode":
+            path.chmod(0o644)
+        if kind == "hardlink":
+            os.link(path, path.with_suffix(".link"))
+        if kind == "symlink":
+            target = path.with_suffix(".target")
+            target.write_bytes(_aiff())
+            path.unlink()
+            path.symlink_to(target)
+        if kind == "fifo":
+            path.unlink()
+            os.mkfifo(path)
+
+    runner = RenderingRunner(writer)
+    renderer = FixedReplyRenderer(runner=runner, temporary_root=tmp_path)
+
+    assert renderer.render("listen_only_ready", threading.Event()) is None
+    assert not any(path.name.endswith(".aiff") for path in tmp_path.iterdir())
+
+
+def test_renderer_rejects_wrong_owner_without_reading_generated_file(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    runner = RenderingRunner()
+    renderer = FixedReplyRenderer(runner=runner, temporary_root=tmp_path)
+    real_stat = os.stat
+
+    def wrong_file_owner(
+        path: os.PathLike[str] | str, *args: object, **kwargs: object
+    ) -> os.stat_result:
+        current = real_stat(path, *args, **kwargs)
+        if Path(path).name.startswith("voice-camera-reply-"):
+            values = list(current)
+            values[stat.ST_UID] = current.st_uid + 1
+            return os.stat_result(values)
+        return current
+
+    monkeypatch.setattr("services.voice.tts.os.stat", wrong_file_owner)
+
+    assert renderer.render("listen_only_ready", threading.Event()) is None
+    assert not any(path.name.endswith(".aiff") for path in tmp_path.iterdir())
+
+
+def _ready_evidence() -> CameraReplyEvidence:
+    return CameraReplyEvidence(
+        source_ready=True,
+        video_ready=True,
+        incoming_audio_ready=True,
+        sendonly_audio_ready=True,
+        protocol="cs2+udp",
+        video_codec="HEVC",
+        incoming_audio_codec="OPUS",
+        sendonly_audio_codec="OPUS",
+    )
+
+
+class OutputTransport:
+    def __init__(
+        self,
+        events: list[str],
+        *,
+        evidence: CameraReplyEvidence | None = None,
+        start_result: CameraReplyResult | None = None,
+        stop_result: CameraReplyResult | None = None,
+    ) -> None:
+        self.events = events
+        self.evidence = evidence if evidence is not None else _ready_evidence()
+        self.start_result = start_result or CameraReplyResult(
+            CameraReplyCode.READY, True
+        )
+        self.stop_result = stop_result or CameraReplyResult(
+            CameraReplyCode.COMPLETE, False
+        )
+
+    def inspect(self) -> CameraReplyEvidence | None:
+        self.events.append("inspect")
+        return self.evidence
+
+    def start(self, media: Path) -> CameraReplyResult:
+        self.events.append("start")
+        assert media.exists()
+        return self.start_result
+
+    def stop(self) -> CameraReplyResult:
+        self.events.append("stop")
+        return self.stop_result
+
+
+class OutputRenderer:
+    def __init__(self, events: list[str], rendered: RenderedReply | None) -> None:
+        self.events = events
+        self.rendered = rendered
+
+    def render(self, code: str, cancelled: threading.Event) -> RenderedReply | None:
+        self.events.append("render")
+        return None if cancelled.is_set() else self.rendered
+
+
+class OutputDucker:
+    def __init__(self, events: list[str]) -> None:
+        self.events = events
+
+    def pause(self) -> None:
+        self.events.append("pause")
+
+    def resume(self) -> None:
+        self.events.append("resume")
+
+
+class OutputStatusWriter:
+    def __init__(self, events: list[str]) -> None:
+        self.events = events
+        self.statuses: list[CameraReplyStatus] = []
+
+    def write(self, status: CameraReplyStatus) -> None:
+        self.events.append("status")
+        self.statuses.append(status)
+
+
+class OutputClock:
+    def __init__(self, events: list[str], media: Path) -> None:
+        self.events = events
+        self.media = media
+        self.value = 100.0
+        self.sleeps: list[float] = []
+
+    def monotonic(self) -> float:
+        return self.value
+
+    def sleep(self, seconds: float) -> None:
+        self.sleeps.append(seconds)
+        self.value += seconds
+        if seconds <= 0.05:
+            self.events.append("wait")
+            assert self.media.exists()
+        else:
+            self.events.append("guard")
+            assert not self.media.exists()
+
+
+def test_camera_output_closes_success_lifecycle_before_resuming_capture(
+    tmp_path: Path,
+) -> None:
+    media = _media_file(tmp_path)
+    rendered = RenderedReply(media, 0.10, tmp_path.resolve())
+    events: list[str] = []
+    clock = OutputClock(events, media)
+    status_writer = OutputStatusWriter(events)
+    output = CameraReplyOutput(
+        transport=OutputTransport(events),
+        renderer=OutputRenderer(events, rendered),
+        ducker=OutputDucker(events),
+        status_writer=status_writer,
+        monotonic=clock.monotonic,
+        sleep=clock.sleep,
+        post_playback_guard_seconds=0.5,
+    )
+
+    result = output.deliver_code("listen_only_ready", threading.Event())
+
+    assert result == CameraReplyResult(CameraReplyCode.COMPLETE, True)
+    assert events == [
+        "pause",
+        "inspect",
+        "render",
+        "start",
+        "wait",
+        "wait",
+        "stop",
+        "guard",
+        "resume",
+        "status",
+    ]
+    assert max(clock.sleeps[:-1]) <= 0.05
+    assert output.speak_code("private-code", threading.Event()) is False
+    assert status_writer.statuses[0].completed_count == 1
+    assert status_writer.statuses[0].failed_count == 0
+
+
+@pytest.mark.parametrize(
+    ("start_result", "stop_result", "expected"),
+    [
+        (
+            CameraReplyResult(CameraReplyCode.REJECTED, False),
+            CameraReplyResult(CameraReplyCode.COMPLETE, False),
+            CameraReplyCode.REJECTED,
+        ),
+        (
+            CameraReplyResult(CameraReplyCode.AMBIGUOUS, True),
+            CameraReplyResult(CameraReplyCode.COMPLETE, False),
+            CameraReplyCode.AMBIGUOUS,
+        ),
+        (
+            CameraReplyResult(CameraReplyCode.READY, True),
+            CameraReplyResult(CameraReplyCode.AMBIGUOUS, False),
+            CameraReplyCode.AMBIGUOUS,
+        ),
+    ],
+)
+def test_camera_output_stops_exactly_every_started_send_and_unlinks(
+    tmp_path: Path,
+    start_result: CameraReplyResult,
+    stop_result: CameraReplyResult,
+    expected: CameraReplyCode,
+) -> None:
+    media = _media_file(tmp_path)
+    rendered = RenderedReply(media, 0.05, tmp_path.resolve())
+    events: list[str] = []
+    clock = OutputClock(events, media)
+    output = CameraReplyOutput(
+        transport=OutputTransport(
+            events, start_result=start_result, stop_result=stop_result
+        ),
+        renderer=OutputRenderer(events, rendered),
+        ducker=OutputDucker(events),
+        monotonic=clock.monotonic,
+        sleep=clock.sleep,
+        post_playback_guard_seconds=0.0,
+    )
+
+    result = output.deliver_code("listen_only_received", threading.Event())
+
+    assert result.code is expected
+    assert events.count("stop") == int(start_result.delivery_started)
+    assert not media.exists()
+    assert events[-1] == "resume"
+
+
+def test_camera_output_stops_and_unlinks_when_wait_boundary_raises(
+    tmp_path: Path,
+) -> None:
+    media = _media_file(tmp_path)
+    rendered = RenderedReply(media, 0.10, tmp_path.resolve())
+    events: list[str] = []
+    clock = OutputClock(events, media)
+
+    def raising_sleep(seconds: float) -> None:
+        clock.sleep(seconds)
+        raise RuntimeError("private-marker")
+
+    output = CameraReplyOutput(
+        transport=OutputTransport(events),
+        renderer=OutputRenderer(events, rendered),
+        ducker=OutputDucker(events),
+        monotonic=clock.monotonic,
+        sleep=raising_sleep,
+        post_playback_guard_seconds=0.0,
+    )
+
+    result = output.deliver_code("listen_only_ready", threading.Event())
+
+    assert result == CameraReplyResult(CameraReplyCode.AMBIGUOUS, True)
+    assert events.count("stop") == 1
+    assert not media.exists()
+    assert events[-1] == "resume"
+
+
+def test_camera_output_releases_single_flight_when_capture_resume_raises(
+    tmp_path: Path,
+) -> None:
+    events: list[str] = []
+
+    class RaisingOnceDucker(OutputDucker):
+        def __init__(self, output_events: list[str]) -> None:
+            super().__init__(output_events)
+            self.raise_once = True
+
+        def resume(self) -> None:
+            super().resume()
+            if self.raise_once:
+                self.raise_once = False
+                raise RuntimeError("private-marker")
+
+    ducker = RaisingOnceDucker(events)
+
+    class FreshRenderer:
+        def render(self, code: str, cancelled: threading.Event) -> RenderedReply:
+            events.append("render")
+            media = _media_file(tmp_path)
+            return RenderedReply(media, 0.05, tmp_path.resolve())
+
+    class AdvancingClock:
+        value = 100.0
+
+        def monotonic(self) -> float:
+            return self.value
+
+        def sleep(self, seconds: float) -> None:
+            self.value += seconds
+
+    clock = AdvancingClock()
+
+    output = CameraReplyOutput(
+        transport=OutputTransport(events),
+        renderer=FreshRenderer(),
+        ducker=ducker,
+        monotonic=clock.monotonic,
+        sleep=clock.sleep,
+        post_playback_guard_seconds=0.0,
+    )
+
+    first = output.deliver_code("listen_only_ready", threading.Event())
+    second = output.deliver_code("listen_only_ready", threading.Event())
+
+    assert first == CameraReplyResult(CameraReplyCode.AMBIGUOUS, True)
+    assert second.code is CameraReplyCode.COMPLETE

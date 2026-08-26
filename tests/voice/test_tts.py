@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import threading
 import subprocess
+import struct
 from pathlib import Path
 
 import pytest
@@ -14,6 +15,15 @@ from services.voice.tts import (
 )
 
 
+def _aiff(frames: int = 8_000) -> bytes:
+    sample_rate = b"\x40\x0c\xfa\x00\x00\x00\x00\x00\x00\x00"
+    comm = struct.pack(">hIh", 1, frames, 16) + sample_rate
+    sound = struct.pack(">II", 0, 0) + (b"\x00\x01" * frames)
+    chunks = b"COMM" + struct.pack(">I", len(comm)) + comm
+    chunks += b"SSND" + struct.pack(">I", len(sound)) + sound
+    return b"FORM" + struct.pack(">I", 4 + len(chunks)) + b"AIFF" + chunks
+
+
 class RecordingRunner:
     def __init__(self, outcomes: list[bool] | None = None) -> None:
         self.outcomes = outcomes or [True, True]
@@ -21,6 +31,9 @@ class RecordingRunner:
 
     def run(self, command, *, input_bytes, timeout_seconds, cancelled) -> bool:
         self.calls.append((tuple(command), input_bytes, timeout_seconds))
+        if command[0] == "/usr/bin/say":
+            output = Path(command[command.index("-o") + 1])
+            output.write_bytes(_aiff())
         return False if cancelled.is_set() else self.outcomes.pop(0)
 
 
@@ -75,7 +88,21 @@ def test_synthesizer_uses_stdin_fixed_volume_ducking_and_guard(tmp_path: Path) -
     assert synth.speak_code("saved", threading.Event()) is True
 
     say, playback = runner.calls
-    assert say[0][:4] == ("/usr/bin/say", "-f", "-", "-o")
+    assert say[0][:8] == (
+        "/usr/bin/say",
+        "-v",
+        "Tingting",
+        "-r",
+        "180",
+        "-f",
+        "-",
+        "-o",
+    )
+    assert say[0][-3:] == (
+        "--file-format=AIFF",
+        "--data-format=BEI16@16000",
+        "--channels=1",
+    )
     assert say[1] == "好的，已经记录。".encode("utf-8")
     assert "好的" not in " ".join(say[0])
     assert playback[0][:3] == ("/usr/bin/afplay", "-v", "0.35")

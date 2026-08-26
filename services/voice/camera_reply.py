@@ -7,12 +7,21 @@ import os
 import stat
 import tempfile
 import threading
+import time
+from collections.abc import Callable
 from dataclasses import asdict, dataclass
 from enum import StrEnum
 from pathlib import Path
 from typing import Any, Protocol
 from urllib.parse import urlencode
 from urllib.request import OpenerDirector, ProxyHandler, Request, build_opener
+
+from services.voice.tts import (
+    CancelEvent,
+    CaptureDucker,
+    FixedReplyRenderer,
+    RenderedReply,
+)
 
 
 _ORIGIN = "http://127.0.0.1:1984"
@@ -24,6 +33,13 @@ _VIDEO_MEDIA = "video, recvonly, H265"
 _INCOMING_AUDIO_MEDIA = "audio, recvonly, OPUS/48000/2"
 _SENDONLY_AUDIO_MEDIA = "audio, sendonly, OPUS/48000/2"
 _UNAVAILABLE = "CAMERA_REPLY_UNAVAILABLE"
+_FIXED_REPLY_CODES = frozenset(
+    {"listen_only_ready", "listen_only_received"}
+)
+_MAX_OPERATION_SECONDS = 10.0
+_STOP_RESERVE_SECONDS = 2.0
+_MAX_WAIT_INCREMENT_SECONDS = 0.05
+_MAX_GUARD_SECONDS = 0.5
 
 
 class CameraReplyCode(StrEnum):
@@ -391,12 +407,218 @@ class CameraReplyStatusWriter:
             raise ValueError(_UNAVAILABLE)
 
 
+class _CameraTransport(Protocol):
+    def inspect(self) -> CameraReplyEvidence | None: ...
+
+    def start(self, media: Path) -> CameraReplyResult: ...
+
+    def stop(self) -> CameraReplyResult: ...
+
+
+class _ReplyRenderer(Protocol):
+    def render(
+        self, code: str, cancelled: CancelEvent
+    ) -> RenderedReply | None: ...
+
+
+class _StatusWriter(Protocol):
+    def write(self, status: CameraReplyStatus) -> None: ...
+
+
+class CameraReplyOutput:
+    """Settle one fixed camera reply without overlapping or retrying."""
+
+    def __init__(
+        self,
+        *,
+        transport: _CameraTransport,
+        renderer: _ReplyRenderer,
+        ducker: CaptureDucker,
+        status_writer: _StatusWriter | None = None,
+        monotonic: Callable[[], float] = time.monotonic,
+        sleep: Callable[[float], None] = time.sleep,
+        post_playback_guard_seconds: float = _MAX_GUARD_SECONDS,
+    ) -> None:
+        if not 0.0 <= post_playback_guard_seconds <= _MAX_GUARD_SECONDS:
+            raise ValueError(_UNAVAILABLE)
+        self._transport = transport
+        self._renderer = renderer
+        self._ducker = ducker
+        self._status_writer = status_writer
+        self._monotonic = monotonic
+        self._sleep = sleep
+        self._guard_seconds = post_playback_guard_seconds
+        self._operation_lock = threading.Lock()
+        self._completed_count = 0
+        self._failed_count = 0
+
+    def speak_code(self, code: str, cancelled: CancelEvent) -> bool:
+        return self.deliver_code(code, cancelled).code is CameraReplyCode.COMPLETE
+
+    def deliver_code(
+        self, code: str, cancelled: CancelEvent
+    ) -> CameraReplyResult:
+        started_at = self._monotonic()
+        if type(code) is not str or code not in _FIXED_REPLY_CODES:
+            return self._record(
+                CameraReplyResult(CameraReplyCode.REJECTED, False), started_at
+            )
+        if not self._operation_lock.acquire(blocking=False):
+            return self._record(
+                CameraReplyResult(CameraReplyCode.BUSY, False), started_at
+            )
+
+        paused = False
+        rendered: RenderedReply | None = None
+        result = CameraReplyResult(CameraReplyCode.UNAVAILABLE, False)
+        try:
+            self._ducker.pause()
+            paused = True
+            evidence = self._transport.inspect()
+            if evidence is None:
+                result = CameraReplyResult(CameraReplyCode.UNAVAILABLE, False)
+            else:
+                rendered = self._renderer.render(code, cancelled)
+                if rendered is None:
+                    result = CameraReplyResult(CameraReplyCode.UNAVAILABLE, False)
+                else:
+                    result = self._deliver_rendered(
+                        rendered, cancelled, started_at
+                    )
+        except Exception:
+            result = CameraReplyResult(CameraReplyCode.UNAVAILABLE, False)
+        finally:
+            settlement_failed = False
+            try:
+                if rendered is not None:
+                    try:
+                        rendered.path.unlink()
+                    except OSError:
+                        pass
+                if paused:
+                    if self._guard_seconds:
+                        try:
+                            remaining = max(
+                                0.0,
+                                started_at
+                                + _MAX_OPERATION_SECONDS
+                                - self._monotonic(),
+                            )
+                            self._sleep(min(self._guard_seconds, remaining))
+                        except Exception:
+                            settlement_failed = True
+                    try:
+                        self._ducker.resume()
+                    except Exception:
+                        settlement_failed = True
+                if settlement_failed:
+                    result = CameraReplyResult(
+                        CameraReplyCode.AMBIGUOUS
+                        if result.delivery_started
+                        else CameraReplyCode.UNAVAILABLE,
+                        result.delivery_started,
+                    )
+            finally:
+                self._operation_lock.release()
+        return self._record(result, started_at)
+
+    def _deliver_rendered(
+        self,
+        rendered: RenderedReply,
+        cancelled: CancelEvent,
+        started_at: float,
+    ) -> CameraReplyResult:
+        start_result = self._transport.start(rendered.path)
+        if not start_result.delivery_started:
+            return start_result
+
+        waited = False
+        try:
+            if start_result.code is CameraReplyCode.READY:
+                waited = self._wait_for_reply(
+                    rendered.duration_seconds, cancelled, started_at
+                )
+        except Exception:
+            waited = False
+        finally:
+            try:
+                stop_result = self._transport.stop()
+            except Exception:
+                stop_result = CameraReplyResult(
+                    CameraReplyCode.AMBIGUOUS, False
+                )
+        if (
+            start_result.code is CameraReplyCode.READY
+            and waited
+            and stop_result.code is CameraReplyCode.COMPLETE
+        ):
+            return CameraReplyResult(CameraReplyCode.COMPLETE, True)
+        return CameraReplyResult(CameraReplyCode.AMBIGUOUS, True)
+
+    def _wait_for_reply(
+        self,
+        duration_seconds: float,
+        cancelled: CancelEvent,
+        started_at: float,
+    ) -> bool:
+        duration_deadline = self._monotonic() + duration_seconds
+        reserved_deadline = (
+            started_at
+            + _MAX_OPERATION_SECONDS
+            - _STOP_RESERVE_SECONDS
+            - self._guard_seconds
+        )
+        while self._monotonic() < duration_deadline:
+            if cancelled.is_set() or self._monotonic() >= reserved_deadline:
+                return False
+            remaining = min(
+                duration_deadline - self._monotonic(),
+                reserved_deadline - self._monotonic(),
+                _MAX_WAIT_INCREMENT_SECONDS,
+            )
+            if remaining <= 0:
+                return False
+            self._sleep(remaining)
+        return not cancelled.is_set()
+
+    def _record(
+        self, result: CameraReplyResult, started_at: float
+    ) -> CameraReplyResult:
+        if result.code is CameraReplyCode.COMPLETE:
+            self._completed_count += 1
+        elif result.code is not CameraReplyCode.BUSY:
+            self._failed_count += 1
+        writer = self._status_writer
+        if writer is not None:
+            latency_ms = min(
+                120_000,
+                max(0, int((self._monotonic() - started_at) * 1000)),
+            )
+            try:
+                writer.write(
+                    CameraReplyStatus(
+                        backend="camera",
+                        ready=result.code is CameraReplyCode.COMPLETE,
+                        last_code=result.code,
+                        completed_count=self._completed_count,
+                        failed_count=self._failed_count,
+                        latency_ms=latency_ms,
+                    )
+                )
+            except Exception:
+                pass
+        return result
+
+
 __all__ = [
     "CameraReplyCode",
     "CameraReplyEvidence",
+    "CameraReplyOutput",
     "CameraReplyResult",
     "CameraReplyStatus",
     "CameraReplyStatusWriter",
+    "FixedReplyRenderer",
     "LoopbackCameraReplyTransport",
+    "RenderedReply",
     "parse_source_media",
 ]

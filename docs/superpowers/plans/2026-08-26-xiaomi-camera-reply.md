@@ -236,7 +236,7 @@ git commit -m "feat: add closed Xiaomi camera reply transport"
 - Produces: `CameraReplyOutput.speak_code(code, cancelled) -> bool` and `deliver_code(code, cancelled) -> CameraReplyResult`.
 - Reuses: `RESPONSE_PHRASES`, `BoundedCommandRunner` and the existing `CaptureDucker` protocol.
 
-- [ ] **Step 1: Write renderer and output RED tests**
+- [x] **Step 1: Write renderer and output RED tests**
 
 For each accepted code, assert the renderer calls `/usr/bin/say` with the fixed voice,
 rate and linear PCM AIFF format, reads the phrase from stdin and writes only to a
@@ -249,7 +249,7 @@ hardlink count above one, FIFO/socket, wrong mode, malformed headers and excess
 duration. Unlink the generated file after stop settlement on every success, failure,
 timeout and cancellation path.
 
-- [ ] **Step 2: Write lifecycle RED tests**
+- [x] **Step 2: Write lifecycle RED tests**
 
 Assert `CameraReplyOutput` performs this exact order:
 
@@ -262,7 +262,7 @@ at most 50 ms cancellation increments. The maximum total reply operation is ten
 seconds. `CAMERA_REPLY_COMPLETE` requires a successful start, bounded media-duration
 wait and successful stop; stop failure becomes `CAMERA_REPLY_AMBIGUOUS`.
 
-- [ ] **Step 3: Run RED**
+- [x] **Step 3: Run RED**
 
 ```bash
 .venv-alpha/bin/python -m pytest -q tests/voice/test_camera_reply.py tests/voice/test_tts.py
@@ -270,7 +270,7 @@ wait and successful stop; stop failure becomes `CAMERA_REPLY_AMBIGUOUS`.
 
 Expected: renderer/output cases fail because the new classes do not exist.
 
-- [ ] **Step 4: Extract the fixed renderer and implement camera output**
+- [x] **Step 4: Extract the fixed renderer and implement camera output**
 
 Keep `phrase_for_semantic_code()` authoritative. Preserve `FixedVoiceSynthesizer`'s
 public behavior by composing the renderer with `/usr/bin/afplay`; do not broaden its
@@ -279,7 +279,7 @@ ducker, with single cleanup ownership and no persisted reply asset. After each r
 atomically write only backend, readiness, last stable code, completed count, failed
 count and bounded latency through `CameraReplyStatusWriter`; discard status failures.
 
-- [ ] **Step 5: Run GREEN and commit**
+- [x] **Step 5: Run GREEN and commit**
 
 ```bash
 .venv-alpha/bin/python -m pytest -q tests/voice/test_camera_reply.py tests/voice/test_tts.py
