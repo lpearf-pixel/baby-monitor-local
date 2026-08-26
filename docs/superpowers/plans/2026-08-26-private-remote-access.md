@@ -148,6 +148,9 @@ git commit -m "feat: validate private remote access evidence"
 **Files:**
 - Create: tools/private_remote_access.py
 - Create: tests/tools/test_private_remote_access.py
+- Create: tests/__init__.py
+- Create: tests/monitoring/__init__.py
+- Create: tests/tools/__init__.py
 
 **Interfaces:**
 - Consumes: Task 1 parsers and evaluator.
@@ -155,7 +158,7 @@ git commit -m "feat: validate private remote access evidence"
 - Produces: collect_preflight() -> RemoteAccessReport using only /usr/local/bin/tailscale, /usr/sbin/lsof and fixed loopback HTTP requests.
 - Produces CLI subcommands preflight and status; both print the same fixed eight-line allowlist and never mutate state.
 
-- [ ] **Step 1: Write fixed-command and privacy RED tests**
+- [x] **Step 1: Write fixed-command and privacy RED tests**
 
 Inject a recording command runner and HTTP opener. Assert exact argv:
 
@@ -187,7 +190,7 @@ go2rtc_private=<true|false>
 policy_reviewed=<true|false>
 ~~~
 
-- [ ] **Step 2: Run adapter RED**
+- [x] **Step 2: Run adapter RED**
 
 ~~~bash
 .venv-alpha/bin/python -m pytest -q tests/tools/test_private_remote_access.py
@@ -195,7 +198,7 @@ policy_reviewed=<true|false>
 
 Expected: collection fails because tools.private_remote_access does not exist.
 
-- [ ] **Step 3: Implement bounded collection**
+- [x] **Step 3: Implement bounded collection**
 
 Use subprocess.Popen without shell=True. Read at most 1,048,577 bytes; terminate then
 kill on timeout/overflow; wait for child settlement before return. Discard raw stderr
@@ -215,14 +218,14 @@ this exact schema:
 Require a regular current-user-owned mode-0600 file and no symlink in any component
 from repository root to leaf. Unknown fields or values mean policy_reviewed=false.
 
-- [ ] **Step 4: Add settlement and filesystem tests**
+- [x] **Step 4: Add settlement and filesystem tests**
 
 Use synthetic children and temporary directories. Prove timeout and cap paths reap the
 child and prevent late writes after return. Prove symlink parent/leaf, FIFO/socket,
 non-regular file, wrong owner simulation, wrong mode and malformed state fail closed
 without deletion or chmod repair.
 
-- [ ] **Step 5: Run GREEN and commit**
+- [x] **Step 5: Run GREEN and commit**
 
 ~~~bash
 .venv-alpha/bin/python -m pytest -q tests/monitoring/test_private_remote_access.py tests/tools/test_private_remote_access.py
