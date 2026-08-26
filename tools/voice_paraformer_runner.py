@@ -50,7 +50,6 @@ def run_protocol(
             latency_ms = max(0, (time.monotonic_ns() - started) // 1_000_000)
             if (
                 type(text) is not str
-                or not text
                 or len(text) > 4_096
                 or any(ord(character) < 32 for character in text)
             ):

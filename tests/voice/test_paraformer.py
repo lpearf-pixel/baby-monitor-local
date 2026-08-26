@@ -175,7 +175,6 @@ def test_paraformer_process_reuses_one_offline_child_and_keeps_pcm_out_of_argv(
         {"language": "en", "latencyMs": 1, "schemaVersion": 1, "text": "x"},
         {"language": "zh", "latencyMs": 3_001, "schemaVersion": 1, "text": "x"},
         {"language": "zh", "latencyMs": 1, "schemaVersion": 2, "text": "x"},
-        {"language": "zh", "latencyMs": 1, "schemaVersion": 1, "text": ""},
         {"extra": "x", "language": "zh", "latencyMs": 1, "schemaVersion": 1, "text": "x"},
     ),
 )
@@ -186,6 +185,22 @@ def test_paraformer_process_rejects_noncanonical_or_invalid_response(
     with pytest.raises(ValueError, match="^voice_model_unavailable$"):
         process.transcribe(PCM)
     assert process.closed is True
+
+
+def test_paraformer_process_keeps_child_alive_after_empty_no_match(
+    tmp_path: Path,
+) -> None:
+    response = {"language": "zh", "latencyMs": 1, "schemaVersion": 1, "text": ""}
+    process, commands, _options = _process(tmp_path, response)
+    try:
+        first = process.transcribe(PCM)
+        second = process.transcribe(PCM)
+    finally:
+        process.close()
+
+    assert first.text == ""
+    assert second.text == ""
+    assert len(commands) == 1
 
 
 @pytest.mark.parametrize("pcm", (b"", b"\x00", b"\x00\x00" * (16_000 * 8 + 1)))

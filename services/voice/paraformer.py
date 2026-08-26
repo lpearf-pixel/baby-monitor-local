@@ -337,7 +337,6 @@ def _validated_response(raw: object) -> AsrResult:
         or type(latency) is not int
         or not 0 <= latency <= 3_000
         or type(text) is not str
-        or not text
         or len(text) > 4_096
         or any(ord(character) < 32 for character in text)
     ):

@@ -46,12 +46,25 @@ def test_runner_processes_two_in_memory_requests_with_canonical_utf8() -> None:
     assert calls == [PCM, PCM]
 
 
+def test_runner_keeps_serving_after_a_bounded_empty_no_match() -> None:
+    input_stream = io.BytesIO(_frame(PCM) + _frame(PCM))
+    output_stream = io.BytesIO()
+    results = iter(("", "小小"))
+
+    assert run_protocol(
+        input_stream, output_stream, recognizer=lambda _pcm: next(results)
+    ) == 0
+
+    lines = [json.loads(line) for line in output_stream.getvalue().splitlines()]
+    assert lines[1]["text"] == ""
+    assert lines[2]["text"] == "小小"
+
+
 def test_runner_fails_closed_on_malformed_pcm_or_invalid_text() -> None:
     for payload, value in (
         (struct.pack(">I", 1), "x"),
         (_frame(b""), "x"),
         (_frame(b"\x00\x00" * (16_000 * 8 + 1)), "x"),
-        (_frame(PCM), ""),
     ):
         output_stream = io.BytesIO()
         assert run_protocol(
