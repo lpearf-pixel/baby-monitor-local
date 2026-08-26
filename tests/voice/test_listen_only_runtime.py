@@ -1,13 +1,23 @@
 from __future__ import annotations
 
 import threading
+import json
+import hashlib
+from pathlib import Path
 from datetime import UTC, datetime
 
 from packages.contracts.audio import AudioFailureReason
 from services.voice.audio_pump import PumpFrame
 from services.voice.capture import UtteranceResult
 from services.voice.listen_only import ListenOnlyOutcome
-from services.voice.listen_only_runtime import ListenOnlyVoiceWorker, PlaybackDucker
+from packages.contracts.settings import VoiceCareSettings
+from packages.monitoring.go2rtc_build import BuildMetadata
+from services.voice.camera_reply import CameraReplyAcceptance, CameraReplyCode
+from services.voice.listen_only_runtime import (
+    ListenOnlyVoiceWorker,
+    PlaybackDucker,
+    camera_reply_readiness,
+)
 from services.voice.vad import VadResult
 
 
@@ -228,3 +238,60 @@ def test_worker_close_settles_all_owned_voice_resources() -> None:
     assert vad.closed is True
     assert collector.closed is True
     assert asr.closed is True
+
+
+def _listen_settings(*, camera: bool) -> VoiceCareSettings:
+    return VoiceCareSettings(
+        listen_only_enabled=True,
+        camera_reply_enabled=camera,
+        silero_vad_manifest_sha256="1" * 64,
+        paraformer_zh_manifest_sha256="2" * 64,
+    )
+
+
+def _current_build(root: Path) -> BuildMetadata:
+    patch = root / "patches/go2rtc-macos-hybrid-hd.patch"
+    patch.parent.mkdir(parents=True)
+    patch.write_bytes(b"patch")
+    binary = root / ".local/bin/go2rtc"
+    binary.parent.mkdir(parents=True)
+    binary.write_bytes(b"binary")
+    binary.chmod(0o755)
+    metadata = BuildMetadata(
+        upstream_commit="b465651a94c1f637d566a8c660b4fad102b35153",
+        go_version="go1.24.13",
+        patch_sha256=hashlib.sha256(b"patch").hexdigest(),
+        binary_sha256=hashlib.sha256(b"binary").hexdigest(),
+        build_time="2026-08-26T00:00:00+00:00",
+        platform="darwin/amd64",
+    )
+    build = root / "runtime/build"
+    build.mkdir(parents=True, mode=0o700)
+    (build / "go2rtc.json").write_text(
+        json.dumps(metadata.as_dict()), encoding="ascii"
+    )
+    return metadata
+
+
+def test_camera_reply_readiness_requires_flag_and_current_marker(
+    tmp_path: Path,
+) -> None:
+    metadata = _current_build(tmp_path)
+
+    assert camera_reply_readiness(_listen_settings(camera=False), tmp_path) is (
+        CameraReplyCode.DISABLED
+    )
+    assert camera_reply_readiness(_listen_settings(camera=True), tmp_path) is (
+        CameraReplyCode.NOT_PROVEN
+    )
+
+    assert CameraReplyAcceptance.publish(tmp_path, metadata) is True
+    assert camera_reply_readiness(_listen_settings(camera=True), tmp_path) is (
+        CameraReplyCode.READY
+    )
+
+    binary = tmp_path / ".local/bin/go2rtc"
+    binary.write_bytes(b"changed")
+    assert camera_reply_readiness(_listen_settings(camera=True), tmp_path) is (
+        CameraReplyCode.NOT_PROVEN
+    )

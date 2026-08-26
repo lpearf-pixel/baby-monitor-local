@@ -16,6 +16,7 @@ from services.voice.camera_reply import (
     CameraReplyCode,
     CameraReplyEvidence,
     CameraReplyOutput,
+    CameraPreferredVoiceOutput,
     CameraReplyResult,
     CameraReplyStatus,
     CameraReplyStatusWriter,
@@ -844,3 +845,77 @@ def test_camera_output_releases_single_flight_when_capture_resume_raises(
 
     assert first == CameraReplyResult(CameraReplyCode.AMBIGUOUS, True)
     assert second.code is CameraReplyCode.COMPLETE
+
+
+class SelectionCamera:
+    def __init__(self, result: CameraReplyResult) -> None:
+        self.result = result
+        self.calls = 0
+
+    def deliver_code(self, code: str, cancelled: threading.Event) -> CameraReplyResult:
+        self.calls += 1
+        return self.result
+
+
+class SelectionFallback:
+    def __init__(self, result: bool) -> None:
+        self.result = result
+        self.calls = 0
+
+    def speak_code(self, code: str, cancelled: threading.Event) -> bool:
+        self.calls += 1
+        return self.result
+
+
+@pytest.mark.parametrize(
+    ("code", "started", "fallback_calls", "expected"),
+    [
+        (CameraReplyCode.DISABLED, False, 1, True),
+        (CameraReplyCode.NOT_PROVEN, False, 1, True),
+        (CameraReplyCode.UNAVAILABLE, False, 1, True),
+        (CameraReplyCode.BUSY, False, 0, False),
+        (CameraReplyCode.REJECTED, False, 0, False),
+        (CameraReplyCode.TIMEOUT, True, 0, False),
+        (CameraReplyCode.AMBIGUOUS, True, 0, False),
+        (CameraReplyCode.COMPLETE, True, 0, True),
+    ],
+)
+def test_camera_reply_fallback_policy_is_pre_send_only(
+    code: CameraReplyCode,
+    started: bool,
+    fallback_calls: int,
+    expected: bool,
+) -> None:
+    camera = SelectionCamera(CameraReplyResult(code, started))
+    fallback = SelectionFallback(True)
+    output = CameraPreferredVoiceOutput(camera, fallback)
+
+    assert output.speak_code("listen_only_ready", threading.Event()) is expected
+    assert camera.calls == 1
+    assert fallback.calls == fallback_calls
+
+
+def test_camera_reply_selection_cancellation_calls_neither_backend() -> None:
+    camera = SelectionCamera(
+        CameraReplyResult(CameraReplyCode.UNAVAILABLE, False)
+    )
+    fallback = SelectionFallback(True)
+    output = CameraPreferredVoiceOutput(camera, fallback)
+    cancelled = threading.Event()
+    cancelled.set()
+
+    assert output.speak_code("listen_only_ready", cancelled) is False
+    assert camera.calls == 0
+    assert fallback.calls == 0
+
+
+def test_camera_reply_fallback_failure_is_not_retried() -> None:
+    camera = SelectionCamera(
+        CameraReplyResult(CameraReplyCode.NOT_PROVEN, False)
+    )
+    fallback = SelectionFallback(False)
+
+    assert CameraPreferredVoiceOutput(camera, fallback).speak_code(
+        "listen_only_received", threading.Event()
+    ) is False
+    assert fallback.calls == 1

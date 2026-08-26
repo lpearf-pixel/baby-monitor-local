@@ -399,13 +399,13 @@ git commit -m "feat: gate Xiaomi camera speaker acceptance"
 - Produces: `CameraPreferredVoiceOutput(camera, fallback).speak_code(code, cancelled) -> bool`.
 - Consumes: a current Task 4 acceptance marker and existing `FixedVoiceSynthesizer` fallback.
 
-- [ ] **Step 1: Write settings RED tests**
+- [x] **Step 1: Write settings RED tests**
 
 Assert the example keeps `camera_reply_enabled: false`. Reject camera reply when
 `listen_only_enabled` is false or full-care `enabled` is true. The setting alone never
 proves readiness; a missing or stale marker must still build the i9-only path.
 
-- [ ] **Step 2: Write output-selection RED tests**
+- [x] **Step 2: Write output-selection RED tests**
 
 Use a table that locks this policy:
 
@@ -423,7 +423,7 @@ Use a table that locks this policy:
 Assert cancellation before selection calls neither backend. Assert fallback failure
 returns false and does not retry.
 
-- [ ] **Step 3: Run RED**
+- [x] **Step 3: Run RED**
 
 ```bash
 .venv-alpha/bin/python -m pytest -q tests/contracts/test_voice_settings.py tests/voice/test_camera_reply.py tests/voice/test_listen_only_runtime.py -k 'camera_reply or fallback'
@@ -431,7 +431,7 @@ returns false and does not retry.
 
 Expected: failures for the absent setting and selector.
 
-- [ ] **Step 4: Implement settings and production composition**
+- [x] **Step 4: Implement settings and production composition**
 
 In `build_listen_only_worker()`, construct the existing i9 synthesizer unconditionally.
 Construct camera output only when the configuration flag is true and the Task 4 marker
@@ -439,7 +439,7 @@ matches the current installed build; otherwise pass a fixed not-proven camera re
 the selector. Keep endpoints, stream labels, timing and format values in the camera
 module constants rather than settings.
 
-- [ ] **Step 5: Run GREEN and commit**
+- [x] **Step 5: Run GREEN and commit**
 
 ```bash
 .venv-alpha/bin/python -m pytest -q tests/contracts/test_voice_settings.py tests/voice/test_camera_reply.py tests/voice/test_listen_only_runtime.py

@@ -4,15 +4,32 @@ from __future__ import annotations
 
 import threading
 import time
+import os
+import stat
 from datetime import datetime
 from pathlib import Path
 from typing import Protocol
 
 from packages.contracts.settings import AppSettings
+from packages.monitoring.go2rtc_build import (
+    GO2RTC_COMMIT,
+    read_metadata,
+    sha256_file,
+)
 from services.audio.source import FixedAudioDecoder
 from services.voice.artifacts import voice_artifact_spec
 from services.voice.audio_pump import ExactFrameAudioPump
 from services.voice.capture import UtteranceCollector
+from services.voice.camera_reply import (
+    CameraPreferredVoiceOutput,
+    CameraReplyAcceptance,
+    CameraReplyCode,
+    CameraReplyOutput,
+    CameraReplyResult,
+    CameraReplyStatusWriter,
+    FixedReplyRenderer,
+    LoopbackCameraReplyTransport,
+)
 from services.voice.listen_only import ListenOnlyController, ListenOnlyOutcome
 from services.voice.paraformer import ParaformerProcess, RecoveringParaformerProcess
 from services.voice.silero_runtime import StreamingSileroVad
@@ -219,10 +236,13 @@ def build_listen_only_worker(
             )
         )
         ducker = PlaybackDucker(pump=pump, vad=vad, collector=collector)
-        synthesizer = FixedVoiceSynthesizer(
+        fallback = FixedVoiceSynthesizer(
             runner=BoundedCommandRunner(),
             ducker=ducker,
             post_playback_guard_seconds=0.0,
+        )
+        synthesizer = _build_preferred_output(
+            voice, root, ducker=ducker, fallback=fallback
         )
         controller = ListenOnlyController(asr=asr, synthesizer=synthesizer)
         return ListenOnlyVoiceWorker(
@@ -248,8 +268,88 @@ def build_listen_only_worker(
         raise ValueError("voice_runtime_unavailable") from None
 
 
+class _FixedCameraResult:
+    def __init__(self, code: CameraReplyCode) -> None:
+        self._result = CameraReplyResult(code, False)
+
+    def deliver_code(self, code: str, cancelled: StopEvent) -> CameraReplyResult:
+        return self._result
+
+
+def camera_reply_readiness(voice: object, root: Path) -> CameraReplyCode:
+    if getattr(voice, "camera_reply_enabled", False) is not True:
+        return CameraReplyCode.DISABLED
+    root = Path(root).resolve(strict=True)
+    metadata = read_metadata(root / "runtime/build/go2rtc.json")
+    try:
+        if (
+            metadata is None
+            or metadata.upstream_commit != GO2RTC_COMMIT
+            or metadata.platform != "darwin/amd64"
+            or sha256_file(root / "patches/go2rtc-macos-hybrid-hd.patch")
+            != metadata.patch_sha256
+            or sha256_file(root / ".local/bin/go2rtc")
+            != metadata.binary_sha256
+            or CameraReplyAcceptance.load(root, metadata) is None
+        ):
+            return CameraReplyCode.NOT_PROVEN
+    except OSError:
+        return CameraReplyCode.NOT_PROVEN
+    return CameraReplyCode.READY
+
+
+def _build_preferred_output(
+    voice: object,
+    root: Path,
+    *,
+    ducker: PlaybackDucker,
+    fallback: FixedVoiceSynthesizer,
+) -> CameraPreferredVoiceOutput:
+    readiness = camera_reply_readiness(voice, root)
+    camera: object = _FixedCameraResult(readiness)
+    if readiness is CameraReplyCode.READY:
+        try:
+            temporary_root = root / "runtime/voice-camera-reply"
+            temporary_root.mkdir(parents=True, exist_ok=True, mode=0o700)
+            temporary_stat = temporary_root.lstat()
+            if (
+                stat.S_ISLNK(temporary_stat.st_mode)
+                or not stat.S_ISDIR(temporary_stat.st_mode)
+                or temporary_stat.st_uid != os.getuid()
+                or stat.S_IMODE(temporary_stat.st_mode) != 0o700
+            ):
+                raise ValueError("voice_runtime_unavailable")
+            status_root = root / "runtime/status"
+            status_root.mkdir(parents=True, exist_ok=True, mode=0o700)
+            status_stat = status_root.lstat()
+            if (
+                stat.S_ISLNK(status_stat.st_mode)
+                or not stat.S_ISDIR(status_stat.st_mode)
+                or status_stat.st_uid != os.getuid()
+                or stat.S_IMODE(status_stat.st_mode) != 0o700
+            ):
+                raise ValueError("voice_runtime_unavailable")
+            runner = BoundedCommandRunner()
+            camera = CameraReplyOutput(
+                transport=LoopbackCameraReplyTransport(temporary_root),
+                renderer=FixedReplyRenderer(
+                    runner=runner, temporary_root=temporary_root
+                ),
+                ducker=ducker,
+                status_writer=CameraReplyStatusWriter(
+                    status_root / "voice-camera-reply.json",
+                    boundary=status_root,
+                ),
+                post_playback_guard_seconds=0.0,
+            )
+        except Exception:
+            camera = _FixedCameraResult(CameraReplyCode.UNAVAILABLE)
+    return CameraPreferredVoiceOutput(camera, fallback)
+
+
 __all__ = [
     "ListenOnlyVoiceWorker",
     "PlaybackDucker",
     "build_listen_only_worker",
+    "camera_reply_readiness",
 ]

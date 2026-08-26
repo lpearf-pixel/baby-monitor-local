@@ -580,6 +580,52 @@ class _StatusWriter(Protocol):
     def write(self, status: CameraReplyStatus) -> None: ...
 
 
+class _CameraOutput(Protocol):
+    def deliver_code(
+        self, code: str, cancelled: CancelEvent
+    ) -> CameraReplyResult: ...
+
+
+class _FallbackOutput(Protocol):
+    def speak_code(self, code: str, cancelled: CancelEvent) -> bool: ...
+
+
+class CameraPreferredVoiceOutput:
+    """Use i9 fallback only when the camera send has certainly not begun."""
+
+    def __init__(
+        self, camera: _CameraOutput, fallback: _FallbackOutput
+    ) -> None:
+        self._camera = camera
+        self._fallback = fallback
+
+    def speak_code(self, code: str, cancelled: CancelEvent) -> bool:
+        if cancelled.is_set():
+            return False
+        try:
+            result = self._camera.deliver_code(code, cancelled)
+        except Exception:
+            return False
+        if result.code is CameraReplyCode.COMPLETE and result.delivery_started:
+            return True
+        if (
+            not result.delivery_started
+            and result.code
+            in {
+                CameraReplyCode.DISABLED,
+                CameraReplyCode.NOT_PROVEN,
+                CameraReplyCode.UNAVAILABLE,
+            }
+        ):
+            if cancelled.is_set():
+                return False
+            try:
+                return bool(self._fallback.speak_code(code, cancelled))
+            except Exception:
+                return False
+        return False
+
+
 class CameraReplyOutput:
     """Settle one fixed camera reply without overlapping or retrying."""
 
@@ -770,6 +816,7 @@ __all__ = [
     "CameraReplyCode",
     "CameraReplyEvidence",
     "CameraReplyOutput",
+    "CameraPreferredVoiceOutput",
     "CameraReplyResult",
     "CameraReplyStatus",
     "CameraReplyStatusWriter",

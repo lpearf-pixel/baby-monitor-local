@@ -1,6 +1,9 @@
 from __future__ import annotations
 
+from pathlib import Path
+
 import pytest
+import yaml
 
 from packages.contracts.settings import VoiceCareSettings
 
@@ -21,6 +24,7 @@ def test_voice_defaults_are_disabled_and_bounded() -> None:
 
     assert settings.enabled is False
     assert settings.listen_only_enabled is False
+    assert settings.camera_reply_enabled is False
     assert settings.stream_name == "audio_analysis"
     assert settings.max_utterance_ms == 8_000
     assert settings.pre_roll_ms == 500
@@ -72,6 +76,37 @@ def test_listen_only_rejects_a_missing_selected_runtime_digest() -> None:
             listen_only_enabled=True,
             silero_vad_manifest_sha256="1" * 64,
         )
+
+
+def test_camera_reply_example_is_disabled() -> None:
+    payload = yaml.safe_load(Path("config/settings.example.yaml").read_text())
+
+    assert payload["voice_care"]["camera_reply_enabled"] is False
+
+
+@pytest.mark.parametrize(
+    ("enabled", "listen_only_enabled"), [(False, False), (True, False)]
+)
+def test_camera_reply_requires_exclusive_listen_only_mode(
+    enabled: bool, listen_only_enabled: bool
+) -> None:
+    values = {
+        "enabled": enabled,
+        "listen_only_enabled": listen_only_enabled,
+        "camera_reply_enabled": True,
+        "silero_vad_manifest_sha256": "1" * 64,
+        "paraformer_zh_manifest_sha256": "5" * 64,
+    }
+    if enabled:
+        values.update(
+            {
+                "whisper_base_manifest_sha256": "2" * 64,
+                "whisper_small_manifest_sha256": "3" * 64,
+                "speechbrain_ecapa_manifest_sha256": "4" * 64,
+            }
+        )
+    with pytest.raises(ValueError, match="VOICE_CAMERA_REPLY_MODE_REQUIRED"):
+        VoiceCareSettings(**values)
 
 
 @pytest.mark.parametrize(

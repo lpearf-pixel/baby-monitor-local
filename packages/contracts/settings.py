@@ -204,6 +204,7 @@ class VoiceCareSettings(StrictSettingsModel):
 
     enabled: bool = False
     listen_only_enabled: bool = False
+    camera_reply_enabled: bool = False
     stream_name: Literal["audio_analysis"] = "audio_analysis"
     max_utterance_ms: Literal[8_000] = 8_000
     pre_roll_ms: Literal[500] = 500
@@ -228,6 +229,10 @@ class VoiceCareSettings(StrictSettingsModel):
 
     @model_validator(mode="after")
     def require_artifact_digests_when_enabled(self) -> "VoiceCareSettings":
+        if self.camera_reply_enabled and (
+            not self.listen_only_enabled or self.enabled
+        ):
+            raise ValueError("VOICE_CAMERA_REPLY_MODE_REQUIRED")
         if self.enabled and self.listen_only_enabled:
             raise ValueError("VOICE_MODE_CONFLICT")
         if self.enabled and any(
