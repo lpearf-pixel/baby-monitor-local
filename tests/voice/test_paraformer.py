@@ -12,10 +12,41 @@ import pytest
 
 from packages.contracts.settings import VoiceCareSettings
 from services.voice.artifacts import voice_artifact_spec
-from services.voice.paraformer import ParaformerProcess
+from services.voice.asr import AsrResult
+from services.voice.paraformer import ParaformerProcess, RecoveringParaformerProcess
 
 
 PCM = b"\x01\x00" * (16_000 * 2)
+
+
+class _RecoveringChild:
+    def __init__(self, outcomes: list[AsrResult | ValueError]) -> None:
+        self._outcomes = outcomes
+        self.closed = False
+
+    def transcribe(self, _pcm: bytes) -> AsrResult:
+        outcome = self._outcomes.pop(0)
+        if isinstance(outcome, ValueError):
+            raise outcome
+        return outcome
+
+    def close(self) -> None:
+        self.closed = True
+
+
+def test_recovering_paraformer_rebuilds_once_after_child_becomes_unavailable() -> None:
+    failed = _RecoveringChild([ValueError("voice_model_unavailable")])
+    recovered = _RecoveringChild(
+        [AsrResult(text="小小开始喂奶", language="zh", duration_ms=12)]
+    )
+    children = iter((failed, recovered))
+    process = RecoveringParaformerProcess(lambda: next(children))
+
+    result = process.transcribe(PCM)
+
+    assert result.text == "小小开始喂奶"
+    assert failed.closed is True
+    assert recovered.closed is False
 
 
 def _spec():

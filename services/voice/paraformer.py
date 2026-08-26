@@ -10,6 +10,7 @@ import threading
 import time
 from collections.abc import Callable
 from pathlib import Path
+from typing import Protocol
 
 from services.voice.artifacts import VoiceArtifactSpec, validate_voice_artifact
 from services.voice.asr import AsrResult
@@ -23,6 +24,12 @@ UNAVAILABLE_REASON = "voice_model_unavailable"
 INVALID_PCM_REASON = "voice_pcm_invalid"
 _ARTIFACT_ID = "sherpa-onnx-paraformer-zh-2023-09-14"
 _MAX_RESPONSE_BYTES = 16_384
+
+
+class _ParaformerChild(Protocol):
+    def transcribe(self, pcm: bytes) -> AsrResult: ...
+
+    def close(self) -> None: ...
 
 
 class ParaformerProcess:
@@ -252,6 +259,54 @@ class ParaformerProcess:
                     pass
 
 
+class RecoveringParaformerProcess:
+    """Rebuild one failed local child and retry the same in-memory utterance once."""
+
+    def __init__(self, factory: Callable[[], _ParaformerChild]) -> None:
+        self._factory = factory
+        self._process: _ParaformerChild | None = factory()
+        self._closed = False
+        self._lock = threading.Lock()
+
+    def transcribe(self, pcm: bytes) -> AsrResult:
+        with self._lock:
+            if self._closed:
+                raise ValueError(UNAVAILABLE_REASON)
+            process = self._process
+            if process is None:
+                process = self._build()
+            try:
+                return process.transcribe(pcm)
+            except ValueError as exc:
+                if str(exc) != UNAVAILABLE_REASON:
+                    raise
+            process.close()
+            self._process = None
+            replacement = self._build()
+            try:
+                return replacement.transcribe(pcm)
+            except Exception:
+                replacement.close()
+                self._process = None
+                raise ValueError(UNAVAILABLE_REASON) from None
+
+    def close(self) -> None:
+        with self._lock:
+            self._closed = True
+            process = self._process
+            self._process = None
+            if process is not None:
+                process.close()
+
+    def _build(self) -> _ParaformerChild:
+        try:
+            process = self._factory()
+        except Exception:
+            raise ValueError(UNAVAILABLE_REASON) from None
+        self._process = process
+        return process
+
+
 def _decode_canonical_json(payload: bytearray, maximum_bytes: int) -> object:
     if not payload or len(payload) > maximum_bytes:
         raise ValueError(UNAVAILABLE_REASON)
@@ -290,4 +345,4 @@ def _validated_response(raw: object) -> AsrResult:
     return AsrResult(text=text, language="zh", duration_ms=latency)
 
 
-__all__ = ["ParaformerProcess"]
+__all__ = ["ParaformerProcess", "RecoveringParaformerProcess"]

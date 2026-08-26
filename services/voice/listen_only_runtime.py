@@ -14,7 +14,7 @@ from services.voice.artifacts import voice_artifact_spec
 from services.voice.audio_pump import ExactFrameAudioPump
 from services.voice.capture import UtteranceCollector
 from services.voice.listen_only import ListenOnlyController, ListenOnlyOutcome
-from services.voice.paraformer import ParaformerProcess
+from services.voice.paraformer import ParaformerProcess, RecoveringParaformerProcess
 from services.voice.silero_runtime import StreamingSileroVad
 from services.voice.tts import BoundedCommandRunner, FixedVoiceSynthesizer
 from services.voice.worker import VoiceStatusWriter
@@ -209,11 +209,14 @@ def build_listen_only_worker(
             project_root=root,
         )
         collector = UtteranceCollector(voice)
-        asr = ParaformerProcess(
-            voice_artifact_spec(
-                voice, "sherpa-onnx-paraformer-zh-2023-09-14"
-            ),
-            project_root=root,
+        paraformer_artifact = voice_artifact_spec(
+            voice, "sherpa-onnx-paraformer-zh-2023-09-14"
+        )
+        asr = RecoveringParaformerProcess(
+            lambda: ParaformerProcess(
+                paraformer_artifact,
+                project_root=root,
+            )
         )
         ducker = PlaybackDucker(pump=pump, vad=vad, collector=collector)
         synthesizer = FixedVoiceSynthesizer(
