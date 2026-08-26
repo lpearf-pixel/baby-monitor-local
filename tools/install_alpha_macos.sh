@@ -110,8 +110,9 @@ Alpha installation prepared.
 
 4. The start command prints the LAN dashboard URL for the M2 Mac.
 
-5. Use the authenticated Tailscale Serve HTTPS URL as BABY_MONITOR_DASHBOARD_URL
-   in runtime/alpha.env before enabling environment ntfy incident links.
+5. Before private remote access, run make alpha-remote-preflight and follow:
+   docs/runbooks/PRIVATE_REMOTE_ACCESS.md
+   Store an approved private HTTPS URL only in ignored runtime configuration.
 
 6. Visual review remains disabled until runtime/settings.yaml contains a private
    bed_zone. Configure the dedicated M2 SSH key and tunnel with:

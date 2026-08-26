@@ -318,7 +318,7 @@ git commit -m "feat: configure fixed private Tailscale Serve"
 - Produces: valid synthetic grant example with group:baby-parents, tag:baby-monitor and only tcp:443.
 - Replaces: raw Serve mutation instructions in generic startup output with bounded repository commands.
 
-- [ ] **Step 1: Write deployment/documentation RED tests**
+- [x] **Step 1: Write deployment/documentation RED tests**
 
 Assert Make targets invoke only:
 
@@ -337,7 +337,7 @@ Scan changed operator files for executable Funnel/router/reset/logout instructio
 grants for 8080/1984/8554/8555, auth keys, private IPv4 literals and real identities.
 Prohibitions in prose and fixed loopback literals are the only allowed matches.
 
-- [ ] **Step 2: Run deployment RED**
+- [x] **Step 2: Run deployment RED**
 
 ~~~bash
 .venv-alpha/bin/python -m pytest -q tests/deploy/test_private_remote_access.py tests/deploy/test_network_access.py
@@ -345,20 +345,20 @@ Prohibitions in prose and fixed loopback literals are the only allowed matches.
 
 Expected: assertions fail because P4 commands, example and runbook do not exist.
 
-- [ ] **Step 3: Add Make and safe generic output**
+- [x] **Step 3: Add Make and safe generic output**
 
 Add targets to .PHONY and help. Generic Alpha startup may print
 make alpha-remote-preflight and the runbook path, but not a direct Serve mutation or
 a detected network address.
 
-- [ ] **Step 4: Add grant and operating procedure**
+- [x] **Step 4: Add grant and operating procedure**
 
 The runbook uses the official Standalone client and Settings CLI integration, requires
 interactive login on i9 and both iPhones, tells the admin to merge rather than replace
 policy, and requires validation plus review of broader grants. Distinguish read-only
 commands from configure. Rollback is explicit-approval only and gets no Make target.
 
-- [ ] **Step 5: Run GREEN/static gates and commit**
+- [x] **Step 5: Run GREEN/static gates and commit**
 
 ~~~bash
 make alpha-remote-test

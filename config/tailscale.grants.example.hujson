@@ -1,0 +1,18 @@
+{
+  "tagOwners": {
+    "tag:baby-monitor": ["autogroup:admin"]
+  },
+  "groups": {
+    "group:baby-parents": [
+      "parent-one@example.invalid",
+      "parent-two@example.invalid"
+    ]
+  },
+  "grants": [
+    {
+      "src": ["group:baby-parents"],
+      "dst": ["tag:baby-monitor"],
+      "ip": ["tcp:443"]
+    }
+  ]
+}

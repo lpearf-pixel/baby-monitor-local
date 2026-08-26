@@ -377,9 +377,7 @@ cat <<EOF
 
 Xiaomi setup remains private on the i9 Mac: http://127.0.0.1:1984
 
-Future private external access with Tailscale:
-  tailscale serve --bg http://127.0.0.1:${BABY_MONITOR_PORT}
-  tailscale serve status
-
-Never use tailscale funnel and never add router port forwarding.
+Private remote access is a separate explicit workflow:
+  make alpha-remote-preflight
+  See docs/runbooks/PRIVATE_REMOTE_ACCESS.md
 EOF

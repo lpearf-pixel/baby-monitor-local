@@ -4,7 +4,7 @@ PYTHON311 ?= /usr/local/bin/python3.11
 BASH ?= /bin/bash
 .DEFAULT_GOAL := help
 
-.PHONY: help alpha-update alpha-install alpha-start alpha-stop alpha-restart alpha-go2rtc-restart alpha-status alpha-guardian-start alpha-guardian-test alpha-guardian-test-live alpha-guardian-scene-test alpha-audio-status alpha-audio-test alpha-voice-status alpha-voice-test alpha-voice-start alpha-voice-stop alpha-voice-listen-start alpha-voice-listen-status alpha-voice-listen-stop alpha-voice-preflight alpha-voice-v0-test alpha-voice-v0-probe alpha-voice-v0-stability alpha-voice-keychain-helper-build alpha-voice-keychain-migrate alpha-voice-keychain-check alpha-voice-converter-install alpha-voice-speaker-install alpha-voice-speaker-check alpha-voice-asr-install alpha-voice-ecapa-source alpha-voice-ecapa-install alpha-voice-ecapa-probe alpha-voice-paraformer-install alpha-voice-enroll-dad alpha-voice-enroll-mom alpha-voice-asr-capture alpha-voice-asr-capture-fixed alpha-voice-asr-capture-fixed-all alpha-voice-asr-capture-all alpha-voice-asr-evaluate alpha-voice-asr-bakeoff alpha-voice-asr-paraformer alpha-voice-asr-recover alpha-voice-vad-diagnostic alpha-voice-models-install alpha-voice-model-benchmark alpha-visual-status alpha-visual-performance alpha-visual-diagnostic alpha-visual-launchd-update alpha-logs alpha-quality-hd alpha-quality-info alpha-quality-rollback alpha-source-check alpha-subtype-probe alpha-subtype-apply alpha-go2rtc-info alpha-go2rtc-rebuild alpha-go2rtc-rollback alpha-realtime-models-check alpha-realtime-models-install alpha-ws2021-collect-calibrated alpha-ws2021-collect-model alpha-ws2021-model-train-bootstrap alpha-ws2021-model-train alpha-ws2021-model-export alpha-ws2021-model-check
+.PHONY: help alpha-update alpha-install alpha-start alpha-stop alpha-restart alpha-go2rtc-restart alpha-status alpha-guardian-start alpha-guardian-test alpha-guardian-test-live alpha-guardian-scene-test alpha-audio-status alpha-audio-test alpha-remote-preflight alpha-remote-status alpha-remote-configure alpha-remote-test alpha-voice-status alpha-voice-test alpha-voice-start alpha-voice-stop alpha-voice-listen-start alpha-voice-listen-status alpha-voice-listen-stop alpha-voice-preflight alpha-voice-v0-test alpha-voice-v0-probe alpha-voice-v0-stability alpha-voice-keychain-helper-build alpha-voice-keychain-migrate alpha-voice-keychain-check alpha-voice-converter-install alpha-voice-speaker-install alpha-voice-speaker-check alpha-voice-asr-install alpha-voice-ecapa-source alpha-voice-ecapa-install alpha-voice-ecapa-probe alpha-voice-paraformer-install alpha-voice-enroll-dad alpha-voice-enroll-mom alpha-voice-asr-capture alpha-voice-asr-capture-fixed alpha-voice-asr-capture-fixed-all alpha-voice-asr-capture-all alpha-voice-asr-evaluate alpha-voice-asr-bakeoff alpha-voice-asr-paraformer alpha-voice-asr-recover alpha-voice-vad-diagnostic alpha-voice-models-install alpha-voice-model-benchmark alpha-visual-status alpha-visual-performance alpha-visual-diagnostic alpha-visual-launchd-update alpha-logs alpha-quality-hd alpha-quality-info alpha-quality-rollback alpha-source-check alpha-subtype-probe alpha-subtype-apply alpha-go2rtc-info alpha-go2rtc-rebuild alpha-go2rtc-rollback alpha-realtime-models-check alpha-realtime-models-install alpha-ws2021-collect-calibrated alpha-ws2021-collect-model alpha-ws2021-model-train-bootstrap alpha-ws2021-model-train alpha-ws2021-model-export alpha-ws2021-model-check
 
 help:
 	@echo "Baby Monitor Local Alpha commands:"
@@ -21,6 +21,10 @@ help:
 	@echo "  make alpha-guardian-scene-test Run supervised household scene acceptance"
 	@echo "  make alpha-audio-status      Show bounded audio worker status"
 	@echo "  make alpha-audio-test        Run side-effect-free audio software gate"
+	@echo "  make alpha-remote-preflight  Audit private remote access prerequisites"
+	@echo "  make alpha-remote-status     Show redacted private remote access status"
+	@echo "  make alpha-remote-configure  Apply the fixed private Serve route after confirmation"
+	@echo "  make alpha-remote-test       Run side-effect-free private access software checks"
 	@echo "  make alpha-voice-status      Show bounded Voice Care worker status"
 	@echo "  make alpha-voice-test        Run side-effect-free Voice Care software gate"
 	@echo "  make alpha-voice-start       Start only the Voice Care worker"
@@ -154,6 +158,18 @@ alpha-audio-status:
 
 alpha-audio-test:
 	@$(PYTHON) -m pytest -q tests/audio tests/contracts/test_audio.py tests/contracts/test_audio_settings.py tests/deploy/test_audio_worker_deploy.py
+
+alpha-remote-preflight:
+	@$(PYTHON) tools/private_remote_access.py preflight
+
+alpha-remote-status:
+	@$(PYTHON) tools/private_remote_access.py status
+
+alpha-remote-configure:
+	@$(PYTHON) tools/private_remote_access.py configure
+
+alpha-remote-test:
+	@$(PYTHON) -m pytest -q tests/monitoring/test_private_remote_access.py tests/tools/test_private_remote_access.py tests/deploy/test_private_remote_access.py tests/deploy/test_network_access.py
 
 alpha-voice-status:
 	@$(PYTHON) tools/voice_status.py runtime/status/voice.json

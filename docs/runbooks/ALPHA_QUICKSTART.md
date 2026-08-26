@@ -466,22 +466,17 @@ make alpha-guardian-scene-test
 凭据或床区坐标，不发送 ntfy，也不写生产事件或证据数据库。该门禁仅证明本次
 固定场景表现，不是医疗准确率或无人照护证明。
 
-## 13. 后续外部访问
+## 13. 私有远程访问
 
-外部访问由 Issue #5 跟踪。目标命令为：
-
-```bash
-tailscale serve --bg http://127.0.0.1:8080
-tailscale serve status
-```
-
-禁止：
+P4 使用独立、经过认证的私有访问流程。先运行只读检查：
 
 ```bash
-tailscale funnel 8080
+make alpha-remote-preflight
 ```
 
-也禁止路由器转发 `1984`、`8080`、`8554`、`8555`。
+安装、tailnet 策略合并、固定 Serve 配置、两部 iPhone 的蜂窝网络验收和回滚边界，
+统一见 `docs/runbooks/PRIVATE_REMOTE_ACCESS.md`。不要自行拼接网络发布命令，也不要
+公开 Dashboard、go2rtc 或路由器端口。
 
 ## 14. 视频和功能边界
 

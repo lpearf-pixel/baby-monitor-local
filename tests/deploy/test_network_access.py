@@ -43,5 +43,6 @@ def test_runbook_documents_m2_lan_and_ssh_tunnel_access() -> None:
 
     assert "http://<i9局域网IP>:8080" in runbook
     assert "ssh -L 1984:127.0.0.1:1984" in runbook
-    assert "tailscale serve --bg http://127.0.0.1:8080" in runbook
-    assert "tailscale funnel" in runbook
+    assert "make alpha-remote-preflight" in runbook
+    assert "docs/runbooks/PRIVATE_REMOTE_ACCESS.md" in runbook
+    assert "tailscale serve --bg" not in runbook
