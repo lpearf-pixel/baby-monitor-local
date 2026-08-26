@@ -11,7 +11,9 @@ Updated: 2026-08-26
   The supervised tone passed, but V3E failed closed after a stuck interaction,
   unexpected camera movement, CS2 timeout and Voice audio EOF. Camera reply is disabled
   and not accepted; the healthy listen-only Voice worker uses the prior i9 speaker.
-  The remote branch remains at `4eeab86`; local work has not been pushed.
+  The remote branch is at `1ab5c99`; local business implementation is at `e786d2e`
+  with the review/result documentation checkpoint following locally. It has not been
+  merged into a protected branch.
 - The evidence-retention line is based on the published Dashboard snapshot `69e2d5b`;
   the Dashboard remains complete and its published branch is not rewritten.
 - Remote branch `codex/baby-guardian-event-loop` remains at its earlier squash snapshot
@@ -464,6 +466,9 @@ legacy branch into this line without a separate integration decision.
    heard. The final software gate is 325/325 and no recent raw audio file was created.
    Full-care Voice remains disabled; its private-corpus accuracy and Dad/Mom enrollment
    gates are not claimed complete by listen-only mode.
+   The bounded command-compatibility fix at `e786d2e` now accepts only the exact
+   `小小`/`嘿，小小` entries and exact `我要喂奶了` alias; focused 72/72 and Voice
+   418/418 pass. A real installed-i9 one-response check remains pending.
 4. Defer WS2021 Task 15 and normal-care-only real-Baby Guardian observation until the
    current Voice work is complete and a Baby is available. The three-browser HD gate is
    already user-confirmed PASS.

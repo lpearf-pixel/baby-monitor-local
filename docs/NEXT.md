@@ -190,6 +190,12 @@ installed readiness is healthy while the Xiaomi source remains PASS. Supervised
 acoustic acceptance passed at least 5 wakes, 3 dialogues, 3 timeouts and 5 non-wake
 controls with both fixed replies audible and no self-trigger.
 
+The daily command compatibility review is closed in software at `e786d2e`: exact
+`嘿，小小，我要喂奶了` now reaches one listen-only acknowledgement while arbitrary
+leads, near matches and all Baby Care writes remain closed. Before resuming Dad/Mom
+enrollment, Web reviews the implementation/result record and the logged-in i9 performs
+one supervised gold-phrase check with a single response and count increment.
+
 **Prerequisites:** The current design approval permits synthetic/public-media software
 work before P0–P2 complete. P0–P2 and A7 remain prerequisites for household
 real-device acceptance; the source-track prerequisite is verified.

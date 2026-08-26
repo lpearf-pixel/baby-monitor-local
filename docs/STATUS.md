@@ -418,6 +418,15 @@
   the final matrix, source health stayed PASS and the recent raw-audio file count was
   zero. This proves only the supervised room trial, not arbitrary speakers, noise or
   unattended-care safety.
+- Voice command compatibility is software-complete at `e786d2e`. Review reproduced
+  that `嘿，小小` was rejected by wake and `我要喂奶了` was rejected by intent even
+  with correct ASR text. The fixed grammar accepts only exact `小小` or the fixed
+  optional `嘿` lead, including its exact punctuation-free ASR form, and adds only the
+  exact idle-state feeding-start alias. Arbitrary leads, homophones, sentence-internal
+  or repeated wake words, near-match commands and state conflicts remain closed.
+  Focused tests pass 72/72 and Voice passes 418/418; compile, diff and privacy checks
+  pass. Listen-only still writes no Baby Care data. Real installed-i9 one-response
+  acceptance for the user gold phrase remains pending.
 - P4 authenticated private remote access is software-complete through `a265312`, with
   a repository Guardian fixture synchronization at `5dca783`. The pure bounded parser,
   read-only macOS audit, exact-confirmation fixed Serve adapter, four Make interfaces,

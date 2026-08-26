@@ -1092,3 +1092,12 @@ delta +6，wake/challenge/digit 三项均 false，说明抓到的是另一时段
 和 utterance collector 在最多 12 秒内返回一段完整内存话语。随机数字、60 秒 TTL、
 exact match、Paraformer 与 ECAPA 门均未放宽。新鲜软件证据为 enrollment 14/14、Voice
 406/406、compile 与 diff check PASS；真实 logged-in-i9 Dad/Mom enrollment 仍待完成。
+
+同日完成 Voice 日常口令审查修复。审查提交 `dd88ff6` 在基线 `1ab5c99` 证明
+`嘿，小小，我要喂奶了` 同时被 wake 和 intent 两个独立闭集拒绝；当前分支保留审查
+文档于 `1c00899`。严格 RED/GREEN 业务提交 `e786d2e` 仅增加固定可选前导词 `嘿`、
+精确 punctuation-free ASR 形式和精确 idle-state 别名 `我要喂奶了`。任意前导语、同音、
+句中或重复 wake、近似命令和状态冲突继续 fail closed。用户金句端到端只返回一次
+`listen_only_received` 并回到 idle，不构造 Baby Care 写入。新鲜证据为 focused
+72/72、Voice 418/418、compile/diff/privacy PASS。真实登录 i9 的单句一次回复复验仍
+pending；完整过程记录于同目录 review-resolution 文档。
