@@ -24,7 +24,9 @@ def test_start_waits_for_listen_only_status_and_stop_is_voice_only(tmp_path: Pat
     calls = project / "calls"
     _write_executable(
         project / ".venv-alpha/bin/python",
-        "#!/bin/sh\nprintf '%s\\n' \"$*\" >> \"$VOICE_TEST_CALLS\"\n"
+        "#!/bin/sh\n"
+        "test \"${1:-}\" != '-c' || { printf '1787616001500000\\n'; exit 0; }\n"
+        "printf '%s\\n' \"$*\" >> \"$VOICE_TEST_CALLS\"\n"
         "case $* in *--require-mode*listen_only*) exit 0;; esac\nexit 2\n",
     )
     _write_executable(
@@ -57,7 +59,7 @@ def test_start_waits_for_listen_only_status_and_stop_is_voice_only(tmp_path: Pat
     assert lines[0] == "start --voice-only"
     assert lines[-1] == "stop --voice-only"
     assert any("--require-mode listen_only" in line for line in lines)
-    assert any("--not-before-epoch" in line for line in lines)
+    assert any("--not-before-epoch-us" in line for line in lines)
 
 
 def test_start_retries_a_transient_launchd_bootstrap_failure(tmp_path: Path) -> None:
