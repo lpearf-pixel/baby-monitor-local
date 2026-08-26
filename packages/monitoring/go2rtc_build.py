@@ -19,8 +19,10 @@ GO2RTC_DESIGNATED_REQUIREMENT = (
 )
 ALLOWED_PATCH_CHANGES = {
     "pkg/iso/codecs.go": (1, 1),
-    "pkg/xiaomi/miss/cs2/conn.go": (1, 1),
+    "pkg/xiaomi/miss/cs2/conn.go": (2, 2),
+    "pkg/xiaomi/miss/cs2/conn_test.go": (36, 0),
 }
+PROTOCOL_GATE_TIMEOUT_SECONDS = 120
 
 
 class Go2RTCBuildError(RuntimeError):
@@ -256,6 +258,33 @@ def _patch_numstat(source_dir: Path, patch_path: Path) -> dict[str, tuple[int, i
     return entries
 
 
+def run_upstream_protocol_gate(
+    source_dir: Path,
+    go: str,
+    *,
+    runner: Callable[..., subprocess.CompletedProcess[Any]] = subprocess.run,
+) -> None:
+    try:
+        runner(
+            [
+                go,
+                "test",
+                "./pkg/xiaomi/miss/cs2",
+                "-run",
+                "TestWritePacketCopiesPayload",
+                "-count=1",
+            ],
+            cwd=source_dir,
+            check=True,
+            stdin=subprocess.DEVNULL,
+            stdout=subprocess.DEVNULL,
+            stderr=subprocess.DEVNULL,
+            timeout=PROTOCOL_GATE_TIMEOUT_SECONDS,
+        )
+    except (OSError, subprocess.SubprocessError) as exc:
+        raise Go2RTCBuildError("GO2RTC_PROTOCOL_GATE_FAILED") from exc
+
+
 def verify_and_apply_patch(
     source_dir: Path,
     patch_path: Path,
@@ -284,24 +313,50 @@ def verify_and_apply_patch(
     if (
         cs2_before.count('net.ListenUDP("udp", nil)') != 1
         or 'net.ListenUDP("udp4", nil)' in cs2_before
+        or cs2_before.count('copy(req[offset+hdrSize:], hdr)') != 1
+        or 'copy(req[offset+hdrSize:], payload)' in cs2_before
         or codecs_before.count('m.StartAtom("hev1")') != 1
         or 'm.StartAtom("hvc1")' in codecs_before
     ):
         raise Go2RTCBuildError("PATCH_PRECONDITION_FAILED")
 
     try:
-        _git(source_dir, "apply", "--check", str(patch_path))
+        _git(
+            source_dir,
+            "apply",
+            "--unidiff-zero",
+            "--check",
+            str(patch_path),
+        )
     except Go2RTCBuildError as exc:
         raise Go2RTCBuildError("PATCH_CONTEXT_MISMATCH") from exc
-    _git(source_dir, "apply", str(patch_path))
+    _git(source_dir, "apply", "--unidiff-zero", str(patch_path))
 
     cs2_after = cs2_path.read_text(encoding="utf-8")
     codecs_after = codecs_path.read_text(encoding="utf-8")
+    regression_path = source_dir / "pkg/xiaomi/miss/cs2/conn_test.go"
+    try:
+        regression_after = regression_path.read_text(encoding="utf-8")
+    except OSError:
+        regression_after = ""
+    required_regression_fragments = (
+        "func TestWritePacketCopiesPayload(t *testing.T)",
+        "reader, writer := net.Pipe()",
+        "got := make([]byte, 12+len(header)+len(payload))",
+        "bytes.Equal(got[12:12+hdrSize], header)",
+        "bytes.Equal(got[12+hdrSize:], payload)",
+    )
     if (
         'net.ListenUDP("udp", nil)' in cs2_after
         or cs2_after.count('net.ListenUDP("udp4", nil)') != 1
+        or 'copy(req[offset+hdrSize:], hdr)' in cs2_after
+        or cs2_after.count('copy(req[offset+hdrSize:], payload)') != 1
         or 'm.StartAtom("hev1")' in codecs_after
         or codecs_after.count('m.StartAtom("hvc1")') != 1
+        or any(
+            regression_after.count(fragment) != 1
+            for fragment in required_regression_fragments
+        )
     ):
         raise Go2RTCBuildError("PATCH_POSTCONDITION_FAILED")
     return actual_commit

@@ -12,9 +12,12 @@ index f4a83c7b..471f6c30 100644
  		panic("unsupported iso video: " + codec)
  	}
 diff --git a/pkg/xiaomi/miss/cs2/conn.go b/pkg/xiaomi/miss/cs2/conn.go
-index b2a63932..ce6a3070 100644
+index b2a63932..04ff92b7 100644
 --- a/pkg/xiaomi/miss/cs2/conn.go
 +++ b/pkg/xiaomi/miss/cs2/conn.go
+@@ -268 +268 @@ func (c *Conn) WritePacket(hdr, payload []byte) error {
+-	copy(req[offset+hdrSize:], hdr)
++	copy(req[offset+hdrSize:], payload)
 @@ -299,7 +299,7 @@ func marshalCmd(channel byte, seq uint16, cmd uint32, payload []byte) []byte {
  
  func newUDPConn(host string, port int) (net.Conn, error) {
@@ -24,3 +27,45 @@ index b2a63932..ce6a3070 100644
  	if err != nil {
  		return nil, err
  	}
+diff --git a/pkg/xiaomi/miss/cs2/conn_test.go b/pkg/xiaomi/miss/cs2/conn_test.go
+new file mode 100644
+index 00000000..d1b54b8f
+--- /dev/null
++++ b/pkg/xiaomi/miss/cs2/conn_test.go
+@@ -0,0 +1,36 @@
++package cs2
++
++import (
++	"bytes"
++	"io"
++	"net"
++	"testing"
++)
++
++func TestWritePacketCopiesPayload(t *testing.T) {
++	reader, writer := net.Pipe()
++	defer reader.Close()
++	defer writer.Close()
++
++	conn := &Conn{Conn: writer}
++	header := bytes.Repeat([]byte{0xA5}, hdrSize)
++	payload := []byte{0x10, 0x20, 0x30, 0x40, 0x50}
++	written := make(chan error, 1)
++	go func() {
++		written <- conn.WritePacket(header, payload)
++	}()
++
++	got := make([]byte, 12+len(header)+len(payload))
++	if _, err := io.ReadFull(reader, got); err != nil {
++		t.Fatal(err)
++	}
++	if err := <-written; err != nil {
++		t.Fatal(err)
++	}
++	if !bytes.Equal(got[12:12+hdrSize], header) {
++		t.Fatal("header mismatch")
++	}
++	if !bytes.Equal(got[12+hdrSize:], payload) {
++		t.Fatal("payload mismatch")
++	}
++}

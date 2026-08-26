@@ -50,7 +50,7 @@
 - Produces: a patch that changes only the existing HEVC sample entry, UDP socket family, one CS2 payload-copy line and one upstream-package regression test.
 - Produces: `run_upstream_protocol_gate(source_dir: Path, go: str, *, runner=...) -> None`, executed after patch application and before `go build`.
 
-- [ ] **Step 1: Extend the synthetic upstream fixture and write the failing patch-scope test**
+- [x] **Step 1: Extend the synthetic upstream fixture and write the failing patch-scope test**
 
 Update `_source_repo()` with the pinned `WritePacket` body, including the current second
 `copy(req[offset+hdrSize:], hdr)`. Require the applied patch to add
@@ -75,7 +75,7 @@ if !bytes.Equal(got[12+hdrSize:], payload) {
 Also assert patch verification rejects an extra changed path, a production change
 outside the allowlist and a missing regression test.
 
-- [ ] **Step 2: Run the repository RED**
+- [x] **Step 2: Run the repository RED**
 
 ```bash
 .venv-alpha/bin/python -m pytest -q tests/monitoring/test_go2rtc_build.py -k 'patch or protocol'
@@ -84,7 +84,7 @@ outside the allowlist and a missing regression test.
 Expected: the current patch leaves header bytes at the payload offset and does not add
 the required Go regression.
 
-- [ ] **Step 3: Observe the exact pinned upstream Go RED before correcting production**
+- [x] **Step 3: Observe the exact pinned upstream Go RED before correcting production**
 
 In a temporary clone at the fixed commit, apply a test-only copy of the new
 `conn_test.go` while leaving `conn.go` unchanged, then run:
@@ -95,7 +95,7 @@ go test ./pkg/xiaomi/miss/cs2 -run TestWritePacketCopiesPayload -count=1
 
 Expected: FAIL with only the synthetic payload mismatch. Do not contact the camera.
 
-- [ ] **Step 4: Add the minimal patch and build-time protocol gate**
+- [x] **Step 4: Add the minimal patch and build-time protocol gate**
 
 Extend the tracked patch with the one `hdr` to `payload` correction and the focused Go
 test. Change `ALLOWED_PATCH_CHANGES` to the exact final `git apply --numstat` map for
@@ -112,7 +112,7 @@ Implement `run_upstream_protocol_gate()` with the fixed argv:
 Discard stdout/stderr on success and map any failure to
 `GO2RTC_PROTOCOL_GATE_FAILED`. Call it before the existing `go build` command.
 
-- [ ] **Step 5: Run GREEN without installing a candidate**
+- [x] **Step 5: Run GREEN without installing a candidate**
 
 ```bash
 .venv-alpha/bin/python -m pytest -q tests/monitoring/test_go2rtc_build.py
@@ -123,7 +123,7 @@ git diff --check
 Expected: all go2rtc build tests pass; no installed binary, app bundle or runtime
 metadata changes.
 
-- [ ] **Step 6: Commit Task 1**
+- [x] **Step 6: Commit Task 1**
 
 ```bash
 git add patches/go2rtc-macos-hybrid-hd.patch packages/monitoring/go2rtc_build.py tools/go2rtc_build.py tests/monitoring/test_go2rtc_build.py

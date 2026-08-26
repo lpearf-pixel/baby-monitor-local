@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import argparse
+import functools
 import os
 import platform
 import re
@@ -10,6 +11,9 @@ import sys
 import tempfile
 from datetime import datetime, timezone
 from pathlib import Path
+
+if __package__ in {None, ""}:
+    sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
 from packages.monitoring.go2rtc_build import (
     GO2RTC_COMMIT,
@@ -21,6 +25,7 @@ from packages.monitoring.go2rtc_build import (
     metadata_matches,
     read_metadata,
     rollback_latest,
+    run_upstream_protocol_gate,
     sha256_file,
     verify_and_apply_patch,
 )
@@ -170,6 +175,11 @@ def _build(root: Path, *, force: bool) -> None:
         )
         _run(["git", "checkout", "--detach", GO2RTC_COMMIT], cwd=source)
         verify_and_apply_patch(source, patch)
+        run_upstream_protocol_gate(
+            source,
+            go,
+            runner=functools.partial(subprocess.run, env=build_env),
+        )
         _run(
             [go, "build", "-trimpath", "-ldflags", "-s -w", "-o", str(candidate), "."],
             cwd=source,

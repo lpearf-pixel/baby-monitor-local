@@ -11,11 +11,13 @@ from pathlib import Path
 import pytest
 
 from packages.monitoring.go2rtc_build import (
+    ALLOWED_PATCH_CHANGES,
     BuildMetadata,
     Go2RTCBuildError,
     install_candidate,
     metadata_matches,
     rollback_latest,
+    run_upstream_protocol_gate,
     verify_and_apply_patch,
 )
 from packages.monitoring import go2rtc_build as go2rtc_build_module
@@ -58,8 +60,41 @@ def _source_repo(tmp_path: Path) -> tuple[Path, str]:
 """,
         encoding="utf-8",
     )
+    cs2_path = source / "pkg/xiaomi/miss/cs2/conn.go"
+    cs2_path.write_text(
+        cs2_path.read_text(encoding="utf-8")
+        + """
+const hdrSize = 32
+
+func (c *Conn) WritePacket(hdr, payload []byte) error {
+	const offset = 12
+
+	n := hdrSize + uint32(len(payload))
+	req := make([]byte, n+offset)
+	req[5] = 3
+	c.seqCh3++
+	binary.BigEndian.PutUint32(req[8:], n)
+	copy(req[offset:], hdr)
+	copy(req[offset+hdrSize:], hdr)
+
+	_, err := c.Conn.Write(req)
+	return err
+}
+""",
+        encoding="utf-8",
+    )
     (source / "pkg/iso/codecs.go").write_text(
-        'case core.CodecH265:\n\tm.StartAtom("hev1")\n',
+        """func (m *Movie) WriteVideo(codec string) {
+	switch codec {
+	case core.CodecH264:
+		m.StartAtom("avc1")
+	case core.CodecH265:
+		m.StartAtom("hev1")
+	default:
+		panic("unsupported iso video: " + codec)
+	}
+}
+""",
         encoding="utf-8",
     )
     _git(source, "init", "-q")
@@ -70,11 +105,36 @@ def _source_repo(tmp_path: Path) -> tuple[Path, str]:
     return source, _git(source, "rev-parse", "HEAD")
 
 
-def _compat_patch(path: Path, *, extra_file: bool = False) -> Path:
-    content = """diff --git a/pkg/xiaomi/miss/cs2/conn.go b/pkg/xiaomi/miss/cs2/conn.go
---- a/pkg/xiaomi/miss/cs2/conn.go
-+++ b/pkg/xiaomi/miss/cs2/conn.go
-@@ -1,6 +1,6 @@
+def _compat_patch(
+    path: Path, *, extra_file: bool = False, include_regression: bool = True
+) -> Path:
+    content = (ROOT / "patches/go2rtc-macos-hybrid-hd.patch").read_text(
+        encoding="utf-8"
+    )
+    fixture_lines = (
+        path.parent / "go2rtc/pkg/xiaomi/miss/cs2/conn.go"
+    ).read_text(encoding="utf-8").splitlines()
+    payload_line = fixture_lines.index(
+        "\tcopy(req[offset+hdrSize:], hdr)"
+    ) + 1
+    content = content.replace(
+        "@@ -268 +268 @@", f"@@ -{payload_line} +{payload_line} @@"
+    )
+    content = content.replace(
+        (
+            "@@ -299,7 +299,7 @@ func marshalCmd(channel byte, seq uint16, "
+            "cmd uint32, payload []byte) []byte {\n"
+            " \n"
+            " func newUDPConn(host string, port int) (net.Conn, error) {\n"
+            " \t// We using raw net.UDPConn, because RemoteAddr should be changed "
+            "during handshake.\n"
+            '-\tconn, err := net.ListenUDP("udp", nil)\n'
+            '+\tconn, err := net.ListenUDP("udp4", nil)\n'
+            " \tif err != nil {\n"
+            " \t\treturn nil, err\n"
+            " \t}\n"
+        ),
+        """@@ -1,6 +1,6 @@
  func newUDPConn(host string, port int) (net.Conn, error) {
  \t// We using raw net.UDPConn, because RemoteAddr should be changed during handshake.
 -\tconn, err := net.ListenUDP(\"udp\", nil)
@@ -82,14 +142,12 @@ def _compat_patch(path: Path, *, extra_file: bool = False) -> Path:
  \tif err != nil {
  \t\treturn nil, err
  \t}
-diff --git a/pkg/iso/codecs.go b/pkg/iso/codecs.go
---- a/pkg/iso/codecs.go
-+++ b/pkg/iso/codecs.go
-@@ -1,2 +1,2 @@
- case core.CodecH265:
--\tm.StartAtom(\"hev1\")
-+\tm.StartAtom(\"hvc1\")
-"""
+""",
+    )
+    if not include_regression:
+        content = content.split(
+            "diff --git a/pkg/xiaomi/miss/cs2/conn_test.go", 1
+        )[0]
     if extra_file:
         content += """diff --git a/README.md b/README.md
 --- /dev/null
@@ -101,7 +159,7 @@ diff --git a/pkg/iso/codecs.go b/pkg/iso/codecs.go
     return path
 
 
-def test_verify_and_apply_patch_changes_only_udp_socket_and_hevc_sample_entry(
+def test_verify_and_apply_patch_changes_only_approved_protocol_paths(
     tmp_path: Path,
 ) -> None:
     source, head = _source_repo(tmp_path)
@@ -114,13 +172,98 @@ def test_verify_and_apply_patch_changes_only_udp_socket_and_hevc_sample_entry(
     assert 'ListenUDP("udp4", nil)' in cs2
     assert 'ListenUDP("udp", nil)' not in cs2
     assert 'ResolveUDPAddr("udp",' in cs2
+    assert 'copy(req[offset+hdrSize:], payload)' in cs2
+    assert 'copy(req[offset+hdrSize:], hdr)' not in cs2
     assert 'StartAtom("hvc1")' in (source / "pkg/iso/codecs.go").read_text(
         encoding="utf-8"
     )
-    assert _git(source, "diff", "--name-only").splitlines() == [
+    changed = set(_git(source, "diff", "--name-only").splitlines())
+    changed.update(
+        _git(source, "ls-files", "--others", "--exclude-standard").splitlines()
+    )
+    assert sorted(changed) == [
         "pkg/iso/codecs.go",
         "pkg/xiaomi/miss/cs2/conn.go",
+        "pkg/xiaomi/miss/cs2/conn_test.go",
     ]
+
+
+def test_patch_scope_is_exact_and_requires_the_upstream_regression() -> None:
+    assert ALLOWED_PATCH_CHANGES == {
+        "pkg/iso/codecs.go": (1, 1),
+        "pkg/xiaomi/miss/cs2/conn.go": (2, 2),
+        "pkg/xiaomi/miss/cs2/conn_test.go": (36, 0),
+    }
+
+
+def test_verify_and_apply_patch_rejects_missing_protocol_regression(
+    tmp_path: Path,
+) -> None:
+    source, head = _source_repo(tmp_path)
+
+    with pytest.raises(Go2RTCBuildError, match="PATCH_SCOPE_INVALID"):
+        verify_and_apply_patch(
+            source,
+            _compat_patch(
+                tmp_path / "compat.patch", include_regression=False
+            ),
+            expected_commit=head,
+        )
+
+    assert _git(source, "status", "--porcelain") == ""
+
+
+def test_run_upstream_protocol_gate_uses_one_fixed_go_command(tmp_path: Path) -> None:
+    calls: list[tuple[list[str], dict[str, object]]] = []
+
+    def runner(args: list[str], **kwargs: object) -> subprocess.CompletedProcess[bytes]:
+        calls.append((args, kwargs))
+        return subprocess.CompletedProcess(args, 0)
+
+    run_upstream_protocol_gate(tmp_path, "/fixed/go", runner=runner)
+
+    assert calls == [
+        (
+            [
+                "/fixed/go",
+                "test",
+                "./pkg/xiaomi/miss/cs2",
+                "-run",
+                "TestWritePacketCopiesPayload",
+                "-count=1",
+            ],
+            {
+                "cwd": tmp_path,
+                "check": True,
+                "stdin": subprocess.DEVNULL,
+                "stdout": subprocess.DEVNULL,
+                "stderr": subprocess.DEVNULL,
+                "timeout": 120,
+            },
+        )
+    ]
+
+
+@pytest.mark.parametrize(
+    "failure",
+    (OSError("missing"), subprocess.CalledProcessError(1, ["go", "test"])),
+)
+def test_run_upstream_protocol_gate_redacts_every_failure(
+    tmp_path: Path, failure: BaseException
+) -> None:
+    def runner(*_args: object, **_kwargs: object) -> subprocess.CompletedProcess[bytes]:
+        raise failure
+
+    with pytest.raises(Go2RTCBuildError, match="^GO2RTC_PROTOCOL_GATE_FAILED$"):
+        run_upstream_protocol_gate(tmp_path, "/fixed/go", runner=runner)
+
+
+def test_build_runs_protocol_gate_before_compiling_candidate() -> None:
+    source = Path(go2rtc_build_cli.__file__).read_text(encoding="utf-8")
+
+    assert source.index("run_upstream_protocol_gate(") < source.index(
+        '[go, "build", "-trimpath"'
+    )
 
 
 def test_verify_and_apply_patch_rejects_wrong_commit_without_modifying_source(
