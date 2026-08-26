@@ -38,7 +38,7 @@
 - Produces: evaluate_remote_access(*, installed, tailnet, serve, listeners, dashboard, policy_reviewed) -> RemoteAccessReport.
 - Consumes: bounded bytes and already-derived listener/Dashboard facts; it performs no filesystem, process or network I/O.
 
-- [ ] **Step 1: Write failing tailnet and Serve parser tests**
+- [x] **Step 1: Write failing tailnet and Serve parser tests**
 
 Use exact synthetic fixtures:
 
@@ -60,7 +60,7 @@ multiple-handler, non-root-handler, non-HTTPS, unexpected-port, unexpected-targe
 Funnel-enabled documents all return closed evidence without preserving a raw hostname,
 address or payload. The maximum accepted size for each JSON document is 1,048,576 bytes.
 
-- [ ] **Step 2: Run parser RED**
+- [x] **Step 2: Run parser RED**
 
 ~~~bash
 .venv-alpha/bin/python -m pytest -q tests/monitoring/test_private_remote_access.py
@@ -68,7 +68,7 @@ address or payload. The maximum accepted size for each JSON document is 1,048,57
 
 Expected: collection fails because packages.monitoring.private_remote_access does not exist.
 
-- [ ] **Step 3: Implement immutable types and strict parsing**
+- [x] **Step 3: Implement immutable types and strict parsing**
 
 Define these public values:
 
@@ -122,7 +122,7 @@ for 443. Any truthy AllowFunnel, extra handler, extra Web host, extra TCP port,
 malformed structure or unknown target sets conflict. Never copy source strings into
 exceptions or reports.
 
-- [ ] **Step 4: Add public-state precedence tests**
+- [x] **Step 4: Add public-state precedence tests**
 
 Lock this order: missing CLI -> not installed; backend not running/online -> not
 authenticated; unhealthy Dashboard or missing Basic challenge -> Dashboard unhealthy;
@@ -131,7 +131,7 @@ missing policy acknowledgement -> policy unverified; empty Serve -> Serve unconf
 otherwise ready software. READY_DEVICE_GATE is never synthesized by software
 evaluation. A missing acknowledgement must never mask a Funnel or exposed-port conflict.
 
-- [ ] **Step 5: Run GREEN and commit**
+- [x] **Step 5: Run GREEN and commit**
 
 ~~~bash
 .venv-alpha/bin/python -m pytest -q tests/monitoring/test_private_remote_access.py
