@@ -148,6 +148,35 @@ HEAD、真实命令和真实结果的记录。
 - decision：keep；进入 Task 2 最小闭集注册表
 - next single action：实现 `services/voice/care_action.py` 并跑 Task 2 focused GREEN
 
+### R2 — 闭集动作注册表 GREEN
+
+- 日期：2026-08-27
+- branch / exact HEAD：`codex/xiaomi-camera-reply-lifecycle-review` / `c72b076`
+- dirty/unrelated state：Task 1 已聚焦提交；本 slice 仅新增注册表并修正 synthetic 问号
+  对抗 fixture
+- authority：software-only；未安装或访问模型
+- hypothesis：H4；现有 Feeding parser 可原样委托，非 Feeding 只需固定内部注册表
+- files changed：新增 `services/voice/care_action.py`，修改
+  `tests/voice/test_care_action.py`、本计划和日志
+- RED command/result：`tests/voice/test_care_action.py` exit 2，1 collection error，固定原因
+  为 `services.voice.care_action` 不存在
+- GREEN command/result：`tests/voice/test_care_action.py tests/voice/test_intent.py`，
+  41 passed，exit 0
+- focused/full command/result：focused 41 passed；full NOT_RUN
+- corpus：source-controlled synthetic exact/negative phrases，license=`GENERATED`
+- positives/accepted/rejected：10 punctuation/space-normalized or exact positives全部 accepted
+- negatives/false accepts：12 unknown/multi-domain/question/bounded negatives全部 rejected，
+  false accepts=0
+- latency p50/p95/RSS：NOT_RUN；未调用 ASR
+- privacy scan：无 PCM、transcript、私有地址或 credential；最终 Task 7 统一复核
+- Camera Reply flag/lifecycle：未读取或修改；目标保持 false；未播放
+- Baby Care write/outbox/signing：注册表不导入、不构造、不调用
+- evidence proves：内部闭集可分类 Feeding、尿布、拍嗝和 medication candidate；高风险
+  类型不能设置 positive acknowledgement
+- evidence does not prove：controller 已接线、真实 ASR 输出或实机召回
+- decision：keep；只作为 listen-only 内部层
+- next single action：实现 armed-only source-controlled correction 并跑 Task 3 focused GREEN
+
 每条新记录使用一个连续编号 `R1`、`R2`……，并完整写出以下字段：
 
 ```text

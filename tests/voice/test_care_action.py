@@ -37,8 +37,8 @@ def test_exact_closed_actions(
     "command",
     [
         " 开始 换尿布。 ",
-        "拍嗝，结束！",
-        "开始\t喂药？",
+        "拍嗝，结束。",
+        "开始\t喂药。",
     ],
 )
 def test_exact_actions_normalize_only_space_and_punctuation(command: str) -> None:
@@ -55,6 +55,9 @@ def test_exact_actions_normalize_only_space_and_punctuation(command: str) -> Non
         "开始断奶",
         "开始泡奶",
         "开始热奶",
+        "开始喂药？",
+        "开始换尿布吗",
+        "拍嗝结束吗",
         "",
         "普" * 65,
     ],

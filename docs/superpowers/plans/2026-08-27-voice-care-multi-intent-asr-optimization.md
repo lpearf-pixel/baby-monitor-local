@@ -200,7 +200,7 @@ diff uncommitted and record `commit=not_authorized`.
   `classify_exact_action(command: str) -> CareActionMatch | None`, where
   `CareActionMatch` contains fixed `action_code`, `risk` and `allow_ack` fields.
 
-- [ ] **Step 1: Add the smallest immutable types**
+- [x] **Step 1: Add the smallest immutable types**
 
   Implement the equivalent interface:
 
@@ -223,25 +223,25 @@ diff uncommitted and record `commit=not_authorized`.
   Reject invalid constructor combinations so a high-risk medication candidate cannot
   accidentally set `allow_ack=True`.
 
-- [ ] **Step 2: Preserve Feeding V1 through delegation**
+- [x] **Step 2: Preserve Feeding V1 through delegation**
 
   Recreate the existing listen-only synthetic-state check inside the new module and
   return `feeding_command` only when the unchanged `parse_feeding_command()` accepts an
   exact command in one of the existing closed states. Do not add diaper, burping or
   medication to `services/voice/intent.py` or the vendored VoiceCareIntentV1 corpus.
 
-- [ ] **Step 3: Add the exact non-Feeding registry**
+- [x] **Step 3: Add the exact non-Feeding registry**
 
   Use an immutable mapping with only the four low-risk phrases and two medication
   phrases defined in the spec. Normalization removes whitespace and Unicode punctuation
   only; it does not replace words, homophones or characters.
 
-- [ ] **Step 4: Enforce one-domain and bounded-input failure**
+- [x] **Step 4: Enforce one-domain and bounded-input failure**
 
   Reject non-string, empty, over-64-character, multiple-action and unknown statements.
   Return `None`; never return raw input in an exception or reason.
 
-- [ ] **Step 5: Run focused GREEN**
+- [x] **Step 5: Run focused GREEN**
 
   ```bash
   .venv-alpha/bin/python -m pytest -q \
@@ -251,7 +251,7 @@ diff uncommitted and record `commit=not_authorized`.
 
   Expected: all exact-action and unchanged Feeding tests pass.
 
-- [ ] **Step 6: Review and log**
+- [x] **Step 6: Review and log**
 
   Confirm the module imports no Baby Care client, signing, outbox, model or camera code.
   Append fresh results and diff scope to the review log.
