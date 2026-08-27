@@ -752,20 +752,20 @@ and immediately discard PCM only from the real logged-in user context.
 **Human required:** none for software. Spoken household accuracy remains a separate
 supervised Voice gate and is not part of this task.
 
-- [ ] **Step 1: RED the chain boundaries.** Video-only media, wrong codec/rate/channels,
+- [x] **Step 1: RED the chain boundaries.** Video-only media, wrong codec/rate/channels,
   decoder EOF, stalled PCM, invalid VAD progression and unavailable ASR runtime must
   fail their own stages without changing the source or Voice worker.
-- [ ] **Step 2: Run RED.**
+- [x] **Step 2: Run RED.**
 
   ```bash
   .venv-alpha/bin/python -m pytest -q \
     tests/audio/test_feasibility.py tests/audio/test_source.py \
     tests/voice/test_audio_pump.py tests/tools/test_voice_audio_probe.py
   ```
-- [ ] **Step 3: Implement only evidence-backed corrections.** Keep PCM bounded in memory,
+- [x] **Step 3: Implement only evidence-backed corrections.** Keep PCM bounded in memory,
   use the fixed RTSP/TCP loopback decoder boundary, preserve source ownership and emit
   no recognized text.
-- [ ] **Step 4: Run GREEN and Voice isolation.**
+- [x] **Step 4: Run GREEN and Voice isolation.**
 
   ```bash
   .venv-alpha/bin/python -m pytest -q \
@@ -775,7 +775,7 @@ supervised Voice gate and is not part of this task.
   make alpha-voice-test
   git diff --check
   ```
-- [ ] **Step 5: Commit the focused slice only if production changed.**
+- [x] **Step 5: Commit the focused slice only if production changed.**
 
   ```bash
   git add services/audio/feasibility.py services/audio/source.py \
@@ -787,6 +787,14 @@ supervised Voice gate and is not part of this task.
 
 **Acceptance:** camera microphone readiness is independent of video, the optional audio
 worker and Camera Reply. No household audio or transcript is persisted or printed.
+
+**Execution evidence (2026-08-27):** Task 12 software is complete at `91c97bc`. The
+aggregate chain now reports only the six fixed stage fields; Xiaomi media requires exact
+48 kHz stereo Opus, PCM metrics must be finite/coherent, VAD requires the fixed
+silence/speech/silence progression and ASR runtime starts only after VAD passes. Generated
+and failure fixtures pass 45/45, `alpha-voice-v0-test` passes 80/80 and full Voice passes
+439/439. The live `chain` command was not run, so real camera-microphone readiness is not
+claimed. No household audio or transcript was read, printed or persisted.
 
 **Next:** verify generated AI reply bytes and settlement without hardware playback.
 

@@ -41,7 +41,10 @@ Updated: 2026-08-27
   `faa3d4b`: all four pinned focused/race fixtures pass, and raw producer read errors
   now map to fixed payload-free classifications. The lifecycle tests did not reproduce
   the D2 media loss, so the decision is `D2_BOUNDARY_HARDENED_CAUSE_UNPROVEN`. No real
-  playback ran; Task 12 independent microphone software gate is next.
+  playback ran. Task 12 software is complete at `91c97bc`: it adds fixed aggregate
+  camera-audio/Opus/PCM/VAD/ASR stages, strict 48 kHz stereo Opus and ordered runtime
+  cleanup. Generated/Voice gates pass 80/80 and 439/439. The live chain was not run, so
+  real microphone readiness remains unclaimed; Task 13 generated reply delivery is next.
   The accepted Voice branch is published at `4d479b8`; the lifecycle-review branch is
   published through `a622a7a`, before local Task 9. Neither has been merged
   into a protected branch.
@@ -509,9 +512,10 @@ legacy branch into this line without a separate integration decision.
    already user-confirmed PASS.
 5. P4 private-access software is complete, but installation/login, grants, Serve and
    two-iPhone acceptance are explicitly deferred until the final optional stage.
-6. Keep Camera Reply V3 disabled. Tasks 8–11 software are complete through `faa3d4b`;
+6. Keep Camera Reply V3 disabled. Tasks 8–12 software are complete through `91c97bc`;
    installed diagnostics and playback remain unrun. D2 causality remains unproven.
-   Next execute Task 12's independent generated-audio microphone chain gate. Do not
+   The Task 12 live microphone chain remains unrun. Next execute Task 13's generated AI
+   reply bytes/channel-3 settlement gate without hardware playback. Do not
    force UDP/TCP, create a second camera connection or continue D3/D4.
 7. Complete the final 72-hour release gate before any release/tag decision.
 8. Define per-parent acknowledgement and false-positive feedback only through a future

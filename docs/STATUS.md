@@ -493,6 +493,12 @@
   fixed payload-free timeout/failure codes. Transport, deadlines, retries and producer
   count are unchanged. The D2 media-loss cause remains unproven; Task 12 is next. No
   installed binary, camera media or playback was used.
+- Camera Reply lifecycle Task 12 software is complete at `91c97bc`. It adds fixed
+  aggregate camera-media, 48 kHz stereo Opus, PCM decode, VAD progression and ASR
+  runtime stages plus `raw_audio_persisted=false`. Stage failures are ordered and
+  payload-free; VAD failure prevents ASR startup. Generated/audio software passes 80/80
+  and full Voice passes 439/439. The live chain was not run, so no real microphone PASS
+  is claimed; Task 13 is next.
 - Installed-i9 audio-source discovery now verifies that the Xiaomi source exposes HEVC
   video plus Opus audio and that the fixed loopback `audio_analysis` alias exposes only
   Opus. The real input is supported 48 kHz stereo Opus; the fixed FFmpeg boundary

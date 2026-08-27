@@ -1182,3 +1182,12 @@ RED 是 `Producer.Start()` 原样返回底层 timeout 文本；最小修复只�
 build/deploy 门 71/71，compile、Make dry-run、privacy/diff 检查通过。结论为
 `D2_BOUNDARY_HARDENED_CAUSE_UNPROVEN`；未安装 binary、未访问实机媒体、未播放或重启。
 下一项为 Task 12 生成音频的麦克风/Opus/PCM/VAD/ASR 独立软件门。
+
+同日完成 Camera Reply lifecycle Task 12 软件切片，业务提交为 `91c97bc`。新增固定
+camera media、48 kHz stereo Opus、PCM decode、VAD progression、ASR runtime 与
+`raw_audio_persisted=false` 聚合字段；严格拒绝 video-only、错误 codec/rate/channels、
+decoder EOF/stall、非法 VAD 顺序和不可用 ASR。阶段按序闭合，VAD 未通过不会启动 ASR。
+affected fixture 45/45、`alpha-voice-v0-test` 80/80、完整 Voice 439/439，compile、
+privacy/diff 检查通过。未运行 live chain、未读取家庭音频、未输出 transcript、未播放或
+重启，因此不声明真实 camera microphone PASS。下一项为 Task 13 生成 AI 回复字节与
+channel-3 settlement 纯软件门。
