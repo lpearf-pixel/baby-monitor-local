@@ -251,13 +251,13 @@ return to remote access only after the local release work when the user explicit
 
 ## Voice Gate V3 — Xiaomi camera reply
 
-**Status:** Original V3E failed closed. Replacement lifecycle software Tasks 1–6 are
-complete with clean independent review. The supervised replacement passed D1 after
-fixes `20ca71c` and `8e684dd`, then failed closed during D2 on cumulative interaction 4:
-the shared Xiaomi CS2 UDP source timed out and reconnected at generation 0. The accepted
-i9 speaker remains the production output; Camera Reply is disabled and no marker is
-accepted. `59a8ab4` removes the stale-proof path by invalidating prior acceptance at the
-start of every probe; installed status is NOT_PROVEN. D3/D4 were not run.
+**Status:** Replacement lifecycle software Tasks 1–14 and supervised Task 15 are
+complete. The resumed first attempt preserved the historical fail-closed timeout, then
+`5fd457e` closed late internal playback cleanup and `b4da03f` corrected the supervised
+probe to stop its fixed tone before waiting for human input. The clean matrix passed six
+cumulative audible replies with no camera movement, one producer, generation 6, no
+replacement and a current schema-v2 marker. The accepted i9 speaker remains the
+production output because the ignored Camera Reply flag is still false.
 The approved transport-auto amendment is recorded at `8654866`; Task 8 software is
 complete at `f153cbd` with 62/62 synthetic checks. Its installed preflight was not run.
 
@@ -266,14 +266,15 @@ complete at `f153cbd` with 62/62 synthetic checks. Its installed preflight was n
 stays `transport=auto`, runtime parsing requires one external Xiaomi producer, and reply
 settlement owns the observed protocol plus nonzero generation. Task 14 later ran the
 installed preflight, which failed closed; the installed media diagnostic did not run.
-Real speaker playback remains outside the current authorization and later
-requires an adult at the camera.
+Real speaker playback Task 15 is complete; production activation remains a distinct
+configuration change and still requires adult supervision plus the existing rollback.
 
-**Codex can:** stop at this checkpoint. A later separately authorized Task 15 may first
-restore a trustworthy installed preflight and then run the bounded supervised matrix.
+**Codex can:** prepare the existing private-flag activation and Voice-only restart,
+then run the fixed V3E aggregate matrix without changing transport or producer count.
 
-**Human required:** Task 15 requires separate approval and adult supervision. Forcing
-TCP/UDP or creating a second connection remains prohibited.
+**Human required:** approve the production-output switch and supervise the fixed wake,
+dialogue, silent-timeout and non-wake interactions. Forcing TCP/UDP or creating a second
+connection remains prohibited.
 
 **Acceptance and tests:** The original fixed vocabulary and privacy boundaries remain
 in force. The replacement software gate passed all named lifecycle and review
@@ -299,9 +300,14 @@ Full Python passes 1732/1732, frontend passes 73/73, and independent review is c
 The installed preflight failed closed as `app_identity_invalid`; the installed media
 diagnostic did not run. Decision: `MACOS_PREFLIGHT_BLOCKED`.
 
-**Next:** stop. Retain the accepted i9 speaker and leave Camera Reply disabled. Task 15
-real-device work is not authorized and cannot start until the installed preflight is
-trustworthy.
+**Task 15 result:** `b4da03f` passed probe/Camera Reply/Voice software gates 27/27,
+125/125 and 442/442, followed by 6/6 supervised audible replies without movement. Final
+runtime evidence was one `transport=auto` producer, observed `cs2+udp`, generation 6,
+increasing video/audio bytes, no replacement, healthy Voice and a current schema-v2
+marker. No household audio was persisted and no full-stack restart occurred.
+
+**Next:** retain the accepted i9 speaker and private flag `false` until a separately
+controlled activation runs the original V3E interaction matrix and proves rollback.
 
 ## P5 — Final 72-hour release gate
 

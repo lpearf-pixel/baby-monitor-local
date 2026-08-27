@@ -466,8 +466,9 @@
   a 10-second media read timeout and reconnected at generation 0. Source and Voice
   recovered independently. A stale D1 acceptance marker was then removed; `59a8ab4`
   makes every new probe revoke prior acceptance before camera access and only republishes
-  after complete success. Installed status is NOT_PROVEN, D3/D4 were not run, and Camera
-  Reply is not a delivered capability and remains disabled.
+  after complete success. At that historical checkpoint installed status was
+  NOT_PROVEN and D3/D4 had not run; the later Task 15 entry below supersedes that
+  acceptance state while production enablement remains separate.
 - The approved transport-auto diagnostic amendment is recorded at `8654866`. Task 8
   software is complete at `f153cbd`: fixed, bounded commands verify the exact signed
   `Go2RTC.app`, reject `cdhash`, require one running launchd owner with the exact app
@@ -518,7 +519,19 @@
   clean at 0 Critical / 0 Important / 0 Minor. The installed preflight failed closed as
   `app_identity_invalid`; the installed media diagnostic was skipped. Decision:
   `MACOS_PREFLIGHT_BLOCKED`. No real media or playback ran, no marker exists and Task 15
-  remains unauthorized.
+  was not yet authorized at that checkpoint.
+- Camera Reply lifecycle Task 15 is now complete on the installed i9 at local head
+  `b4da03f`. The resumed first attempt correctly failed closed on the historical
+  10-second inbound-media timeout/reconnect signature. `5fd457e` removed late internal
+  playback state without stopping the shared producer, and `b4da03f` corrected the
+  supervised probe to stop its fixed one-second tone before waiting for human input.
+  Fresh probe, Camera Reply and Voice tests pass 27/27, 125/125 and 442/442. A clean
+  supervised run then passed six cumulative replies: the adult heard each reply and
+  observed no movement; every probe returned COMPLETE. The final installed diagnostic
+  reported one producer, configuration `transport=auto`, observed `cs2+udp`, generation
+  6, increasing video and camera-audio bytes, no producer replacement and healthy
+  listen-only Voice. The schema-v2 marker is current. The ignored private production
+  flag remains false, so this is device acceptance rather than production enablement.
 - Installed-i9 audio-source discovery now verifies that the Xiaomi source exposes HEVC
   video plus Opus audio and that the fixed loopback `audio_analysis` alias exposes only
   Opus. The real input is supported 48 kHz stereo Opus; the fixed FFmpeg boundary

@@ -8,6 +8,7 @@ Updated: 2026-08-27
 - Stable Xiaomi line: `stable/xiaomi-alpha` at `0df20ae`.
 - Active Camera Reply review line: `codex/xiaomi-camera-reply-lifecycle-review`, based
   on accepted Voice head `4d479b8`; its published Task 8 checkpoint is `a622a7a`.
+  The current local implementation head is `b4da03f`; it has not been pushed.
   Camera Reply Tasks 1–7 are local through `e358aaf`, with the real macOS TTY correction
   at `5768894`.
   The supervised tone passed, but V3E failed closed after a stuck interaction,
@@ -23,8 +24,9 @@ Updated: 2026-08-27
   closed on its third tone, the fourth cumulative interaction: the Xiaomi CS2 UDP
   source stopped media for 10 seconds, timed out and reconnected with generation reset
   to 0. The stale D1 marker was removed and failed probes now invalidate any prior
-  acceptance before camera access (`59a8ab4`); installed status is NOT_PROVEN and
-  Camera Reply remains disabled. D3/D4 were not run.
+  acceptance before camera access (`59a8ab4`). At that historical checkpoint installed
+  status was NOT_PROVEN, Camera Reply was disabled and D3/D4 had not run; the later
+  successful Task 15 evidence below supersedes that runtime state.
   The transport-auto diagnostic amendment is recorded at `8654866`. Its Task 8
   software preflight is complete locally at `f153cbd`: it verifies the stable app
   requirement, one exact launchd owner, loopback listener ownership and an explicit
@@ -60,7 +62,15 @@ Updated: 2026-08-27
   preflight failed closed as `app_identity_invalid` with zero launchd owner and unknown
   Local Network state from this checkout; the installed media diagnostic was therefore
   skipped. Decision: `MACOS_PREFLIGHT_BLOCKED`. No camera media, playback, install,
-  restart or marker publish occurred. Task 15 remains unauthorized.
+  restart or marker publish occurred. Task 15 was subsequently authorized and completed
+  on the installed i9. `5fd457e` closes late internal-playback cleanup without extending
+  timeouts; `b4da03f` makes the supervised one-second probe settle before waiting for
+  human input. Fresh probe/Camera Reply/Voice gates pass 27/27, 125/125 and 442/442.
+  Six supervised replies were each audible without camera movement and returned
+  `CAMERA_REPLY_COMPLETE`; the final runtime state was one `transport=auto` producer,
+  negotiated `cs2+udp`, generation 6, increasing video/audio bytes, no replacement and
+  a current schema-v2 marker. The private production flag remains false pending the
+  separate V3E controlled-activation matrix.
   The accepted Voice branch is published at `4d479b8`; the lifecycle-review branch is
   published through `a622a7a`, before local Task 9. Neither has been merged
   into a protected branch.
@@ -528,11 +538,11 @@ legacy branch into this line without a separate integration decision.
    already user-confirmed PASS.
 5. P4 private-access software is complete, but installation/login, grants, Serve and
    two-iPhone acceptance are explicitly deferred until the final optional stage.
-6. Keep Camera Reply V3 disabled. Tasks 8–14 software are complete through `9bc032b`.
-   Task 14 installed preflight failed closed and the installed media diagnostic was
-   skipped; playback remains unrun. D2 causality remains unproven and the Task 12 live
-   microphone chain remains unrun. Task 15 is unauthorized. Do not force UDP/TCP,
-   create a second camera connection or continue D3/D4.
+6. Keep Camera Reply V3 disabled while its accepted schema-v2 marker remains current.
+   Task 15 now passes 6/6 supervised replies at `b4da03f`, with no movement, timeout,
+   reconnect or media regression. Next is a separately controlled private-flag
+   activation and V3E wake/dialogue/timeout/non-wake matrix; do not force UDP/TCP or
+   create a second camera connection.
 7. Complete the final 72-hour release gate before any release/tag decision.
 8. Define per-parent acknowledgement and false-positive feedback only through a future
    contract where Baby Care consumes Guardian's read-only feed and owns identity/write

@@ -11,8 +11,10 @@
 > `1885da27d7ba72af81d0f3cb00cd96147b998a2a`. Task 10 software is complete at
 > `c85fb39b2328a4305da12f2b51c2e2cde61bef59`; Tasks 11–14 are complete through
 > the reviewed Task 14 business head `9bc032b0179ab672db9a0b99a174f149d5bc7a30`.
-> The installed preflight failed closed, the installed media diagnostic was skipped,
-> and Task 15 real playback is not authorized.
+> Task 15 is complete on the supervised Intel i9 at `b4da03f`: six generated replies
+> were audible without camera movement, remained on one `transport=auto` producer and
+> closed at generation 6 with the schema-v2 acceptance marker current. Production
+> Camera Reply remains disabled pending a separate controlled activation slice.
 
 **Goal:** Preserve the completed lifecycle fixes, diagnose the remaining D2 shared-source
 timeout with `transport=auto`, and make video, camera microphone, AI reply and future
@@ -296,11 +298,12 @@ audio or acceptance marker was used.
 
 ### Task 7: Supervised installed/device gates — stopped at D2
 
-**Status:** authorized and executed with an adult at the camera. D0 and D1 passed. D2
+**Historical status:** the original attempt was authorized and executed with an adult
+at the camera. D0 and D1 passed. D2
 failed closed on its third tone (fourth cumulative interaction) when the shared Xiaomi
-CS2 UDP media source timed out and reconnected at generation 0. D3/D4 were not run;
-Camera Reply remains disabled. The exact stale D1 marker was removed; `59a8ab4` now
-invalidates prior acceptance before any new probe and installed status is NOT_PROVEN.
+CS2 UDP media source timed out and reconnected at generation 0. D3/D4 had not run at
+that checkpoint. The exact stale D1 marker was removed; `59a8ab4` now invalidates prior
+acceptance before any new probe. Task 15 below records the later successful rerun.
 
 Follow D0–D4 from the lifecycle review. Start with Camera Reply disabled and verify the
 source, i9 Voice output, Dashboard, Mi Home and microSD path. Install only the reviewed
@@ -942,7 +945,7 @@ occurred.
 
 ---
 
-### Task 15: Supervised real-device verification — not authorized
+### Task 15: Supervised real-device verification — complete
 
 **Prerequisites:** Tasks 8–14 committed and reviewed; macOS preflight `ready`; one
 producer; `transport=auto`; source and camera-microphone gates healthy; Camera Reply
@@ -953,16 +956,16 @@ collect approved aggregate fields and stop on the first failure.
 
 **Human required:** confirm audibility and absence of camera movement after every reply.
 
-- [ ] D0: verify app identity, one launchd owner, source, camera microphone, Dashboard,
+- [x] D0: verify app identity, one launchd owner, source, camera microphone, Dashboard,
   Mi Home and microSD without playback.
-- [ ] D1: one generated reply, then verify the same protocol/generation lifecycle,
+- [x] D1: one generated reply, then verify the same protocol/generation lifecycle,
   source bytes and microphone bytes.
-- [ ] D2: from a clean lifecycle, run three cumulative replies with the same checks
+- [x] D2: from a clean lifecycle, run three cumulative replies with the same checks
   after each.
-- [ ] D3: only if D2 passes, run six cumulative replies and the complete Voice matrix.
-- [ ] Stop immediately on movement, timeout, EOF, protocol drift, producer replacement,
+- [x] D3: only if D2 passes, run six cumulative replies and the complete Voice matrix.
+- [x] Stop immediately on movement, timeout, EOF, protocol drift, producer replacement,
   generation zero, pending response, residual sender or ambiguous settlement.
-- [ ] Publish schema-v2 acceptance only after the complete gate passes. Failure leaves
+- [x] Publish schema-v2 acceptance only after the complete gate passes. Failure leaves
   Camera Reply disabled and invalidates prior acceptance.
 
 **Browser talkback boundary:** no browser microphone test is part of Task 15. A future
@@ -972,3 +975,19 @@ producer and pass its own supervised gate.
 
 **Acceptance:** human and machine evidence agree for every stage; software metadata,
 `sendonly OPUS` or HTTP success never substitutes for audibility and continuity.
+
+**Execution evidence (2026-08-27):** the first resumed attempt correctly failed closed
+after an inbound-media timeout and producer reconnect. `5fd457e` fixed bounded late
+playback cleanup without extending any timeout. A second evidence-backed defect was in
+the supervised probe: it deferred explicit stop until after human input. `b4da03f`
+changes only that probe to settle its fixed one-second tone before waiting for the
+adult, with RED/GREEN ordering coverage. Fresh probe, Camera Reply and Voice software
+gates pass 27/27, 125/125 and 442/442. The supervised clean run then passed 6/6 replies;
+each was audible with no movement, each returned `CAMERA_REPLY_COMPLETE`, and the final
+diagnostic reported one producer, `transport=auto` negotiated as `cs2+udp`, generation
+6, increasing video/audio bytes, no replacement and healthy listen-only Voice. The
+schema-v2 marker is current. No household audio was persisted, no full-stack restart
+occurred and no protected branch was changed.
+
+**Next:** keep the private production flag false until a separately approved controlled
+activation repeats the V3E wake/dialogue/timeout/non-wake matrix and its rollback gate.

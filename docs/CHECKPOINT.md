@@ -1214,3 +1214,22 @@ normal/race、compile、shell、diff 和 privacy 全部 PASS。安装态 preflig
 返回 `app_identity_invalid`、launchd owner 0、Local Network unknown，因此按门禁跳过
 安装态媒体诊断并记录 `MACOS_PREFLIGHT_BLOCKED`。未访问摄像头媒体、未播放、未安装或
 重启服务、未发布 marker；Task 15 仍未授权。
+
+随后经批准恢复 Camera Reply Task 15。首个监督音人工可听且无转动，但软件再次以
+AMBIGUOUS 停止；脱敏运行时证据复现历史签名：Xiaomi 入站媒体连续 10 秒无包、producer
+重连且 generation 回到 0。按停止线没有继续播放。严格 RED/GREEN 的 `5fd457e` 让
+Streams 在所有等待者超时后仍只清理所属内部 playback，不重复 Stop 或移除共享外部
+producer；独立复审为 0 Critical / 0 Important / 0 Minor。进一步证据表明监督探针在固定
+一秒音结束后仍把显式 stop 延迟到人工输入之后，而生产 Voice 原本按渲染时长先 stop。
+有界修复 `b4da03f` 将探针顺序固定为 start、等待一秒、exactly-once stop、再读取人工
+确认；不改变 CS2 timeout、transport、连接数或生产输出。RED 先证明旧接口无此顺序，
+GREEN 为探针 27/27、Camera Reply 125/125、完整 Voice 442/442，compile、diff/privacy
+均 PASS。
+
+同日从干净 lifecycle 重新执行监督矩阵。六次生成音均由成人确认可听且摄像头未转动；
+六次命令均返回 `CAMERA_REPLY_COMPLETE`。每次后置检查均保持一个 producer、配置
+`transport=auto`、实际协商 `cs2+udp`、视频与摄像头音频字节增长、无 producer replacement
+且 Voice 为 healthy/listen_only。最终 generation 为 6，schema-v2 acceptance marker
+current，完整 Voice 再次 442/442。全程未保存家庭音频、未发送 PTZ、未重启完整 Alpha，
+也未修改受保护分支。私有生产 `camera_reply_enabled` 仍为 false；下一项是单独受控的
+Voice-only 启用、原 V3E 交互矩阵与回滚验证。
