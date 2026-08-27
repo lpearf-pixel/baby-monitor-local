@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import re
 import time
+import unicodedata
 from dataclasses import dataclass
 from typing import Literal, Protocol
 
@@ -19,6 +20,8 @@ _REPLY_ECHOES = (
     re.compile(r"^我听到了[\s,，。！？、；;:：]*(.*)$"),
 )
 _BOUNDARY = " \t\r\n,，。！？、；;:："
+_START_DIAGNOSTIC_TARGETS = ("开始喂奶", "我要开始喂奶", "现在开始喂奶")
+_REPLY_DIAGNOSTIC_TARGETS = ("我在请说", "我听到了")
 
 
 class Asr(Protocol):
@@ -94,7 +97,7 @@ class ListenOnlyController:
                     if from_replay:
                         return self._outcome("listen_only_replay_ignored")
                     self._reset()
-                    return self._outcome("listen_only_ignored")
+                    return self._outcome(_rejected_followup_reason(command))
                 return self._acknowledge(cancelled)
 
             wake = classify_wake(text)
@@ -206,6 +209,47 @@ def _strip_reply_echo(command: str) -> tuple[str, bool]:
         if matched is not None:
             return matched.group(1).strip(_BOUNDARY), True
     return command, False
+
+
+def _rejected_followup_reason(command: str | None) -> str:
+    if command is None:
+        return "listen_only_followup_far"
+    normalized = "".join(
+        character
+        for character in unicodedata.normalize("NFKC", command).strip()
+        if not character.isspace()
+        and not unicodedata.category(character).startswith("P")
+    )
+    if not normalized or len(normalized) > 64:
+        return "listen_only_followup_far"
+    start_distance = min(
+        _edit_distance(normalized, target) for target in _START_DIAGNOSTIC_TARGETS
+    )
+    reply_distance = min(
+        _edit_distance(normalized, target) for target in _REPLY_DIAGNOSTIC_TARGETS
+    )
+    if start_distance <= 2 and start_distance < reply_distance:
+        return "listen_only_followup_near_start"
+    if reply_distance <= 2 and reply_distance < start_distance:
+        return "listen_only_followup_near_reply_echo"
+    return "listen_only_followup_far"
+
+
+def _edit_distance(left: str, right: str) -> int:
+    previous = list(range(len(right) + 1))
+    for left_index, left_character in enumerate(left, start=1):
+        current = [left_index]
+        for right_index, right_character in enumerate(right, start=1):
+            current.append(
+                min(
+                    current[-1] + 1,
+                    previous[right_index] + 1,
+                    previous[right_index - 1]
+                    + int(left_character != right_character),
+                )
+            )
+        previous = current
+    return previous[-1]
 
 
 __all__ = ["ListenOnlyController", "ListenOnlyOutcome"]

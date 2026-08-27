@@ -164,6 +164,9 @@ def test_worker_routes_one_completed_utterance_to_listen_only_controller() -> No
         "transition_counts": {
             "armed_timeouts": 0,
             "ignored_followups": 0,
+            "ignored_far": 0,
+            "ignored_near_reply_echo": 0,
+            "ignored_near_start": 0,
             "output_failures": 0,
             "replay_frames": 0,
             "replay_ignored": 0,
@@ -214,6 +217,9 @@ def test_worker_publishes_only_bounded_replay_transition_counts() -> None:
     assert status.values[-1]["transition_counts"] == {
         "armed_timeouts": 0,
         "ignored_followups": 0,
+        "ignored_far": 0,
+        "ignored_near_reply_echo": 0,
+        "ignored_near_start": 0,
         "output_failures": 0,
         "replay_frames": 1,
         "replay_ignored": 1,

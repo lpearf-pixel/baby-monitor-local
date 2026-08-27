@@ -2,6 +2,8 @@ from __future__ import annotations
 
 import threading
 
+import pytest
+
 from services.voice.asr import AsrResult
 from services.voice.listen_only import ListenOnlyController
 
@@ -141,7 +143,7 @@ def test_unknown_or_incomplete_followup_returns_silently_to_idle() -> None:
 
     result = controller.handle(PCM, threading.Event())
 
-    assert result.reason == "listen_only_ignored"
+    assert result.reason == "listen_only_followup_far"
     assert result.phase == "idle"
     assert synth.codes == ["listen_only_ready"]
 
@@ -258,3 +260,28 @@ def test_delayed_live_reply_echo_prefix_is_stripped_from_closed_command() -> Non
     assert result.reason == "listen_only_acknowledged"
     assert result.phase == "idle"
     assert synth.codes == ["listen_only_ready", "listen_only_received"]
+
+
+@pytest.mark.parametrize(
+    ("followup", "reason"),
+    [
+        ("开始为奶", "listen_only_followup_near_start"),
+        ("我再请说", "listen_only_followup_near_reply_echo"),
+        ("天气怎么样", "listen_only_followup_far"),
+    ],
+)
+def test_rejected_followup_exposes_only_fixed_distance_bucket(
+    followup: str, reason: str
+) -> None:
+    controller = ListenOnlyController(
+        asr=Asr(["小小", followup]),
+        synthesizer=Synth(),
+        monotonic_ns=Clock([1_000_000_000, 2_000_000_000]),
+    )
+
+    controller.handle(PCM, threading.Event())
+    result = controller.handle(PCM, threading.Event())
+
+    assert (result.reason, result.response_code, result.phase) == (
+        reason, None, "idle"
+    )

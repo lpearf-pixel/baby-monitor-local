@@ -15,10 +15,15 @@ _REASONS = {
     "listen_only_idle", "listen_only_ignored", "listen_only_acknowledging",
     "listen_only_armed", "listen_only_acknowledged", "listen_only_timeout",
     "listen_only_replay_ignored", "listen_only_reply_echo_ignored",
+    "listen_only_followup_near_start", "listen_only_followup_near_reply_echo",
+    "listen_only_followup_far",
 }
 _TRANSITION_KEYS = (
     "armed_timeouts",
     "ignored_followups",
+    "ignored_far",
+    "ignored_near_reply_echo",
+    "ignored_near_start",
     "output_failures",
     "replay_frames",
     "replay_ignored",

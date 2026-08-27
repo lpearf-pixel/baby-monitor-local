@@ -50,13 +50,16 @@ def test_status_cli_prints_fixed_transition_counts_without_text(
                 "transition_counts": {
                     "armed_timeouts": 1,
                     "ignored_followups": 2,
-                    "output_failures": 3,
-                    "replay_frames": 4,
-                    "replay_ignored": 5,
-                    "replay_utterances": 6,
-                    "reply_echo_ignored": 7,
-                    "utterances": 8,
-                    "vad_speech_frames": 9,
+                    "ignored_far": 3,
+                    "ignored_near_reply_echo": 4,
+                    "ignored_near_start": 5,
+                    "output_failures": 6,
+                    "replay_frames": 7,
+                    "replay_ignored": 8,
+                    "replay_utterances": 9,
+                    "reply_echo_ignored": 10,
+                    "utterances": 11,
+                    "vad_speech_frames": 12,
                 },
             }
         ),
@@ -66,9 +69,10 @@ def test_status_cli_prints_fixed_transition_counts_without_text(
     assert main([str(path)]) == 0
     assert capsys.readouterr().out.endswith(
         "transition_counts=armed_timeouts:1,ignored_followups:2,"
-        "output_failures:3,replay_frames:4,replay_ignored:5,"
-        "replay_utterances:6,reply_echo_ignored:7,utterances:8,"
-        "vad_speech_frames:9\n"
+        "ignored_far:3,ignored_near_reply_echo:4,ignored_near_start:5,"
+        "output_failures:6,replay_frames:7,replay_ignored:8,"
+        "replay_utterances:9,reply_echo_ignored:10,utterances:11,"
+        "vad_speech_frames:12\n"
     )
 
 

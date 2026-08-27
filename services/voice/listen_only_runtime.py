@@ -166,8 +166,19 @@ class ListenOnlyVoiceWorker:
                 from_replay=self._utterance_from_replay,
             )
             self._armed = outcome.phase == "armed"
-            if was_armed and outcome.reason == "listen_only_ignored":
+            if was_armed and outcome.reason in {
+                "listen_only_ignored",
+                "listen_only_followup_near_start",
+                "listen_only_followup_near_reply_echo",
+                "listen_only_followup_far",
+            }:
                 self._increment("ignored_followups")
+            if outcome.reason == "listen_only_followup_near_start":
+                self._increment("ignored_near_start")
+            if outcome.reason == "listen_only_followup_near_reply_echo":
+                self._increment("ignored_near_reply_echo")
+            if outcome.reason == "listen_only_followup_far":
+                self._increment("ignored_far")
             if outcome.reason == "listen_only_replay_ignored":
                 self._increment("replay_ignored")
             if outcome.reason == "listen_only_reply_echo_ignored":

@@ -35,6 +35,9 @@ VOICE_WORKER_UNAVAILABLE = "voice_worker_unavailable"
 VOICE_TRANSITION_KEYS = (
     "armed_timeouts",
     "ignored_followups",
+    "ignored_far",
+    "ignored_near_reply_echo",
+    "ignored_near_start",
     "output_failures",
     "replay_frames",
     "replay_ignored",
@@ -70,6 +73,9 @@ _STATUS_REASONS = {
     "listen_only_timeout",
     "listen_only_replay_ignored",
     "listen_only_reply_echo_ignored",
+    "listen_only_followup_near_start",
+    "listen_only_followup_near_reply_echo",
+    "listen_only_followup_far",
 }
 _FRAME_BYTES = 3_200
 _CLAIM = re.compile(r"^我是(爸爸|妈妈)[,，、\s]+(.+)$")

@@ -321,13 +321,16 @@ def test_status_writer_accepts_only_fixed_bounded_transition_counts(tmp_path: Pa
     counts = {
         "armed_timeouts": 1,
         "ignored_followups": 2,
-        "output_failures": 3,
-        "replay_frames": 4,
-        "replay_ignored": 5,
-        "replay_utterances": 6,
-        "reply_echo_ignored": 7,
-        "utterances": 8,
-        "vad_speech_frames": 9,
+        "ignored_far": 3,
+        "ignored_near_reply_echo": 4,
+        "ignored_near_start": 5,
+        "output_failures": 6,
+        "replay_frames": 7,
+        "replay_ignored": 8,
+        "replay_utterances": 9,
+        "reply_echo_ignored": 10,
+        "utterances": 11,
+        "vad_speech_frames": 12,
     }
 
     writer.write(
