@@ -1082,6 +1082,26 @@ def test_makefile_exposes_closed_camera_reply_operations() -> None:
         assert "voice_camera_reply.py probe" not in output
 
 
+def test_makefile_exposes_read_only_xiaomi_macos_preflight() -> None:
+    result = subprocess.run(
+        ["make", "-n", "alpha-xiaomi-media-preflight"],
+        cwd=ROOT,
+        check=False,
+        capture_output=True,
+        text=True,
+    )
+
+    assert result.returncode == 0
+    assert result.stdout.strip() == (
+        "./.venv-alpha/bin/python tools/xiaomi_macos_preflight.py"
+    )
+    lowered = result.stdout.lower()
+    assert "restart" not in lowered
+    assert "rebuild" not in lowered
+    assert "install" not in lowered
+    assert "probe" not in lowered
+
+
 def test_installer_ensures_patched_build_instead_of_downloading_release() -> None:
     content = (ROOT / "tools/install_alpha_macos.sh").read_text(encoding="utf-8")
 
