@@ -602,6 +602,15 @@
   healthy, the marker remains current and no recent raw-audio-like file was found.
   Therefore Camera Reply is device-proven for bounded replies but V3E is not yet a
   clean production acceptance.
+- Task 17 launchd settlement is fixed locally at `03aec97`. Voice-only stop now starts
+  both bootouts, polls both fixed labels for at most 20 x 100 ms, returns PASS only when
+  both are absent, and otherwise returns the stable `service_stop_timeout`; fresh deploy
+  and lifecycle evidence is 14/14. The remaining follow-up defect is an ordering
+  conflict: the 0.5-second finite-file drain added by Task 16 precedes transport stop and
+  `PlaybackDucker.resume()`, so camera input is deliberately discarded after the adult
+  has heard the prompt end. Earlier resume could accept immediate speech but overlaps an
+  unsettled speaker generation and may admit acoustic echo. No such behavior change has
+  been made; it requires an approved bounded echo/self-trigger design.
 - Installed-i9 audio-source discovery now verifies that the Xiaomi source exposes HEVC
   video plus Opus audio and that the fixed loopback `audio_analysis` alias exposes only
   Opus. The real input is supported 48 kHz stereo Opus; the fixed FFmpeg boundary

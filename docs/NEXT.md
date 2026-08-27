@@ -343,12 +343,17 @@ The run contained one launchd no-response and two missed follow-up acknowledgeme
 successful counts do not substitute for a clean matrix. The final reply lifecycle and
 source were clean, the private flag is false, and Voice was restarted to healthy idle.
 
-**Next:** diagnose the repeatable `alpha-voice-start` error 37 without broad service
-restart, and add bounded aggregate transition evidence that distinguishes follow-up
-VAD absence, ASR no-match, ignored command, timeout and output failure without storing
-PCM or transcript. Fix only evidence-backed defects, rerun focused Voice/lifecycle
-gates, then repeat V3E from a fresh baseline with an adult present. Any miss, movement,
-truncation, duplicate, producer replacement or residual state fails closed.
+The launchd error-37 path is fixed locally at `03aec97`; Voice-only stop now waits for
+both jobs to settle and fails closed after two seconds. The remaining evidence-backed
+conflict is that the Task 16 FFmpeg drain keeps input ducked for 0.5 seconds after the
+audible prompt.
+
+**Next:** approve a bounded post-prompt capture design. The implementation must accept
+speech begun immediately after the audible prompt without persisting PCM/transcript,
+while preventing reply echo from consuming the armed turn and preserving same-generation
+speaker settlement. Then add aggregate-only stage evidence, run focused Voice/lifecycle
+gates and repeat V3E from a fresh baseline. Any miss, movement, truncation, duplicate,
+producer replacement or residual state fails closed.
 
 ## P5 — Final 72-hour release gate
 

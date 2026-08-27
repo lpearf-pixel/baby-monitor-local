@@ -1297,3 +1297,14 @@ launchd job 均缺失，首个唤醒无响应；分别 bootstrap Voice 与 ASR o
 closed：私有 Camera Reply flag 已恢复 false，新 Voice PID warm-up 后 healthy/idle、计数
 归零，Dashboard/source PASS，marker current，最近一小时无 raw-audio-like 文件。成功数量
 不等于 clean V3E；下一步先诊断 launchd 37 与 follow-up 阶段，再从新基线重跑。
+
+Task 17 首个软件切片以真实 errno 证据确认 37 为 `Operation already in progress`。
+`stop_alpha.sh --voice-only` 原先在 `bootout` 返回后立即声称 PASS；新增测试先证明短暂 linger
+与永久 linger 均会假绿，再以最多 20 x 100 ms 同时等待两个固定 label。超时返回稳定
+`service_stop_timeout`。新回归 2/2、完整 deploy/lifecycle 14/14、bash/Make/diff PASS，提交
+`03aec97`，未 push。
+
+同一诊断也定位 follow-up 时序冲突：Task 16 的 0.5 秒 FFmpeg drain 在 transport stop 前
+执行，而 `PlaybackDucker.resume()` 在整个 deliver finally 才发生；因此提示音已被成人听完
+后，摄像头输入仍可能被丢弃 0.5 秒。提前 resume 会与未结算 speaker generation 重叠并
+引入 echo/self-trigger 风险，属于需要批准的行为设计；本切片未修改该边界。

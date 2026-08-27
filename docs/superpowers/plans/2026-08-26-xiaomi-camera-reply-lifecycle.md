@@ -1018,7 +1018,7 @@ reply. These are non-permitted misses; Camera Reply is disabled again.
 
 **Next software slice:**
 
-- [ ] Reproduce and classify launchd error 37 with bounded, redacted job-state evidence;
+- [x] Reproduce and classify launchd error 37 with bounded, redacted job-state evidence;
       retain component-only ownership and do not restart go2rtc or the full Alpha.
 - [ ] Add aggregate-only transition evidence for VAD absence, ASR no-match, ignored
       follow-up, armed timeout and output failure; never persist PCM or transcript.
@@ -1032,3 +1032,11 @@ reply. These are non-permitted misses; Camera Reply is disabled again.
 **Delivery boundary:** no browser talkback, PTZ, Baby Care write, raw household audio,
 transport forcing, second Xiaomi producer, full-stack restart, push or protected-branch
 change.
+
+**Task 17 evidence:** commit `03aec97` adds a two-second bounded Voice launchd bootout
+settlement gate. The RED pair proved transient and permanent linger false positives;
+GREEN is 2/2 and the complete deploy/lifecycle slice is 14/14. The remaining missed
+follow-up cause is ordering, not an unclassified ASR result: the fixed 0.5-second FFmpeg
+drain completes before transport stop and before `PlaybackDucker.resume()`, so immediate
+post-prompt input can still be discarded. Earlier resume overlaps an unsettled speaker
+generation and requires explicit echo/self-trigger design approval; no change was made.

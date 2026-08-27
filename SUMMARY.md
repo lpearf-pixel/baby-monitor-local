@@ -116,6 +116,13 @@ Updated: 2026-08-27
   follow-up stage is yet proven. The private flag is false, a fresh Voice process is
   healthy/idle with count zero, no recent raw-audio-like file exists, and the schema-v2
   marker remains current. Do not call this a clean V3E pass.
+  Task 17 has closed the launchd half at `03aec97`: Voice-only stop now waits up to two
+  seconds for both jobs to disappear and fails closed on timeout; focused deployment
+  evidence is 14/14. The follow-up miss has a concrete ordering conflict: Task 16's
+  fixed 0.5-second FFmpeg drain runs while `PlaybackDucker` still discards camera input,
+  so speech immediately after the audible prompt can lose its leading frames. Moving
+  resume earlier would overlap capture with an unsettled speaker generation and needs
+  an approved echo/self-trigger design before implementation.
   The accepted Voice branch is published at `4d479b8`; the lifecycle-review branch is
   published through `a622a7a`, before local Task 9. Neither has been merged
   into a protected branch.
@@ -586,8 +593,9 @@ legacy branch into this line without a separate integration decision.
 6. Keep Camera Reply V3 disabled. Task 16's bounded FFmpeg drain is installed and its
    tone/live smoke passed. The later V3E run reached all successful interaction quotas,
    but one launchd no-response and two missed follow-ups keep the clean gate failed.
-   Next diagnose launchd error 37 and add bounded aggregate stage evidence for missed
-   follow-ups, then repeat the matrix from a fresh counter baseline. Do not force
+   Launchd error 37 is fixed at `03aec97`; next approve and implement a bounded
+   post-prompt capture design that preserves speaker settlement and echo safety, then
+   repeat the matrix from a fresh counter baseline. Do not force
    UDP/TCP, lower recognition gates or add a second camera connection.
 7. Complete the final 72-hour release gate before any release/tag decision.
 8. Define per-parent acknowledgement and false-positive feedback only through a future
