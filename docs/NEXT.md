@@ -317,7 +317,7 @@ runtime evidence was one `transport=auto` producer, observed `cs2+udp`, generati
 increasing video/audio bytes, no replacement, healthy Voice and a current schema-v2
 marker. No household audio was persisted and no full-stack restart occurred.
 
-**Task 16 status:** software fix committed locally at `16f7652`. The failed live retry provided
+**Task 16 status:** COMPLETE at software head `16f7652`. The failed live retry provided
 aggregate evidence for a finite-file EOF/stop race: a valid 1.40875-second TTS input was
 realtime paced, stopped at nominal duration, returned AMBIGUOUS and left a stale
 internal producer. A fixed 0.5-second cancellation-aware drain now precedes stop inside
@@ -332,11 +332,18 @@ and NOT_PROVEN. The authenticated Xiaomi device list confirms the matching real 
 and configured source both report `chuangmi.camera.039a01`; do not substitute the
 public `039c01` record.
 
-**Next:** retain the accepted i9 speaker and private flag `false`. Marker deletion,
-go2rtc-only recovery, one-producer cleanup and model-identity reconciliation are done.
-With an adult present, repeat the isolated tone gate and then run one fixed camera reply;
-confirm the full phrase, no movement, replacement, timeout, duplicate or residual
-internal producer. Only then resume V3E using `嘿小小`.
+The adult-supervised post-fix gate also passed. One isolated tone and one canonical
+live wake each produced exactly one complete audible camera reply with no movement.
+Final aggregate lifecycle was 2/2/2/2 with positive Opus packets/bytes, one Xiaomi
+producer and zero internal/pending/residual/failure state; no new timeout/EOF occurred.
+The private flag is false again. Count this as clean V3E standalone wake 1/5 only.
+
+**Next:** retain the i9 speaker and private flag `false` between supervised batches.
+Task 16 is complete and the clean V3E matrix is at standalone wake 1/5. With an adult
+present, continue four standalone wakes, three wake-plus-follow-up dialogues, three
+silent timeouts and five non-wake controls. Any truncation, movement, replacement,
+timeout outside the intended silent case, duplicate or residual internal producer
+fails closed immediately.
 
 ## P5 — Final 72-hour release gate
 

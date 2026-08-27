@@ -576,6 +576,17 @@
   60-second receive probe passed with 48 kHz stereo Opus, 1,920,000 decoded bytes and
   `raw_audio_persisted=false`. Camera Reply remains disabled and NOT_PROVEN. No speaker
   playback validated the drain fix.
+- Task 16 post-fix installed acceptance passed under adult supervision. The isolated
+  one-second tone was heard once with no movement and returned COMPLETE. The private
+  flag was then enabled for exactly one canonical `嘿小小` wake: the adult heard the
+  complete `我在，请说` once, observed no movement and no duplicate. Fixed status was
+  COMPLETE at 4873 ms with completed/failed 1/0. Aggregate lifecycle after tone plus
+  reply was generation/start/response/stop 2/2/2/2, 122 successful Opus packets,
+  positive speaker bytes, zero write/stop failures, zero pending/residual state and
+  `last_failure_stage=none`. Source remained one Xiaomi producer with zero internal
+  producer; video remained 2560x1440 PASS and no new media timeout/audio EOF appeared.
+  The flag was restored to false and Voice returned healthy idle. This is clean V3E
+  standalone wake 1/5, not completion of the dialogue/timeout/non-wake matrix.
 - Installed-i9 audio-source discovery now verifies that the Xiaomi source exposes HEVC
   video plus Opus audio and that the fixed loopback `audio_analysis` alias exposes only
   Opus. The real input is supported 48 kHz stereo Opus; the fixed FFmpeg boundary

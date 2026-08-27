@@ -95,6 +95,14 @@ Updated: 2026-08-27
   matching camera and confirmed the real device/config model is
   `chuangmi.camera.039a01`; the public `039c01` record must not overwrite this local
   identity.
+  The subsequent adult-supervised post-fix gate passed: the isolated tone was audible
+  once with no movement, followed by one canonical `嘿小小` wake whose complete
+  `我在，请说` reply was audible once with no movement. Machine evidence was
+  `CAMERA_REPLY_COMPLETE`, completed/failed 1/0, lifecycle 2/2/2/2, 122 Opus packets,
+  positive bytes, one Xiaomi producer and zero internal/pending/residual/failure state;
+  no new Xiaomi timeout or audio EOF appeared. The flag was restored to false and
+  Voice/source remained healthy. Task 16 is complete; this is only standalone wake 1/5
+  for the clean V3E matrix, not full V3E acceptance.
   The accepted Voice branch is published at `4d479b8`; the lifecycle-review branch is
   published through `a622a7a`, before local Task 9. Neither has been merged
   into a protected branch.
@@ -567,8 +575,9 @@ legacy branch into this line without a separate integration decision.
    newest retry also truncated `我在，请说` after `我在`, returned AMBIGUOUS, replaced
    the Xiaomi producer and left one stale internal playback producer. Task 16's bounded
    FFmpeg drain fix is software-green but not installed or device-accepted. Next,
-   The failed marker has now been explicitly invalidated and go2rtc-only recovery
-   restored exactly one producer. Next run one supervised fixed reply; do not force
+   The failed marker was invalidated, go2rtc-only recovery restored one producer, and
+   the post-fix isolated tone plus one fixed live reply both passed without movement.
+   Next resume the remaining V3E matrix from clean standalone wake 1/5; do not force
    UDP/TCP or add a second camera connection.
 7. Complete the final 72-hour release gate before any release/tag decision.
 8. Define per-parent acknowledgement and false-positive feedback only through a future

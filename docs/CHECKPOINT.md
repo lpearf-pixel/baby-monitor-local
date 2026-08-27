@@ -1272,3 +1272,13 @@ Xiaomi producer、零 internal producer、speaker closed、generation 0、零 re
 同一检查点通过本机已认证 go2rtc Xiaomi 只读设备列表核对身份：账号返回一台摄像头，
 当前 DID 唯一匹配，云端 model 与 source 均为 `chuangmi.camera.039a01`。因此不把上游公开
 列表中的 `chuangmi.camera.039c01` 强写入这台实机配置，型号差异不再作为本轮待定阻塞。
+
+随后经成人监督执行 Task 16 post-fix gate。隔离一秒音调由成人确认可听、无转动，命令
+返回 COMPLETE；后置快照为一个 Xiaomi producer、零 internal、generation 1、closed、
+零 residual/failure。随后只启用一次私有 Camera Reply 并仅重启 Voice，成人说一次
+`嘿小小`，完整听到一次 `我在，请说`，摄像头未转动且无重复。固定状态为 COMPLETE、
+4873 ms、completed/failed=1/0；tone+live 聚合 lifecycle 为 generation/start/response/stop
+2/2/2/2、speaker packets=122、bytes=22753、零 write/stop/pending/residual failure。
+source 保持单 Xiaomi producer、零 internal、HEVC 2560x1440 PASS；最新 media timeout/
+audio EOF 仍停留在修复前时间。随后恢复私有开关 false，仅重启 Voice，Voice healthy idle，
+source 再次 PASS。Task 16 完成；该结果只计 clean V3E standalone wake 1/5。

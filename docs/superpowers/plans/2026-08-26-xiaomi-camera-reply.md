@@ -728,7 +728,7 @@ Do not push, merge, tag or modify `main` without a separate explicit instruction
 
 ### Task 16: Close the finite-TTS EOF/stop race after the failed live V3E retry
 
-**Status (2026-08-27): IN PROGRESS, Camera Reply disabled.** A supervised live retry
+**Status (2026-08-27): COMPLETE, production flag disabled.** A supervised live retry
 played only the leading `我在`, returned `CAMERA_REPLY_AMBIGUOUS`, coincided with
 camera movement and left one stale internal playback producer. The Xiaomi producer
 then timed out and was replaced. The receive-only 60-second Opus probe recovered and
@@ -746,6 +746,14 @@ this task.
 - [x] After explicit deletion approval, invalidate the failed marker and recover only
   go2rtc. Require one Xiaomi producer, zero internal producers, closed speaker state,
   zero residual sender/failure and receive-only video/audio PASS.
-- [ ] Only with an adult present: repeat the isolated tone gate, then try one fixed live
+- [x] Only with an adult present: repeat the isolated tone gate, then try one fixed live
   reply. Any truncation, movement, producer replacement or residual internal producer
   fails closed.
+
+The post-fix device gate passed. The adult heard the isolated tone with no movement,
+then heard the complete fixed `我在，请说` reply once with no movement. Machine evidence
+was COMPLETE, completed/failed 1/0, generation/start/response/stop 2/2/2/2, 122 Opus
+packets, positive bytes, one Xiaomi producer, zero internal/pending/residual state and no
+new media timeout. The flag was restored to false and Voice/source remained healthy.
+This closes Task 16 and counts as one clean standalone wake; it does not complete the
+remaining V3E interaction matrix.
