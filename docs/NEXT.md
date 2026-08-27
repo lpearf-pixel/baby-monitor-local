@@ -261,17 +261,17 @@ start of every probe; installed status is NOT_PROVEN. D3/D4 were not run.
 The approved transport-auto amendment is recorded at `8654866`; Task 8 software is
 complete at `f153cbd` with 62/62 synthetic checks. Its installed preflight was not run.
 
-**Prerequisites:** Tasks 9 and 10 are complete at `1885da2` and `c85fb39`: configuration
+**Prerequisites:** Tasks 9 through 11 are complete at `1885da2`, `c85fb39` and
+`faa3d4b`: configuration
 stays `transport=auto`, runtime parsing requires one external Xiaomi producer, and reply
 settlement owns the observed protocol plus nonzero generation. Installed diagnostics
 have not run. Real speaker playback remains outside the current authorization and later
 requires an adult at the camera.
 
-**Codex can:** execute Task 11's deterministic D2 software reproduction using only the
-pinned patch and synthetic/net.Pipe fixtures, without changing the source or playing
-audio.
+**Codex can:** execute Task 12's generated-audio camera-microphone chain gate without
+reading household audio, changing the source or playing audio.
 
-**Human required:** none for Task 11 software. Task 15 later requires separate approval
+**Human required:** none for Task 12 software. Task 15 later requires separate approval
 and supervision. Forcing TCP/UDP or creating a second connection remains prohibited.
 
 **Acceptance and tests:** The original fixed vocabulary and privacy boundaries remain
@@ -280,8 +280,12 @@ regressions, 20 clean synthetic generations, exact patch provenance, zero post-s
 writes, zero pending responses/residual senders, propagated failures and no
 Voice/source regression. Software tests never operate the real speaker.
 
-**Next:** execute Task 11 deterministic D2 timeout reproduction/classification. Retain
-the accepted i9 speaker and leave Camera Reply disabled; do not enter D3/D4.
+**Task 11 result:** `D2_BOUNDARY_HARDENED_CAUSE_UNPROVEN`. Four pinned focused/race
+fixtures pass; only raw read-error disclosure reproduced and was replaced by fixed
+payload-free classification. This does not explain the real D2 media loss.
+
+**Next:** execute Task 12 generated-audio microphone/Opus/PCM/VAD/ASR isolation gate.
+Retain the accepted i9 speaker and leave Camera Reply disabled; do not enter D3/D4.
 
 ## P5 — Final 72-hour release gate
 

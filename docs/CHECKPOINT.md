@@ -1173,3 +1173,12 @@ marker v2 只含当前 build identity、`transport_mode=auto` 与 negotiated pro
 闭合失效。fresh Camera Reply 121/121、listen-only 7/7、完整 Voice 439/439，compile、
 privacy/diff 检查通过。未请求安装态 API、未播放、未改 source、未重启服务；下一项为
 Task 11 deterministic D2 软件复现/分类。
+
+同日完成 Camera Reply lifecycle Task 11 软件切片，业务提交为 `faa3d4b`。固定上游提交
+与 tracked patch 的四个精确 fixture 及 race 门全部通过：六轮 speaker 生命周期期间
+media 可读、settlement 不替换共享 producer、陈旧 reconnect 不复制 worker。唯一实际
+RED 是 `Producer.Start()` 原样返回底层 timeout 文本；最小修复只将 timeout/其他读取
+失败映射为固定无 payload 分类，未改变 transport、deadline、retry 或连接数。Python
+build/deploy 门 71/71，compile、Make dry-run、privacy/diff 检查通过。结论为
+`D2_BOUNDARY_HARDENED_CAUSE_UNPROVEN`；未安装 binary、未访问实机媒体、未播放或重启。
+下一项为 Task 12 生成音频的麦克风/Opus/PCM/VAD/ASR 独立软件门。

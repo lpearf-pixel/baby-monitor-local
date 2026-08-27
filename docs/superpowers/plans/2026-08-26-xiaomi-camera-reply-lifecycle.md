@@ -668,25 +668,25 @@ API, speaker playback, source mutation or service restart was used.
 
 **Human required:** none. This task must not replay the fourth interaction on hardware.
 
-- [ ] **Step 1: Add RED-capable stress fixtures.** Keep a media reader active while six
+- [x] **Step 1: Add RED-capable stress fixtures.** Keep a media reader active while six
   speaker generations run; inject delayed response, write failure, read deadline,
   cancel/natural-end race and connection close one at a time.
-- [ ] **Step 2: Add the protocol-test CLI/Make entry under RED.** Tests require the exact
+- [x] **Step 2: Add the protocol-test CLI/Make entry under RED.** Tests require the exact
   clone/checkout/patch/focused/race argv and prove install/sign/restart functions are not
   called.
-- [ ] **Step 3: Run the exact pinned-patch tests.**
+- [x] **Step 3: Run the exact pinned-patch tests.**
 
   ```bash
   make alpha-go2rtc-protocol-test
   ```
-- [ ] **Step 4: Record one decision before production changes.**
+- [x] **Step 4: Record one decision before production changes.**
   `D2_CAUSE_CONFIRMED` requires a deterministic failure in the current patched code.
   If all fixtures pass, record `D2_BOUNDARY_HARDENED_CAUSE_UNPROVEN`, leave production
   Go unchanged and stop this task after the diagnostic evidence.
-- [ ] **Step 5: If and only if RED exists, implement one minimal GREEN.** Modify only the
+- [x] **Step 5: If and only if RED exists, implement one minimal GREEN.** Modify only the
   exact layer that failed. Do not force transport, extend timeouts, add retries or add a
   connection as a workaround.
-- [ ] **Step 6: Run focused and race GREEN.**
+- [x] **Step 6: Run focused and race GREEN.**
 
   ```bash
   make alpha-go2rtc-protocol-test
@@ -695,7 +695,7 @@ API, speaker playback, source mutation or service restart was used.
   make -n alpha-go2rtc-protocol-test
   git diff --check
   ```
-- [ ] **Step 7: Commit only if tracked evidence or a minimal fix changed.**
+- [x] **Step 7: Commit only if tracked evidence or a minimal fix changed.**
 
   ```bash
   git add Makefile patches/go2rtc-macos-hybrid-hd.patch \
@@ -707,6 +707,15 @@ API, speaker playback, source mutation or service restart was used.
 
 **Acceptance:** the result names confirmed evidence or explicitly preserves unknown
 causality. Correlation with cumulative interaction 4 is never treated as a software RED.
+
+**Execution evidence (2026-08-27):** Task 11 is complete at `faa3d4b`. The exact pinned
+patch passed all four named focused fixtures and their race run. Three lifecycle fixtures
+remained GREEN; the single observed RED proved only that `Producer.Start()` returned a
+raw transport timeout string. The minimal fix maps timeout and other read failures to
+fixed payload-free codes without changing transport, deadlines, retries or connection
+count. The recorded decision is `D2_BOUNDARY_HARDENED_CAUSE_UNPROVEN`. The fixed Python
+build/deploy suite is 71/71. No installed binary, service, camera source or playback was
+used or changed.
 
 **Next:** validate camera-microphone receive independently.
 

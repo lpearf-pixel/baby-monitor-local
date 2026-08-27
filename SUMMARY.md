@@ -37,8 +37,11 @@ Updated: 2026-08-27
   was not run and no real media result is claimed. Task 10 is complete locally at
   `c85fb39`: Camera Reply observes UDP/TCP, owns the active protocol plus nonzero
   generation through closed settlement, and rejects schema-v1 markers. Fresh Camera
-  Reply/listen-only/Voice gates are 121/121, 7/7 and 439/439. No real playback ran;
-  Task 11 deterministic D2 software reproduction is next.
+  Reply/listen-only/Voice gates are 121/121, 7/7 and 439/439. Task 11 is complete at
+  `faa3d4b`: all four pinned focused/race fixtures pass, and raw producer read errors
+  now map to fixed payload-free classifications. The lifecycle tests did not reproduce
+  the D2 media loss, so the decision is `D2_BOUNDARY_HARDENED_CAUSE_UNPROVEN`. No real
+  playback ran; Task 12 independent microphone software gate is next.
   The accepted Voice branch is published at `4d479b8`; the lifecycle-review branch is
   published through `a622a7a`, before local Task 9. Neither has been merged
   into a protected branch.
@@ -506,10 +509,10 @@ legacy branch into this line without a separate integration decision.
    already user-confirmed PASS.
 5. P4 private-access software is complete, but installation/login, grants, Serve and
    two-iPhone acceptance are explicitly deferred until the final optional stage.
-6. Keep Camera Reply V3 disabled. Tasks 8–10 software are complete through `c85fb39`;
-   installed diagnostics and playback remain unrun. Next execute Task 11's deterministic
-   D2 software reproduction. Do not force UDP/TCP, create a second camera connection or
-   continue D3/D4.
+6. Keep Camera Reply V3 disabled. Tasks 8–11 software are complete through `faa3d4b`;
+   installed diagnostics and playback remain unrun. D2 causality remains unproven.
+   Next execute Task 12's independent generated-audio microphone chain gate. Do not
+   force UDP/TCP, create a second camera connection or continue D3/D4.
 7. Complete the final 72-hour release gate before any release/tag decision.
 8. Define per-parent acknowledgement and false-positive feedback only through a future
    contract where Baby Care consumes Guardian's read-only feed and owns identity/write

@@ -486,7 +486,13 @@
   values at closed settlement. Acceptance marker schema v2 contains current build
   identity, `transport_mode=auto` and the observed protocol; schema v1 is stale. Fresh
   Camera Reply/listen-only/full Voice evidence is 121/121, 7/7 and 439/439. No installed
-  API or real playback ran; Task 11 is next.
+  API or real playback ran.
+- Camera Reply lifecycle Task 11 is software-complete at `faa3d4b`. The exact pinned
+  patch passes the four named focused fixtures and their race run; build/deploy tests
+  pass 71/71. Only raw producer read-error disclosure reproduced, and it now maps to
+  fixed payload-free timeout/failure codes. Transport, deadlines, retries and producer
+  count are unchanged. The D2 media-loss cause remains unproven; Task 12 is next. No
+  installed binary, camera media or playback was used.
 - Installed-i9 audio-source discovery now verifies that the Xiaomi source exposes HEVC
   video plus Opus audio and that the fixed loopback `audio_analysis` alias exposes only
   Opus. The real input is supported 48 kHz stereo Opus; the fixed FFmpeg boundary
