@@ -415,7 +415,7 @@ and retains no transcript.
 - Consumes: fixed action/match outcomes from Task 4.
 - Produces: bounded integer counters and fixed status reasons only.
 
-- [ ] **Step 1: Add closed integer counters**
+- [x] **Step 1: Add closed integer counters**
 
   Add counters equivalent to:
 
@@ -431,18 +431,18 @@ and retains no transcript.
   Every value must be a non-negative bounded integer. Do not add command text, corrected
   text, character differences, edit distance, confidence or medication slots.
 
-- [ ] **Step 2: Count exactly one terminal classification per armed utterance**
+- [x] **Step 2: Count exactly one terminal classification per armed utterance**
 
   Reply echo/replay bookkeeping remains independent. Do not double-count a corrected
   Feeding result as both exact and corrected. Timeout and model/output failure use their
   existing counters.
 
-- [ ] **Step 3: Keep the status schema closed**
+- [x] **Step 3: Keep the status schema closed**
 
   Extend writer and CLI allowlists together; reject unknown/non-integer fields and avoid
   changing private runtime settings.
 
-- [ ] **Step 4: Run focused GREEN**
+- [x] **Step 4: Run focused GREEN**
 
   ```bash
   .venv-alpha/bin/python -m pytest -q \
@@ -451,7 +451,7 @@ and retains no transcript.
     tests/tools/test_voice_status.py
   ```
 
-- [ ] **Step 5: Run privacy scans and update the review log**
+- [x] **Step 5: Run privacy scans and update the review log**
 
   ```bash
   git diff --check

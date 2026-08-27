@@ -311,6 +311,13 @@ def test_armed_exact_low_risk_action_acknowledges_once(command: str) -> None:
         "listen_only_received",
         "idle",
     )
+    assert result.action_code == (
+        "diaper_change_start" if command == "开始换尿布" else
+        "diaper_change_complete" if command == "换好尿布了" else
+        "burping_start" if command == "开始拍嗝" else
+        "burping_complete"
+    )
+    assert result.match_kind == "exact"
     assert synth.codes == ["listen_only_ready", "listen_only_received"]
 
 
@@ -329,6 +336,10 @@ def test_armed_reviewed_feeding_correction_acknowledges_once() -> None:
         "listen_only_acknowledged_corrected",
         "listen_only_received",
         "idle",
+    )
+    assert (result.action_code, result.match_kind) == (
+        "feeding_command",
+        "corrected",
     )
     assert synth.codes == ["listen_only_ready", "listen_only_received"]
 
@@ -350,6 +361,8 @@ def test_armed_medication_is_silent_high_risk_candidate(command: str) -> None:
         None,
         "idle",
     )
+    assert result.action_code.startswith("medication_")
+    assert result.match_kind == "high_risk_candidate"
     assert synth.codes == ["listen_only_ready"]
 
 

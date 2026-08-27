@@ -179,6 +179,7 @@ class ListenOnlyVoiceWorker:
                 self._increment("ignored_near_reply_echo")
             if outcome.reason == "listen_only_followup_far":
                 self._increment("ignored_far")
+            self._record_action_outcome(outcome, was_armed=was_armed)
             if outcome.reason == "listen_only_replay_ignored":
                 self._increment("replay_ignored")
             if outcome.reason == "listen_only_reply_echo_ignored":
@@ -262,6 +263,43 @@ class ListenOnlyVoiceWorker:
             9_007_199_254_740_991,
             self._transition_counts[key] + 1,
         )
+
+    def _record_action_outcome(
+        self,
+        outcome: ListenOnlyOutcome,
+        *,
+        was_armed: bool,
+    ) -> None:
+        action_code = outcome.action_code
+        match_kind = outcome.match_kind
+        counter: str | None = None
+        if action_code == "feeding_command":
+            counter = (
+                "listen_only_feeding_corrected"
+                if match_kind == "corrected"
+                else "listen_only_feeding_exact"
+                if match_kind == "exact"
+                else None
+            )
+        elif action_code is not None and action_code.startswith("diaper_change_"):
+            counter = "listen_only_diaper_exact" if match_kind == "exact" else None
+        elif action_code is not None and action_code.startswith("burping_"):
+            counter = "listen_only_burping_exact" if match_kind == "exact" else None
+        elif action_code is not None and action_code.startswith("medication_"):
+            counter = (
+                "listen_only_medication_candidate"
+                if match_kind == "high_risk_candidate"
+                else None
+            )
+        if counter is not None:
+            self._increment(counter)
+        elif was_armed and outcome.reason in {
+            "listen_only_ignored",
+            "listen_only_followup_near_start",
+            "listen_only_followup_near_reply_echo",
+            "listen_only_followup_far",
+        }:
+            self._increment("listen_only_action_rejected")
 
 
 def build_listen_only_worker(

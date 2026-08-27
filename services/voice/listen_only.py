@@ -9,7 +9,7 @@ from dataclasses import dataclass
 from typing import Literal, Protocol
 
 from services.voice.asr_correction import correct_armed_followup
-from services.voice.care_action import CareActionMatch, classify_exact_action
+from services.voice.care_action import ActionCode, CareActionMatch, classify_exact_action
 from services.voice.wake import classify_wake
 
 
@@ -41,6 +41,19 @@ class ListenOnlyOutcome:
     reason: str
     response_code: str | None
     phase: Literal["idle", "armed"]
+    action_code: ActionCode | None = None
+    match_kind: Literal["exact", "corrected", "high_risk_candidate"] | None = None
+
+    def __post_init__(self) -> None:
+        if (self.action_code is None) != (self.match_kind is None):
+            raise ValueError("invalid_listen_only_outcome")
+        if self.match_kind == "corrected" and self.action_code != "feeding_command":
+            raise ValueError("invalid_listen_only_outcome")
+        if self.match_kind == "high_risk_candidate" and not (
+            self.action_code is not None
+            and self.action_code.startswith("medication_")
+        ):
+            raise ValueError("invalid_listen_only_outcome")
 
 
 class ListenOnlyController:
@@ -166,7 +179,11 @@ class ListenOnlyController:
     ) -> ListenOnlyOutcome:
         if action.risk == "high" or not action.allow_ack:
             self._reset()
-            return self._outcome("listen_only_high_risk_candidate")
+            return self._outcome(
+                "listen_only_high_risk_candidate",
+                action_code=action.action_code,
+                match_kind="high_risk_candidate",
+            )
         return self._acknowledge(
             cancelled,
             reason=(
@@ -174,6 +191,8 @@ class ListenOnlyController:
                 if corrected
                 else "listen_only_acknowledged"
             ),
+            action_code=action.action_code,
+            match_kind="corrected" if corrected else "exact",
         )
 
     def _acknowledge(
@@ -181,11 +200,22 @@ class ListenOnlyController:
         cancelled: StopEvent,
         *,
         reason: str = "listen_only_acknowledged",
+        action_code: ActionCode | None = None,
+        match_kind: Literal["exact", "corrected"] | None = None,
     ) -> ListenOnlyOutcome:
         self._reset()
         if not self._synthesizer.speak_code("listen_only_received", cancelled):
-            return self._outcome("voice_output_unavailable")
-        return self._outcome(reason, "listen_only_received")
+            return self._outcome(
+                "voice_output_unavailable",
+                action_code=action_code,
+                match_kind=match_kind,
+            )
+        return self._outcome(
+            reason,
+            "listen_only_received",
+            action_code=action_code,
+            match_kind=match_kind,
+        )
 
     def _reset(self) -> None:
         self._phase = "idle"
@@ -193,9 +223,20 @@ class ListenOnlyController:
         self._armed_speech_started = False
 
     def _outcome(
-        self, reason: str, response_code: str | None = None
+        self,
+        reason: str,
+        response_code: str | None = None,
+        *,
+        action_code: ActionCode | None = None,
+        match_kind: Literal["exact", "corrected", "high_risk_candidate"] | None = None,
     ) -> ListenOnlyOutcome:
-        return ListenOnlyOutcome(reason, response_code, self._phase)
+        return ListenOnlyOutcome(
+            reason,
+            response_code,
+            self._phase,
+            action_code=action_code,
+            match_kind=match_kind,
+        )
 
 
 def _command_without_optional_wake(text: str) -> str | None:

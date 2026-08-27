@@ -53,13 +53,19 @@ def test_status_cli_prints_fixed_transition_counts_without_text(
                     "ignored_far": 3,
                     "ignored_near_reply_echo": 4,
                     "ignored_near_start": 5,
-                    "output_failures": 6,
-                    "replay_frames": 7,
-                    "replay_ignored": 8,
-                    "replay_utterances": 9,
-                    "reply_echo_ignored": 10,
-                    "utterances": 11,
-                    "vad_speech_frames": 12,
+                    "listen_only_action_rejected": 6,
+                    "listen_only_burping_exact": 7,
+                    "listen_only_diaper_exact": 8,
+                    "listen_only_feeding_corrected": 9,
+                    "listen_only_feeding_exact": 10,
+                    "listen_only_medication_candidate": 11,
+                    "output_failures": 12,
+                    "replay_frames": 13,
+                    "replay_ignored": 14,
+                    "replay_utterances": 15,
+                    "reply_echo_ignored": 16,
+                    "utterances": 17,
+                    "vad_speech_frames": 18,
                 },
             }
         ),
@@ -70,9 +76,12 @@ def test_status_cli_prints_fixed_transition_counts_without_text(
     assert capsys.readouterr().out.endswith(
         "transition_counts=armed_timeouts:1,ignored_followups:2,"
         "ignored_far:3,ignored_near_reply_echo:4,ignored_near_start:5,"
-        "output_failures:6,replay_frames:7,replay_ignored:8,"
-        "replay_utterances:9,reply_echo_ignored:10,utterances:11,"
-        "vad_speech_frames:12\n"
+        "listen_only_action_rejected:6,listen_only_burping_exact:7,"
+        "listen_only_diaper_exact:8,listen_only_feeding_corrected:9,"
+        "listen_only_feeding_exact:10,listen_only_medication_candidate:11,"
+        "output_failures:12,replay_frames:13,replay_ignored:14,"
+        "replay_utterances:15,reply_echo_ignored:16,utterances:17,"
+        "vad_speech_frames:18\n"
     )
 
 

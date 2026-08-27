@@ -6,6 +6,8 @@ import hashlib
 from pathlib import Path
 from datetime import UTC, datetime
 
+import pytest
+
 from packages.contracts.audio import AudioFailureReason
 from services.voice.audio_pump import PumpFrame
 from services.voice.capture import UtteranceResult
@@ -167,6 +169,12 @@ def test_worker_routes_one_completed_utterance_to_listen_only_controller() -> No
             "ignored_far": 0,
             "ignored_near_reply_echo": 0,
             "ignored_near_start": 0,
+            "listen_only_action_rejected": 0,
+            "listen_only_burping_exact": 0,
+            "listen_only_diaper_exact": 0,
+            "listen_only_feeding_corrected": 0,
+            "listen_only_feeding_exact": 0,
+            "listen_only_medication_candidate": 0,
             "output_failures": 0,
             "replay_frames": 0,
             "replay_ignored": 0,
@@ -220,6 +228,12 @@ def test_worker_publishes_only_bounded_replay_transition_counts() -> None:
         "ignored_far": 0,
         "ignored_near_reply_echo": 0,
         "ignored_near_start": 0,
+        "listen_only_action_rejected": 0,
+        "listen_only_burping_exact": 0,
+        "listen_only_diaper_exact": 0,
+        "listen_only_feeding_corrected": 0,
+        "listen_only_feeding_exact": 0,
+        "listen_only_medication_candidate": 0,
         "output_failures": 0,
         "replay_frames": 1,
         "replay_ignored": 1,
@@ -228,6 +242,80 @@ def test_worker_publishes_only_bounded_replay_transition_counts() -> None:
         "utterances": 1,
         "vad_speech_frames": 1,
     }
+
+
+@pytest.mark.parametrize(
+    ("action_code", "match_kind", "counter"),
+    [
+        ("feeding_command", "exact", "listen_only_feeding_exact"),
+        ("feeding_command", "corrected", "listen_only_feeding_corrected"),
+        ("diaper_change_start", "exact", "listen_only_diaper_exact"),
+        ("burping_start", "exact", "listen_only_burping_exact"),
+        (
+            "medication_start_candidate",
+            "high_risk_candidate",
+            "listen_only_medication_candidate",
+        ),
+    ],
+)
+def test_worker_counts_one_fixed_terminal_action_without_transcript(
+    action_code: str,
+    match_kind: str,
+    counter: str,
+) -> None:
+    status = Status()
+    worker = ListenOnlyVoiceWorker(
+        pump=Pump([PumpFrame(b"p" * 3_200)]),
+        vad=Vad(VadResult(True, 0.9)),
+        collector=Collector(UtteranceResult(b"u" * 32_000, "terminal_silence")),
+        controller=Controller(
+            ListenOnlyOutcome(
+                "listen_only_high_risk_candidate"
+                if match_kind == "high_risk_candidate"
+                else "listen_only_acknowledged",
+                None if match_kind == "high_risk_candidate" else "listen_only_received",
+                "idle",
+                action_code=action_code,
+                match_kind=match_kind,
+            )
+        ),
+        asr_closer=AsrCloser(),
+        status_writer=status,
+        monotonic_ns=iter((1_000_000_000, 1_080_000_000)).__next__,
+    )
+
+    worker.step(threading.Event())
+
+    counts = status.values[-1]["transition_counts"]
+    action_keys = {
+        "listen_only_feeding_exact",
+        "listen_only_feeding_corrected",
+        "listen_only_diaper_exact",
+        "listen_only_burping_exact",
+        "listen_only_medication_candidate",
+    }
+    assert counts[counter] == 1
+    assert sum(counts[key] for key in action_keys) == 1
+
+
+def test_worker_counts_armed_rejection_once_without_action_metadata() -> None:
+    status = Status()
+    worker = ListenOnlyVoiceWorker(
+        pump=Pump([PumpFrame(b"p" * 3_200)]),
+        vad=Vad(VadResult(True, 0.9)),
+        collector=Collector(UtteranceResult(b"u" * 32_000, "terminal_silence")),
+        controller=Controller(
+            ListenOnlyOutcome("listen_only_followup_far", None, "idle"),
+            expired=ListenOnlyOutcome("listen_only_armed", None, "armed"),
+        ),
+        asr_closer=AsrCloser(),
+        status_writer=status,
+        monotonic_ns=iter((1_000_000_000, 1_080_000_000)).__next__,
+    )
+
+    worker.step(threading.Event())
+
+    assert status.values[-1]["transition_counts"]["listen_only_action_rejected"] == 1
 
 
 def test_worker_source_failure_resets_only_voice_state_and_fails_closed() -> None:

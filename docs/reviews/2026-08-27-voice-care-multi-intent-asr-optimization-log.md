@@ -239,6 +239,36 @@ HEAD、真实命令和真实结果的记录。
 - decision：keep；进入 aggregate-only counter slice
 - next single action：为每个 terminal action 增加固定有界计数，且不暴露 transcript
 
+### R5 — Aggregate-only 动作证据 GREEN
+
+- 日期：2026-08-27
+- branch / exact HEAD：`codex/xiaomi-camera-reply-lifecycle-review` / `957c300`
+- dirty/unrelated state：Task 4 已聚焦提交；本 slice 仅改 outcome 固定元数据、Voice 状态
+  allowlist、worker计数、CLI和相邻测试
+- authority：software-only；未读取 runtime status 或家庭输入
+- hypothesis：H4；固定 action code/match kind 足以复盘误识别，无需持久化 transcript
+- files changed：`services/voice/listen_only.py`、`services/voice/listen_only_runtime.py`、
+  `services/voice/worker.py`、`tools/voice_status.py`、三份相邻测试、计划和本日志
+- RED command/result：Task 5 focused 初跑 10 failed / 23 passed；首败为 status writer
+  fail closed 拒绝尚未加入 allowlist 的新 counters
+- GREEN command/result：controller/worker/runtime/status CLI focused 56 passed，exit 0
+- focused/full command/result：Task 5 exact三文件 33 passed；扩展 controller 后 56 passed；
+  full NOT_RUN
+- corpus：fake fixed `ListenOnlyOutcome` 和 synthetic action codes，license=`GENERATED`
+- positives/accepted/rejected：feeding exact/corrected、diaper、burping、medication 各自产生
+  唯一固定 counter；未带 action metadata 的既有 outcome 保持零
+- negatives/false accepts：armed invalid outcome只增加 `listen_only_action_rejected`；未知
+  status字段继续拒绝；false accepts=0
+- latency p50/p95/RSS：NOT_RUN；无模型调用
+- privacy scan：`git diff --check` PASS；批准敏感模式扫描无 true positive
+- Camera Reply flag/lifecycle：未读取或修改，保持 false；未播放
+- Baby Care write/outbox/signing：未构造、未调用；status schema不含外部 intent
+- evidence proves：状态只能记录6个新固定非负有界整数；corrected Feeding不被双计为 exact；
+  不含 command、corrected text、距离、置信度或 medication slots
+- evidence does not prove：真实 ASR 准确率、延迟、RSS或实机动作门
+- decision：keep；进入 generated/public aggregate benchmark
+- next single action：先为 manifest和evaluator写 RED，再实现无 transcript benchmark
+
 每条新记录使用一个连续编号 `R1`、`R2`……，并完整写出以下字段：
 
 ```text
