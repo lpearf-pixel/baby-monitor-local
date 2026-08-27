@@ -5,9 +5,11 @@
 > `superpowers:executing-plans` to implement this plan task-by-task. Steps use checkbox
 > (`- [ ]`) syntax for tracking.
 >
-> **Status:** Software implementation authorized on 2026-08-27. Task 1 RED corpus is
-> complete; Task 2 is next. Model installation, household audio, Camera Reply activation,
-> Baby Care writes, PRs and protected-branch changes remain unauthorized.
+> **Status:** Software Tasks 1–7 are complete on 2026-08-28. The generated gate kept
+> Feeding, diaper change and burping, but exact medication-complete recognition remains
+> fail closed. Task 8 household/device acceptance is not authorized. Model installation,
+> household audio, Camera Reply activation, Baby Care writes, PRs and protected-branch
+> changes remain unauthorized.
 
 **Goal:** Make the existing armed listen-only Voice flow safely recognize a closed set
 of feeding, diaper-change and burping commands, classify medication utterances only as
@@ -34,9 +36,9 @@ pytest, fixed JSON/status schemas and generated/public 16 kHz mono PCM fixtures.
 - Preserve all user changes. Never reset, clean, overwrite, rebase, force-push, merge,
   modify `main/stable`, create a PR or perform remote operations without separate
   explicit approval.
-- Current authority is documentation only. Code execution requires a later explicit
-  user instruction. A local commit also requires explicit authority; otherwise record
-  `commit=not_authorized` in the review log.
+- Software Tasks 1–7, focused local commits and publication of the current feature
+  branch were authorized. Household/device Task 8 still requires the adult to return
+  and give separate explicit authority.
 - Keep `voice_care.camera_reply_enabled=false` during software and initial i9 ASR gates.
   Do not operate PTZ, change camera settings, force UDP/TCP, change `transport=auto`,
   add a second Xiaomi producer or restart the full Alpha stack.
@@ -558,7 +560,7 @@ Task 8 medication acceptance is blocked pending a separately approved high-risk 
 - Consumes: Tasks 1–6.
 - Produces: one reproducible software checkpoint, not a household/device acceptance.
 
-- [ ] **Step 1: Run focused Voice tests**
+- [x] **Step 1: Run focused Voice tests**
 
   ```bash
   .venv-alpha/bin/python -m pytest -q \
@@ -574,7 +576,7 @@ Task 8 medication acceptance is blocked pending a separately approved high-risk 
     tests/tools/test_voice_status.py
   ```
 
-- [ ] **Step 2: Run authoritative Voice and repository gates**
+- [x] **Step 2: Run authoritative Voice and repository gates**
 
   ```bash
   make alpha-voice-test
@@ -586,18 +588,18 @@ Task 8 medication acceptance is blocked pending a separately approved high-risk 
   Record every real count. Missing tools/dependencies are blockers, not PASS. A historical
   test count is never copied as fresh evidence.
 
-- [ ] **Step 3: Review the final tracked diff**
+- [x] **Step 3: Review the final tracked diff**
 
   Confirm no changes to go2rtc patch, Xiaomi transport, camera settings, PTZ, Baby Care
   vendored contract, signing, outbox or unrelated Guardian workers. Scan for credentials,
   private endpoints, runtime media/database/settings and generated household artifacts.
 
-- [ ] **Step 4: Update authoritative docs consistently**
+- [x] **Step 4: Update authoritative docs consistently**
 
   Mark only software-proven gates complete. Keep Camera Reply false, full-care closed and
   all household/action accuracy statuses unverified until Task 8.
 
-- [ ] **Step 5: Self-review the plan and review log**
+- [x] **Step 5: Self-review the plan and review log**
 
   Search for contradictory status, unfilled placeholders, stale head, copied historical
   counts and claims unsupported by commands. Correct them before handoff.
@@ -606,7 +608,8 @@ Task 8 medication acceptance is blocked pending a separately approved high-risk 
 docs distinguish software from device proof.
 
 **Commit boundary:** when the user authorizes local commits, use one focused commit per
-completed task or one explicitly approved docs/test squash; do not push.
+completed task or one explicitly approved docs/test squash. Push only with separate
+authority; the current Tasks 1–7 publication has that authority.
 
 ---
 
@@ -677,8 +680,8 @@ night/far-field accuracy or Baby Care writes.
 
 ## Execution Handoff
 
-After explicit implementation approval, continue from the first unchecked task. Use
-TDD and update the review log after every slice. Do not dispatch overlapping workers to
-the same files. The implementation session must stop for human authority before any
-model installation, household capture/playback, Camera Reply enablement, commit, push,
-PR, protected-branch change or Baby Care contract expansion.
+Tasks 1–7 are complete. Continue only from Task 8 after separate adult-supervised
+authority. Use TDD and update the review log after every slice. Do not dispatch
+overlapping workers to the same files. Stop for human authority before any model
+installation, household capture/playback, Camera Reply enablement, PR,
+protected-branch change or Baby Care contract expansion.

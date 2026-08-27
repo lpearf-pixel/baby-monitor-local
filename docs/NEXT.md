@@ -367,24 +367,28 @@ The next attempt is blocked before another full matrix: installed `73c88bf` clas
 four of five follow-ups as rejected near-start text, with zero near-reply-echo and zero
 far. Do not enlarge the tail buffer or accept arbitrary edit distance.
 
-The user approved a docs-only multi-action ASR optimization design on 2026-08-27. Its
+The user approved a multi-action ASR optimization design on 2026-08-27. Its
 authoritative entry points are:
 
 - `docs/superpowers/specs/2026-08-27-voice-care-multi-intent-asr-optimization-design.md`;
 - `docs/superpowers/plans/2026-08-27-voice-care-multi-intent-asr-optimization.md`;
 - `docs/reviews/2026-08-27-voice-care-multi-intent-asr-optimization-log.md`.
 
-The design keeps Feeding as the first repair, adds diaper change and burping only as
-later closed listen-only gates, and treats medication only as a high-risk candidate with
-no correction, positive save acknowledgement or Baby Care write. Other actions require
-their own small specification and tests. It explicitly rejects generic edit distance,
-cross-action correction and open-ended intent classification.
+Software Tasks 1–7 are complete through `df7b762`. The implementation keeps Feeding as
+the only external `VoiceCareIntentV1` contract, adds diaper change and burping only to
+the internal closed listen-only classifier, and treats medication only as a silent
+high-risk candidate. It explicitly rejects generic edit distance, cross-action
+correction and open-ended intent classification. Fresh gates are focused 247/247,
+Voice 524/524 and repository 1829/1829. The generated benchmark passed low-risk actions
+18/18 and negatives 48/48 with zero false accepts; medication start passed 3/3 while
+medication complete was rejected 3/3, so medication cannot enter supervised acceptance.
 
-**Next:** wait for explicit implementation authority, then start only at plan Task 1:
-add the synthetic/public RED corpus and append the review log. Do not write GREEN first,
-install a model, enable Camera Reply, run household playback, commit or push under the
-current docs-only authority. After software gates, isolate ASR with Camera Reply false;
-only a clean small supervised sample may unblock the separate V3E matrix.
+**Next:** wait for the adult to return. With separate approval, run Task 8 only for the
+already software-qualified Feeding, diaper-change and burping actions from fresh fixed
+counters while Camera Reply remains false. Do not run household capture unattended.
+Medication requires a separate high-risk design before its Task 8 gate; do not install
+a model, relax correction or infer a care record. Camera Reply V3E remains an independent
+later gate.
 
 ## P5 — Final 72-hour release gate
 

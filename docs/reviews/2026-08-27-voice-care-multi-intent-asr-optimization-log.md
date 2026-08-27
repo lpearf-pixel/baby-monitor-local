@@ -342,11 +342,11 @@ HEAD、真实命令和真实结果的记录。
 | Checkpoint | 触发条件 | 当前状态 | 必须回答的问题 |
 |---|---|---|---|
 | P0 设计复盘 | 方案、计划和入口文档完成 | 完成 | 范围保持为识别而非写入；风险分级和回滚已写入 |
-| P1 Feeding 软件复盘 | Gate A focused/full software 结束 | 未获代码授权 | 正例召回、false accept、延迟；是否需要上游候选 |
+| P1 Feeding 软件复盘 | Gate A focused/full software 结束 | 完成 | generated Feeding 4/4，低风险合计18/18，false accept 0；保留当前模型 |
 | P2 Feeding 实机复盘 | 10 正例/20 负例监督门结束 | 未授权 | 实机是否真正改善；哪条证据可/不可外推 |
-| P3 尿布/拍嗝复盘 | Gate B 每个动作独立结束 | 未开始 | 是否互相串类；是否错误推断护理结果 |
-| P4 喂药安全复盘 | Gate C 软件/监督门结束 | 未开始 | 是否出现纠错、误导性确认或外部写入 |
-| P5 模型决策复盘 | HR/KWS/Contextual 候选被评估或否决 | 未开始 | 许可、召回、false accept、延迟、RSS和回滚 |
+| P3 尿布/拍嗝复盘 | Gate B 每个动作独立结束 | 软件完成/实机未授权 | generated 14/14，未互相串类且不推断护理结果 |
+| P4 喂药安全复盘 | Gate C 软件/监督门结束 | 软件阻塞 | start 3/3，complete 0/3且安全拒绝；未确认或外部写入 |
+| P5 模型决策复盘 | HR/KWS/Contextual 候选被评估或否决 | 当前模型保留 | 低风险保留Paraformer；高风险候选待独立设计/许可 |
 | P6 最终复盘 | 所有获批动作门结束 | 未开始 | 最终保留方案、删除方案、遗留风险、下一合同 |
 
 任何 false accept 都立即触发额外复盘，不等待当前 gate 完成。复盘必须保留失败，不能
@@ -374,5 +374,29 @@ resolution 必须包含：
 
 ## 9. 当前唯一下一步
 
-等待用户明确授权“按多护理动作 ASR 计划实施”。获得授权后，Codex 从计划 Task 1
-开始，只建立 synthetic/public RED corpus；不得先写实现、安装模型或操作摄像头。
+软件 Tasks 1–7 已完成。等待成人返回并另行批准 Task 8；只可先验收已通过软件门的
+Feeding、尿布和拍嗝，Camera Reply保持 false。medication complete在generated gate为0/3，
+必须先有独立高风险设计，不得放宽纠错、安装未批准模型或无人值守采集家庭音频。
+
+### R7 — 完整软件与文档门
+
+- 日期：2026-08-28
+- branch / exact HEAD：`codex/xiaomi-camera-reply-lifecycle-review` / `df7b762`
+- dirty/unrelated state：Tasks 1–6均已聚焦提交；Task 7开始时tracked worktree clean
+- authority：software-only；本轮允许本地测试、文档检查点、聚焦提交和当前分支push
+- hypothesis：H4；closed registry、受限纠错和聚合状态可通过全软件门且不扩张外部合同
+- files changed：Tasks 1–6的16个批准业务/测试/计划文件，加本轮6个权威状态文档
+- RED command/result：沿用R1–R6逐slice真实RED；Task 7不新增行为代码
+- GREEN command/result：Task 7聚焦10文件247 passed；完整Voice 524 passed
+- focused/full command/result：聚焦247/247、Voice 524/524、完整Python 1829/1829
+- corpus：source-controlled synthetic strings和Tingting generated-only临时WAV，license=`GENERATED`
+- positives/accepted/rejected：低风险18/18；medication start 3/3；medication complete 0/3并拒绝
+- negatives/false accepts：48/48 rejected；false accepts=0
+- latency p50/p95/RSS：87 ms / 196 ms / NOT_RUN（无可信独立RSS边界）
+- privacy scan：compileall、diff-check和批准敏感模式扫描PASS；无家庭音频、转写或私有路径
+- Camera Reply flag/lifecycle：保持false；未读取、启用、播放或重启实机服务
+- Baby Care write/outbox/signing：not constructed / not called / unchanged
+- evidence proves：closed软件合同、聚合状态、低风险generated召回和零generated误接收
+- evidence does not prove：家庭声学、成人/儿童实机召回、夜间/远场、Camera Reply或护理写入
+- decision：keep低风险实现；defer medication complete；Task 8等待成人单独批准
+- next single action：成人返回后只运行Task 8低风险监督门；药物先做独立高风险设计

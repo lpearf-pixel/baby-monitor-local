@@ -632,14 +632,18 @@
   remained clean closed at 34/34/34/34 with no failure, pending response or residual.
   Camera Reply is false. Generic fuzzy acceptance remains prohibited because negative
   or stop commands can also be close in edit distance.
-- The 2026-08-27 docs-only ASR optimization design is approved and recorded at
+- The 2026-08-27 ASR optimization design is approved and recorded at
   `docs/superpowers/specs/2026-08-27-voice-care-multi-intent-asr-optimization-design.md`,
-  with an executable plan and append-oriented review log. No implementation or fresh
-  test has run. The current external contract remains Feeding-only. The ordered future
-  gates are Feeding near-start, closed listen-only diaper/burping recognition, then a
-  medication high-risk candidate with no correction, save acknowledgement or Baby Care
-  write. Camera Reply remains false; the next code action requires separate authority
-  and must start with synthetic/public RED tests.
+  with an executable plan and append-oriented review log. Software Tasks 1–7 are now
+  complete through `df7b762`. The current external contract remains Feeding-only, while
+  the internal armed listen-only path exact-classifies Feeding, diaper change and
+  burping, permits only one reviewed Feeding confusion correction, and exposes only
+  fixed aggregate counters. Fresh software evidence is focused 247/247, Voice 524/524
+  and full repository 1829/1829. The generated-only action gate had low-risk 18/18,
+  medication start 3/3 and negatives 48/48 with zero false accepts, but medication
+  complete 0/3; it remains fail closed and blocks medication device acceptance. No
+  household audio, transcript, Camera Reply, Baby Care write or model install was used.
+  Task 8 requires separate adult-supervised authority; Camera Reply remains false.
 - Installed-i9 audio-source discovery now verifies that the Xiaomi source exposes HEVC
   video plus Opus audio and that the fixed loopback `audio_analysis` alias exposes only
   Opus. The real input is supported 48 kHz stereo Opus; the fixed FFmpeg boundary

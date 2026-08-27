@@ -1367,3 +1367,19 @@ listen-only gate；喂药仅为 high-risk candidate，禁止近似纠错、误�
 没有运行新的软件/实机测试，也没有 commit、push、PR 或保护分支操作。Camera Reply 继续
 false。下一步需单独获得实现授权，且必须从 synthetic/public RED corpus 开始，并在每个
 slice 后追加 review log。
+
+## 2026-08-28 Voice Care 多护理动作 ASR 软件门
+
+软件 Tasks 1–7 已按 RED/GREEN 完成，业务 head 为 `df7b762`。新增闭合内部动作注册表、
+armed-only Feeding 显式纠错、listen-only 风险策略、固定聚合计数和 generated/public
+benchmark。Feeding 的外部 `VoiceCareIntentV1` 合同未扩张；尿布和拍嗝不写 Baby Care；
+喂药只产生静默 high-risk candidate。未修改 go2rtc、Xiaomi transport、PTZ、签名、outbox
+或其他 Guardian worker。
+
+Fresh 结果：聚焦 247/247、完整 Voice 524/524、完整 Python 1829/1829，compileall 与
+`git diff --check` PASS。generated-only Paraformer 门中，低风险动作 18/18、负例 48/48、
+false accepts=0；medication start 3/3，但 medication complete 0/3 并安全拒绝。该结果证明
+闭合软件边界和合成语料行为，不证明家庭声学、成人实机召回、儿童语音、夜间/远场、
+Camera Reply 或护理写入。Camera Reply 保持 false，未采集或持久化家庭音频/转写，未安装
+模型。下一步须等成人返回并另行批准 Task 8 的低风险监督门；medication 先进入独立高风险
+设计，不能靠放宽纠错进入实机验收。

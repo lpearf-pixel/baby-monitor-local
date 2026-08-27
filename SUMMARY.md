@@ -1,6 +1,6 @@
 # Baby Monitor Local Project Summary
 
-Updated: 2026-08-27
+Updated: 2026-08-28
 
 ## Snapshot
 
@@ -143,17 +143,22 @@ Updated: 2026-08-27
   false again. The next behavior change requires explicit approval for a conservative
   start-command correction that blocks negation/stop/question forms; generic edit-
   distance acceptance is prohibited.
-  On 2026-08-27 the user approved a docs-only multi-action ASR optimization design at
+  On 2026-08-27 the user approved a multi-action ASR optimization design at
   `docs/superpowers/specs/2026-08-27-voice-care-multi-intent-asr-optimization-design.md`,
   with its task plan and append-oriented review log in the adjacent plan/review paths.
-  Implementation has not started. Feeding remains the first gate; diaper change and
-  burping are later closed listen-only gates; medication is a high-risk candidate with
-  no approximate correction, positive save acknowledgement or Baby Care write. Current
-  `VoiceCareIntentV1` remains Feeding-only, Camera Reply remains false, and the next
-  authorized code action must begin with synthetic/public RED tests.
+  Software Tasks 1–7 are complete locally through business head `df7b762`: the armed
+  listen-only path now exact-classifies Feeding, diaper change and burping, applies only
+  one reviewed Feeding confusion correction, and records fixed aggregate counters.
+  `VoiceCareIntentV1` remains Feeding-only and no Baby Care write was added. Fresh gates
+  are focused 247/247, Voice 524/524 and repository 1829/1829. A generated-only
+  Paraformer benchmark passed all low-risk actions 18/18 and negatives 48/48 with zero
+  false accepts; medication start passed 3/3, but medication complete remained 0/3 and
+  was safely rejected. Therefore medication and all household/device accuracy remain
+  unaccepted, Camera Reply remains false, and Task 8 requires separate adult-supervised
+  authority.
   The accepted Voice branch is published at `4d479b8`; the lifecycle-review branch is
-  published through `a622a7a`, before local Task 9. Neither has been merged
-  into a protected branch.
+  the active multi-action software work line. Neither has been merged into a protected
+  branch.
 - The evidence-retention line is based on the published Dashboard snapshot `69e2d5b`;
   the Dashboard remains complete and its published branch is not rewritten.
 - Remote branch `codex/baby-guardian-event-loop` remains at its earlier squash snapshot
