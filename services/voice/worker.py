@@ -32,6 +32,17 @@ from services.voice.helper_keychain import keychain_for_runtime
 
 
 VOICE_WORKER_UNAVAILABLE = "voice_worker_unavailable"
+VOICE_TRANSITION_KEYS = (
+    "armed_timeouts",
+    "ignored_followups",
+    "output_failures",
+    "replay_frames",
+    "replay_ignored",
+    "replay_utterances",
+    "utterances",
+    "vad_speech_frames",
+)
+_MAX_STATUS_COUNT = 9_007_199_254_740_991
 _STATUS_REASONS = {
     "accepted_pending",
     "saved",
@@ -319,16 +330,28 @@ class VoiceStatusWriter:
         reason: str,
         processed_count: int,
         last_latency_ms: int | None,
+        transition_counts: Mapping[str, int] | None = None,
     ) -> None:
         if (
             mode not in {"disabled", "listen_only", "care"}
             or worker_state not in {"disabled", "healthy", "degraded"}
             or reason not in _STATUS_REASONS
             or type(processed_count) is not int
-            or not 0 <= processed_count <= 9_007_199_254_740_991
+            or not 0 <= processed_count <= _MAX_STATUS_COUNT
             or (
                 last_latency_ms is not None
                 and (type(last_latency_ms) is not int or not 0 <= last_latency_ms <= 30_000)
+            )
+        ):
+            raise ValueError(VOICE_WORKER_UNAVAILABLE)
+        if transition_counts is not None and (
+            mode != "listen_only"
+            or not isinstance(transition_counts, Mapping)
+            or set(transition_counts) != set(VOICE_TRANSITION_KEYS)
+            or any(
+                type(transition_counts[key]) is not int
+                or not 0 <= transition_counts[key] <= _MAX_STATUS_COUNT
+                for key in VOICE_TRANSITION_KEYS
             )
         ):
             raise ValueError(VOICE_WORKER_UNAVAILABLE)
@@ -344,6 +367,10 @@ class VoiceStatusWriter:
             "processed_count": processed_count,
             "last_latency_ms": last_latency_ms,
         }
+        if transition_counts is not None:
+            payload["transition_counts"] = {
+                key: transition_counts[key] for key in VOICE_TRANSITION_KEYS
+            }
         self._path.parent.mkdir(parents=True, exist_ok=True)
         temporary = self._path.with_name(f".{self._path.name}.{os.getpid()}.tmp")
         try:
@@ -468,6 +495,7 @@ __all__ = [
     "VoiceCommandProcessor",
     "VoicePreflightReport",
     "VoiceStatusWriter",
+    "VOICE_TRANSITION_KEYS",
     "VoiceWorker",
     "run_voice_preflight",
 ]

@@ -161,6 +161,16 @@ def test_worker_routes_one_completed_utterance_to_listen_only_controller() -> No
         "reason": "listen_only_acknowledged",
         "processed_count": 1,
         "last_latency_ms": 80,
+        "transition_counts": {
+            "armed_timeouts": 0,
+            "ignored_followups": 0,
+            "output_failures": 0,
+            "replay_frames": 0,
+            "replay_ignored": 0,
+            "replay_utterances": 0,
+            "utterances": 1,
+            "vad_speech_frames": 1,
+        },
     }
 
 
@@ -181,6 +191,35 @@ def test_worker_preserves_replay_provenance_for_completed_utterance() -> None:
     worker.step(threading.Event())
 
     assert controller.replayed == [True]
+
+
+def test_worker_publishes_only_bounded_replay_transition_counts() -> None:
+    status = Status()
+    worker = ListenOnlyVoiceWorker(
+        pump=Pump([PumpFrame(b"p" * 3_200, replayed=True)]),
+        vad=Vad(VadResult(True, 0.9)),
+        collector=Collector(UtteranceResult(b"u" * 32_000, "terminal_silence")),
+        controller=Controller(
+            ListenOnlyOutcome("listen_only_replay_ignored", None, "armed")
+        ),
+        asr_closer=AsrCloser(),
+        status_writer=status,
+        clock=lambda: datetime(2026, 8, 25, tzinfo=UTC),
+        monotonic_ns=iter((1_000_000_000, 1_080_000_000)).__next__,
+    )
+
+    worker.step(threading.Event())
+
+    assert status.values[-1]["transition_counts"] == {
+        "armed_timeouts": 0,
+        "ignored_followups": 0,
+        "output_failures": 0,
+        "replay_frames": 1,
+        "replay_ignored": 1,
+        "replay_utterances": 1,
+        "utterances": 1,
+        "vad_speech_frames": 1,
+    }
 
 
 def test_worker_source_failure_resets_only_voice_state_and_fails_closed() -> None:

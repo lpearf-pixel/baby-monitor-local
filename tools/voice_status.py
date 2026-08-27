@@ -16,6 +16,16 @@ _REASONS = {
     "listen_only_armed", "listen_only_acknowledged", "listen_only_timeout",
     "listen_only_replay_ignored",
 }
+_TRANSITION_KEYS = (
+    "armed_timeouts",
+    "ignored_followups",
+    "output_failures",
+    "replay_frames",
+    "replay_ignored",
+    "replay_utterances",
+    "utterances",
+    "vad_speech_frames",
+)
 
 
 def main(argv: list[str] | None = None) -> int:
@@ -49,7 +59,7 @@ def main(argv: list[str] | None = None) -> int:
         return 2
     try:
         payload = json.loads(path.read_text(encoding="ascii"))
-        if set(payload) != {
+        base_keys = {
             "schema_version",
             "checked_at",
             "mode",
@@ -57,7 +67,8 @@ def main(argv: list[str] | None = None) -> int:
             "reason",
             "processed_count",
             "last_latency_ms",
-        }:
+        }
+        if set(payload) not in (base_keys, base_keys | {"transition_counts"}):
             raise ValueError
         state = payload["worker_state"]
         mode = payload["mode"]
@@ -65,6 +76,7 @@ def main(argv: list[str] | None = None) -> int:
         count = payload["processed_count"]
         latency = payload["last_latency_ms"]
         checked_at = payload["checked_at"]
+        transition_counts = payload.get("transition_counts")
         if not_before_epoch_us is not None:
             if type(checked_at) is not str:
                 raise ValueError
@@ -84,15 +96,33 @@ def main(argv: list[str] | None = None) -> int:
                 latency is not None
                 and (type(latency) is not int or not 0 <= latency <= 30_000)
             )
+            or (
+                transition_counts is not None
+                and (
+                    mode != "listen_only"
+                    or not isinstance(transition_counts, dict)
+                    or set(transition_counts) != set(_TRANSITION_KEYS)
+                    or any(
+                        type(transition_counts[key]) is not int
+                        or not 0 <= transition_counts[key] <= 9_007_199_254_740_991
+                        for key in _TRANSITION_KEYS
+                    )
+                )
+            )
         ):
             raise ValueError
     except Exception:
         print("voice_status=unavailable")
         return 2
     latency_text = "none" if latency is None else str(latency)
+    transition_text = ""
+    if transition_counts is not None:
+        transition_text = "\ntransition_counts=" + ",".join(
+            f"{key}:{transition_counts[key]}" for key in _TRANSITION_KEYS
+        )
     print(
         f"voice_status={state} mode={mode} reason={reason} processed_count={count} "
-        f"last_latency_ms={latency_text}"
+        f"last_latency_ms={latency_text}{transition_text}"
     )
     return 0 if state in {"disabled", "healthy"} else 1
 

@@ -313,6 +313,45 @@ def test_status_writer_emits_closed_schema_v2_listen_only_status(tmp_path: Path)
     }
 
 
+def test_status_writer_accepts_only_fixed_bounded_transition_counts(tmp_path: Path) -> None:
+    writer = VoiceStatusWriter(
+        tmp_path / "voice.json",
+        clock=lambda: datetime(2026, 8, 24, 1, tzinfo=UTC),
+    )
+    counts = {
+        "armed_timeouts": 1,
+        "ignored_followups": 2,
+        "output_failures": 3,
+        "replay_frames": 4,
+        "replay_ignored": 5,
+        "replay_utterances": 6,
+        "utterances": 7,
+        "vad_speech_frames": 8,
+    }
+
+    writer.write(
+        mode="listen_only",
+        worker_state="healthy",
+        reason="listen_only_idle",
+        processed_count=3,
+        last_latency_ms=80,
+        transition_counts=counts,
+    )
+
+    payload = json.loads((tmp_path / "voice.json").read_text(encoding="ascii"))
+    assert payload["transition_counts"] == counts
+    counts["private_text"] = 1
+    with pytest.raises(ValueError, match="^voice_worker_unavailable$"):
+        writer.write(
+            mode="listen_only",
+            worker_state="healthy",
+            reason="listen_only_idle",
+            processed_count=3,
+            last_latency_ms=80,
+            transition_counts=counts,
+        )
+
+
 class Asr:
     def __init__(self, texts: list[str]) -> None:
         self.texts = texts

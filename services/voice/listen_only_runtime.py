@@ -34,7 +34,7 @@ from services.voice.listen_only import ListenOnlyController, ListenOnlyOutcome
 from services.voice.paraformer import ParaformerProcess, RecoveringParaformerProcess
 from services.voice.silero_runtime import StreamingSileroVad
 from services.voice.tts import BoundedCommandRunner, FixedVoiceSynthesizer
-from services.voice.worker import VoiceStatusWriter
+from services.voice.worker import VOICE_TRANSITION_KEYS, VoiceStatusWriter
 
 
 class StopEvent(Protocol):
@@ -120,13 +120,17 @@ class ListenOnlyVoiceWorker:
         self._monotonic_ns = monotonic_ns
         self._processed_count = 0
         self._utterance_from_replay = False
+        self._armed = False
+        self._transition_counts = {key: 0 for key in VOICE_TRANSITION_KEYS}
         self._closed = False
 
     def step(self, cancelled: StopEvent) -> None:
         started_ns = self._monotonic_ns()
         try:
             expired = self._controller.expire(started_ns)
+            self._armed = expired.phase == "armed"
             if expired.reason == "listen_only_timeout":
+                self._increment("armed_timeouts")
                 self._write("healthy", expired.reason, None)
                 return
             frame = self._pump.read_frame()
@@ -136,12 +140,15 @@ class ListenOnlyVoiceWorker:
                 return
             if frame.dropped:
                 return
+            if frame.replayed:
+                self._increment("replay_frames")
             vad = self._vad.observe(frame.pcm)
             if vad.reason is not None:
                 self._reset_capture()
                 self._write("degraded", "voice_model_unavailable", None)
                 return
             if vad.speech:
+                self._increment("vad_speech_frames")
                 if frame.replayed:
                     self._utterance_from_replay = True
                 self._controller.on_speech_started(started_ns)
@@ -149,11 +156,22 @@ class ListenOnlyVoiceWorker:
             if utterance is None:
                 self._write("healthy", expired.reason, None)
                 return
+            self._increment("utterances")
+            if self._utterance_from_replay:
+                self._increment("replay_utterances")
+            was_armed = self._armed
             outcome: ListenOnlyOutcome = self._controller.handle(
                 utterance.pcm,
                 cancelled,
                 from_replay=self._utterance_from_replay,
             )
+            self._armed = outcome.phase == "armed"
+            if was_armed and outcome.reason == "listen_only_ignored":
+                self._increment("ignored_followups")
+            if outcome.reason == "listen_only_replay_ignored":
+                self._increment("replay_ignored")
+            if outcome.reason == "voice_output_unavailable":
+                self._increment("output_failures")
             self._utterance_from_replay = False
             if outcome.reason in {
                 "voice_model_unavailable",
@@ -208,6 +226,7 @@ class ListenOnlyVoiceWorker:
 
     def _reset_capture(self) -> None:
         self._utterance_from_replay = False
+        self._armed = False
         self._collector.reset()
         self._vad.reset()
         self._controller.reset()
@@ -220,9 +239,16 @@ class ListenOnlyVoiceWorker:
                 reason=reason,
                 processed_count=self._processed_count,
                 last_latency_ms=latency_ms,
+                transition_counts=self._transition_counts,
             )
         except Exception:
             pass
+
+    def _increment(self, key: str) -> None:
+        self._transition_counts[key] = min(
+            9_007_199_254_740_991,
+            self._transition_counts[key] + 1,
+        )
 
 
 def build_listen_only_worker(
