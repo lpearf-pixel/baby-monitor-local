@@ -82,6 +82,21 @@ def _wrapped_stream_payload(**kwargs: object) -> bytes:
     return b'{"source":' + _stream_payload(**kwargs) + b"}"
 
 
+def _active_stream_payload(
+    *, generation: int = 2, internal_first: bool = False
+) -> bytes:
+    document = json.loads(
+        _stream_payload(speaker_state="active", generation=generation)
+    )
+    internal = {
+        "format_name": "ffmpeg",
+        "medias": ["audio, recvonly, OPUS/48000/2"],
+    }
+    index = 0 if internal_first else 1
+    document["producers"].insert(index, internal)
+    return json.dumps(document, separators=(",", ":")).encode("utf-8")
+
+
 def test_parser_returns_only_closed_readiness_evidence() -> None:
     expected = CameraReplyEvidence(
         source_ready=True,
@@ -259,10 +274,15 @@ def test_inspect_uses_only_fixed_loopback_get_timeout_and_cap(tmp_path: Path) ->
     assert response.closed is True
 
 
-def test_start_and_stop_use_only_fixed_percent_encoded_posts(tmp_path: Path) -> None:
+@pytest.mark.parametrize("internal_first", [False, True])
+def test_start_and_stop_use_only_fixed_percent_encoded_posts(
+    tmp_path: Path, internal_first: bool
+) -> None:
     media = _media_file(tmp_path)
     start_response = FakeResponse(
-        _stream_payload(speaker_state="active", generation=2)
+        _active_stream_payload(
+            generation=2, internal_first=internal_first
+        )
     )
     stop_response = FakeResponse(_stream_payload())
     opener = RecordingOpener([start_response, stop_response])
@@ -449,7 +469,7 @@ def test_concurrent_request_is_busy_and_not_queued(tmp_path: Path) -> None:
             entered.set()
             assert release.wait(1.0)
             return FakeResponse(
-                _stream_payload(speaker_state="active", generation=2)
+                _active_stream_payload(generation=2)
             )
 
     transport = LoopbackCameraReplyTransport(tmp_path, opener=BlockingOpener())
@@ -472,7 +492,7 @@ def test_stop_is_repeatable_and_releases_single_flight_after_failure(
     success = FakeResponse(_stream_payload(generation=2))
     opener = RecordingOpener(
         [
-            FakeResponse(_stream_payload(speaker_state="active", generation=2)),
+            FakeResponse(_active_stream_payload(generation=2)),
             socket.timeout("private-marker"),
             success,
         ]
@@ -528,7 +548,7 @@ def test_stop_requires_the_generation_owned_by_this_start(
     media = _media_file(tmp_path)
     opener = RecordingOpener(
         [
-            FakeResponse(_stream_payload(speaker_state="active", generation=2)),
+            FakeResponse(_active_stream_payload(generation=2)),
             FakeResponse(stop_payload),
         ]
     )

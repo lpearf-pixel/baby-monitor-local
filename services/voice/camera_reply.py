@@ -316,14 +316,46 @@ def _parse_source_media_lifecycle(
         raise ValueError(_UNAVAILABLE)
     producers = stream.get("producers")
     consumers = stream.get("consumers")
+    lifecycle_fields = {
+        "speaker_session_generation",
+        "speaker_start_requests",
+        "speaker_start_responses",
+        "speaker_stop_commands",
+        "speaker_write_failures",
+        "speaker_stop_failures",
+        "pending_command_responses",
+        "residual_sender_count",
+        "producer_generation",
+    }
+    if expected_state == "active":
+        expected_producer_count = 2
+    elif expected_state == "closed":
+        expected_producer_count = 1
+    else:
+        raise ValueError(_UNAVAILABLE)
     if (
         not isinstance(producers, list)
-        or len(producers) != 1
-        or not isinstance(producers[0], dict)
+        or len(producers) != expected_producer_count
+        or any(not isinstance(item, dict) for item in producers)
         or not isinstance(consumers, list)
     ):
         raise ValueError(_UNAVAILABLE)
-    producer = producers[0]
+    lifecycle_producers = [
+        item for item in producers if item.get("protocol") == _PROTOCOL
+    ]
+    if len(lifecycle_producers) != 1:
+        raise ValueError(_UNAVAILABLE)
+    producer = lifecycle_producers[0]
+    if expected_state == "active":
+        playback = next(item for item in producers if item is not producer)
+        if (
+            playback.get("medias") != [_INCOMING_AUDIO_MEDIA]
+            or (
+                lifecycle_fields | {"speaker_state", "last_failure_stage"}
+            )
+            & set(playback)
+        ):
+            raise ValueError(_UNAVAILABLE)
     protocol = producer.get("protocol")
     medias = producer.get("medias")
     if (
@@ -336,17 +368,6 @@ def _parse_source_media_lifecycle(
     ):
         raise ValueError(_UNAVAILABLE)
 
-    lifecycle_fields = {
-        "speaker_session_generation",
-        "speaker_start_requests",
-        "speaker_start_responses",
-        "speaker_stop_commands",
-        "speaker_write_failures",
-        "speaker_stop_failures",
-        "pending_command_responses",
-        "residual_sender_count",
-        "producer_generation",
-    }
     if any(
         type(producer.get(field)) is not int
         or not 0 <= producer[field] <= 1_000_000_000
@@ -357,11 +378,9 @@ def _parse_source_media_lifecycle(
     if expected_state == "active":
         expected_stop_commands = generation - 1
         expected_residual_senders = 1
-    elif expected_state == "closed":
+    else:
         expected_stop_commands = generation
         expected_residual_senders = 0
-    else:
-        raise ValueError(_UNAVAILABLE)
     if (
         producer.get("speaker_state") != expected_state
         or (expected_state == "active" and generation == 0)
