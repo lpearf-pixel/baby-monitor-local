@@ -144,6 +144,8 @@ def test_verify_and_apply_patch_changes_only_approved_protocol_paths(
         "TestReconnectBackoffDoesNotDuplicateWorkers",
     ):
         assert f"func {name}" in playback
+    assert "producer.reconnect(2, 1)" in playback
+    assert "calls != 1 || producer.workerID != 3" in playback
     producer = (source / "pkg/xiaomi/miss/producer.go").read_text(encoding="utf-8")
     assert 'errors.New("xiaomi: media read timeout")' in producer
     changed = set(_git(source, "diff", "--name-only").splitlines())
@@ -153,6 +155,7 @@ def test_verify_and_apply_patch_changes_only_approved_protocol_paths(
     assert sorted(changed) == [
         "internal/streams/play.go",
         "internal/streams/play_lifecycle_review_test.go",
+        "internal/streams/producer.go",
         "internal/streams/stream.go",
         "pkg/iso/codecs.go",
         "pkg/xiaomi/miss/backchannel.go",
@@ -168,7 +171,8 @@ def test_verify_and_apply_patch_changes_only_approved_protocol_paths(
 def test_patch_scope_is_exact_and_requires_the_upstream_regression() -> None:
     assert ALLOWED_PATCH_CHANGES == {
         "internal/streams/play.go": (168, 13),
-        "internal/streams/play_lifecycle_review_test.go": (305, 0),
+        "internal/streams/play_lifecycle_review_test.go": (324, 0),
+        "internal/streams/producer.go": (6, 1),
         "internal/streams/stream.go": (1, 0),
         "pkg/iso/codecs.go": (1, 1),
         "pkg/xiaomi/miss/backchannel.go": (49, 9),

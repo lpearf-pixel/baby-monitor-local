@@ -19,7 +19,8 @@ GO2RTC_DESIGNATED_REQUIREMENT = (
 )
 ALLOWED_PATCH_CHANGES = {
     "internal/streams/play.go": (168, 13),
-    "internal/streams/play_lifecycle_review_test.go": (305, 0),
+    "internal/streams/play_lifecycle_review_test.go": (324, 0),
+    "internal/streams/producer.go": (6, 1),
     "internal/streams/stream.go": (1, 0),
     "pkg/iso/codecs.go": (1, 1),
     "pkg/xiaomi/miss/backchannel.go": (49, 9),
@@ -476,6 +477,9 @@ def verify_and_apply_patch(
         "func TestNaturalSourceEndSettlesBackchannelOnce(t *testing.T)",
         "func TestNaturalSourceEOFSucceedsForFiniteMedia(t *testing.T)",
         "func TestCancelAndNaturalEndDoNotDoubleStop(t *testing.T)",
+        "func TestReconnectBackoffDoesNotDuplicateWorkers(t *testing.T)",
+        "producer.reconnect(2, 1)",
+        "calls != 1 || producer.workerID != 3",
     )
     if (
         'net.ListenUDP("udp", nil)' in cs2_after

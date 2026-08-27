@@ -100,6 +100,7 @@ def _evidence(
         speaker_stop_commands=generation,
         speaker_audio_packets=generation,
         speaker_audio_bytes=generation * 100,
+        producer_id=41 if generation else 0,
         producer_generation=generation,
     )
 

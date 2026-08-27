@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import pytest
 
+from services.voice.silero_runtime import SileroAnalysis, SpeechSpan
 from services.audio.feasibility import (
     AudioFeasibilityError,
     AudioMediaResult,
@@ -152,3 +153,41 @@ def test_chain_probe_stops_before_asr_when_vad_progression_is_invalid(
         )
 
     assert calls == []
+
+
+def test_vad_progression_requires_real_leading_and_trailing_silence() -> None:
+    whole_control = SileroAnalysis(
+        (SpeechSpan(0, 48_000, 0.9),), 0.9
+    )
+    bounded_speech = SileroAnalysis(
+        (SpeechSpan(8_000, 40_000, 0.9),), 0.9
+    )
+
+    assert voice_audio_probe._classify_vad_progression(
+        whole_control, total_samples=48_000, minimum_silence_samples=8_000
+    ) == (True, True, True)
+    assert voice_audio_probe._classify_vad_progression(
+        bounded_speech, total_samples=48_000, minimum_silence_samples=8_000
+    ) == (False, True, False)
+
+
+def test_real_vad_classification_passes_audio_readiness_contract(tmp_path) -> None:
+    bounded_speech = SileroAnalysis(
+        (SpeechSpan(8_000, 40_000, 0.9),), 0.9
+    )
+
+    result = voice_audio_probe.probe_audio_readiness(
+        project_root=tmp_path,
+        media_inspector=lambda: AudioMediaResult(
+            "hevc", "opus", "opus", 48_000, 2
+        ),
+        receiver=lambda: AudioReceiveResult(1.0, 32_000, 1),
+        vad_probe=lambda _root: voice_audio_probe._classify_vad_progression(
+            bounded_speech,
+            total_samples=48_000,
+            minimum_silence_samples=8_000,
+        ),
+        asr_probe=lambda _root: True,
+    )
+
+    assert result.vad_progression_available is True

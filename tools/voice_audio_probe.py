@@ -4,6 +4,7 @@ import argparse
 import sys
 from collections.abc import Callable
 from pathlib import Path
+from typing import TYPE_CHECKING
 
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -19,6 +20,9 @@ from services.audio.feasibility import (
     receive_audio_window,
     verify_synthetic_opus,
 )
+
+if TYPE_CHECKING:
+    from services.voice.silero_runtime import SileroAnalysis
 
 
 def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
@@ -56,6 +60,37 @@ def _print_readiness(result: AudioReadinessResult) -> None:
         print(f"{field}={'true' if getattr(result, field) else 'false'}")
 
 
+def _classify_vad_progression(
+    analysis: "SileroAnalysis",
+    *,
+    total_samples: int,
+    minimum_silence_samples: int,
+) -> tuple[bool, bool, bool]:
+    if (
+        type(total_samples) is not int
+        or type(minimum_silence_samples) is not int
+        or minimum_silence_samples <= 0
+        or total_samples <= minimum_silence_samples * 2
+        or len(analysis.spans) != 1
+    ):
+        return (False, False, False)
+    span = analysis.spans[0]
+    if (
+        span.start_sample < 0
+        or span.end_sample > total_samples
+        or span.end_sample <= span.start_sample
+        or span.peak_probability < 0.5
+    ):
+        return (False, False, False)
+    trailing_start = total_samples - minimum_silence_samples
+    return (
+        span.start_sample < minimum_silence_samples,
+        span.end_sample > minimum_silence_samples
+        and span.start_sample < trailing_start,
+        span.end_sample > trailing_start,
+    )
+
+
 def _probe_vad_progression(root: Path) -> tuple[bool, ...]:
     try:
         from services.voice.artifacts import voice_artifact_spec
@@ -69,10 +104,17 @@ def _probe_vad_progression(root: Path) -> tuple[bool, ...]:
             project_root=root,
         )
         try:
-            analysis = segmenter.analyze(_generated_control_pcm())
+            silence_samples = 16_000
+            silence = b"\x00\x00" * silence_samples
+            control = silence + _generated_control_pcm() + silence
+            analysis = segmenter.analyze(control)
         finally:
             segmenter.close()
-        return (False, bool(analysis.spans), False)
+        return _classify_vad_progression(
+            analysis,
+            total_samples=len(control) // 2,
+            minimum_silence_samples=silence_samples // 2,
+        )
     except Exception:
         raise AudioFeasibilityError("vad_progression_unavailable") from None
 

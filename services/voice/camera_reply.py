@@ -9,7 +9,7 @@ import tempfile
 import threading
 import time
 from collections.abc import Callable
-from dataclasses import asdict, dataclass
+from dataclasses import asdict, dataclass, field
 from enum import StrEnum
 from pathlib import Path
 from typing import Any, Literal, Protocol
@@ -92,6 +92,7 @@ class CameraReplyEvidence:
     pending_command_responses: int = 0
     residual_sender_count: int = 0
     last_failure_stage: str = "none"
+    producer_id: int = field(default=0, repr=False)
     producer_generation: int = 0
 
 
@@ -169,6 +170,8 @@ def _publishable_evidence(evidence: object) -> bool:
         and evidence.pending_command_responses == 0
         and evidence.residual_sender_count == 0
         and evidence.last_failure_stage == "none"
+        and type(evidence.producer_id) is int
+        and 0 < evidence.producer_id <= 9_007_199_254_740_991
         and evidence.producer_generation == generation
     )
 
@@ -366,6 +369,7 @@ def parse_source_media(payload: bytes) -> CameraReplyEvidence:
         expected_state="closed",
         expected_generation=None,
         expected_protocol=None,
+        expected_producer_id=None,
     )
 
 
@@ -375,6 +379,7 @@ def _parse_source_media_lifecycle(
     expected_state: str,
     expected_generation: int | None,
     expected_protocol: str | None,
+    expected_producer_id: int | None,
 ) -> CameraReplyEvidence:
     if type(payload) is not bytes or not 0 < len(payload) <= _MAX_BYTES:
         raise ValueError(_UNAVAILABLE)
@@ -442,9 +447,16 @@ def _parse_source_media_lifecycle(
         ):
             raise ValueError(_UNAVAILABLE)
     protocol = producer.get("protocol")
+    producer_id = producer.get("id")
     medias = producer.get("medias")
     if (
-        type(protocol) is not str
+        type(producer_id) is not int
+        or not 0 < producer_id <= 9_007_199_254_740_991
+        or (
+            expected_producer_id is not None
+            and producer_id != expected_producer_id
+        )
+        or type(protocol) is not str
         or protocol not in _NEGOTIATED_PROTOCOLS
         or (expected_protocol is not None and protocol != expected_protocol)
         or not isinstance(medias, list)
@@ -508,6 +520,7 @@ def _parse_source_media_lifecycle(
         pending_command_responses=producer["pending_command_responses"],
         residual_sender_count=producer["residual_sender_count"],
         last_failure_stage=producer["last_failure_stage"],
+        producer_id=producer_id,
         producer_generation=producer["producer_generation"],
     )
 
@@ -529,6 +542,8 @@ class LoopbackCameraReplyTransport:
         self._active_protocol: str | None = None
         self._active_audio_packets: int | None = None
         self._active_audio_bytes: int | None = None
+        self._active_producer_id: int | None = None
+        self._settlement_result: CameraReplyResult | None = None
 
     def inspect(self) -> CameraReplyEvidence | None:
         if not self._lock.acquire(blocking=False):
@@ -562,6 +577,7 @@ class LoopbackCameraReplyTransport:
             request = Request(
                 f"{_ORIGIN}/api/streams?{query}", data=b"", method="POST"
             )
+            self._settlement_result = None
             try:
                 payload = self._request(request)
                 evidence = _parse_source_media_lifecycle(
@@ -569,6 +585,7 @@ class LoopbackCameraReplyTransport:
                     expected_state="active",
                     expected_generation=None,
                     expected_protocol=None,
+                    expected_producer_id=None,
                 )
             except Exception:
                 return CameraReplyResult(CameraReplyCode.AMBIGUOUS, True)
@@ -576,6 +593,7 @@ class LoopbackCameraReplyTransport:
             self._active_protocol = evidence.protocol
             self._active_audio_packets = evidence.speaker_audio_packets
             self._active_audio_bytes = evidence.speaker_audio_bytes
+            self._active_producer_id = evidence.producer_id
             return CameraReplyResult(CameraReplyCode.READY, True)
         finally:
             self._lock.release()
@@ -584,6 +602,8 @@ class LoopbackCameraReplyTransport:
         if not self._lock.acquire(blocking=False):
             return CameraReplyResult(CameraReplyCode.BUSY, False)
         try:
+            if self._settlement_result is not None:
+                return self._settlement_result
             request = Request(
                 f"{_ORIGIN}/api/streams?dst=source&src=",
                 data=b"",
@@ -596,6 +616,7 @@ class LoopbackCameraReplyTransport:
                     or self._active_protocol is None
                     or self._active_audio_packets is None
                     or self._active_audio_bytes is None
+                    or self._active_producer_id is None
                 ):
                     raise ValueError(_UNAVAILABLE)
                 evidence = _parse_source_media_lifecycle(
@@ -603,6 +624,7 @@ class LoopbackCameraReplyTransport:
                     expected_state="closed",
                     expected_generation=self._active_generation,
                     expected_protocol=self._active_protocol,
+                    expected_producer_id=self._active_producer_id,
                 )
                 if (
                     evidence.speaker_audio_packets <= self._active_audio_packets
@@ -610,12 +632,19 @@ class LoopbackCameraReplyTransport:
                 ):
                     raise ValueError(_UNAVAILABLE)
             except Exception:
-                return CameraReplyResult(CameraReplyCode.AMBIGUOUS, False)
+                self._settlement_result = CameraReplyResult(
+                    CameraReplyCode.AMBIGUOUS, False
+                )
+                return self._settlement_result
             self._active_generation = None
             self._active_protocol = None
             self._active_audio_packets = None
             self._active_audio_bytes = None
-            return CameraReplyResult(CameraReplyCode.COMPLETE, False)
+            self._active_producer_id = None
+            self._settlement_result = CameraReplyResult(
+                CameraReplyCode.COMPLETE, False
+            )
+            return self._settlement_result
         finally:
             self._lock.release()
 

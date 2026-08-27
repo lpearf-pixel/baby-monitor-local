@@ -45,6 +45,7 @@ def _stream_payload(
     speaker_state: str = "closed",
     generation: int = 2,
     protocol: str = "cs2+udp",
+    producer_id: int = 41,
     audio_packets: int | None = None,
     audio_bytes: int | None = None,
 ) -> bytes:
@@ -62,6 +63,7 @@ def _stream_payload(
         {
             "producers": [
                 {
+                    "id": producer_id,
                     "protocol": protocol,
                     "remote_addr": "private-marker",
                     "url": "xiaomi://private-marker",
@@ -96,10 +98,14 @@ def _active_stream_payload(
     generation: int = 2,
     internal_first: bool = False,
     protocol: str = "cs2+udp",
+    producer_id: int = 41,
 ) -> bytes:
     document = json.loads(
         _stream_payload(
-            speaker_state="active", generation=generation, protocol=protocol
+            speaker_state="active",
+            generation=generation,
+            protocol=protocol,
+            producer_id=producer_id,
         )
     )
     internal = {
@@ -133,6 +139,7 @@ def test_parser_returns_only_closed_readiness_evidence() -> None:
         pending_command_responses=0,
         residual_sender_count=0,
         last_failure_stage="none",
+        producer_id=41,
         producer_generation=2,
     )
 
@@ -521,7 +528,7 @@ def test_concurrent_request_is_busy_and_not_queued(tmp_path: Path) -> None:
     assert outcomes == [CameraReplyResult(CameraReplyCode.READY, True)]
 
 
-def test_stop_is_repeatable_and_releases_single_flight_after_failure(
+def test_stop_failure_is_sticky_and_never_reissues_settlement(
     tmp_path: Path,
 ) -> None:
     success = FakeResponse(_stream_payload(generation=2))
@@ -539,10 +546,10 @@ def test_stop_is_repeatable_and_releases_single_flight_after_failure(
         CameraReplyCode.AMBIGUOUS, False
     )
     assert transport.stop() == CameraReplyResult(
-        CameraReplyCode.COMPLETE, False
+        CameraReplyCode.AMBIGUOUS, False
     )
-    assert len(opener.calls) == 3
-    assert success.closed is True
+    assert len(opener.calls) == 2
+    assert success.closed is False
 
 
 @pytest.mark.parametrize(
@@ -602,6 +609,23 @@ def test_stop_rejects_protocol_drift_for_the_owned_generation(
         [
             FakeResponse(_active_stream_payload(protocol="cs2+udp")),
             FakeResponse(_stream_payload(protocol="cs2+tcp")),
+        ]
+    )
+    transport = LoopbackCameraReplyTransport(tmp_path, opener=opener)
+
+    assert transport.start(_media_file(tmp_path)).code is CameraReplyCode.READY
+    assert transport.stop() == CameraReplyResult(
+        CameraReplyCode.AMBIGUOUS, False
+    )
+
+
+def test_stop_rejects_replaced_producer_with_matching_lifecycle(
+    tmp_path: Path,
+) -> None:
+    opener = RecordingOpener(
+        [
+            FakeResponse(_active_stream_payload(producer_id=41)),
+            FakeResponse(_stream_payload(producer_id=42)),
         ]
     )
     transport = LoopbackCameraReplyTransport(tmp_path, opener=opener)

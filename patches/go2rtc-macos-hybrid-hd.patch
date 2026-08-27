@@ -233,12 +233,37 @@ index 1f8c4ade..a699f9fe 100644
  		}()
  
  		return nil
+diff --git a/internal/streams/producer.go b/internal/streams/producer.go
+index 09e2dcc5..e904d4c2 100644
+--- a/internal/streams/producer.go
++++ b/internal/streams/producer.go
+@@ -203,6 +203,11 @@ func (p *Producer) reconnect(workerID, retry int) {
+ 		return
+ 	}
+ 
++	// Successful reconnect hands ownership to a new worker generation. This
++	// invalidates any concurrent reconnect attempt queued for the old worker.
++	p.workerID++
++	nextWorkerID := p.workerID
++
+ 	for _, media := range conn.GetMedias() {
+ 		switch media.Direction {
+ 		case core.DirectionRecvonly:
+@@ -239,7 +244,7 @@ func (p *Producer) reconnect(workerID, retry int) {
+ 	// swap connections
+ 	p.conn = conn
+ 
+-	go p.worker(conn, workerID)
++	go p.worker(conn, nextWorkerID)
+ }
+ 
+ func (p *Producer) stop() {
 diff --git a/internal/streams/play_lifecycle_review_test.go b/internal/streams/play_lifecycle_review_test.go
 new file mode 100644
-index 00000000..79ec1578
+index 00000000..df79e7db
 --- /dev/null
 +++ b/internal/streams/play_lifecycle_review_test.go
-@@ -0,0 +1,305 @@
+@@ -0,0 +1,324 @@
 +package streams
 +
 +import (
@@ -259,6 +284,18 @@ index 00000000..79ec1578
 +	stopped    chan struct{}
 +	startErr   error
 +}
++
++type lifecycleReconnectSource struct {
++	*lifecycleSource
++	release <-chan struct{}
++}
++
++func (s *lifecycleReconnectSource) Start() error {
++	<-s.release
++	return nil
++}
++
++func (s *lifecycleReconnectSource) Stop() error { return nil }
 +
 +func newLifecycleSource(block bool) *lifecycleSource {
 +	codec := &core.Codec{Name: core.CodecPCMA, ClockRate: 8000}
@@ -519,14 +556,17 @@ index 00000000..79ec1578
 +}
 +
 +func TestReconnectBackoffDoesNotDuplicateWorkers(t *testing.T) {
-+	const scheme = "lifecycle-stale-reconnect"
++	const scheme = "lifecycle-current-reconnect"
 +	calls := 0
++	release := make(chan struct{})
 +	HandleFunc(scheme, func(string) (core.Producer, error) {
 +		calls++
-+		return nil, errors.New("synthetic reconnect should not run")
++		return &lifecycleReconnectSource{lifecycleSource: newLifecycleSource(false), release: release}, nil
 +	})
++	initial := newLifecycleSource(true)
 +	producer := &Producer{
 +		url:      scheme + ":source",
++		conn:     initial,
 +		state:    stateStart,
 +		workerID: 2,
 +	}
@@ -536,13 +576,17 @@ index 00000000..79ec1578
 +		group.Add(1)
 +		go func() {
 +			defer group.Done()
-+			producer.reconnect(1, 1)
++			producer.reconnect(2, 1)
 +		}()
 +	}
 +	group.Wait()
-+	if calls != 0 || producer.workerID != 2 {
-+		t.Fatalf("stale reconnect calls/worker = %d/%d, want 0/2", calls, producer.workerID)
++	if calls != 1 || producer.workerID != 3 {
++		t.Fatalf("current reconnect calls/worker = %d/%d, want 1/3", calls, producer.workerID)
 +	}
++	producer.mu.Lock()
++	producer.workerID++
++	producer.mu.Unlock()
++	close(release)
 +}
 diff --git a/internal/streams/stream.go b/internal/streams/stream.go
 index 984c73ed..072725b7 100644

@@ -27,6 +27,11 @@ from packages.monitoring.xiaomi_media_diagnostic import (  # noqa: E402
     parse_source_observation,
     validate_single_source_config,
 )
+from packages.monitoring.xiaomi_macos_preflight import (  # noqa: E402
+    MacOSMediaPreflight,
+    run_macos_media_preflight,
+)
+from tools.xiaomi_macos_preflight import run_bounded  # noqa: E402
 
 
 _URL = "http://127.0.0.1:1984/api/streams?src=source"
@@ -39,15 +44,24 @@ class _Sleeper(Protocol):
     def __call__(self, seconds: float) -> None: ...
 
 
+class _Preflight(Protocol):
+    def __call__(self, root: Path) -> MacOSMediaPreflight: ...
+
+
 class _NoRedirect(HTTPRedirectHandler):
     def redirect_request(self, req, fp, code, msg, headers, newurl):
         return None
+
+
+def _installed_preflight(root: Path) -> MacOSMediaPreflight:
+    return run_macos_media_preflight(root, runner=run_bounded)
 
 
 def collect_snapshot(
     root: Path,
     *,
     opener: OpenerDirector,
+    preflight: _Preflight = _installed_preflight,
     sleeper: _Sleeper = time.sleep,
     interval_seconds: float = _MAX_INTERVAL_SECONDS,
 ) -> XiaomiMediaSnapshot:
@@ -55,6 +69,8 @@ def collect_snapshot(
         type(interval_seconds) is not float
         or not 0.0 <= interval_seconds <= _MAX_INTERVAL_SECONDS
     ):
+        raise XiaomiMediaDiagnosticError("xiaomi_media_unavailable")
+    if preflight(root).code != "ready":
         raise XiaomiMediaDiagnosticError("xiaomi_media_unavailable")
     config = root.resolve() / "runtime/go2rtc.yaml"
     try:

@@ -11,6 +11,7 @@ from packages.monitoring.xiaomi_media_diagnostic import (
     XiaomiMediaDiagnosticError,
     XiaomiMediaSnapshot,
 )
+from packages.monitoring.xiaomi_macos_preflight import MacOSMediaPreflight
 from tools.xiaomi_media_diagnostic import collect_snapshot, format_report
 
 
@@ -58,6 +59,16 @@ def _body(producer_id: int, video_bytes: int, audio_bytes: int) -> bytes:
     return json.dumps({"producers": [producer], "consumers": []}).encode()
 
 
+def _ready_preflight(_root: Path) -> MacOSMediaPreflight:
+    return MacOSMediaPreflight(
+        code="ready",
+        app_identity_ready=True,
+        launchd_owner_count=1,
+        listener_owned_by_launchd=True,
+        local_network_state="available",
+    )
+
+
 class _Response(io.BytesIO):
     status = 200
 
@@ -78,6 +89,31 @@ class _Opener:
         return _Response(self.payloads.pop(0))
 
 
+def test_collector_rejects_failed_preflight_before_config_or_http(
+    tmp_path: Path,
+) -> None:
+    opener = _Opener([])
+    failed = MacOSMediaPreflight(
+        code="app_identity_invalid",
+        app_identity_ready=False,
+        launchd_owner_count=0,
+        listener_owned_by_launchd=False,
+        local_network_state="unknown",
+    )
+
+    with pytest.raises(XiaomiMediaDiagnosticError, match="xiaomi_media_unavailable"):
+        collect_snapshot(
+            tmp_path,
+            opener=opener,
+            preflight=lambda _root: failed,
+            sleeper=lambda _seconds: None,
+            interval_seconds=0.0,
+        )
+
+    assert opener.requests == []
+    assert list(tmp_path.iterdir()) == []
+
+
 def test_collector_is_fixed_loopback_bounded_and_read_only(tmp_path: Path) -> None:
     root = tmp_path
     (root / "runtime").mkdir()
@@ -87,7 +123,11 @@ def test_collector_is_fixed_loopback_bounded_and_read_only(tmp_path: Path) -> No
     sleeps = []
 
     snapshot = collect_snapshot(
-        root, opener=opener, sleeper=sleeps.append, interval_seconds=5.0
+        root,
+        opener=opener,
+        preflight=_ready_preflight,
+        sleeper=sleeps.append,
+        interval_seconds=5.0,
     )
 
     assert snapshot.video_bytes_increased is True
@@ -115,6 +155,7 @@ def test_collector_rejects_an_oversize_http_body(tmp_path: Path) -> None:
         collect_snapshot(
             tmp_path,
             opener=opener,
+            preflight=_ready_preflight,
             sleeper=lambda _seconds: None,
             interval_seconds=0.0,
         )

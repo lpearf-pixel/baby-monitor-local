@@ -334,6 +334,7 @@ def test_camera_reply_readiness_requires_flag_and_current_marker(
         speaker_stop_commands=1,
         speaker_audio_packets=1,
         speaker_audio_bytes=100,
+        producer_id=41,
         producer_generation=1,
     )
     assert CameraReplyAcceptance.publish(tmp_path, metadata, evidence) is True
