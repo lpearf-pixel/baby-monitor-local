@@ -114,6 +114,40 @@ HEAD、真实命令和真实结果的记录。
 
 ## 6. 后续实验记录格式
 
+### R1 — 多动作闭集 RED corpus
+
+- 日期：2026-08-27
+- branch / exact HEAD：`codex/xiaomi-camera-reply-lifecycle-review` /
+  `09555342726e4d22b7a5b4b66f6ee9cf483ea29e`
+- dirty/unrelated state：开始时存在两份旧的未提交 start-shape WIP；因其通用编辑距离与新
+  批准规格冲突，先通过受控补丁恢复到 HEAD 行为，再建立新 RED；无其他 dirty 文件
+- authority：software-only；允许本地聚焦提交和最终同名分支 push
+- hypothesis：H4；当前需要显式动作接口和 source-controlled Feeding 映射，而不是通用
+  相似度接受
+- files changed：新增 `tests/voice/test_care_action.py`、
+  `tests/voice/test_asr_correction.py`，扩展 `tests/voice/test_listen_only.py`，并更新本日志和
+  计划状态
+- RED command/result：使用共享项目 Python 3.11 venv 执行计划的三个测试文件；exit 2，
+  collection 产生 2 errors，首个失败为 `services.voice.care_action` 不存在，第二个为
+  `services.voice.asr_correction` 不存在
+- GREEN command/result：NOT_RUN；Task 1 只建立 RED corpus
+- focused/full command/result：RED 前基线 `tests/voice/test_intent.py` 与
+  `tests/voice/test_listen_only.py` 为 33 passed；full NOT_RUN
+- corpus：source-controlled synthetic text fixtures，license=`GENERATED`；无 PCM、无家庭
+  transcript
+- positives/accepted/rejected：7 exact action cases、1 reviewed correction case；RED 阶段
+  accepted=NOT_RUN
+- negatives/false accepts：9 exact-action rejection cases、20 correction rejection cases和
+  controller idle/unsafe controls；RED 阶段 false accepts=NOT_RUN
+- latency p50/p95/RSS：NOT_RUN；未调用 ASR 模型
+- privacy scan：测试只含批准的 synthetic fixed phrases；diff gate 将在 GREEN 后执行
+- Camera Reply flag/lifecycle：未读取或修改；目标保持 false；未播放
+- Baby Care write/outbox/signing：未构造、未调用
+- evidence proves：新接口缺失时 corpus 会失败，且失败发生在预期模块边界
+- evidence does not prove：实现正确、真实 ASR 召回、家庭环境或实机准确率
+- decision：keep；进入 Task 2 最小闭集注册表
+- next single action：实现 `services/voice/care_action.py` 并跑 Task 2 focused GREEN
+
 每条新记录使用一个连续编号 `R1`、`R2`……，并完整写出以下字段：
 
 ```text

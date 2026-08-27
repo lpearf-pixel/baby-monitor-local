@@ -285,3 +285,110 @@ def test_rejected_followup_exposes_only_fixed_distance_bucket(
     assert (result.reason, result.response_code, result.phase) == (
         reason, None, "idle"
     )
+
+
+@pytest.mark.parametrize(
+    "command",
+    [
+        "开始换尿布",
+        "换好尿布了",
+        "开始拍嗝",
+        "拍嗝结束",
+    ],
+)
+def test_armed_exact_low_risk_action_acknowledges_once(command: str) -> None:
+    synth = Synth()
+    controller = ListenOnlyController(
+        asr=Asr(["小小", command]),
+        synthesizer=synth,
+        monotonic_ns=Clock([1_000_000_000, 2_000_000_000]),
+    )
+
+    controller.handle(PCM, threading.Event())
+    result = controller.handle(PCM, threading.Event())
+
+    assert (result.reason, result.response_code, result.phase) == (
+        "listen_only_acknowledged",
+        "listen_only_received",
+        "idle",
+    )
+    assert synth.codes == ["listen_only_ready", "listen_only_received"]
+
+
+def test_armed_reviewed_feeding_correction_acknowledges_once() -> None:
+    synth = Synth()
+    controller = ListenOnlyController(
+        asr=Asr(["小小", "开始为奶"]),
+        synthesizer=synth,
+        monotonic_ns=Clock([1_000_000_000, 2_000_000_000]),
+    )
+
+    controller.handle(PCM, threading.Event())
+    result = controller.handle(PCM, threading.Event())
+
+    assert (result.reason, result.response_code, result.phase) == (
+        "listen_only_acknowledged_corrected",
+        "listen_only_received",
+        "idle",
+    )
+    assert synth.codes == ["listen_only_ready", "listen_only_received"]
+
+
+@pytest.mark.parametrize("command", ["开始喂药", "喂药完成"])
+def test_armed_medication_is_silent_high_risk_candidate(command: str) -> None:
+    synth = Synth()
+    controller = ListenOnlyController(
+        asr=Asr(["小小", command]),
+        synthesizer=synth,
+        monotonic_ns=Clock([1_000_000_000, 2_000_000_000]),
+    )
+
+    controller.handle(PCM, threading.Event())
+    result = controller.handle(PCM, threading.Event())
+
+    assert (result.reason, result.response_code, result.phase) == (
+        "listen_only_high_risk_candidate",
+        None,
+        "idle",
+    )
+    assert synth.codes == ["listen_only_ready"]
+
+
+def test_exact_low_risk_action_with_wake_acknowledges_without_arming() -> None:
+    synth = Synth()
+    controller = ListenOnlyController(
+        asr=Asr(["小小，开始换尿布"]),
+        synthesizer=synth,
+        monotonic_ns=Clock([1_000_000_000]),
+    )
+
+    result = controller.handle(PCM, threading.Event())
+
+    assert (result.reason, result.response_code, result.phase) == (
+        "listen_only_acknowledged",
+        "listen_only_received",
+        "idle",
+    )
+    assert synth.codes == ["listen_only_received"]
+
+
+def test_unwoken_action_and_unsafe_near_start_remain_silent() -> None:
+    synth = Synth()
+    controller = ListenOnlyController(
+        asr=Asr(["开始换尿布", "小小", "开始喂奶吗"]),
+        synthesizer=synth,
+        monotonic_ns=Clock([1_000_000_000, 2_000_000_000, 3_000_000_000]),
+    )
+
+    idle = controller.handle(PCM, threading.Event())
+    controller.handle(PCM, threading.Event())
+    unsafe = controller.handle(PCM, threading.Event())
+
+    assert (idle.reason, idle.response_code, idle.phase) == (
+        "listen_only_ignored",
+        None,
+        "idle",
+    )
+    assert unsafe.response_code is None
+    assert unsafe.phase == "idle"
+    assert synth.codes == ["listen_only_ready"]

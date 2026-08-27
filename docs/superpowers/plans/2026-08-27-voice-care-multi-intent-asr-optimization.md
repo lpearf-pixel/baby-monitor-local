@@ -5,10 +5,9 @@
 > `superpowers:executing-plans` to implement this plan task-by-task. Steps use checkbox
 > (`- [ ]`) syntax for tracking.
 >
-> **Status:** Approved design; implementation not started. The current user authority is
-> docs-only. Do not begin code Tasks 1–8, install assets, run household audio or create a
-> local commit until the user explicitly authorizes implementation and the corresponding
-> operation.
+> **Status:** Software implementation authorized on 2026-08-27. Task 1 RED corpus is
+> complete; Task 2 is next. Model installation, household audio, Camera Reply activation,
+> Baby Care writes, PRs and protected-branch changes remain unauthorized.
 
 **Goal:** Make the existing armed listen-only Voice flow safely recognize a closed set
 of feeding, diaper-change and burping commands, classify medication utterances only as
@@ -91,7 +90,7 @@ pytest, fixed JSON/status schemas and generated/public 16 kHz mono PCM fixtures.
   `correct_armed_followup(command: str)` and the controller policy implemented by Tasks
   2–4.
 
-- [ ] **Step 1: Confirm the execution baseline**
+- [x] **Step 1: Confirm the execution baseline**
 
   ```bash
   git status --short --branch
@@ -104,7 +103,7 @@ pytest, fixed JSON/status schemas and generated/public 16 kHz mono PCM fixtures.
   preserved. If the checkout is detached, do not create a branch or commit without user
   authority.
 
-- [ ] **Step 2: Add exact-action RED tests**
+- [x] **Step 2: Add exact-action RED tests**
 
   Define table-driven expectations equivalent to:
 
@@ -131,7 +130,7 @@ pytest, fixed JSON/status schemas and generated/public 16 kHz mono PCM fixtures.
   Also require punctuation/space normalization only, one action per utterance and
   rejection of unsupported ordinary statements.
 
-- [ ] **Step 3: Add guarded-correction RED tests**
+- [x] **Step 3: Add guarded-correction RED tests**
 
   Require only the explicit synthetic confusion to correct:
 
@@ -155,13 +154,13 @@ pytest, fixed JSON/status schemas and generated/public 16 kHz mono PCM fixtures.
   )
   ```
 
-- [ ] **Step 4: Add controller RED tests**
+- [x] **Step 4: Add controller RED tests**
 
   Prove exact/corrected low-risk actions acknowledge exactly once only while armed;
   medication returns a fixed high-risk candidate reason with no spoken response; idle,
   timeout, reply echo and replay behavior remain unchanged.
 
-- [ ] **Step 5: Run the RED and capture the first actionable failure**
+- [x] **Step 5: Run the RED and capture the first actionable failure**
 
   ```bash
   .venv-alpha/bin/python -m pytest -q \
@@ -174,7 +173,7 @@ pytest, fixed JSON/status schemas and generated/public 16 kHz mono PCM fixtures.
   dependencies or fixtures are unavailable. If the environment is unavailable, record
   the blocker and do not call the RED proven.
 
-- [ ] **Step 6: Append the exact RED evidence to the review log**
+- [x] **Step 6: Append the exact RED evidence to the review log**
 
   Record command, head, test count, first failure and that no camera/model/private data
   was used. Do not paste raw exception payloads if they contain paths or text.
