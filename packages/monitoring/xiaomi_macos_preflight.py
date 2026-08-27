@@ -275,8 +275,8 @@ def _firewall_state(result: CommandResult, app: Path) -> LocalNetworkState:
     lines = [line.strip() for line in output.splitlines() if line.strip()]
     permitted = f"Incoming connection to {app} is permitted"
     blocked = f"Incoming connection to {app} is blocked"
-    if lines == [permitted]:
+    if lines in ([permitted], [permitted + "."]):
         return "available"
-    if lines == [blocked]:
+    if lines in ([blocked], [blocked + "."]):
         return "blocked"
     return "unknown"

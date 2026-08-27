@@ -143,6 +143,32 @@ def test_preflight_accepts_exact_app_launchd_listener_and_permitted_firewall(
     assert [timeout for _argv, timeout in runner.calls] == [10.0] * 5
 
 
+@pytest.mark.parametrize(
+    ("decision", "code", "state"),
+    (
+        ("permitted", "ready", "available"),
+        ("blocked", "local_network_blocked", "blocked"),
+    ),
+)
+def test_preflight_accepts_current_macos_firewall_sentence_period(
+    tmp_path: Path, decision: str, code: str, state: str
+) -> None:
+    responses = _ready_responses(tmp_path)
+    commands = _commands(tmp_path)
+    app = tmp_path / ".local/Go2RTC.app"
+    responses[commands["firewall"]] = CommandResult(
+        True,
+        0,
+        f"Incoming connection to {app} is {decision}.\n".encode("utf-8"),
+        b"",
+    )
+
+    result = run_macos_media_preflight(tmp_path, runner=FakeRunner(responses))
+
+    assert result.code == code
+    assert result.local_network_state == state
+
+
 def test_preflight_rejects_hash_based_designated_requirement(tmp_path: Path) -> None:
     responses = _ready_responses(tmp_path)
     commands = _commands(tmp_path)
