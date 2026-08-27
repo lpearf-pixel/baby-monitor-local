@@ -14,7 +14,7 @@ _REASONS = {
     "voice_output_unavailable", "idle", "ignored",
     "listen_only_idle", "listen_only_ignored", "listen_only_acknowledging",
     "listen_only_armed", "listen_only_acknowledged", "listen_only_timeout",
-    "listen_only_replay_ignored",
+    "listen_only_replay_ignored", "listen_only_reply_echo_ignored",
 }
 _TRANSITION_KEYS = (
     "armed_timeouts",
@@ -23,6 +23,7 @@ _TRANSITION_KEYS = (
     "replay_frames",
     "replay_ignored",
     "replay_utterances",
+    "reply_echo_ignored",
     "utterances",
     "vad_speech_frames",
 )

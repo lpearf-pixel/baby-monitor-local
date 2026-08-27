@@ -203,7 +203,7 @@ def test_replayed_reply_echo_does_not_consume_armed_followup() -> None:
     command = controller.handle(PCM, threading.Event())
 
     assert (echo.reason, echo.response_code, echo.phase) == (
-        "listen_only_replay_ignored", None, "armed"
+        "listen_only_reply_echo_ignored", None, "armed"
     )
     assert command.reason == "listen_only_acknowledged"
     assert synth.codes == ["listen_only_ready", "listen_only_received"]
@@ -219,6 +219,41 @@ def test_replayed_reply_echo_prefix_is_stripped_from_closed_command() -> None:
 
     controller.handle(PCM, threading.Event())
     result = controller.handle(PCM, threading.Event(), from_replay=True)
+
+    assert result.reason == "listen_only_acknowledged"
+    assert result.phase == "idle"
+    assert synth.codes == ["listen_only_ready", "listen_only_received"]
+
+
+def test_delayed_live_reply_echo_does_not_consume_armed_followup() -> None:
+    synth = Synth()
+    controller = ListenOnlyController(
+        asr=Asr(["小小", "我在请说", "开始喂奶"]),
+        synthesizer=synth,
+        monotonic_ns=Clock([1_000_000_000, 2_000_000_000, 3_000_000_000]),
+    )
+
+    controller.handle(PCM, threading.Event())
+    echo = controller.handle(PCM, threading.Event())
+    command = controller.handle(PCM, threading.Event())
+
+    assert (echo.reason, echo.response_code, echo.phase) == (
+        "listen_only_reply_echo_ignored", None, "armed"
+    )
+    assert command.reason == "listen_only_acknowledged"
+    assert synth.codes == ["listen_only_ready", "listen_only_received"]
+
+
+def test_delayed_live_reply_echo_prefix_is_stripped_from_closed_command() -> None:
+    synth = Synth()
+    controller = ListenOnlyController(
+        asr=Asr(["小小", "我在请说开始喂奶"]),
+        synthesizer=synth,
+        monotonic_ns=Clock([1_000_000_000, 2_000_000_000]),
+    )
+
+    controller.handle(PCM, threading.Event())
+    result = controller.handle(PCM, threading.Event())
 
     assert result.reason == "listen_only_acknowledged"
     assert result.phase == "idle"

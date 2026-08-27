@@ -168,6 +168,7 @@ def test_worker_routes_one_completed_utterance_to_listen_only_controller() -> No
             "replay_frames": 0,
             "replay_ignored": 0,
             "replay_utterances": 0,
+            "reply_echo_ignored": 0,
             "utterances": 1,
             "vad_speech_frames": 1,
         },
@@ -217,6 +218,7 @@ def test_worker_publishes_only_bounded_replay_transition_counts() -> None:
         "replay_frames": 1,
         "replay_ignored": 1,
         "replay_utterances": 1,
+        "reply_echo_ignored": 0,
         "utterances": 1,
         "vad_speech_frames": 1,
     }

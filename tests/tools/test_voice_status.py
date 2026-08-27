@@ -54,8 +54,9 @@ def test_status_cli_prints_fixed_transition_counts_without_text(
                     "replay_frames": 4,
                     "replay_ignored": 5,
                     "replay_utterances": 6,
-                    "utterances": 7,
-                    "vad_speech_frames": 8,
+                    "reply_echo_ignored": 7,
+                    "utterances": 8,
+                    "vad_speech_frames": 9,
                 },
             }
         ),
@@ -66,7 +67,8 @@ def test_status_cli_prints_fixed_transition_counts_without_text(
     assert capsys.readouterr().out.endswith(
         "transition_counts=armed_timeouts:1,ignored_followups:2,"
         "output_failures:3,replay_frames:4,replay_ignored:5,"
-        "replay_utterances:6,utterances:7,vad_speech_frames:8\n"
+        "replay_utterances:6,reply_echo_ignored:7,utterances:8,"
+        "vad_speech_frames:9\n"
     )
 
 

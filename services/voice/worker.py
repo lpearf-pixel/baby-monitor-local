@@ -39,6 +39,7 @@ VOICE_TRANSITION_KEYS = (
     "replay_frames",
     "replay_ignored",
     "replay_utterances",
+    "reply_echo_ignored",
     "utterances",
     "vad_speech_frames",
 )
@@ -68,6 +69,7 @@ _STATUS_REASONS = {
     "listen_only_acknowledged",
     "listen_only_timeout",
     "listen_only_replay_ignored",
+    "listen_only_reply_echo_ignored",
 }
 _FRAME_BYTES = 3_200
 _CLAIM = re.compile(r"^我是(爸爸|妈妈)[,，、\s]+(.+)$")

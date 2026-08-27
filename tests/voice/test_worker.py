@@ -325,8 +325,9 @@ def test_status_writer_accepts_only_fixed_bounded_transition_counts(tmp_path: Pa
         "replay_frames": 4,
         "replay_ignored": 5,
         "replay_utterances": 6,
-        "utterances": 7,
-        "vad_speech_frames": 8,
+        "reply_echo_ignored": 7,
+        "utterances": 8,
+        "vad_speech_frames": 9,
     }
 
     writer.write(

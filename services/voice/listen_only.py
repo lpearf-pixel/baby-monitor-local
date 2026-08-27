@@ -14,7 +14,7 @@ from services.voice.wake import classify_wake
 ARMED_TIMEOUT_NS = 8_000_000_000
 _REFERENCE_TIME = "2026-01-01T00:00:00+00:00"
 _CLAIM = re.compile(r"^我是(?:爸爸|妈妈)[,，、\s]+(.+)$")
-_REPLAY_ECHOES = (
+_REPLY_ECHOES = (
     re.compile(r"^我在[\s,，。！？、；;:：]*请说[\s,，。！？、；;:：]*(.*)$"),
     re.compile(r"^我听到了[\s,，。！？、；;:：]*(.*)$"),
 )
@@ -85,9 +85,12 @@ class ListenOnlyController:
                 raise ValueError
             if was_armed:
                 command = _command_without_optional_wake(text)
-                if from_replay and command is not None:
-                    command, _echo = _strip_replay_echo(command)
+                reply_echo = False
+                if command is not None:
+                    command, reply_echo = _strip_reply_echo(command)
                 if command is None or not _is_closed_command(command):
+                    if reply_echo:
+                        return self._outcome("listen_only_reply_echo_ignored")
                     if from_replay:
                         return self._outcome("listen_only_replay_ignored")
                     self._reset()
@@ -197,8 +200,8 @@ def _is_closed_command(command: str) -> bool:
     return any(parse_feeding_command(command, state).intent_type is not None for state in states)
 
 
-def _strip_replay_echo(command: str) -> tuple[str, bool]:
-    for pattern in _REPLAY_ECHOES:
+def _strip_reply_echo(command: str) -> tuple[str, bool]:
+    for pattern in _REPLY_ECHOES:
         matched = pattern.fullmatch(command)
         if matched is not None:
             return matched.group(1).strip(_BOUNDARY), True

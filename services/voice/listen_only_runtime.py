@@ -170,6 +170,8 @@ class ListenOnlyVoiceWorker:
                 self._increment("ignored_followups")
             if outcome.reason == "listen_only_replay_ignored":
                 self._increment("replay_ignored")
+            if outcome.reason == "listen_only_reply_echo_ignored":
+                self._increment("reply_echo_ignored")
             if outcome.reason == "voice_output_unavailable":
                 self._increment("output_failures")
             self._utterance_from_replay = False
