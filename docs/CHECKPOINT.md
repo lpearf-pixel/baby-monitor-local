@@ -1130,3 +1130,17 @@ Go focused 与三组 race PASS，repository focused 106/106、Voice 431/431、fr
 upstream `internal/streams` 两项 source-registration 失败在未打补丁的同一固定提交原样
 复现，不属于本次回归。全过程未访问摄像头、未播放或保存家庭音频、未安装 candidate、
 未发布 marker。Camera Reply 继续 disabled；实机 D0–D4 仍需单独批准和成人监督。
+
+同日经批准执行受监督实机门。D0 自动健康与人工观察通过；候选只重建、重启 go2rtc
+单组件。首轮 D1 暴露有限媒体 EOF 误判与 active HTTP 快照含内部 playback producer
+的解析缺口，分别经 RED/GREEN 修复并提交为 `20ca71c`、`8e684dd`。重新清零后 D1
+实机通过：短音调可听、无转动、start/response/stop=1/1/1、closed、零 pending、零
+residual、source PASS、Voice healthy。D2 前两次同样 COMPLETE；第三次（累计第 4 次）
+人工仍可听且无转动，但软件返回 AMBIGUOUS。随后固定聚合显示连接已重建为 generation
+0，日志记录 Xiaomi CS2 UDP 连续 10 秒无媒体后的 read timeout；source 与 Voice 随后
+独立恢复。按停止线废弃 marker，保持 Camera Reply disabled，未执行 D3/D4、未重启
+完整 Alpha。该残余问题不能在当前禁止切换 TCP/增加第二摄像头连接的规格内继续猜修。
+随后发现失败报告虽显示 marker_current=false，旧 D1 marker 文件仍会保留。经明确删除
+授权移除该精确文件，并以 RED/GREEN 修复 `59a8ab4`：probe 在任何摄像头访问前先安全
+撤销旧 marker，控制终端不可用和后置健康检查失败均不再留下历史 READY。安装 checkout
+固定门 106/106，状态为 NOT_PROVEN；source PASS、Voice healthy/listen_only，未播放音频。

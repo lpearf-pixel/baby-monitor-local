@@ -282,10 +282,13 @@ audio or acceptance marker was used.
 
 ---
 
-### Task 7: Supervised installed/device gates — not currently authorized
+### Task 7: Supervised installed/device gates — stopped at D2
 
-**Status:** software prerequisite complete; still blocked on separate explicit user
-approval and an adult at the camera.
+**Status:** authorized and executed with an adult at the camera. D0 and D1 passed. D2
+failed closed on its third tone (fourth cumulative interaction) when the shared Xiaomi
+CS2 UDP media source timed out and reconnected at generation 0. D3/D4 were not run;
+Camera Reply remains disabled. The exact stale D1 marker was removed; `59a8ab4` now
+invalidates prior acceptance before any new probe and installed status is NOT_PROVEN.
 
 Follow D0–D4 from the lifecycle review. Start with Camera Reply disabled and verify the
 source, i9 Voice output, Dashboard, Mi Home and microSD path. Install only the reviewed
@@ -293,5 +296,6 @@ candidate, then progress 1, 3 and 6 short synthetic interactions before the comp
 Voice matrix. Stop immediately on movement, timeout, EOF, ambiguity, residual sender
 or duplicate response.
 
-This task requires the human to confirm audible playback and camera behavior. It is
-not included in approval of the software design or plan.
+The human confirmed every attempted tone was audible and caused no camera movement.
+The D2 software stop line still controls: no automatic retry, D3 or D4. A TCP or second-
+connection experiment is outside this plan and requires a new approved design.

@@ -251,20 +251,24 @@ return to remote access only after the local release work when the user explicit
 
 ## Voice Gate V3 — Xiaomi camera reply
 
-**Status:** Original V3E failed closed. The approved replacement lifecycle software
-Tasks 1–6 are complete at `e66302e` with clean independent review. The accepted i9
-speaker remains the production output; Camera Reply is disabled and no marker is
-accepted.
+**Status:** Original V3E failed closed. Replacement lifecycle software Tasks 1–6 are
+complete with clean independent review. The supervised replacement passed D1 after
+fixes `20ca71c` and `8e684dd`, then failed closed during D2 on cumulative interaction 4:
+the shared Xiaomi CS2 UDP source timed out and reconnected at generation 0. The accepted
+i9 speaker remains the production output; Camera Reply is disabled and no marker is
+accepted. `59a8ab4` removes the stale-proof path by invalidating prior acceptance at the
+start of every probe; installed status is NOT_PROVEN. D3/D4 were not run.
 
 **Prerequisites:** P4 software checkpoint complete. The real speaker gate additionally
 requires a healthy installed `cs2+udp` source, current pinned go2rtc build metadata and
 an adult at the camera. P4 phone installation/acceptance may proceed independently.
 
-**Codex can:** preserve the completed software patch and prepare supervised D0–D4 only
-after separate authorization. No additional software repair is currently open.
+**Codex can:** preserve the completed software patch and redacted D0–D2 evidence. Do not
+repeat the device gate under the same architecture.
 
-**Human required:** separately approve D0–D4 and remain at the camera for audible and
-movement confirmation. Until then no install or camera-reply trial is allowed.
+**Human required:** choose a separately specified future direction if Camera Reply is
+still required. Switching to CS2 TCP or creating a dedicated second camera connection
+would change the approved architecture and requires a new design and device gate.
 
 **Acceptance and tests:** The original fixed vocabulary and privacy boundaries remain
 in force. The replacement software gate passed all named lifecycle and review
@@ -272,8 +276,8 @@ regressions, 20 clean synthetic generations, exact patch provenance, zero post-s
 writes, zero pending responses/residual senders, propagated failures and no
 Voice/source regression. Software tests never operate the real speaker.
 
-**Next:** retain the accepted i9 speaker. When ready, explicitly authorize supervised
-Camera Reply D0–D4; software evidence alone does not prove the camera issue resolved.
+**Next:** retain the accepted i9 speaker and leave Camera Reply disabled. Do not enter
+D3/D4 unless a new architecture is explicitly designed and approved.
 
 ## P5 — Final 72-hour release gate
 

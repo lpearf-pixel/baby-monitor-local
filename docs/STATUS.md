@@ -458,9 +458,16 @@
   sessions, bounded exactly-once Streams settlement and current-generation Python
   completion. Fresh gates are repository focused 106/106, Voice 431/431, frontend
   73/73 and full Python 1648/1648; exact Go focused/race gates pass and independent
-  review reports 0 Critical / 0 Important. No production setting, camera playback,
-  install or acceptance marker changed; Camera Reply remains disabled until separately
-  approved supervised D0–D4.
+  review reports 0 Critical / 0 Important. Supervised D0–D2 was subsequently authorized
+  and run with an adult at the camera. D1 passed with one audible tone, no movement,
+  exact 1/1/1 lifecycle counters and zero residual state after fixes `20ca71c` and
+  `8e684dd`. D2 tones 1 and 2 also completed audibly without movement, but tone 3—the
+  fourth cumulative interaction—failed closed: the shared Xiaomi CS2 UDP source logged
+  a 10-second media read timeout and reconnected at generation 0. Source and Voice
+  recovered independently. A stale D1 acceptance marker was then removed; `59a8ab4`
+  makes every new probe revoke prior acceptance before camera access and only republishes
+  after complete success. Installed status is NOT_PROVEN, D3/D4 were not run, and Camera
+  Reply is not a delivered capability and remains disabled.
 - Installed-i9 audio-source discovery now verifies that the Xiaomi source exposes HEVC
   video plus Opus audio and that the fixed loopback `audio_analysis` alias exposes only
   Opus. The real input is supported 48 kHz stereo Opus; the fixed FFmpeg boundary
