@@ -1260,3 +1260,15 @@ GREEN 在原 10 秒总门限和 2 秒 stop reserve 内增加固定 0.5 秒 FFmpe
 Reply 126/126、Voice 443/443、固定上游 exact normal/race protocol gate 与 py_compile/
 diff-check 均 PASS。该软件证据未安装、未播放、未证明摄像头不转动。失败 marker 尚未
 删除，旧 internal producer 尚未通过 go2rtc-only recovery 清理；二者均是下一次实机前置。
+
+获得明确删除批准后，安全失效当前 Camera Reply marker；状态变为
+`CAMERA_REPLY_NOT_PROVEN`。安装 checkout detached 到 `16f7652`，只重启 go2rtc 与 Voice，
+未重启完整 Alpha。恢复后视频 PASS：实际 `cs2+udp`、HEVC、2560x1440；活跃快照为一个
+Xiaomi producer、零 internal producer、speaker closed、generation 0、零 residual sender、
+`last_failure_stage=none`。再执行 receive-only V0 probe：48 kHz stereo Opus、60.000 秒、
+1,920,000 decoded bytes、2509 chunks、`raw_audio_persisted=false`。私有开关继续 false，
+未播放摄像头声音。
+
+同一检查点通过本机已认证 go2rtc Xiaomi 只读设备列表核对身份：账号返回一台摄像头，
+当前 DID 唯一匹配，云端 model 与 source 均为 `chuangmi.camera.039a01`。因此不把上游公开
+列表中的 `chuangmi.camera.039c01` 强写入这台实机配置，型号差异不再作为本轮待定阻塞。

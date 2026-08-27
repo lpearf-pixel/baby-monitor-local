@@ -317,18 +317,26 @@ runtime evidence was one `transport=auto` producer, observed `cs2+udp`, generati
 increasing video/audio bytes, no replacement, healthy Voice and a current schema-v2
 marker. No household audio was persisted and no full-stack restart occurred.
 
-**Task 16 status:** local software fix pending commit. The failed live retry provided
+**Task 16 status:** software fix committed locally at `16f7652`. The failed live retry provided
 aggregate evidence for a finite-file EOF/stop race: a valid 1.40875-second TTS input was
 realtime paced, stopped at nominal duration, returned AMBIGUOUS and left a stale
 internal producer. A fixed 0.5-second cancellation-aware drain now precedes stop inside
 the existing operation limit. Camera Reply 126/126, Voice 443/443 and exact pinned
 normal/race protocol gates pass. No real speaker playback has validated the fix.
 
-**Next:** retain the accepted i9 speaker and private flag `false`. Obtain explicit
-deletion approval for the failed marker, recover only go2rtc, require one clean producer
-and reconcile the configured/device model identity. Then, with an adult present, run
-one fixed camera reply and confirm full phrase, no movement, replacement, timeout,
-duplicate or residual internal producer. Only then resume V3E using `嘿小小`.
+Installed recovery is complete at detached `16f7652`: the failed marker was deleted
+with explicit approval, only go2rtc and Voice restarted, and the recovered source has
+one Xiaomi producer, zero internal producer, closed/clean speaker state, video PASS and
+a post-restart 60-second Opus receive PASS with no persistence. Camera Reply is disabled
+and NOT_PROVEN. The authenticated Xiaomi device list confirms the matching real device
+and configured source both report `chuangmi.camera.039a01`; do not substitute the
+public `039c01` record.
+
+**Next:** retain the accepted i9 speaker and private flag `false`. Marker deletion,
+go2rtc-only recovery, one-producer cleanup and model-identity reconciliation are done.
+With an adult present, repeat the isolated tone gate and then run one fixed camera reply;
+confirm the full phrase, no movement, replacement, timeout, duplicate or residual
+internal producer. Only then resume V3E using `嘿小小`.
 
 ## P5 — Final 72-hour release gate
 

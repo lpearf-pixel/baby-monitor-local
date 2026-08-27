@@ -563,9 +563,19 @@
   must be invalidated and go2rtc alone recovered before another supervised attempt.
 - Runtime configuration currently reports Xiaomi model `chuangmi.camera.039a01`, while
   the approved MJSXJ17CM specification and upstream support record identify
-  `chuangmi.camera.039c01`. This discrepancy is not yet classified as causal and was
-  not changed. Reconcile it through the local Xiaomi device listing before any source
-  URI mutation; keep transport auto and the single-producer boundary.
+  `chuangmi.camera.039c01`. A read-only query through the already authenticated local
+  go2rtc Xiaomi API returned one camera, one DID match and model
+  `chuangmi.camera.039a01`, exactly matching the installed source. The live account
+  result is authoritative for this device; no source mutation was made and the public
+  `039c01` record is not treated as this camera's identity.
+- Task 16 installed recovery is complete at detached head `16f7652`. After explicit
+  deletion approval, the failed marker was securely invalidated. Only go2rtc and Voice
+  were restarted. Fresh video PASS remained 2560x1440 over observed `cs2+udp`; the
+  recovered snapshot contained one Xiaomi producer, zero internal producers, closed
+  speaker state, generation 0, zero residual sender and no failure stage. A post-restart
+  60-second receive probe passed with 48 kHz stereo Opus, 1,920,000 decoded bytes and
+  `raw_audio_persisted=false`. Camera Reply remains disabled and NOT_PROVEN. No speaker
+  playback validated the drain fix.
 - Installed-i9 audio-source discovery now verifies that the Xiaomi source exposes HEVC
   video plus Opus audio and that the fixed loopback `audio_analysis` alias exposes only
   Opus. The real input is supported 48 kHz stereo Opus; the fixed FFmpeg boundary

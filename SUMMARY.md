@@ -86,6 +86,15 @@ Updated: 2026-08-27
   pinned normal/race protocol gates pass. This is not real-device acceptance. The
   failed marker and stale internal producer still require explicit marker invalidation
   and a go2rtc-only recovery before any new supervised gate.
+  That recovery is now complete on installed detached head `16f7652`: the explicitly
+  approved marker deletion succeeded, go2rtc and Voice alone were restarted, video
+  passed at 2560x1440, a fresh 60-second Opus receive probe passed without persistence,
+  and the active snapshot returned one Xiaomi producer, zero internal producers,
+  closed speaker, zero residual sender and no failure stage. The private flag remains
+  false and status is NOT_PROVEN. A read-only Xiaomi account device listing found one
+  matching camera and confirmed the real device/config model is
+  `chuangmi.camera.039a01`; the public `039c01` record must not overwrite this local
+  identity.
   The accepted Voice branch is published at `4d479b8`; the lifecycle-review branch is
   published through `a622a7a`, before local Task 9. Neither has been merged
   into a protected branch.
@@ -558,9 +567,9 @@ legacy branch into this line without a separate integration decision.
    newest retry also truncated `我在，请说` after `我在`, returned AMBIGUOUS, replaced
    the Xiaomi producer and left one stale internal playback producer. Task 16's bounded
    FFmpeg drain fix is software-green but not installed or device-accepted. Next,
-   explicitly invalidate the failed marker, recover go2rtc only, verify exactly one
-   producer, and run one supervised fixed reply; do not force UDP/TCP or add a second
-   camera connection.
+   The failed marker has now been explicitly invalidated and go2rtc-only recovery
+   restored exactly one producer. Next run one supervised fixed reply; do not force
+   UDP/TCP or add a second camera connection.
 7. Complete the final 72-hour release gate before any release/tag decision.
 8. Define per-parent acknowledgement and false-positive feedback only through a future
    contract where Baby Care consumes Guardian's read-only feed and owns identity/write

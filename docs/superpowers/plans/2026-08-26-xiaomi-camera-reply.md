@@ -743,7 +743,9 @@ this task.
   privacy checks. Do not use software tests as real-device acceptance.
 - [x] Record the failed live evidence and exact recovery boundary in the authoritative
   handoff documents. Keep `camera_reply_enabled: false`.
-- [ ] Only after a separate supervised authorization: invalidate the failed marker,
-  recover the go2rtc component, repeat the isolated tone gate, then try one fixed live
+- [x] After explicit deletion approval, invalidate the failed marker and recover only
+  go2rtc. Require one Xiaomi producer, zero internal producers, closed speaker state,
+  zero residual sender/failure and receive-only video/audio PASS.
+- [ ] Only with an adult present: repeat the isolated tone gate, then try one fixed live
   reply. Any truncation, movement, producer replacement or residual internal producer
   fails closed.
