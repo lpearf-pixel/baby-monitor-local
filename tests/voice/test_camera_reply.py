@@ -39,7 +39,12 @@ def _aiff(frames: int = 8_000) -> bytes:
     return b"FORM" + struct.pack(">I", 4 + len(chunks)) + b"AIFF" + chunks
 
 
-def _stream_payload(*, medias: list[object] | None = None) -> bytes:
+def _stream_payload(
+    *,
+    medias: list[object] | None = None,
+    speaker_state: str = "closed",
+    generation: int = 2,
+) -> bytes:
     if medias is None:
         medias = [
             "video, recvonly, H265",
@@ -54,6 +59,17 @@ def _stream_payload(*, medias: list[object] | None = None) -> bytes:
                     "remote_addr": "private-marker",
                     "url": "xiaomi://private-marker",
                     "medias": medias,
+                    "speaker_state": speaker_state,
+                    "speaker_session_generation": generation,
+                    "speaker_start_requests": generation,
+                    "speaker_start_responses": generation,
+                    "speaker_stop_commands": generation - (speaker_state == "active"),
+                    "speaker_write_failures": 0,
+                    "speaker_stop_failures": 0,
+                    "pending_command_responses": 0,
+                    "residual_sender_count": int(speaker_state == "active"),
+                    "last_failure_stage": "none",
+                    "producer_generation": generation,
                 }
             ],
             "consumers": [],
@@ -76,6 +92,17 @@ def test_parser_returns_only_closed_readiness_evidence() -> None:
         video_codec="HEVC",
         incoming_audio_codec="OPUS",
         sendonly_audio_codec="OPUS",
+        speaker_state="closed",
+        speaker_session_generation=2,
+        speaker_start_requests=2,
+        speaker_start_responses=2,
+        speaker_stop_commands=2,
+        speaker_write_failures=0,
+        speaker_stop_failures=0,
+        pending_command_responses=0,
+        residual_sender_count=0,
+        last_failure_stage="none",
+        producer_generation=2,
     )
 
     assert parse_source_media(_stream_payload()) == expected
@@ -132,6 +159,30 @@ def test_parser_rejects_every_nonmatching_media_contract(medias: list[object]) -
 def test_parser_enforces_one_megabyte_cap() -> None:
     with pytest.raises(ValueError, match="^CAMERA_REPLY_UNAVAILABLE$"):
         parse_source_media(b" " * (MAX_RESPONSE_BYTES + 1))
+
+
+def test_parser_requires_closed_lifecycle_evidence() -> None:
+    document = json.loads(_stream_payload())
+    producer = document["producers"][0]
+    producer.pop("speaker_state")
+    with pytest.raises(ValueError, match="^CAMERA_REPLY_UNAVAILABLE$"):
+        parse_source_media(json.dumps(document).encode())
+
+    for key, value in {
+        "speaker_state": "active",
+        "speaker_start_responses": 1,
+        "speaker_stop_commands": 1,
+        "speaker_write_failures": 1,
+        "speaker_stop_failures": 1,
+        "pending_command_responses": 1,
+        "residual_sender_count": 1,
+        "last_failure_stage": "audio_write",
+        "producer_generation": 3,
+    }.items():
+        document = json.loads(_stream_payload())
+        document["producers"][0][key] = value
+        with pytest.raises(ValueError, match="^CAMERA_REPLY_UNAVAILABLE$"):
+            parse_source_media(json.dumps(document).encode())
 
 
 class FakeResponse:
@@ -210,8 +261,10 @@ def test_inspect_uses_only_fixed_loopback_get_timeout_and_cap(tmp_path: Path) ->
 
 def test_start_and_stop_use_only_fixed_percent_encoded_posts(tmp_path: Path) -> None:
     media = _media_file(tmp_path)
-    start_response = FakeResponse(b"{}")
-    stop_response = FakeResponse(b"{}")
+    start_response = FakeResponse(
+        _stream_payload(speaker_state="active", generation=2)
+    )
+    stop_response = FakeResponse(_stream_payload())
     opener = RecordingOpener([start_response, stop_response])
     transport = LoopbackCameraReplyTransport(tmp_path, opener=opener)
 
@@ -241,6 +294,23 @@ def test_start_and_stop_use_only_fixed_percent_encoded_posts(tmp_path: Path) -> 
     )
     assert start_response.closed is True
     assert stop_response.closed is True
+
+
+@pytest.mark.parametrize(
+    "payload",
+    [b"", b"{}", _stream_payload(), _stream_payload(generation=0)],
+)
+def test_start_requires_a_nonzero_active_generation(
+    tmp_path: Path, payload: bytes
+) -> None:
+    response = FakeResponse(payload)
+    transport = LoopbackCameraReplyTransport(
+        tmp_path, opener=RecordingOpener([response])
+    )
+
+    assert transport.start(_media_file(tmp_path)) == CameraReplyResult(
+        CameraReplyCode.AMBIGUOUS, True
+    )
 
 
 @pytest.mark.parametrize(
@@ -378,7 +448,9 @@ def test_concurrent_request_is_busy_and_not_queued(tmp_path: Path) -> None:
         def open(self, request: Request, *, timeout: float) -> FakeResponse:
             entered.set()
             assert release.wait(1.0)
-            return FakeResponse()
+            return FakeResponse(
+                _stream_payload(speaker_state="active", generation=2)
+            )
 
     transport = LoopbackCameraReplyTransport(tmp_path, opener=BlockingOpener())
     outcomes: list[CameraReplyResult] = []
@@ -397,18 +469,75 @@ def test_concurrent_request_is_busy_and_not_queued(tmp_path: Path) -> None:
 def test_stop_is_repeatable_and_releases_single_flight_after_failure(
     tmp_path: Path,
 ) -> None:
-    success = FakeResponse()
-    opener = RecordingOpener([socket.timeout("private-marker"), success])
+    success = FakeResponse(_stream_payload(generation=2))
+    opener = RecordingOpener(
+        [
+            FakeResponse(_stream_payload(speaker_state="active", generation=2)),
+            socket.timeout("private-marker"),
+            success,
+        ]
+    )
     transport = LoopbackCameraReplyTransport(tmp_path, opener=opener)
 
+    assert transport.start(_media_file(tmp_path)).code is CameraReplyCode.READY
     assert transport.stop() == CameraReplyResult(
         CameraReplyCode.AMBIGUOUS, False
     )
     assert transport.stop() == CameraReplyResult(
         CameraReplyCode.COMPLETE, False
     )
-    assert len(opener.calls) == 2
+    assert len(opener.calls) == 3
     assert success.closed is True
+
+
+@pytest.mark.parametrize(
+    "payload",
+    [
+        b"",
+        b"{}",
+        b"not-json",
+        _stream_payload(),
+        _stream_payload().replace(b'"closed"', b'"active"'),
+    ],
+)
+def test_stop_never_completes_without_closed_lifecycle_evidence(
+    tmp_path: Path, payload: bytes
+) -> None:
+    response = FakeResponse(payload)
+    transport = LoopbackCameraReplyTransport(
+        tmp_path, opener=RecordingOpener([response])
+    )
+
+    assert transport.stop() == CameraReplyResult(
+        CameraReplyCode.AMBIGUOUS, False
+    )
+    assert response.closed is True
+
+
+@pytest.mark.parametrize(
+    "stop_payload",
+    [
+        _stream_payload(generation=0),
+        _stream_payload(generation=1),
+        _stream_payload(generation=3),
+    ],
+)
+def test_stop_requires_the_generation_owned_by_this_start(
+    tmp_path: Path, stop_payload: bytes
+) -> None:
+    media = _media_file(tmp_path)
+    opener = RecordingOpener(
+        [
+            FakeResponse(_stream_payload(speaker_state="active", generation=2)),
+            FakeResponse(stop_payload),
+        ]
+    )
+    transport = LoopbackCameraReplyTransport(tmp_path, opener=opener)
+
+    assert transport.start(media).code is CameraReplyCode.READY
+    assert transport.stop() == CameraReplyResult(
+        CameraReplyCode.AMBIGUOUS, False
+    )
 
 
 def test_status_writer_atomically_publishes_only_bounded_fields(tmp_path: Path) -> None:

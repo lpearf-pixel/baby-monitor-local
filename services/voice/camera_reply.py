@@ -79,6 +79,17 @@ class CameraReplyEvidence:
     video_codec: str
     incoming_audio_codec: str
     sendonly_audio_codec: str
+    speaker_state: str = "closed"
+    speaker_session_generation: int = 0
+    speaker_start_requests: int = 0
+    speaker_start_responses: int = 0
+    speaker_stop_commands: int = 0
+    speaker_write_failures: int = 0
+    speaker_stop_failures: int = 0
+    pending_command_responses: int = 0
+    residual_sender_count: int = 0
+    last_failure_stage: str = "none"
+    producer_generation: int = 0
 
 
 @dataclass(frozen=True, slots=True)
@@ -274,6 +285,17 @@ def _closed_object(pairs: list[tuple[str, Any]]) -> dict[str, Any]:
 
 
 def parse_source_media(payload: bytes) -> CameraReplyEvidence:
+    return _parse_source_media_lifecycle(
+        payload, expected_state="closed", expected_generation=None
+    )
+
+
+def _parse_source_media_lifecycle(
+    payload: bytes,
+    *,
+    expected_state: str,
+    expected_generation: int | None,
+) -> CameraReplyEvidence:
     if type(payload) is not bytes or not 0 < len(payload) <= _MAX_BYTES:
         raise ValueError(_UNAVAILABLE)
     try:
@@ -314,6 +336,51 @@ def parse_source_media(payload: bytes) -> CameraReplyEvidence:
     ):
         raise ValueError(_UNAVAILABLE)
 
+    lifecycle_fields = {
+        "speaker_session_generation",
+        "speaker_start_requests",
+        "speaker_start_responses",
+        "speaker_stop_commands",
+        "speaker_write_failures",
+        "speaker_stop_failures",
+        "pending_command_responses",
+        "residual_sender_count",
+        "producer_generation",
+    }
+    if any(
+        type(producer.get(field)) is not int
+        or not 0 <= producer[field] <= 1_000_000_000
+        for field in lifecycle_fields
+    ):
+        raise ValueError(_UNAVAILABLE)
+    generation = producer["speaker_session_generation"]
+    if expected_state == "active":
+        expected_stop_commands = generation - 1
+        expected_residual_senders = 1
+    elif expected_state == "closed":
+        expected_stop_commands = generation
+        expected_residual_senders = 0
+    else:
+        raise ValueError(_UNAVAILABLE)
+    if (
+        producer.get("speaker_state") != expected_state
+        or (expected_state == "active" and generation == 0)
+        or (
+            expected_generation is not None
+            and generation != expected_generation
+        )
+        or producer.get("last_failure_stage") != "none"
+        or producer["pending_command_responses"] != 0
+        or producer["residual_sender_count"] != expected_residual_senders
+        or producer["producer_generation"] != generation
+        or producer["speaker_start_requests"] != generation
+        or producer["speaker_start_responses"] != generation
+        or producer["speaker_stop_commands"] != expected_stop_commands
+        or producer["speaker_write_failures"] != 0
+        or producer["speaker_stop_failures"] != 0
+    ):
+        raise ValueError(_UNAVAILABLE)
+
     return CameraReplyEvidence(
         source_ready=True,
         video_ready=True,
@@ -323,6 +390,17 @@ def parse_source_media(payload: bytes) -> CameraReplyEvidence:
         video_codec="HEVC",
         incoming_audio_codec="OPUS",
         sendonly_audio_codec="OPUS",
+        speaker_state=producer["speaker_state"],
+        speaker_session_generation=producer["speaker_session_generation"],
+        speaker_start_requests=producer["speaker_start_requests"],
+        speaker_start_responses=producer["speaker_start_responses"],
+        speaker_stop_commands=producer["speaker_stop_commands"],
+        speaker_write_failures=producer["speaker_write_failures"],
+        speaker_stop_failures=producer["speaker_stop_failures"],
+        pending_command_responses=producer["pending_command_responses"],
+        residual_sender_count=producer["residual_sender_count"],
+        last_failure_stage=producer["last_failure_stage"],
+        producer_generation=producer["producer_generation"],
     )
 
 
@@ -339,6 +417,7 @@ class LoopbackCameraReplyTransport:
         self._temporary_root = temporary_root
         self._opener = opener or build_opener(ProxyHandler({}))
         self._lock = threading.Lock()
+        self._active_generation: int | None = None
 
     def inspect(self) -> CameraReplyEvidence | None:
         if not self._lock.acquire(blocking=False):
@@ -358,6 +437,8 @@ class LoopbackCameraReplyTransport:
         if not self._lock.acquire(blocking=False):
             return CameraReplyResult(CameraReplyCode.BUSY, False)
         try:
+            if self._active_generation is not None:
+                return CameraReplyResult(CameraReplyCode.BUSY, False)
             resolved = self._validated_media(media)
             if resolved is None:
                 return CameraReplyResult(CameraReplyCode.REJECTED, False)
@@ -371,9 +452,15 @@ class LoopbackCameraReplyTransport:
                 f"{_ORIGIN}/api/streams?{query}", data=b"", method="POST"
             )
             try:
-                self._request(request)
+                payload = self._request(request)
+                evidence = _parse_source_media_lifecycle(
+                    payload,
+                    expected_state="active",
+                    expected_generation=None,
+                )
             except Exception:
                 return CameraReplyResult(CameraReplyCode.AMBIGUOUS, True)
+            self._active_generation = evidence.speaker_session_generation
             return CameraReplyResult(CameraReplyCode.READY, True)
         finally:
             self._lock.release()
@@ -388,9 +475,17 @@ class LoopbackCameraReplyTransport:
                 method="POST",
             )
             try:
-                self._request(request)
+                payload = self._request(request)
+                if self._active_generation is None:
+                    raise ValueError(_UNAVAILABLE)
+                _parse_source_media_lifecycle(
+                    payload,
+                    expected_state="closed",
+                    expected_generation=self._active_generation,
+                )
             except Exception:
                 return CameraReplyResult(CameraReplyCode.AMBIGUOUS, False)
+            self._active_generation = None
             return CameraReplyResult(CameraReplyCode.COMPLETE, False)
         finally:
             self._lock.release()

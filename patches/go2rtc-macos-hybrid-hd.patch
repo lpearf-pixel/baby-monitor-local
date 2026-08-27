@@ -1,3 +1,490 @@
+diff --git a/internal/streams/play.go b/internal/streams/play.go
+index 1f8c4ade..711c50ac 100644
+--- a/internal/streams/play.go
++++ b/internal/streams/play.go
+@@ -2,31 +2,164 @@ package streams
+ 
+ import (
+ 	"errors"
++	"sync"
+ 	"time"
+ 
+ 	"github.com/AlexxIT/go2rtc/pkg/core"
+ )
+ 
+-func (s *Stream) Play(urlOrProd any) error {
++var (
++	errBackchannelBusy       = errors.New("streams: backchannel busy")
++	errBackchannelSettlement = errors.New("streams: backchannel settlement failed")
++)
++
++type backchannelSettler interface {
++	SettleBackchannel() error
++}
++
++type playback struct {
++	source      core.Producer
++	consumer    core.Consumer
++	destination core.Producer
++
++	once sync.Once
++	done chan struct{}
++	mu   sync.Mutex
++	err  error
++}
++
++const playbackSettlementTimeout = 1500 * time.Millisecond
++
++func newPlayback(
++	source core.Producer, consumer core.Consumer, destination core.Producer,
++) *playback {
++	return &playback{
++		source: source, consumer: consumer, destination: destination,
++		done: make(chan struct{}),
++	}
++}
++
++func (p *playback) settle(stopSource, sourceFailed bool) error {
++	p.once.Do(func() {
++		go p.runSettlement(stopSource, sourceFailed)
++	})
++	timer := time.NewTimer(playbackSettlementTimeout)
++	defer timer.Stop()
++	select {
++	case <-p.done:
++	case <-timer.C:
++		p.fail()
++	}
++	p.mu.Lock()
++	defer p.mu.Unlock()
++	return p.err
++}
++
++func (p *playback) runSettlement(stopSource, sourceFailed bool) {
++	failed := sourceFailed
++	if stopSource {
++		failed = p.source.Stop() != nil || failed
++	}
++	if settler, ok := p.consumer.(backchannelSettler); ok {
++		failed = settler.SettleBackchannel() != nil || failed
++	}
++	if p.destination != nil {
++		failed = p.destination.Stop() != nil || failed
++	}
++	if failed {
++		p.fail()
++	}
++	close(p.done)
++}
++
++func (p *playback) fail() {
++	p.mu.Lock()
++	p.err = errBackchannelSettlement
++	p.mu.Unlock()
++}
++
++func (p *playback) finished() bool {
++	select {
++	case <-p.done:
++		return true
++	default:
++		return false
++	}
++}
++
++func (s *Stream) registerPlayback(p *playback) error {
+ 	s.mu.Lock()
++	defer s.mu.Unlock()
++	if len(s.playbacks) != 0 {
++		return errBackchannelBusy
++	}
++	s.playbacks = append(s.playbacks, p)
++	return nil
++}
++
++func (s *Stream) hasPlayback() bool {
++	s.mu.Lock()
++	defer s.mu.Unlock()
++	return len(s.playbacks) != 0
++}
++
++func (s *Stream) stopPlaybacks() error {
++	s.mu.Lock()
++	playbacks := append([]*playback(nil), s.playbacks...)
++	s.mu.Unlock()
++
++	var result error
++	allFinished := true
++	for _, active := range playbacks {
++		if err := active.settle(true, false); err != nil {
++			result = errBackchannelSettlement
++		}
++		if !active.finished() {
++			allFinished = false
++			continue
++		}
++		s.RemoveProducer(active.source)
++		if active.destination != nil {
++			s.RemoveInternalConsumer(active.consumer)
++		}
++	}
++
++	s.mu.Lock()
++	if allFinished && len(playbacks) == len(s.playbacks) {
++		s.playbacks = nil
++	}
++	s.mu.Unlock()
++	return result
++}
++
++func (s *Stream) stopOtherInternalProducers() {
++	s.mu.Lock()
++	defer s.mu.Unlock()
+ 	for _, producer := range s.producers {
+ 		if producer.state == stateInternal && producer.conn != nil {
+ 			_ = producer.conn.Stop()
+ 		}
+ 	}
+-	s.mu.Unlock()
++}
+ 
++func (s *Stream) Play(urlOrProd any) error {
+ 	var source string
+ 	var src core.Producer
+ 
+ 	switch urlOrProd.(type) {
+ 	case string:
+ 		if source = urlOrProd.(string); source == "" {
+-			return nil
++			err := s.stopPlaybacks()
++			s.stopOtherInternalProducers()
++			return err
+ 		}
+ 	case core.Producer:
+ 		src = urlOrProd.(core.Producer)
+ 	}
++	if s.hasPlayback() {
++		return errBackchannelBusy
++	}
++	s.stopOtherInternalProducers()
+ 
+ 	for _, producer := range s.producers {
+ 		if producer.conn == nil {
+@@ -50,10 +183,19 @@ func (s *Stream) Play(urlOrProd any) error {
+ 		}
+ 
+ 		s.AddInternalProducer(src)
++		active := newPlayback(src, cons, nil)
++		if err := s.registerPlayback(active); err != nil {
++			_ = src.Stop()
++			s.RemoveProducer(src)
++			return err
++		}
+ 
+ 		go func() {
+-			_ = src.Start()
+-			s.RemoveProducer(src)
++			err := src.Start()
++			_ = active.settle(err != nil, err != nil)
++			if active.finished() {
++				s.RemoveProducer(src)
++			}
+ 		}()
+ 
+ 		return nil
+@@ -87,19 +229,29 @@ func (s *Stream) Play(urlOrProd any) error {
+ 
+ 		s.AddInternalProducer(src)
+ 		s.AddInternalConsumer(cons)
+-
+-		go func() {
+-			_ = dst.Start()
++		active := newPlayback(src, cons, dst)
++		if err := s.registerPlayback(active); err != nil {
+ 			_ = src.Stop()
++			_ = dst.Stop()
++			s.RemoveProducer(src)
+ 			s.RemoveInternalConsumer(cons)
++			return err
++		}
++
++		go func() {
++			err := dst.Start()
++			_ = active.settle(true, err != nil)
++			if active.finished() {
++				s.RemoveInternalConsumer(cons)
++			}
+ 		}()
+ 
+ 		go func() {
+-			_ = src.Start()
+-			// little timeout before stop dst, so the buffer can be transferred
+-			time.Sleep(time.Second)
+-			_ = dst.Stop()
+-			s.RemoveProducer(src)
++			err := src.Start()
++			_ = active.settle(err != nil, err != nil)
++			if active.finished() {
++				s.RemoveProducer(src)
++			}
+ 		}()
+ 
+ 		return nil
+diff --git a/internal/streams/play_lifecycle_review_test.go b/internal/streams/play_lifecycle_review_test.go
+new file mode 100644
+index 00000000..df1de1b2
+--- /dev/null
++++ b/internal/streams/play_lifecycle_review_test.go
+@@ -0,0 +1,237 @@
++package streams
++
++import (
++	"errors"
++	"sync"
++	"testing"
++	"time"
++
++	"github.com/AlexxIT/go2rtc/pkg/core"
++)
++
++type lifecycleSource struct {
++	media      *core.Media
++	track      *core.Receiver
++	startBlock chan struct{}
++	stopOnce   sync.Once
++	stopped    chan struct{}
++	startErr   error
++}
++
++func newLifecycleSource(block bool) *lifecycleSource {
++	codec := &core.Codec{Name: core.CodecPCMA, ClockRate: 8000}
++	media := &core.Media{Kind: core.KindAudio, Direction: core.DirectionRecvonly, Codecs: []*core.Codec{codec}}
++	s := &lifecycleSource{media: media, track: core.NewReceiver(media, codec), stopped: make(chan struct{})}
++	if block {
++		s.startBlock = make(chan struct{})
++	}
++	return s
++}
++
++func (s *lifecycleSource) GetMedias() []*core.Media { return []*core.Media{s.media} }
++func (s *lifecycleSource) GetTrack(*core.Media, *core.Codec) (*core.Receiver, error) {
++	return s.track, nil
++}
++func (s *lifecycleSource) Start() error {
++	if s.startBlock != nil {
++		<-s.startBlock
++	}
++	return s.startErr
++}
++func (s *lifecycleSource) Stop() error {
++	s.stopOnce.Do(func() {
++		if s.startBlock != nil {
++			close(s.startBlock)
++		}
++		close(s.stopped)
++	})
++	return nil
++}
++
++type lifecycleBackchannel struct {
++	media       *core.Media
++	settleErr   error
++	settleCount int
++	settled     chan struct{}
++	settleBlock chan struct{}
++	mu          sync.Mutex
++}
++
++func newLifecycleBackchannel() *lifecycleBackchannel {
++	codec := &core.Codec{Name: core.CodecPCMA, ClockRate: 8000}
++	return &lifecycleBackchannel{
++		media:   &core.Media{Kind: core.KindAudio, Direction: core.DirectionSendonly, Codecs: []*core.Codec{codec}},
++		settled: make(chan struct{}),
++	}
++}
++
++func (c *lifecycleBackchannel) GetMedias() []*core.Media { return []*core.Media{c.media} }
++func (c *lifecycleBackchannel) GetTrack(*core.Media, *core.Codec) (*core.Receiver, error) {
++	return nil, core.ErrCantGetTrack
++}
++func (c *lifecycleBackchannel) AddTrack(*core.Media, *core.Codec, *core.Receiver) error {
++	return nil
++}
++func (c *lifecycleBackchannel) Start() error { return nil }
++func (c *lifecycleBackchannel) Stop() error  { return nil }
++func (c *lifecycleBackchannel) SettleBackchannel() error {
++	c.mu.Lock()
++	c.settleCount++
++	if c.settleCount == 1 {
++		close(c.settled)
++	}
++	err := c.settleErr
++	block := c.settleBlock
++	c.mu.Unlock()
++	if block != nil {
++		<-block
++	}
++	return err
++}
++
++func TestPlayEmptySettlesBackchannelBeforeSuccess(t *testing.T) {
++	source := newLifecycleSource(true)
++	backchannel := newLifecycleBackchannel()
++	stream := &Stream{producers: []*Producer{{conn: backchannel, state: stateExternal, url: "synthetic:xiaomi"}}}
++
++	if err := stream.Play(source); err != nil {
++		t.Fatal(err)
++	}
++	if err := stream.Play(""); err != nil {
++		t.Fatal(err)
++	}
++	if backchannel.settleCount != 1 {
++		t.Fatalf("backchannel settlement count = %d, want 1 before success", backchannel.settleCount)
++	}
++}
++
++func TestPlayEmptyPropagatesBackchannelStopFailure(t *testing.T) {
++	source := newLifecycleSource(true)
++	backchannel := newLifecycleBackchannel()
++	backchannel.settleErr = errors.New("synthetic speaker stop failure")
++	stream := &Stream{producers: []*Producer{{conn: backchannel, state: stateExternal, url: "synthetic:xiaomi"}}}
++
++	if err := stream.Play(source); err != nil {
++		t.Fatal(err)
++	}
++	if err := stream.Play(""); !errors.Is(err, errBackchannelSettlement) {
++		t.Fatalf("Play empty error = %v, want backchannel stop failure", err)
++	}
++}
++
++func TestNaturalSourceEndSettlesBackchannelOnce(t *testing.T) {
++	source := newLifecycleSource(false)
++	backchannel := newLifecycleBackchannel()
++	stream := &Stream{producers: []*Producer{{conn: backchannel, state: stateExternal, url: "synthetic:xiaomi"}}}
++
++	if err := stream.Play(source); err != nil {
++		t.Fatal(err)
++	}
++	select {
++	case <-backchannel.settled:
++	case <-time.After(time.Second):
++		t.Fatal("natural source end did not settle backchannel")
++	}
++	if backchannel.settleCount != 1 {
++		t.Fatalf("backchannel settlement count = %d, want 1", backchannel.settleCount)
++	}
++}
++
++func TestCancelAndNaturalEndDoNotDoubleStop(t *testing.T) {
++	source := newLifecycleSource(true)
++	backchannel := newLifecycleBackchannel()
++	stream := &Stream{producers: []*Producer{{conn: backchannel, state: stateExternal, url: "synthetic:xiaomi"}}}
++
++	if err := stream.Play(source); err != nil {
++		t.Fatal(err)
++	}
++	if err := stream.Play(""); err != nil {
++		t.Fatal(err)
++	}
++	select {
++	case <-source.stopped:
++	case <-time.After(time.Second):
++		t.Fatal("explicit stop did not stop internal source")
++	}
++	select {
++	case <-backchannel.settled:
++	case <-time.After(time.Second):
++		t.Fatal("cancel and natural end never settled backchannel")
++	}
++	if backchannel.settleCount != 1 {
++		t.Fatalf("backchannel settlement count = %d, want exactly 1", backchannel.settleCount)
++	}
++}
++
++func TestNaturalSourceFailurePropagatesOnEmptyStop(t *testing.T) {
++	source := newLifecycleSource(false)
++	source.startErr = errors.New("synthetic source failure")
++	backchannel := newLifecycleBackchannel()
++	stream := &Stream{producers: []*Producer{{conn: backchannel, state: stateExternal, url: "synthetic:xiaomi"}}}
++
++	if err := stream.Play(source); err != nil {
++		t.Fatal(err)
++	}
++	select {
++	case <-backchannel.settled:
++	case <-time.After(time.Second):
++		t.Fatal("source failure did not settle backchannel")
++	}
++	select {
++	case <-source.stopped:
++	case <-time.After(time.Second):
++		t.Fatal("failed source was not stopped")
++	}
++	if err := stream.Play(""); !errors.Is(err, errBackchannelSettlement) {
++		t.Fatalf("empty stop error = %v, want fixed settlement failure", err)
++	}
++}
++
++func TestPlayEmptyTimesOutBlockedSettlementAndKeepsGenerationBusy(t *testing.T) {
++	source := newLifecycleSource(true)
++	backchannel := newLifecycleBackchannel()
++	backchannel.settleBlock = make(chan struct{})
++	stream := &Stream{producers: []*Producer{{conn: backchannel, state: stateExternal, url: "synthetic:xiaomi"}}}
++	if err := stream.Play(source); err != nil {
++		t.Fatal(err)
++	}
++
++	result := make(chan error, 1)
++	go func() { result <- stream.Play("") }()
++	select {
++	case err := <-result:
++		if !errors.Is(err, errBackchannelSettlement) {
++			t.Fatalf("blocked settlement error = %v, want fixed failure", err)
++		}
++	case <-time.After(2 * time.Second):
++		close(backchannel.settleBlock)
++		<-result
++		t.Fatal("blocked settlement exceeded fixed timeout")
++	}
++	if err := stream.Play(newLifecycleSource(true)); !errors.Is(err, errBackchannelBusy) {
++		t.Fatalf("post-timeout overlap error = %v, want busy", err)
++	}
++	close(backchannel.settleBlock)
++}
++
++func TestOverlappingPlayIsRejectedWithoutStartingSecondSource(t *testing.T) {
++	first := newLifecycleSource(true)
++	second := newLifecycleSource(true)
++	backchannel := newLifecycleBackchannel()
++	stream := &Stream{producers: []*Producer{{conn: backchannel, state: stateExternal, url: "synthetic:xiaomi"}}}
++
++	if err := stream.Play(first); err != nil {
++		t.Fatal(err)
++	}
++	if err := stream.Play(second); !errors.Is(err, errBackchannelBusy) {
++		t.Fatalf("overlap error = %v, want fixed busy", err)
++	}
++	select {
++	case <-second.stopped:
++		t.Fatal("rejected second source was stopped despite never starting")
++	default:
++	}
++	if err := stream.Play(""); err != nil {
++		t.Fatal(err)
++	}
++}
+diff --git a/internal/streams/stream.go b/internal/streams/stream.go
+index 984c73ed..072725b7 100644
+--- a/internal/streams/stream.go
++++ b/internal/streams/stream.go
+@@ -11,6 +11,7 @@ import (
+ type Stream struct {
+ 	producers []*Producer
+ 	consumers []core.Consumer
++	playbacks []*playback
+ 	mu        sync.Mutex
+ 	pending   atomic.Int32
+ }
 diff --git a/pkg/iso/codecs.go b/pkg/iso/codecs.go
 index f4a83c7b..471f6c30 100644
 --- a/pkg/iso/codecs.go
@@ -11,14 +498,669 @@ index f4a83c7b..471f6c30 100644
  	default:
  		panic("unsupported iso video: " + codec)
  	}
+diff --git a/pkg/xiaomi/miss/backchannel.go b/pkg/xiaomi/miss/backchannel.go
+index 02ea3bb1..cbeb01eb 100644
+--- a/pkg/xiaomi/miss/backchannel.go
++++ b/pkg/xiaomi/miss/backchannel.go
+@@ -1,8 +1,6 @@
+ package miss
+ 
+ import (
+-	"time"
+-
+ 	"github.com/AlexxIT/go2rtc/pkg/core"
+ 	"github.com/AlexxIT/go2rtc/pkg/opus"
+ 	"github.com/AlexxIT/go2rtc/pkg/pcm"
+@@ -10,11 +8,16 @@ import (
+ )
+ 
+ func (p *Producer) AddTrack(media *core.Media, _ *core.Codec, track *core.Receiver) error {
+-	if err := p.client.StartSpeaker(); err != nil {
++	p.speakerMu.Lock()
++	defer p.speakerMu.Unlock()
++	if p.speakerSession != nil {
++		return errSpeakerBusy
++	}
++
++	session, err := p.client.StartSpeaker()
++	if err != nil {
+ 		return err
+ 	}
+-	// TODO: check this!!!
+-	time.Sleep(time.Second)
+ 
+ 	sender := core.NewSender(media, track.Codec)
+ 
+@@ -31,7 +34,9 @@ func (p *Producer) AddTrack(media *core.Media, _ *core.Codec, track *core.Receiv
+ 				const size = 2 * 8000 * 0.040 // 16bit 40ms
+ 				for len(buf) >= size {
+ 					p.Send += size
+-					_ = p.client.WriteAudio(codecPCM, buf[:size])
++					if err := session.WriteAudio(codecPCM, buf[:size]); err != nil {
++						return
++					}
+ 					buf = buf[size:]
+ 				}
+ 			}
+@@ -41,7 +46,9 @@ func (p *Producer) AddTrack(media *core.Media, _ *core.Codec, track *core.Receiv
+ 				const size = 8000 * 0.040 // 8bit 40 ms
+ 				for len(buf) >= size {
+ 					p.Send += size
+-					_ = p.client.WriteAudio(codecPCMA, buf[:size])
++					if err := session.WriteAudio(codecPCMA, buf[:size]); err != nil {
++						return
++					}
+ 					buf = buf[size:]
+ 				}
+ 			}
+@@ -56,19 +63,52 @@ func (p *Producer) AddTrack(media *core.Media, _ *core.Codec, track *core.Receiv
+ 					// convert two 20ms to one 40ms
+ 					buf = opus.JoinFrames(buf, pkt.Payload)
+ 					p.Send += len(buf)
+-					_ = p.client.WriteAudio(codecOPUS, buf)
++					if err := session.WriteAudio(codecOPUS, buf); err != nil {
++						return
++					}
+ 					buf = nil
+ 				}
+ 			}
+ 		} else {
+ 			sender.Handler = func(pkt *rtp.Packet) {
+ 				p.Send += len(pkt.Payload)
+-				_ = p.client.WriteAudio(codecOPUS, pkt.Payload)
++				if err := session.WriteAudio(codecOPUS, pkt.Payload); err != nil {
++					return
++				}
+ 			}
+ 		}
+ 	}
+ 
+ 	sender.HandleRTP(track)
+ 	p.Senders = append(p.Senders, sender)
++	p.speakerSession = session
++	p.speakerSender = sender
+ 	return nil
+ }
++
++func (p *Producer) SettleBackchannel() error {
++	p.speakerMu.Lock()
++	defer p.speakerMu.Unlock()
++	if p.speakerSession == nil {
++		return nil
++	}
++	beginErr := p.speakerSession.BeginStop()
++
++	if p.speakerSender != nil {
++		p.speakerSender.Close()
++		p.speakerSender.Wait()
++		for index, sender := range p.Senders {
++			if sender == p.speakerSender {
++				p.Senders = append(p.Senders[:index], p.Senders[index+1:]...)
++				break
++			}
++		}
++	}
++	err := p.speakerSession.Stop()
++	p.speakerSession = nil
++	p.speakerSender = nil
++	if beginErr != nil {
++		return beginErr
++	}
++	return err
++}
+diff --git a/pkg/xiaomi/miss/client.go b/pkg/xiaomi/miss/client.go
+index 3113632a..f46a754a 100644
+--- a/pkg/xiaomi/miss/client.go
++++ b/pkg/xiaomi/miss/client.go
+@@ -6,8 +6,10 @@ import (
+ 	"encoding/hex"
+ 	"errors"
+ 	"fmt"
++	"math/bits"
+ 	"net"
+ 	"net/url"
++	"sync"
+ 	"time"
+ 
+ 	"github.com/AlexxIT/go2rtc/pkg/tutk"
+@@ -36,6 +38,10 @@ type Conn interface {
+ 	Close() error
+ }
+ 
++type receivedCommandConn interface {
++	ReadCommandReceived() (cmd uint32, data []byte, receivedAt time.Time, err error)
++}
++
+ func NewClient(rawURL string) (*Client, error) {
+ 	u, err := url.Parse(rawURL)
+ 	if err != nil {
+@@ -72,13 +78,83 @@ func NewClient(rawURL string) (*Client, error) {
+ 		return nil, err
+ 	}
+ 
+-	return &Client{Conn: conn, key: key, model: model}, nil
++	client := newClient(conn, key, model)
++	client.startCommandDispatcher()
++	return client, nil
+ }
+ 
+ type Client struct {
+ 	Conn
+ 	key   []byte
+ 	model string
++
++	commandOnce sync.Once
++	speakerIO   sync.Mutex
++	speakerMu   sync.Mutex
++
++	commandFailure   error
++	now              func() time.Time
++	sleep            func(time.Duration)
++	speakerState     speakerState
++	speakerGen       uint64
++	speakerWaiter    chan error
++	speakerArmed     bool
++	speakerAckedAt   time.Time
++	speakerNotBefore time.Time
++	speakerDone      chan struct{}
++	speakerResult    error
++
++	speakerStartRequests  uint64
++	speakerStartResponses uint64
++	speakerStopCommands   uint64
++	speakerWriteFailures  uint64
++	speakerStopFailures   uint64
++	lastFailureStage      string
++}
++
++func newClient(conn Conn, key []byte, model string) *Client {
++	return &Client{
++		Conn: conn, key: key, model: model, now: time.Now, sleep: time.Sleep,
++	}
++}
++
++type speakerState byte
++
++const (
++	speakerClosed speakerState = iota
++	speakerStarting
++	speakerActive
++	speakerStopping
++	speakerFailed
++)
++
++var (
++	errSpeakerBusy            = errors.New("miss: speaker busy")
++	errSpeakerCommandResponse = errors.New("miss: speaker command response")
++	errSpeakerStart           = errors.New("miss: speaker start")
++	errSpeakerAudioWrite      = errors.New("miss: speaker audio write")
++	errSpeakerStop            = errors.New("miss: speaker stop")
++	errSpeakerStale           = errors.New("miss: speaker generation stale")
++)
++
++const speakerResponseTimeout = 2 * time.Second
++const maxSpeakerDiagnosticCount = 1_000_000_000
++
++type SpeakerSession struct {
++	client     *Client
++	generation uint64
++}
++
++func (s *SpeakerSession) WriteAudio(codecID uint32, payload []byte) error {
++	return s.client.writeSpeakerAudio(s.generation, codecID, payload)
++}
++
++func (s *SpeakerSession) Stop() error {
++	return s.client.stopSpeaker(s.generation)
++}
++
++func (s *SpeakerSession) BeginStop() error {
++	return s.client.beginSpeakerStop(s.generation)
+ }
+ 
+ const (
+@@ -203,9 +279,192 @@ func (c *Client) StartAudio() error {
+ 	return c.WriteCommand(data)
+ }
+ 
+-func (c *Client) StartSpeaker() error {
++func (c *Client) startCommandDispatcher() {
++	c.commandOnce.Do(func() { go c.commandDispatcher() })
++}
++
++func (c *Client) commandDispatcher() {
++	for {
++		outer, data, receivedAt, err := c.readCommandReceived()
++		if err != nil {
++			c.failCommandDispatcher()
++			return
++		}
++		if outer != cmdEncoded && outer != bits.ReverseBytes32(cmdEncoded) {
++			c.failCommandResponse()
++			continue
++		}
++		data, err = crypto.Decode(data, c.key)
++		if err != nil || len(data) < 4 {
++			c.failCommandResponse()
++			continue
++		}
++		command := binary.BigEndian.Uint32(data)
++		if command == cmdSpeakerStartRes {
++			c.acceptSpeakerStartResponse(receivedAt)
++			continue
++		}
++		if !knownCommandResponse(command) {
++			c.failCommandResponse()
++		}
++	}
++}
++
++func (c *Client) readCommandReceived() (uint32, []byte, time.Time, error) {
++	if conn, ok := c.Conn.(receivedCommandConn); ok {
++		return conn.ReadCommandReceived()
++	}
++	command, data, err := c.Conn.ReadCommand()
++	return command, data, c.now(), err
++}
++
++func knownCommandResponse(command uint32) bool {
++	switch command {
++	case cmdAuthRes, cmdVideoStart, cmdVideoStop, cmdAudioStart, cmdAudioStop,
++		cmdSpeakerStop, cmdStreamCtrlRes, cmdGetAudioFormatRes, cmdPlaybackRes,
++		cmdDevInfoRes, cmdMotorRes:
++		return true
++	default:
++		return false
++	}
++}
++
++func (c *Client) failCommandDispatcher() {
++	c.speakerMu.Lock()
++	defer c.speakerMu.Unlock()
++	c.commandFailure = errSpeakerCommandResponse
++	c.recordFailureStageLocked("command_response")
++	c.failSpeakerLocked(errSpeakerCommandResponse)
++}
++
++func (c *Client) failCommandResponse() {
++	c.speakerMu.Lock()
++	defer c.speakerMu.Unlock()
++	c.commandFailure = errSpeakerCommandResponse
++	c.recordFailureStageLocked("command_response")
++	c.failSpeakerLocked(errSpeakerCommandResponse)
++}
++
++func (c *Client) failSpeakerLocked(err error) {
++	if c.commandFailure == nil {
++		c.commandFailure = err
++	}
++	if c.speakerResult == nil {
++		c.speakerResult = err
++	}
++	if c.speakerState == speakerStarting || c.speakerState == speakerActive {
++		c.speakerState = speakerFailed
++	}
++	if waiter := c.speakerWaiter; waiter != nil {
++		c.speakerWaiter = nil
++		select {
++		case waiter <- err:
++		default:
++		}
++	}
++}
++
++func (c *Client) acceptSpeakerStartResponse(receivedAt time.Time) {
++	c.speakerMu.Lock()
++	defer c.speakerMu.Unlock()
++	waiter := c.speakerWaiter
++	if c.speakerState != speakerStarting || waiter == nil || !c.speakerArmed || !receivedAt.After(c.speakerAckedAt) {
++		c.commandFailure = errSpeakerCommandResponse
++		c.recordFailureStageLocked("command_response")
++		c.failSpeakerLocked(errSpeakerCommandResponse)
++		return
++	}
++	c.speakerWaiter = nil
++	c.speakerArmed = false
++	c.speakerState = speakerActive
++	incrementSpeakerCount(&c.speakerStartResponses)
++	waiter <- nil
++}
++
++func (c *Client) StartSpeaker() (*SpeakerSession, error) {
++	c.startCommandDispatcher()
++	c.speakerMu.Lock()
++	if c.commandFailure != nil {
++		c.speakerMu.Unlock()
++		return nil, errSpeakerCommandResponse
++	}
++	if c.speakerState != speakerClosed {
++		c.speakerMu.Unlock()
++		return nil, errSpeakerBusy
++	}
++	c.speakerGen++
++	generation := c.speakerGen
++	waiter := make(chan error, 1)
++	c.speakerWaiter = waiter
++	c.speakerArmed = false
++	c.speakerAckedAt = time.Time{}
++	c.speakerState = speakerStarting
++	c.speakerResult = nil
++	c.speakerDone = nil
++	delay := c.speakerNotBefore.Sub(c.now())
++	c.speakerMu.Unlock()
++	if delay > 0 {
++		c.sleep(delay)
++	}
++
++	session := &SpeakerSession{client: c, generation: generation}
+ 	data := binary.BigEndian.AppendUint32(nil, cmdSpeakerStartReq)
+-	return c.WriteCommand(data)
++	c.speakerMu.Lock()
++	if c.commandFailure != nil || c.speakerState != speakerStarting || c.speakerGen != generation {
++		c.speakerWaiter = nil
++		c.speakerArmed = false
++		c.speakerState = speakerClosed
++		err := c.speakerResult
++		if err == nil {
++			err = errSpeakerCommandResponse
++		}
++		c.speakerMu.Unlock()
++		return nil, err
++	}
++	incrementSpeakerCount(&c.speakerStartRequests)
++	err := c.WriteCommand(data)
++	ackedAt := c.now()
++	if err != nil {
++		c.recordFailureStageLocked("speaker_start")
++		c.failSpeakerLocked(errSpeakerStart)
++		c.speakerMu.Unlock()
++		_ = session.Stop()
++		return nil, errSpeakerStart
++	}
++	c.speakerAckedAt = ackedAt
++	c.speakerArmed = true
++	c.speakerMu.Unlock()
++
++	err = nil
++	select {
++	case err = <-waiter:
++	case <-time.After(speakerResponseTimeout):
++		err = errSpeakerCommandResponse
++		c.speakerMu.Lock()
++		if c.speakerState == speakerStarting && c.speakerGen == generation {
++			c.recordFailureStageLocked("command_response")
++			c.speakerWaiter = nil
++			c.failSpeakerLocked(err)
++		}
++		c.speakerMu.Unlock()
++	}
++	if err != nil {
++		_ = session.Stop()
++		return nil, err
++	}
++	c.speakerMu.Lock()
++	if c.speakerState != speakerActive || c.speakerGen != generation {
++		err = c.speakerResult
++		if err == nil {
++			err = errSpeakerCommandResponse
++		}
++	}
++	c.speakerMu.Unlock()
++	if err != nil {
++		_ = session.Stop()
++		return nil, err
++	}
++	return session, nil
+ }
+ 
+ // SpeakerCodec if the camera model has a non-standard two-way codec.
+@@ -255,7 +514,183 @@ func (c *Client) ReadPacket() (*Packet, error) {
+ 	return pkt, nil
+ }
+ 
+-func (c *Client) WriteAudio(codecID uint32, payload []byte) error {
++func (c *Client) writeSpeakerAudio(
++	generation uint64, codecID uint32, payload []byte,
++) error {
++	c.speakerIO.Lock()
++	defer c.speakerIO.Unlock()
++
++	c.speakerMu.Lock()
++	if c.speakerGen != generation {
++		c.speakerMu.Unlock()
++		return errSpeakerStale
++	}
++	if c.speakerState != speakerActive {
++		err := c.speakerResult
++		if err == nil {
++			err = errSpeakerAudioWrite
++		}
++		c.speakerMu.Unlock()
++		return err
++	}
++	c.speakerMu.Unlock()
++
++	err := c.writeAudioPacket(codecID, payload)
++	if err != nil {
++		c.speakerMu.Lock()
++		if c.speakerGen == generation {
++			incrementSpeakerCount(&c.speakerWriteFailures)
++			c.commandFailure = errSpeakerAudioWrite
++			c.recordFailureStageLocked("audio_write")
++			c.failSpeakerLocked(errSpeakerAudioWrite)
++		}
++		c.speakerMu.Unlock()
++		return errSpeakerAudioWrite
++	}
++	return nil
++}
++
++func (c *Client) stopSpeaker(generation uint64) error {
++	for {
++		c.speakerMu.Lock()
++		if c.speakerGen != generation {
++			c.speakerMu.Unlock()
++			return errSpeakerStale
++		}
++		switch c.speakerState {
++		case speakerClosed:
++			err := c.speakerResult
++			c.speakerMu.Unlock()
++			return err
++		case speakerStopping:
++			done := c.speakerDone
++			if done != nil {
++				c.speakerMu.Unlock()
++				<-done
++				continue
++			}
++			c.speakerDone = make(chan struct{})
++			done = c.speakerDone
++			c.speakerMu.Unlock()
++			return c.finishSpeakerStop(done)
++		default:
++			c.speakerState = speakerStopping
++			c.speakerWaiter = nil
++			c.speakerDone = make(chan struct{})
++			done := c.speakerDone
++			c.speakerMu.Unlock()
++			return c.finishSpeakerStop(done)
++		}
++	}
++}
++
++func (c *Client) beginSpeakerStop(generation uint64) error {
++	c.speakerMu.Lock()
++	defer c.speakerMu.Unlock()
++	if c.speakerGen != generation {
++		return errSpeakerStale
++	}
++	if c.speakerState == speakerClosed {
++		return c.speakerResult
++	}
++	if c.speakerState != speakerStopping {
++		c.speakerState = speakerStopping
++		c.speakerWaiter = nil
++		c.speakerArmed = false
++		c.speakerDone = nil
++	}
++	return nil
++}
++
++func (c *Client) finishSpeakerStop(done chan struct{}) error {
++	c.speakerIO.Lock()
++	data := binary.BigEndian.AppendUint32(nil, cmdSpeakerStop)
++	stopErr := c.WriteCommand(data)
++	c.speakerIO.Unlock()
++
++	c.speakerMu.Lock()
++	incrementSpeakerCount(&c.speakerStopCommands)
++	if stopErr != nil {
++		incrementSpeakerCount(&c.speakerStopFailures)
++		c.commandFailure = errSpeakerStop
++		c.recordFailureStageLocked("speaker_stop")
++		if c.speakerResult == nil {
++			c.speakerResult = errSpeakerStop
++		}
++	}
++	c.speakerState = speakerClosed
++	c.speakerArmed = false
++	c.speakerNotBefore = c.now().Add(speakerResponseTimeout)
++	result := c.speakerResult
++	close(done)
++	c.speakerMu.Unlock()
++	return result
++}
++
++func incrementSpeakerCount(value *uint64) {
++	if *value < maxSpeakerDiagnosticCount {
++		*value++
++	}
++}
++
++func (c *Client) recordFailureStageLocked(stage string) {
++	if c.lastFailureStage == "" {
++		c.lastFailureStage = stage
++	}
++}
++
++type SpeakerLifecycleStatus struct {
++	SpeakerState             string `json:"speaker_state"`
++	SpeakerSessionGeneration uint64 `json:"speaker_session_generation"`
++	SpeakerStartRequests     uint64 `json:"speaker_start_requests"`
++	SpeakerStartResponses    uint64 `json:"speaker_start_responses"`
++	SpeakerStopCommands      uint64 `json:"speaker_stop_commands"`
++	SpeakerWriteFailures     uint64 `json:"speaker_write_failures"`
++	SpeakerStopFailures      uint64 `json:"speaker_stop_failures"`
++	PendingCommandResponses  uint64 `json:"pending_command_responses"`
++	LastFailureStage         string `json:"last_failure_stage"`
++}
++
++func (c *Client) SpeakerLifecycleStatus() SpeakerLifecycleStatus {
++	c.speakerMu.Lock()
++	defer c.speakerMu.Unlock()
++	state := "closed"
++	switch c.speakerState {
++	case speakerStarting:
++		state = "starting"
++	case speakerActive:
++		state = "active"
++	case speakerStopping:
++		state = "stopping"
++	case speakerFailed:
++		state = "failed"
++	}
++	pending := uint64(0)
++	if c.speakerWaiter != nil {
++		pending = 1
++	}
++	generation := c.speakerGen
++	if generation > maxSpeakerDiagnosticCount {
++		generation = maxSpeakerDiagnosticCount
++	}
++	stage := c.lastFailureStage
++	if stage == "" {
++		stage = "none"
++	}
++	return SpeakerLifecycleStatus{
++		SpeakerState:             state,
++		SpeakerSessionGeneration: generation,
++		SpeakerStartRequests:     c.speakerStartRequests,
++		SpeakerStartResponses:    c.speakerStartResponses,
++		SpeakerStopCommands:      c.speakerStopCommands,
++		SpeakerWriteFailures:     c.speakerWriteFailures,
++		SpeakerStopFailures:      c.speakerStopFailures,
++		PendingCommandResponses:  pending,
++		LastFailureStage:         stage,
++	}
++}
++
++func (c *Client) writeAudioPacket(codecID uint32, payload []byte) error {
+ 	payload, err := crypto.Encode(payload, c.key) // new payload will have new size!
+ 	if err != nil {
+ 		return err
 diff --git a/pkg/xiaomi/miss/cs2/conn.go b/pkg/xiaomi/miss/cs2/conn.go
-index b2a63932..04ff92b7 100644
+index b2a63932..86899b4c 100644
 --- a/pkg/xiaomi/miss/cs2/conn.go
 +++ b/pkg/xiaomi/miss/cs2/conn.go
-@@ -268 +268 @@ func (c *Conn) WritePacket(hdr, payload []byte) error {
+@@ -4,6 +4,7 @@ import (
+ 	"bufio"
+ 	"bytes"
+ 	"encoding/binary"
++	"errors"
+ 	"fmt"
+ 	"io"
+ 	"net"
+@@ -24,7 +25,7 @@ func Dial(host, transport string) (*Conn, error) {
+ 		Conn:  conn,
+ 		isTCP: isTCP,
+ 		channels: [4]*dataChannel{
+-			newDataChannel(0, 10), nil, newDataChannel(250, 100), nil,
++			newCommandDataChannel(10), nil, newDataChannel(250, 100), nil,
+ 		},
+ 	}
+ 	go c.worker()
+@@ -156,6 +157,13 @@ func (c *Conn) worker() {
+ 				}
+ 			}
+ 
++			if ch == 0 && (errors.Is(err, errPopBufferFull) || errors.Is(err, errFrameTooLarge)) {
++				// A command response must never terminate the shared media
++				// connection. The client dispatcher normally keeps this queue
++				// empty; a dropped response makes its bounded waiter fail closed.
++				continue
++			}
++
+ 			if err != nil {
+ 				c.err = fmt.Errorf("%s: %w", "cs2", err)
+ 				return
+@@ -193,9 +201,14 @@ func (c *Conn) Error() error {
+ }
+ 
+ func (c *Conn) ReadCommand() (cmd uint32, data []byte, err error) {
+-	buf, ok := c.channels[0].Pop()
++	cmd, data, _, err = c.ReadCommandReceived()
++	return
++}
++
++func (c *Conn) ReadCommandReceived() (cmd uint32, data []byte, receivedAt time.Time, err error) {
++	buf, receivedAt, ok := c.channels[0].PopReceived()
+ 	if !ok {
+-		return 0, nil, c.Error()
++		return 0, nil, time.Time{}, c.Error()
+ 	}
+ 	cmd = binary.LittleEndian.Uint32(buf)
+ 	data = buf[4:]
+@@ -265,7 +278,7 @@ func (c *Conn) WritePacket(hdr, payload []byte) error {
+ 	c.seqCh3++
+ 	binary.BigEndian.PutUint32(req[8:], n)
+ 	copy(req[offset:], hdr)
 -	copy(req[offset+hdrSize:], hdr)
 +	copy(req[offset+hdrSize:], payload)
-@@ -299,7 +299,7 @@ func marshalCmd(channel byte, seq uint16, cmd uint32, payload []byte) []byte {
+ 
+ 	_, err := c.Conn.Write(req)
+ 	return err
+@@ -299,7 +312,7 @@ func marshalCmd(channel byte, seq uint16, cmd uint32, payload []byte) []byte {
  
  func newUDPConn(host string, port int) (net.Conn, error) {
  	// We using raw net.UDPConn, because RemoteAddr should be changed during handshake.
@@ -27,6 +1169,98 @@ index b2a63932..04ff92b7 100644
  	if err != nil {
  		return nil, err
  	}
+@@ -414,51 +427,84 @@ func newDataChannel(pushSize, popSize int) *dataChannel {
+ 		c.pushSize = pushSize
+ 	}
+ 	if popSize >= 0 {
+-		c.popBuf = make(chan []byte, popSize)
++		c.popBuf = make(chan receivedData, popSize)
+ 	}
+ 	return c
+ }
+ 
++const maxCommandFrameSize = 64 * 1024
++
++func newCommandDataChannel(popSize int) *dataChannel {
++	c := newDataChannel(0, popSize)
++	c.maxFrameSize = maxCommandFrameSize
++	return c
++}
++
+ type dataChannel struct {
+ 	waitSeq  uint16
+ 	pushBuf  map[uint16][]byte
+ 	pushSize int
+ 
+-	waitData []byte
+-	waitSize int
+-	popBuf   chan []byte
++	waitData     []byte
++	waitSize     int
++	popBuf       chan receivedData
++	maxFrameSize int
+ }
+ 
++type receivedData struct {
++	payload    []byte
++	receivedAt time.Time
++}
++
++var errPopBufferFull = errors.New("pop buffer is full")
++var errFrameTooLarge = errors.New("frame too large")
++
+ func (c *dataChannel) Push(b []byte) error {
+ 	c.waitData = append(c.waitData, b...)
++	var overflow bool
+ 
+ 	for len(c.waitData) > 4 {
+ 		// Every new data starts with size. There can be several data inside one packet.
+ 		if c.waitSize == 0 {
+ 			c.waitSize = int(binary.BigEndian.Uint32(c.waitData))
+ 			c.waitData = c.waitData[4:]
++			if c.maxFrameSize > 0 && c.waitSize > c.maxFrameSize {
++				c.waitData = nil
++				c.waitSize = 0
++				return errFrameTooLarge
++			}
+ 		}
+ 		if c.waitSize > len(c.waitData) {
+ 			break
+ 		}
+ 
+ 		select {
+-		case c.popBuf <- c.waitData[:c.waitSize]:
++		case c.popBuf <- receivedData{
++			payload: c.waitData[:c.waitSize], receivedAt: time.Now(),
++		}:
+ 		default:
+-			return fmt.Errorf("pop buffer is full")
++			overflow = true
+ 		}
+ 
+ 		c.waitData = c.waitData[c.waitSize:]
+ 		c.waitSize = 0
+ 	}
++	if overflow {
++		return errPopBufferFull
++	}
+ 	return nil
+ }
+ 
+ func (c *dataChannel) Pop() ([]byte, bool) {
+-	data, ok := <-c.popBuf
++	data, _, ok := c.PopReceived()
+ 	return data, ok
+ }
+ 
++func (c *dataChannel) PopReceived() ([]byte, time.Time, bool) {
++	data, ok := <-c.popBuf
++	return data.payload, data.receivedAt, ok
++}
++
+ func (c *dataChannel) Close() {
+ 	close(c.popBuf)
+ }
 diff --git a/pkg/xiaomi/miss/cs2/conn_test.go b/pkg/xiaomi/miss/cs2/conn_test.go
 new file mode 100644
 index 00000000..d1b54b8f
@@ -69,3 +1303,893 @@ index 00000000..d1b54b8f
 +		t.Fatal("payload mismatch")
 +	}
 +}
+diff --git a/pkg/xiaomi/miss/cs2/lifecycle_review_test.go b/pkg/xiaomi/miss/cs2/lifecycle_review_test.go
+new file mode 100644
+index 00000000..c75be2cc
+--- /dev/null
++++ b/pkg/xiaomi/miss/cs2/lifecycle_review_test.go
+@@ -0,0 +1,135 @@
++package cs2
++
++import (
++	"encoding/binary"
++	"errors"
++	"io"
++	"net"
++	"testing"
++	"time"
++)
++
++type scriptedConn struct {
++	reads chan []byte
++}
++
++func (c *scriptedConn) Read(dst []byte) (int, error) {
++	frame, ok := <-c.reads
++	if !ok {
++		return 0, io.EOF
++	}
++	return copy(dst, frame), nil
++}
++
++func (c *scriptedConn) Write(src []byte) (int, error) { return len(src), nil }
++func (c *scriptedConn) Close() error                  { return nil }
++func (c *scriptedConn) LocalAddr() net.Addr           { return nil }
++func (c *scriptedConn) RemoteAddr() net.Addr          { return nil }
++func (c *scriptedConn) SetDeadline(time.Time) error   { return nil }
++func (c *scriptedConn) SetReadDeadline(time.Time) error {
++	return nil
++}
++func (c *scriptedConn) SetWriteDeadline(time.Time) error {
++	return nil
++}
++
++func reviewFrame(channel byte, payload []byte) []byte {
++	frame := make([]byte, 12+len(payload))
++	frame[0] = magic
++	frame[1] = msgDrw
++	frame[4] = magicDrw
++	frame[5] = channel
++	binary.BigEndian.PutUint32(frame[8:], uint32(len(payload)))
++	copy(frame[12:], payload)
++	return frame
++}
++
++func TestRepeatedSpeakerResponsesDoNotCloseMediaChannel(t *testing.T) {
++	transport := &scriptedConn{reads: make(chan []byte, 12)}
++	conn := &Conn{
++		Conn:  transport,
++		isTCP: true,
++		channels: [4]*dataChannel{
++			newCommandDataChannel(10), nil, newDataChannel(250, 100), nil,
++		},
++	}
++
++	// 0x107 is cmdSpeakerStartRes. Eleven unanswered responses exceed the
++	// current command-channel capacity of ten.
++	for i := 0; i < 11; i++ {
++		response := make([]byte, 8)
++		binary.LittleEndian.PutUint32(response, 0x107)
++		transport.reads <- reviewFrame(0, response)
++	}
++	wantHeader := make([]byte, hdrSize)
++	wantPayload := []byte{0x7a}
++	transport.reads <- reviewFrame(2, append(wantHeader, wantPayload...))
++
++	go conn.worker()
++
++	done := make(chan error, 1)
++	go func() {
++		_, payload, err := conn.ReadPacket()
++		if err == nil && len(payload) == 1 && payload[0] == wantPayload[0] {
++			done <- nil
++			return
++		}
++		if err == nil {
++			err = io.ErrUnexpectedEOF
++		}
++		done <- err
++	}()
++
++	select {
++	case err := <-done:
++		if err != nil {
++			t.Fatalf("speaker responses closed the shared media channel: %v", err)
++		}
++	case <-time.After(time.Second):
++		t.Fatal("media packet did not settle after speaker responses")
++	}
++}
++
++func TestCommandChannelOverflowDropsCompleteFrame(t *testing.T) {
++	channel := newCommandDataChannel(1)
++	frame := make([]byte, 12)
++	binary.BigEndian.PutUint32(frame, 8)
++	for i := 0; i < 100; i++ {
++		_ = channel.Push(frame)
++	}
++	if len(channel.waitData) != 0 || channel.waitSize != 0 {
++		t.Fatalf("overflow retained wait bytes/size = %d/%d, want 0/0", len(channel.waitData), channel.waitSize)
++	}
++}
++
++func TestCommandChannelRejectsOversizedFrameWithoutRetainingBytes(t *testing.T) {
++	channel := newCommandDataChannel(1)
++	frame := make([]byte, 1200)
++	binary.BigEndian.PutUint32(frame, maxCommandFrameSize+1)
++	if err := channel.Push(frame); !errors.Is(err, errFrameTooLarge) {
++		t.Fatalf("oversized frame error = %v, want fixed rejection", err)
++	}
++	if len(channel.waitData) != 0 || channel.waitSize != 0 {
++		t.Fatalf("oversized frame retained wait bytes/size = %d/%d, want 0/0", len(channel.waitData), channel.waitSize)
++	}
++}
++
++func TestCommandChannelPreservesIngressTimeAcrossDelayedRead(t *testing.T) {
++	channel := newCommandDataChannel(1)
++	conn := &Conn{channels: [4]*dataChannel{channel}}
++	frame := append(make([]byte, 4), make([]byte, 4)...)
++	binary.BigEndian.PutUint32(frame, 4)
++	binary.LittleEndian.PutUint32(frame[4:], 0x107)
++	before := time.Now()
++	if err := channel.Push(frame); err != nil {
++		t.Fatal(err)
++	}
++	time.Sleep(10 * time.Millisecond)
++	_, _, receivedAt, err := conn.ReadCommandReceived()
++	if err != nil {
++		t.Fatal(err)
++	}
++	if receivedAt.Before(before) || !receivedAt.Before(time.Now().Add(-5*time.Millisecond)) {
++		t.Fatalf("receivedAt = %v, want ingress time before delayed read", receivedAt)
++	}
++}
+diff --git a/pkg/xiaomi/miss/lifecycle_review_test.go b/pkg/xiaomi/miss/lifecycle_review_test.go
+new file mode 100644
+index 00000000..87ab6bb4
+--- /dev/null
++++ b/pkg/xiaomi/miss/lifecycle_review_test.go
+@@ -0,0 +1,695 @@
++package miss
++
++import (
++	"encoding/binary"
++	"encoding/json"
++	"errors"
++	"net"
++	"sync"
++	"testing"
++	"time"
++
++	"github.com/AlexxIT/go2rtc/pkg/core"
++	"github.com/AlexxIT/go2rtc/pkg/xiaomi/crypto"
++	"github.com/pion/rtp"
++)
++
++type lifecycleReviewConn struct {
++	mu               sync.Mutex
++	key              []byte
++	responses        chan lifecycleReviewResponse
++	closeOnce        sync.Once
++	startRequests    int
++	startResponses   int
++	stopCommands     int
++	pendingResponses int
++	packetWrites     int
++	writePacketErr   error
++	stopCommandErr   error
++	responseCommand  uint32
++	responseOuter    uint32
++	responseCopies   int
++	manualResponses  bool
++	syncResponse     bool
++	responseObserved chan struct{}
++	readEntered      chan struct{}
++	readReturn       chan struct{}
++	writeEntered     chan struct{}
++	writeRelease     chan struct{}
++	stopEntered      chan struct{}
++	stopRelease      chan struct{}
++}
++
++type lifecycleReviewResponse struct {
++	command    uint32
++	data       []byte
++	receivedAt time.Time
++}
++
++func newLifecycleReviewConn() *lifecycleReviewConn {
++	return &lifecycleReviewConn{responses: make(chan lifecycleReviewResponse, 32)}
++}
++
++func (c *lifecycleReviewConn) Protocol() string            { return "synthetic" }
++func (c *lifecycleReviewConn) Version() string             { return "synthetic" }
++func (c *lifecycleReviewConn) RemoteAddr() net.Addr        { return nil }
++func (c *lifecycleReviewConn) SetDeadline(time.Time) error { return nil }
++func (c *lifecycleReviewConn) Close() error {
++	c.closeOnce.Do(func() { close(c.responses) })
++	return nil
++}
++func (c *lifecycleReviewConn) ReadPacket() ([]byte, []byte, error) {
++	return nil, nil, errors.New("synthetic packet input unavailable")
++}
++
++func (c *lifecycleReviewConn) WriteCommand(outer uint32, encrypted []byte) error {
++	if outer != cmdEncoded {
++		return nil
++	}
++	plain, err := crypto.Decode(encrypted, c.key)
++	if err != nil {
++		return err
++	}
++	inner := binary.BigEndian.Uint32(plain)
++	c.mu.Lock()
++	var responses []lifecycleReviewResponse
++	var commandErr error
++	switch inner {
++	case cmdSpeakerStartReq:
++		c.startRequests++
++		if c.manualResponses {
++			c.mu.Unlock()
++			return nil
++		}
++		command := c.responseCommand
++		if command == 0 {
++			command = cmdSpeakerStartRes
++		}
++		copies := c.responseCopies
++		if copies == 0 {
++			copies = 1
++		}
++		for i := 0; i < copies; i++ {
++			c.pendingResponses++
++			plain := binary.BigEndian.AppendUint32(nil, command)
++			encrypted, encodeErr := crypto.Encode(plain, c.key)
++			if encodeErr != nil {
++				return encodeErr
++			}
++			outer := c.responseOuter
++			if outer == 0 {
++				outer = cmdEncoded
++			}
++			responses = append(responses, lifecycleReviewResponse{
++				command: outer, data: encrypted,
++			})
++		}
++	case cmdSpeakerStop:
++		c.stopCommands++
++		commandErr = c.stopCommandErr
++		entered := c.stopEntered
++		release := c.stopRelease
++		c.mu.Unlock()
++		if entered != nil {
++			select {
++			case entered <- struct{}{}:
++			default:
++			}
++		}
++		if release != nil {
++			<-release
++		}
++		c.mu.Lock()
++	}
++	synchronous := c.syncResponse
++	observed := c.responseObserved
++	c.mu.Unlock()
++	for _, response := range responses {
++		response := response
++		if synchronous {
++			response.receivedAt = time.Now()
++			c.responses <- response
++			if observed != nil {
++				<-observed
++			}
++		} else {
++			go func() {
++				time.Sleep(time.Millisecond)
++				response.receivedAt = time.Now()
++				c.responses <- response
++			}()
++		}
++	}
++	return commandErr
++}
++
++func (c *lifecycleReviewConn) ReadCommand() (uint32, []byte, error) {
++	command, data, _, err := c.ReadCommandReceived()
++	return command, data, err
++}
++
++func (c *lifecycleReviewConn) ReadCommandReceived() (uint32, []byte, time.Time, error) {
++	response, ok := <-c.responses
++	if !ok {
++		return 0, nil, time.Time{}, errors.New("synthetic connection closed")
++	}
++	c.mu.Lock()
++	c.pendingResponses--
++	c.startResponses++
++	observed := c.responseObserved
++	c.mu.Unlock()
++	if observed != nil {
++		select {
++		case observed <- struct{}{}:
++		default:
++		}
++	}
++	if c.readEntered != nil {
++		select {
++		case c.readEntered <- struct{}{}:
++		default:
++		}
++	}
++	if c.readReturn != nil {
++		<-c.readReturn
++	}
++	if response.receivedAt.IsZero() {
++		response.receivedAt = time.Now()
++	}
++	return response.command, response.data, response.receivedAt, nil
++}
++
++func (c *lifecycleReviewConn) enqueueSpeakerStartResponse() {
++	plain := binary.BigEndian.AppendUint32(nil, cmdSpeakerStartRes)
++	encrypted, err := crypto.Encode(plain, c.key)
++	if err != nil {
++		panic(err)
++	}
++	c.mu.Lock()
++	c.pendingResponses++
++	c.mu.Unlock()
++	c.responses <- lifecycleReviewResponse{
++		command: cmdEncoded, data: encrypted, receivedAt: time.Now(),
++	}
++}
++
++func (c *lifecycleReviewConn) WritePacket([]byte, []byte) error {
++	c.mu.Lock()
++	c.packetWrites++
++	err := c.writePacketErr
++	entered := c.writeEntered
++	release := c.writeRelease
++	c.mu.Unlock()
++	if entered != nil {
++		select {
++		case entered <- struct{}{}:
++		default:
++		}
++	}
++	if release != nil {
++		<-release
++	}
++	return err
++}
++
++func (c *lifecycleReviewConn) snapshot() (starts, responses, stops, pending, writes int) {
++	c.mu.Lock()
++	defer c.mu.Unlock()
++	return c.startRequests, c.startResponses, c.stopCommands, c.pendingResponses, c.packetWrites
++}
++
++func newLifecycleReviewClient(conn *lifecycleReviewConn) *Client {
++	key := make([]byte, 32)
++	conn.key = key
++	client := newClient(conn, key, "")
++	client.sleep = func(time.Duration) {}
++	client.startCommandDispatcher()
++	return client
++}
++
++func TestSpeakerLifecycleRejectsResponseBeforeTransportAck(t *testing.T) {
++	conn := newLifecycleReviewConn()
++	conn.syncResponse = true
++	conn.responseObserved = make(chan struct{}, 1)
++	client := newLifecycleReviewClient(conn)
++	client.sleep = time.Sleep
++	t.Cleanup(func() { _ = client.Close() })
++
++	if _, err := client.StartSpeaker(); !errors.Is(err, errSpeakerCommandResponse) {
++		t.Fatalf("start error = %v, want pre-ACK response failure", err)
++	}
++}
++
++func TestSpeakerLifecycleRejectsQueuedPreAckResponseAfterAck(t *testing.T) {
++	conn := newLifecycleReviewConn()
++	conn.syncResponse = true
++	conn.responseObserved = make(chan struct{}, 1)
++	conn.readEntered = make(chan struct{}, 1)
++	conn.readReturn = make(chan struct{})
++	client := newLifecycleReviewClient(conn)
++	t.Cleanup(func() { _ = client.Close() })
++
++	result := make(chan error, 1)
++	go func() {
++		_, err := client.StartSpeaker()
++		result <- err
++	}()
++	select {
++	case <-conn.readEntered:
++	case <-time.After(time.Second):
++		t.Fatal("response did not enter dispatcher")
++	}
++	deadline := time.Now().Add(time.Second)
++	for {
++		client.speakerMu.Lock()
++		armed := client.speakerArmed
++		client.speakerMu.Unlock()
++		if armed || time.Now().After(deadline) {
++			break
++		}
++		time.Sleep(time.Millisecond)
++	}
++	close(conn.readReturn)
++	if err := <-result; !errors.Is(err, errSpeakerCommandResponse) {
++		t.Fatalf("start error = %v, want queued pre-ACK response failure", err)
++	}
++}
++
++func TestSpeakerLifecycleRejectsPreviousResponseDuringQuiescence(t *testing.T) {
++	conn := newLifecycleReviewConn()
++	client := newLifecycleReviewClient(conn)
++	client.sleep = time.Sleep
++	t.Cleanup(func() { _ = client.Close() })
++	first, err := client.StartSpeaker()
++	if err != nil {
++		t.Fatal(err)
++	}
++	if err := first.Stop(); err != nil {
++		t.Fatal(err)
++	}
++	conn.manualResponses = true
++	second := make(chan error, 1)
++	go func() {
++		_, err := client.StartSpeaker()
++		second <- err
++	}()
++	time.Sleep(50 * time.Millisecond)
++	starts, _, _, _, _ := conn.snapshot()
++	if starts != 1 {
++		conn.enqueueSpeakerStartResponse()
++		<-second
++		t.Fatalf("new request count = %d during response quiescence, want 1", starts)
++	}
++	conn.enqueueSpeakerStartResponse()
++	if err := <-second; !errors.Is(err, errSpeakerCommandResponse) {
++		t.Fatalf("second start error = %v, want delayed-response failure", err)
++	}
++}
++
++func waitForCommandFailure(t *testing.T, client *Client) error {
++	t.Helper()
++	deadline := time.Now().Add(time.Second)
++	for time.Now().Before(deadline) {
++		client.speakerMu.Lock()
++		err := client.commandFailure
++		client.speakerMu.Unlock()
++		if err != nil {
++			return err
++		}
++		time.Sleep(time.Millisecond)
++	}
++	t.Fatal("command failure was not published")
++	return nil
++}
++
++func TestSpeakerLifecycleStartsAndStopsExactlyOnce(t *testing.T) {
++	conn := newLifecycleReviewConn()
++	client := newLifecycleReviewClient(conn)
++	t.Cleanup(func() { _ = client.Close() })
++
++	session, err := client.StartSpeaker()
++	if err != nil {
++		t.Fatal(err)
++	}
++	if err := session.Stop(); err != nil {
++		t.Fatal(err)
++	}
++
++	if conn.startRequests != 1 || conn.startResponses != 1 || conn.stopCommands != 1 {
++		t.Fatalf("start/accepted-response/stop = %d/%d/%d, want 1/1/1", conn.startRequests, conn.startResponses, conn.stopCommands)
++	}
++}
++
++func TestSpeakerLifecycleAcceptsCS2WireOrderResponse(t *testing.T) {
++	conn := newLifecycleReviewConn()
++	conn.responseOuter = 0x01100000
++	client := newLifecycleReviewClient(conn)
++	t.Cleanup(func() { _ = client.Close() })
++
++	session, err := client.StartSpeaker()
++	if err != nil {
++		t.Fatal(err)
++	}
++	if err := session.Stop(); err != nil {
++		t.Fatal(err)
++	}
++}
++
++func TestSpeakerLifecycleRejectsOverlappingStart(t *testing.T) {
++	conn := newLifecycleReviewConn()
++	client := newLifecycleReviewClient(conn)
++	t.Cleanup(func() { _ = client.Close() })
++
++	if _, err := client.StartSpeaker(); err != nil {
++		t.Fatal(err)
++	}
++	if _, err := client.StartSpeaker(); err == nil {
++		t.Fatal("overlapping speaker start was accepted")
++	}
++}
++
++func TestSpeakerLifecycleStopsWritesAfterStop(t *testing.T) {
++	conn := newLifecycleReviewConn()
++	client := newLifecycleReviewClient(conn)
++	t.Cleanup(func() { _ = client.Close() })
++
++	session, err := client.StartSpeaker()
++	if err != nil {
++		t.Fatal(err)
++	}
++	if err := session.Stop(); err != nil {
++		t.Fatal(err)
++	}
++	writesBefore := conn.packetWrites
++	_ = session.WriteAudio(codecPCMA, make([]byte, 320))
++	if conn.packetWrites != writesBefore {
++		t.Fatalf("audio writes after stop = %d, want 0", conn.packetWrites-writesBefore)
++	}
++}
++
++func TestSpeakerLifecycleSurfacesFirstWriteError(t *testing.T) {
++	conn := newLifecycleReviewConn()
++	conn.writePacketErr = errors.New("synthetic channel-3 failure")
++	client := newLifecycleReviewClient(conn)
++	t.Cleanup(func() { _ = client.Close() })
++	producer := &Producer{
++		Connection: core.Connection{Transport: conn},
++		client:     client,
++	}
++	codec := &core.Codec{Name: core.CodecPCMA, ClockRate: 8000}
++	media := &core.Media{Kind: core.KindAudio, Direction: core.DirectionSendonly, Codecs: []*core.Codec{codec}}
++	track := core.NewReceiver(media, codec)
++
++	if err := producer.AddTrack(media, codec, track); err != nil {
++		t.Fatal(err)
++	}
++	producer.Senders[0].Handler(&rtp.Packet{Payload: make([]byte, 320)})
++	if err := producer.SettleBackchannel(); !errors.Is(err, errSpeakerAudioWrite) {
++		t.Fatalf("stop error = %v, want first audio write error", err)
++	}
++	if len(producer.Senders) != 0 {
++		t.Fatalf("residual sender count = %d, want 0", len(producer.Senders))
++	}
++}
++
++func TestSpeakerLifecycleKeepsFirstFailureStage(t *testing.T) {
++	conn := newLifecycleReviewConn()
++	conn.writePacketErr = errors.New("synthetic channel-3 failure")
++	conn.stopCommandErr = errors.New("synthetic stop failure")
++	client := newLifecycleReviewClient(conn)
++	t.Cleanup(func() { _ = client.Close() })
++	session, err := client.StartSpeaker()
++	if err != nil {
++		t.Fatal(err)
++	}
++	if err := session.WriteAudio(codecPCMA, make([]byte, 320)); !errors.Is(err, errSpeakerAudioWrite) {
++		t.Fatalf("write error = %v, want audio write failure", err)
++	}
++	if err := session.Stop(); !errors.Is(err, errSpeakerAudioWrite) {
++		t.Fatalf("stop error = %v, want first audio write failure", err)
++	}
++	if stage := client.SpeakerLifecycleStatus().LastFailureStage; stage != "audio_write" {
++		t.Fatalf("last failure stage = %q, want first audio_write stage", stage)
++	}
++}
++
++func TestRepeatedSpeakerLifecycleLeavesNoActiveGeneration(t *testing.T) {
++	conn := newLifecycleReviewConn()
++	client := newLifecycleReviewClient(conn)
++	t.Cleanup(func() { _ = client.Close() })
++
++	for i := 0; i < 20; i++ {
++		session, err := client.StartSpeaker()
++		if err != nil {
++			t.Fatalf("cycle %d start: %v", i, err)
++		}
++		if err := session.Stop(); err != nil {
++			t.Fatalf("cycle %d stop: %v", i, err)
++		}
++	}
++	if conn.startRequests != 20 || conn.startResponses != 20 || conn.stopCommands != 20 || conn.pendingResponses != 0 {
++		t.Fatalf("starts/responses/stops/pending = %d/%d/%d/%d, want 20/20/20/0", conn.startRequests, conn.startResponses, conn.stopCommands, conn.pendingResponses)
++	}
++}
++
++func TestSpeakerLifecycleRejectsUnknownCommandResponse(t *testing.T) {
++	conn := newLifecycleReviewConn()
++	conn.responseCommand = 0x7fffffff
++	client := newLifecycleReviewClient(conn)
++	t.Cleanup(func() { _ = client.Close() })
++
++	if _, err := client.StartSpeaker(); !errors.Is(err, errSpeakerCommandResponse) {
++		t.Fatalf("start error = %v, want fixed command-response failure", err)
++	}
++	starts, _, stops, pending, writes := conn.snapshot()
++	if starts != 1 || stops != 1 || pending != 0 || writes != 0 {
++		t.Fatalf("starts/stops/pending/writes = %d/%d/%d/%d, want 1/1/0/0", starts, stops, pending, writes)
++	}
++}
++
++func TestSpeakerLifecycleRejectsDuplicateStartResponse(t *testing.T) {
++	conn := newLifecycleReviewConn()
++	conn.responseCopies = 2
++	client := newLifecycleReviewClient(conn)
++	t.Cleanup(func() { _ = client.Close() })
++
++	session, startErr := client.StartSpeaker()
++	if startErr == nil {
++		if err := waitForCommandFailure(t, client); !errors.Is(err, errSpeakerCommandResponse) {
++			t.Fatalf("command failure = %v", err)
++		}
++		if err := session.WriteAudio(codecPCMA, make([]byte, 320)); !errors.Is(err, errSpeakerCommandResponse) {
++			t.Fatalf("write error = %v, want fixed command-response failure", err)
++		}
++		_ = session.Stop()
++	} else if !errors.Is(startErr, errSpeakerCommandResponse) {
++		t.Fatalf("start error = %v, want fixed command-response failure", startErr)
++	}
++	_, responses, stops, pending, writes := conn.snapshot()
++	if responses != 2 || stops != 1 || pending != 0 || writes != 0 {
++		t.Fatalf("responses/stops/pending/writes = %d/%d/%d/%d, want 2/1/0/0", responses, stops, pending, writes)
++	}
++}
++
++func TestSpeakerLifecycleConnectionCloseFailsActiveGeneration(t *testing.T) {
++	conn := newLifecycleReviewConn()
++	client := newLifecycleReviewClient(conn)
++	session, err := client.StartSpeaker()
++	if err != nil {
++		t.Fatal(err)
++	}
++	if err := client.Close(); err != nil {
++		t.Fatal(err)
++	}
++	if err := waitForCommandFailure(t, client); !errors.Is(err, errSpeakerCommandResponse) {
++		t.Fatalf("command failure = %v", err)
++	}
++	if err := session.WriteAudio(codecPCMA, make([]byte, 320)); !errors.Is(err, errSpeakerCommandResponse) {
++		t.Fatalf("write error = %v, want fixed command-response failure", err)
++	}
++}
++
++func TestSpeakerLifecycleStopIsIdempotent(t *testing.T) {
++	conn := newLifecycleReviewConn()
++	client := newLifecycleReviewClient(conn)
++	t.Cleanup(func() { _ = client.Close() })
++	session, err := client.StartSpeaker()
++	if err != nil {
++		t.Fatal(err)
++	}
++	if err := session.Stop(); err != nil {
++		t.Fatal(err)
++	}
++	if err := session.Stop(); err != nil {
++		t.Fatal(err)
++	}
++	_, _, stops, _, _ := conn.snapshot()
++	if stops != 1 {
++		t.Fatalf("stop commands = %d, want 1", stops)
++	}
++}
++
++func TestSpeakerLifecycleStopWaitsForInflightWrite(t *testing.T) {
++	conn := newLifecycleReviewConn()
++	conn.writeEntered = make(chan struct{}, 1)
++	conn.writeRelease = make(chan struct{})
++	client := newLifecycleReviewClient(conn)
++	t.Cleanup(func() { _ = client.Close() })
++	session, err := client.StartSpeaker()
++	if err != nil {
++		t.Fatal(err)
++	}
++
++	writeDone := make(chan error, 1)
++	go func() { writeDone <- session.WriteAudio(codecPCMA, make([]byte, 320)) }()
++	select {
++	case <-conn.writeEntered:
++	case <-time.After(time.Second):
++		t.Fatal("audio write did not enter transport")
++	}
++	stopDone := make(chan error, 1)
++	go func() { stopDone <- session.Stop() }()
++	time.Sleep(10 * time.Millisecond)
++	_, _, stopsBeforeRelease, _, _ := conn.snapshot()
++	if stopsBeforeRelease != 0 {
++		t.Fatal("speaker stop overtook in-flight audio write")
++	}
++	close(conn.writeRelease)
++	if err := <-writeDone; err != nil {
++		t.Fatal(err)
++	}
++	if err := <-stopDone; err != nil {
++		t.Fatal(err)
++	}
++	_, _, stops, _, writes := conn.snapshot()
++	if stops != 1 || writes != 1 {
++		t.Fatalf("stops/writes = %d/%d, want 1/1", stops, writes)
++	}
++}
++
++func TestSpeakerLifecycleProducerSettlementRejectsQueuedWriteBeforeSenderDrain(t *testing.T) {
++	conn := newLifecycleReviewConn()
++	conn.writeEntered = make(chan struct{}, 1)
++	conn.writeRelease = make(chan struct{})
++	client := newLifecycleReviewClient(conn)
++	t.Cleanup(func() { _ = client.Close() })
++	producer := &Producer{Connection: core.Connection{Transport: conn}, client: client}
++	codec := &core.Codec{Name: core.CodecPCMA, ClockRate: 8000}
++	media := &core.Media{Kind: core.KindAudio, Direction: core.DirectionSendonly, Codecs: []*core.Codec{codec}}
++	track := core.NewReceiver(media, codec)
++	if err := producer.AddTrack(media, codec, track); err != nil {
++		t.Fatal(err)
++	}
++
++	track.WriteRTP(&rtp.Packet{Payload: make([]byte, 320)})
++	select {
++	case <-conn.writeEntered:
++	case <-time.After(time.Second):
++		t.Fatal("first queued write did not enter transport")
++	}
++	track.WriteRTP(&rtp.Packet{Payload: make([]byte, 320)})
++	settled := make(chan error, 1)
++	go func() { settled <- producer.SettleBackchannel() }()
++	deadline := time.Now().Add(time.Second)
++	for client.SpeakerLifecycleStatus().SpeakerState != "stopping" && time.Now().Before(deadline) {
++		time.Sleep(time.Millisecond)
++	}
++	if client.SpeakerLifecycleStatus().SpeakerState != "stopping" {
++		close(conn.writeRelease)
++		<-settled
++		t.Fatal("settlement did not disable writes before sender drain")
++	}
++	close(conn.writeRelease)
++	if err := <-settled; err != nil {
++		t.Fatal(err)
++	}
++	_, _, _, _, writes := conn.snapshot()
++	if writes != 1 {
++		t.Fatalf("transport writes = %d, want only the in-flight write", writes)
++	}
++}
++
++func TestSpeakerLifecycleConcurrentStopWaitsAndSendsOneCommand(t *testing.T) {
++	conn := newLifecycleReviewConn()
++	conn.stopEntered = make(chan struct{}, 1)
++	conn.stopRelease = make(chan struct{})
++	client := newLifecycleReviewClient(conn)
++	t.Cleanup(func() { _ = client.Close() })
++	session, err := client.StartSpeaker()
++	if err != nil {
++		t.Fatal(err)
++	}
++
++	first := make(chan error, 1)
++	second := make(chan error, 1)
++	go func() { first <- session.Stop() }()
++	select {
++	case <-conn.stopEntered:
++	case <-time.After(time.Second):
++		t.Fatal("first stop did not enter transport")
++	}
++	go func() { second <- session.Stop() }()
++	time.Sleep(10 * time.Millisecond)
++	close(conn.stopRelease)
++	if err := <-first; err != nil {
++		t.Fatal(err)
++	}
++	if err := <-second; err != nil {
++		t.Fatal(err)
++	}
++	_, _, stops, _, _ := conn.snapshot()
++	if stops != 1 {
++		t.Fatalf("stop commands = %d, want 1", stops)
++	}
++}
++
++func TestSpeakerLifecycleDiagnosticsAreBoundedAndClosed(t *testing.T) {
++	conn := newLifecycleReviewConn()
++	client := newLifecycleReviewClient(conn)
++	t.Cleanup(func() { _ = client.Close() })
++	producer := &Producer{
++		Connection: core.Connection{Protocol: "synthetic", Transport: conn},
++		client:     client,
++	}
++	codec := &core.Codec{Name: core.CodecPCMA, ClockRate: 8000}
++	media := &core.Media{Kind: core.KindAudio, Direction: core.DirectionSendonly, Codecs: []*core.Codec{codec}}
++	track := core.NewReceiver(media, codec)
++	if err := producer.AddTrack(media, codec, track); err != nil {
++		t.Fatal(err)
++	}
++	if err := producer.SettleBackchannel(); err != nil {
++		t.Fatal(err)
++	}
++
++	payload, err := json.Marshal(producer)
++	if err != nil {
++		t.Fatal(err)
++	}
++	var document map[string]any
++	if err := json.Unmarshal(payload, &document); err != nil {
++		t.Fatal(err)
++	}
++	want := map[string]any{
++		"speaker_state":              "closed",
++		"speaker_session_generation": float64(1),
++		"speaker_start_requests":     float64(1),
++		"speaker_start_responses":    float64(1),
++		"speaker_stop_commands":      float64(1),
++		"speaker_write_failures":     float64(0),
++		"speaker_stop_failures":      float64(0),
++		"pending_command_responses":  float64(0),
++		"residual_sender_count":      float64(0),
++		"last_failure_stage":         "none",
++		"producer_generation":        float64(1),
++	}
++	for key, value := range want {
++		if document[key] != value {
++			t.Fatalf("%s = %#v, want %#v", key, document[key], value)
++		}
++	}
++	for _, forbidden := range []string{"command_payload", "response_body", "audio_bytes", "url", "error"} {
++		if _, ok := document[forbidden]; ok {
++			t.Fatalf("forbidden diagnostic field %q", forbidden)
++		}
++	}
++}
+diff --git a/pkg/xiaomi/miss/producer.go b/pkg/xiaomi/miss/producer.go
+index dcea284e..8f6ad30a 100644
+--- a/pkg/xiaomi/miss/producer.go
++++ b/pkg/xiaomi/miss/producer.go
+@@ -1,8 +1,10 @@
+ package miss
+ 
+ import (
++	"encoding/json"
+ 	"fmt"
+ 	"net/url"
++	"sync"
+ 	"time"
+ 
+ 	"github.com/AlexxIT/go2rtc/pkg/core"
+@@ -15,6 +17,32 @@ import (
+ type Producer struct {
+ 	core.Connection
+ 	client *Client
++
++	speakerMu      sync.Mutex
++	speakerSession *SpeakerSession
++	speakerSender  *core.Sender
++}
++
++func (p *Producer) MarshalJSON() ([]byte, error) {
++	p.speakerMu.Lock()
++	residual := uint64(0)
++	if p.speakerSession != nil || p.speakerSender != nil {
++		residual = 1
++	}
++	p.speakerMu.Unlock()
++	status := p.client.SpeakerLifecycleStatus()
++	type connectionJSON core.Connection
++	return json.Marshal(struct {
++		connectionJSON
++		SpeakerLifecycleStatus
++		ResidualSenderCount uint64 `json:"residual_sender_count"`
++		ProducerGeneration  uint64 `json:"producer_generation"`
++	}{
++		connectionJSON:         connectionJSON(p.Connection),
++		SpeakerLifecycleStatus: status,
++		ResidualSenderCount:    residual,
++		ProducerGeneration:     status.SpeakerSessionGeneration,
++	})
+ }
+ 
+ func Dial(rawURL string) (core.Producer, error) {

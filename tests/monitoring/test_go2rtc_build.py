@@ -3,6 +3,7 @@ from __future__ import annotations
 import hashlib
 import json
 import plistlib
+import re
 import subprocess
 import sys
 from datetime import datetime, timezone
@@ -38,65 +39,46 @@ def _git(repo: Path, *args: str) -> str:
     return result.stdout.strip()
 
 
+def _materialize_patch_preimage(source: Path, content: str) -> None:
+    sections = re.split(r"(?m)(?=^diff --git )", content)
+    for section in sections:
+        match = re.match(r"diff --git a/(.+) b/(.+)\n", section)
+        if match is None or "\n--- /dev/null\n" in section:
+            continue
+        relative = match.group(1)
+        hunks = list(
+            re.finditer(
+                r"(?m)^@@ -(\d+)(?:,(\d+))? \+\d+(?:,\d+)? @@.*\n",
+                section,
+            )
+        )
+        lines: list[str] = []
+        for index, hunk in enumerate(hunks):
+            old_start = int(hunk.group(1))
+            old_count = int(hunk.group(2) or "1")
+            body_end = hunks[index + 1].start() if index + 1 < len(hunks) else len(section)
+            old_lines = [
+                line[1:]
+                for line in section[hunk.end() : body_end].splitlines(keepends=True)
+                if line.startswith((" ", "-"))
+            ]
+            assert len(old_lines) == old_count
+            while len(lines) < old_start - 1:
+                lines.append("// synthetic upstream filler\n")
+            assert len(lines) == old_start - 1
+            lines.extend(old_lines)
+        path = source / relative
+        path.parent.mkdir(parents=True, exist_ok=True)
+        path.write_text("".join(lines), encoding="utf-8")
+
+
 def _source_repo(tmp_path: Path) -> tuple[Path, str]:
     source = tmp_path / "go2rtc"
-    (source / "pkg/xiaomi/miss/cs2").mkdir(parents=True)
-    (source / "pkg/iso").mkdir(parents=True)
-    (source / "pkg/xiaomi/miss/cs2/conn.go").write_text(
-        """func newUDPConn(host string, port int) (net.Conn, error) {
-\t// We using raw net.UDPConn, because RemoteAddr should be changed during handshake.
-\tconn, err := net.ListenUDP("udp", nil)
-\tif err != nil {
-\t\treturn nil, err
-\t}
-
-\taddr, err := net.ResolveUDPAddr("udp", fmt.Sprintf("%s:%d", host, port))
-\tif err != nil {
-\t\treturn nil, err
-\t}
-
-\treturn &udpConn{UDPConn: conn, addr: addr}, nil
-}
-""",
-        encoding="utf-8",
+    source.mkdir()
+    content = (ROOT / "patches/go2rtc-macos-hybrid-hd.patch").read_text(
+        encoding="utf-8"
     )
-    cs2_path = source / "pkg/xiaomi/miss/cs2/conn.go"
-    cs2_path.write_text(
-        cs2_path.read_text(encoding="utf-8")
-        + """
-const hdrSize = 32
-
-func (c *Conn) WritePacket(hdr, payload []byte) error {
-	const offset = 12
-
-	n := hdrSize + uint32(len(payload))
-	req := make([]byte, n+offset)
-	req[5] = 3
-	c.seqCh3++
-	binary.BigEndian.PutUint32(req[8:], n)
-	copy(req[offset:], hdr)
-	copy(req[offset+hdrSize:], hdr)
-
-	_, err := c.Conn.Write(req)
-	return err
-}
-""",
-        encoding="utf-8",
-    )
-    (source / "pkg/iso/codecs.go").write_text(
-        """func (m *Movie) WriteVideo(codec string) {
-	switch codec {
-	case core.CodecH264:
-		m.StartAtom("avc1")
-	case core.CodecH265:
-		m.StartAtom("hev1")
-	default:
-		panic("unsupported iso video: " + codec)
-	}
-}
-""",
-        encoding="utf-8",
-    )
+    _materialize_patch_preimage(source, content)
     _git(source, "init", "-q")
     _git(source, "config", "user.email", "tests@example.invalid")
     _git(source, "config", "user.name", "Tests")
@@ -111,43 +93,12 @@ def _compat_patch(
     content = (ROOT / "patches/go2rtc-macos-hybrid-hd.patch").read_text(
         encoding="utf-8"
     )
-    fixture_lines = (
-        path.parent / "go2rtc/pkg/xiaomi/miss/cs2/conn.go"
-    ).read_text(encoding="utf-8").splitlines()
-    payload_line = fixture_lines.index(
-        "\tcopy(req[offset+hdrSize:], hdr)"
-    ) + 1
-    content = content.replace(
-        "@@ -268 +268 @@", f"@@ -{payload_line} +{payload_line} @@"
-    )
-    content = content.replace(
-        (
-            "@@ -299,7 +299,7 @@ func marshalCmd(channel byte, seq uint16, "
-            "cmd uint32, payload []byte) []byte {\n"
-            " \n"
-            " func newUDPConn(host string, port int) (net.Conn, error) {\n"
-            " \t// We using raw net.UDPConn, because RemoteAddr should be changed "
-            "during handshake.\n"
-            '-\tconn, err := net.ListenUDP("udp", nil)\n'
-            '+\tconn, err := net.ListenUDP("udp4", nil)\n'
-            " \tif err != nil {\n"
-            " \t\treturn nil, err\n"
-            " \t}\n"
-        ),
-        """@@ -1,6 +1,6 @@
- func newUDPConn(host string, port int) (net.Conn, error) {
- \t// We using raw net.UDPConn, because RemoteAddr should be changed during handshake.
--\tconn, err := net.ListenUDP(\"udp\", nil)
-+\tconn, err := net.ListenUDP(\"udp4\", nil)
- \tif err != nil {
- \t\treturn nil, err
- \t}
-""",
-    )
     if not include_regression:
-        content = content.split(
-            "diff --git a/pkg/xiaomi/miss/cs2/conn_test.go", 1
-        )[0]
+        marker = "diff --git a/pkg/xiaomi/miss/cs2/conn_test.go"
+        sections = re.split(r"(?m)(?=^diff --git )", content)
+        content = "".join(
+            section for section in sections if not section.startswith(marker)
+        )
     if extra_file:
         content += """diff --git a/README.md b/README.md
 --- /dev/null
@@ -171,7 +122,6 @@ def test_verify_and_apply_patch_changes_only_approved_protocol_paths(
     cs2 = (source / "pkg/xiaomi/miss/cs2/conn.go").read_text(encoding="utf-8")
     assert 'ListenUDP("udp4", nil)' in cs2
     assert 'ListenUDP("udp", nil)' not in cs2
-    assert 'ResolveUDPAddr("udp",' in cs2
     assert 'copy(req[offset+hdrSize:], payload)' in cs2
     assert 'copy(req[offset+hdrSize:], hdr)' not in cs2
     assert 'StartAtom("hvc1")' in (source / "pkg/iso/codecs.go").read_text(
@@ -182,18 +132,50 @@ def test_verify_and_apply_patch_changes_only_approved_protocol_paths(
         _git(source, "ls-files", "--others", "--exclude-standard").splitlines()
     )
     assert sorted(changed) == [
+        "internal/streams/play.go",
+        "internal/streams/play_lifecycle_review_test.go",
+        "internal/streams/stream.go",
         "pkg/iso/codecs.go",
+        "pkg/xiaomi/miss/backchannel.go",
+        "pkg/xiaomi/miss/client.go",
         "pkg/xiaomi/miss/cs2/conn.go",
         "pkg/xiaomi/miss/cs2/conn_test.go",
+        "pkg/xiaomi/miss/cs2/lifecycle_review_test.go",
+        "pkg/xiaomi/miss/lifecycle_review_test.go",
+        "pkg/xiaomi/miss/producer.go",
     ]
 
 
 def test_patch_scope_is_exact_and_requires_the_upstream_regression() -> None:
     assert ALLOWED_PATCH_CHANGES == {
+        "internal/streams/play.go": (165, 13),
+        "internal/streams/play_lifecycle_review_test.go": (237, 0),
+        "internal/streams/stream.go": (1, 0),
         "pkg/iso/codecs.go": (1, 1),
-        "pkg/xiaomi/miss/cs2/conn.go": (2, 2),
+        "pkg/xiaomi/miss/backchannel.go": (49, 9),
+        "pkg/xiaomi/miss/client.go": (439, 4),
+        "pkg/xiaomi/miss/cs2/conn.go": (58, 12),
         "pkg/xiaomi/miss/cs2/conn_test.go": (36, 0),
+        "pkg/xiaomi/miss/cs2/lifecycle_review_test.go": (135, 0),
+        "pkg/xiaomi/miss/lifecycle_review_test.go": (695, 0),
+        "pkg/xiaomi/miss/producer.go": (28, 0),
     }
+
+
+def test_patch_numstat_rejects_duplicate_path_entries(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    output = "1\t0\tpkg/xiaomi/miss/client.go\n2\t0\tpkg/xiaomi/miss/client.go\n"
+    monkeypatch.setattr(
+        go2rtc_build_module.subprocess,
+        "run",
+        lambda *_args, **_kwargs: subprocess.CompletedProcess(
+            ["git", "apply", "--numstat"], 0, stdout=output
+        ),
+    )
+
+    with pytest.raises(Go2RTCBuildError, match="^PATCH_SCOPE_INVALID$"):
+        go2rtc_build_module._patch_numstat(tmp_path, tmp_path / "patch")
 
 
 def test_verify_and_apply_patch_rejects_missing_protocol_regression(
@@ -213,7 +195,7 @@ def test_verify_and_apply_patch_rejects_missing_protocol_regression(
     assert _git(source, "status", "--porcelain") == ""
 
 
-def test_run_upstream_protocol_gate_uses_one_fixed_go_command(tmp_path: Path) -> None:
+def test_run_upstream_protocol_gate_uses_fixed_lifecycle_commands(tmp_path: Path) -> None:
     calls: list[tuple[list[str], dict[str, object]]] = []
 
     def runner(args: list[str], **kwargs: object) -> subprocess.CompletedProcess[bytes]:
@@ -229,7 +211,7 @@ def test_run_upstream_protocol_gate_uses_one_fixed_go_command(tmp_path: Path) ->
                 "test",
                 "./pkg/xiaomi/miss/cs2",
                 "-run",
-                "TestWritePacketCopiesPayload",
+                "^(TestWritePacketCopiesPayload|TestRepeatedSpeakerResponsesDoNotCloseMediaChannel|TestCommandChannel)",
                 "-count=1",
             ],
             {
@@ -240,7 +222,43 @@ def test_run_upstream_protocol_gate_uses_one_fixed_go_command(tmp_path: Path) ->
                 "stderr": subprocess.DEVNULL,
                 "timeout": 120,
             },
-        )
+        ),
+        (
+            [
+                "/fixed/go",
+                "test",
+                "./pkg/xiaomi/miss",
+                "-run",
+                "^(TestSpeakerLifecycle|TestRepeatedSpeakerLifecycle)",
+                "-count=1",
+            ],
+            {
+                "cwd": tmp_path,
+                "check": True,
+                "stdin": subprocess.DEVNULL,
+                "stdout": subprocess.DEVNULL,
+                "stderr": subprocess.DEVNULL,
+                "timeout": 120,
+            },
+        ),
+        (
+            [
+                "/fixed/go",
+                "test",
+                "./internal/streams",
+                "-run",
+                "^(TestPlayEmpty|TestNaturalSourceEnd|TestCancelAndNaturalEnd)",
+                "-count=1",
+            ],
+            {
+                "cwd": tmp_path,
+                "check": True,
+                "stdin": subprocess.DEVNULL,
+                "stdout": subprocess.DEVNULL,
+                "stderr": subprocess.DEVNULL,
+                "timeout": 120,
+            },
+        ),
     ]
 
 

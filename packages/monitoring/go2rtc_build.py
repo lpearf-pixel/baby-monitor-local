@@ -18,9 +18,17 @@ GO2RTC_DESIGNATED_REQUIREMENT = (
     f'=designated => identifier "{GO2RTC_BUNDLE_IDENTIFIER}"'
 )
 ALLOWED_PATCH_CHANGES = {
+    "internal/streams/play.go": (165, 13),
+    "internal/streams/play_lifecycle_review_test.go": (237, 0),
+    "internal/streams/stream.go": (1, 0),
     "pkg/iso/codecs.go": (1, 1),
-    "pkg/xiaomi/miss/cs2/conn.go": (2, 2),
+    "pkg/xiaomi/miss/backchannel.go": (49, 9),
+    "pkg/xiaomi/miss/client.go": (439, 4),
+    "pkg/xiaomi/miss/cs2/conn.go": (58, 12),
     "pkg/xiaomi/miss/cs2/conn_test.go": (36, 0),
+    "pkg/xiaomi/miss/cs2/lifecycle_review_test.go": (135, 0),
+    "pkg/xiaomi/miss/lifecycle_review_test.go": (695, 0),
+    "pkg/xiaomi/miss/producer.go": (28, 0),
 }
 PROTOCOL_GATE_TIMEOUT_SECONDS = 120
 
@@ -254,6 +262,8 @@ def _patch_numstat(source_dir: Path, patch_path: Path) -> dict[str, tuple[int, i
         fields = line.split("\t", 2)
         if len(fields) != 3 or not fields[0].isdigit() or not fields[1].isdigit():
             raise Go2RTCBuildError("PATCH_SCOPE_INVALID")
+        if fields[2] in entries:
+            raise Go2RTCBuildError("PATCH_SCOPE_INVALID")
         entries[fields[2]] = (int(fields[0]), int(fields[1]))
     return entries
 
@@ -264,23 +274,43 @@ def run_upstream_protocol_gate(
     *,
     runner: Callable[..., subprocess.CompletedProcess[Any]] = subprocess.run,
 ) -> None:
+    commands = (
+        [
+            go,
+            "test",
+            "./pkg/xiaomi/miss/cs2",
+            "-run",
+            "^(TestWritePacketCopiesPayload|TestRepeatedSpeakerResponsesDoNotCloseMediaChannel|TestCommandChannel)",
+            "-count=1",
+        ],
+        [
+            go,
+            "test",
+            "./pkg/xiaomi/miss",
+            "-run",
+            "^(TestSpeakerLifecycle|TestRepeatedSpeakerLifecycle)",
+            "-count=1",
+        ],
+        [
+            go,
+            "test",
+            "./internal/streams",
+            "-run",
+            "^(TestPlayEmpty|TestNaturalSourceEnd|TestCancelAndNaturalEnd)",
+            "-count=1",
+        ],
+    )
     try:
-        runner(
-            [
-                go,
-                "test",
-                "./pkg/xiaomi/miss/cs2",
-                "-run",
-                "TestWritePacketCopiesPayload",
-                "-count=1",
-            ],
-            cwd=source_dir,
-            check=True,
-            stdin=subprocess.DEVNULL,
-            stdout=subprocess.DEVNULL,
-            stderr=subprocess.DEVNULL,
-            timeout=PROTOCOL_GATE_TIMEOUT_SECONDS,
-        )
+        for command in commands:
+            runner(
+                command,
+                cwd=source_dir,
+                check=True,
+                stdin=subprocess.DEVNULL,
+                stdout=subprocess.DEVNULL,
+                stderr=subprocess.DEVNULL,
+                timeout=PROTOCOL_GATE_TIMEOUT_SECONDS,
+            )
     except (OSError, subprocess.SubprocessError) as exc:
         raise Go2RTCBuildError("GO2RTC_PROTOCOL_GATE_FAILED") from exc
 
@@ -308,8 +338,14 @@ def verify_and_apply_patch(
 
     cs2_path = source_dir / "pkg/xiaomi/miss/cs2/conn.go"
     codecs_path = source_dir / "pkg/iso/codecs.go"
+    client_path = source_dir / "pkg/xiaomi/miss/client.go"
+    backchannel_path = source_dir / "pkg/xiaomi/miss/backchannel.go"
+    play_path = source_dir / "internal/streams/play.go"
     cs2_before = cs2_path.read_text(encoding="utf-8")
     codecs_before = codecs_path.read_text(encoding="utf-8")
+    client_before = client_path.read_text(encoding="utf-8")
+    backchannel_before = backchannel_path.read_text(encoding="utf-8")
+    play_before = play_path.read_text(encoding="utf-8")
     if (
         cs2_before.count('net.ListenUDP("udp", nil)') != 1
         or 'net.ListenUDP("udp4", nil)' in cs2_before
@@ -317,6 +353,12 @@ def verify_and_apply_patch(
         or 'copy(req[offset+hdrSize:], payload)' in cs2_before
         or codecs_before.count('m.StartAtom("hev1")') != 1
         or 'm.StartAtom("hvc1")' in codecs_before
+        or client_before.count("func (c *Client) StartSpeaker() error") != 1
+        or "startCommandDispatcher" in client_before
+        or backchannel_before.count("_ = p.client.WriteAudio") != 4
+        or "SettleBackchannel" in backchannel_before
+        or play_before.count('if source = urlOrProd.(string); source == "" {') != 1
+        or "stopPlaybacks" in play_before
     ):
         raise Go2RTCBuildError("PATCH_PRECONDITION_FAILED")
 
@@ -334,17 +376,49 @@ def verify_and_apply_patch(
 
     cs2_after = cs2_path.read_text(encoding="utf-8")
     codecs_after = codecs_path.read_text(encoding="utf-8")
-    regression_path = source_dir / "pkg/xiaomi/miss/cs2/conn_test.go"
+    client_after = client_path.read_text(encoding="utf-8")
+    backchannel_after = backchannel_path.read_text(encoding="utf-8")
+    play_after = play_path.read_text(encoding="utf-8")
+    regression_paths = (
+        source_dir / "pkg/xiaomi/miss/cs2/conn_test.go",
+        source_dir / "pkg/xiaomi/miss/cs2/lifecycle_review_test.go",
+        source_dir / "pkg/xiaomi/miss/lifecycle_review_test.go",
+        source_dir / "internal/streams/play_lifecycle_review_test.go",
+    )
     try:
-        regression_after = regression_path.read_text(encoding="utf-8")
+        regressions_after = "\n".join(
+            path.read_text(encoding="utf-8") for path in regression_paths
+        )
     except OSError:
-        regression_after = ""
+        regressions_after = ""
     required_regression_fragments = (
         "func TestWritePacketCopiesPayload(t *testing.T)",
         "reader, writer := net.Pipe()",
         "got := make([]byte, 12+len(header)+len(payload))",
         "bytes.Equal(got[12:12+hdrSize], header)",
         "bytes.Equal(got[12+hdrSize:], payload)",
+        "func TestRepeatedSpeakerResponsesDoNotCloseMediaChannel(t *testing.T)",
+        "func TestCommandChannelOverflowDropsCompleteFrame(t *testing.T)",
+        "func TestCommandChannelRejectsOversizedFrameWithoutRetainingBytes(t *testing.T)",
+        "func TestCommandChannelPreservesIngressTimeAcrossDelayedRead(t *testing.T)",
+        "func TestSpeakerLifecycleStartsAndStopsExactlyOnce(t *testing.T)",
+        "func TestSpeakerLifecycleAcceptsCS2WireOrderResponse(t *testing.T)",
+        "func TestSpeakerLifecycleRejectsOverlappingStart(t *testing.T)",
+        "func TestSpeakerLifecycleStopsWritesAfterStop(t *testing.T)",
+        "func TestSpeakerLifecycleSurfacesFirstWriteError(t *testing.T)",
+        "func TestRepeatedSpeakerLifecycleLeavesNoActiveGeneration(t *testing.T)",
+        "func TestSpeakerLifecycleConcurrentStopWaitsAndSendsOneCommand(t *testing.T)",
+        "func TestSpeakerLifecycleProducerSettlementRejectsQueuedWriteBeforeSenderDrain(t *testing.T)",
+        "func TestSpeakerLifecycleRejectsResponseBeforeTransportAck(t *testing.T)",
+        "func TestSpeakerLifecycleRejectsQueuedPreAckResponseAfterAck(t *testing.T)",
+        "func TestSpeakerLifecycleRejectsPreviousResponseDuringQuiescence(t *testing.T)",
+        "func TestSpeakerLifecycleKeepsFirstFailureStage(t *testing.T)",
+        "func TestPlayEmptySettlesBackchannelBeforeSuccess(t *testing.T)",
+        "func TestPlayEmptyPropagatesBackchannelStopFailure(t *testing.T)",
+        "func TestPlayEmptyTimesOutBlockedSettlementAndKeepsGenerationBusy(t *testing.T)",
+        "func TestNaturalSourceFailurePropagatesOnEmptyStop(t *testing.T)",
+        "func TestNaturalSourceEndSettlesBackchannelOnce(t *testing.T)",
+        "func TestCancelAndNaturalEndDoNotDoubleStop(t *testing.T)",
     )
     if (
         'net.ListenUDP("udp", nil)' in cs2_after
@@ -353,8 +427,12 @@ def verify_and_apply_patch(
         or cs2_after.count('copy(req[offset+hdrSize:], payload)') != 1
         or 'm.StartAtom("hev1")' in codecs_after
         or codecs_after.count('m.StartAtom("hvc1")') != 1
+        or client_after.count("func (c *Client) startCommandDispatcher()") != 1
+        or client_after.count("func (c *Client) StartSpeaker() (*SpeakerSession, error)") != 1
+        or backchannel_after.count("func (p *Producer) SettleBackchannel() error") != 1
+        or play_after.count("func (s *Stream) stopPlaybacks() error") != 1
         or any(
-            regression_after.count(fragment) != 1
+            regressions_after.count(fragment) != 1
             for fragment in required_regression_fragments
         )
     ):
