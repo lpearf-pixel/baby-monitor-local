@@ -18,8 +18,8 @@ GO2RTC_DESIGNATED_REQUIREMENT = (
     f'=designated => identifier "{GO2RTC_BUNDLE_IDENTIFIER}"'
 )
 ALLOWED_PATCH_CHANGES = {
-    "internal/streams/play.go": (168, 13),
-    "internal/streams/play_lifecycle_review_test.go": (324, 0),
+    "internal/streams/play.go": (225, 13),
+    "internal/streams/play_lifecycle_review_test.go": (517, 0),
     "internal/streams/producer.go": (6, 1),
     "internal/streams/stream.go": (1, 0),
     "pkg/iso/codecs.go": (1, 1),
@@ -297,7 +297,7 @@ def run_upstream_protocol_gate(
             "test",
             "./internal/streams",
             "-run",
-            "^(TestPlayEmpty|TestNaturalSourceEnd|TestNaturalSourceEOF|TestCancelAndNaturalEnd)",
+            "^(TestPlayEmpty|TestNaturalSourceEnd|TestNaturalSourceEOF|TestCancelAndNaturalEnd|TestLateSettlementRemovesInternalProducerAfterAllWaitersTimeOut)",
             "-count=1",
         ],
     )
@@ -329,7 +329,11 @@ def run_upstream_protocol_diagnostic_gate(
         "TestRepeatedSpeakerLifecycleKeepsMediaReadable|"
         "TestPlaybackSettlementDoesNotReplaceProducer|"
         "TestReconnectBackoffDoesNotDuplicateWorkers|"
-        "TestReadTimeoutClassificationIsPayloadFree)$"
+        "TestReadTimeoutClassificationIsPayloadFree|"
+        "TestLateSettlementRemovesInternalProducerAfterAllWaitersTimeOut|"
+        "TestPlayEmptySettlesSourceAndBackchannelWithinOneBoundedWindow|"
+        "TestPlayEmptyDoesNotStopActivePlaybackSourceTwiceAfterTimeout|"
+        "TestPlayEmptyWaitsForConcurrentSourceFailureBeforeSuccess)$"
     )
     commands = (
         [
@@ -463,6 +467,10 @@ def verify_and_apply_patch(
         "func TestSpeakerLifecycleSurfacesFirstWriteError(t *testing.T)",
         "func TestRepeatedSpeakerLifecycleLeavesNoActiveGeneration(t *testing.T)",
         "func TestSpeakerLifecycleConcurrentStopWaitsAndSendsOneCommand(t *testing.T)",
+        "func TestLateSettlementRemovesInternalProducerAfterAllWaitersTimeOut(t *testing.T)",
+        "func TestPlayEmptySettlesSourceAndBackchannelWithinOneBoundedWindow(t *testing.T)",
+        "func TestPlayEmptyDoesNotStopActivePlaybackSourceTwiceAfterTimeout(t *testing.T)",
+        "func TestPlayEmptyWaitsForConcurrentSourceFailureBeforeSuccess(t *testing.T)",
         "func TestSpeakerLifecycleProducerSettlementRejectsQueuedWriteBeforeSenderDrain(t *testing.T)",
         "func TestSpeakerLifecycleRejectsResponseBeforeTransportAck(t *testing.T)",
         "func TestSpeakerLifecycleRejectsQueuedPreAckResponseAfterAck(t *testing.T)",

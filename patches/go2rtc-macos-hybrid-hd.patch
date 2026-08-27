@@ -1,8 +1,8 @@
 diff --git a/internal/streams/play.go b/internal/streams/play.go
-index 1f8c4ade..a699f9fe 100644
+index 1f8c4ade..80c6f8f8 100644
 --- a/internal/streams/play.go
 +++ b/internal/streams/play.go
-@@ -2,31 +2,165 @@ package streams
+@@ -2,31 +2,229 @@ package streams
  
  import (
  	"errors"
@@ -24,28 +24,34 @@ index 1f8c4ade..a699f9fe 100644
 +}
 +
 +type playback struct {
++	stream      *Stream
 +	source      core.Producer
 +	consumer    core.Consumer
 +	destination core.Producer
 +
-+	once sync.Once
-+	done chan struct{}
-+	mu   sync.Mutex
-+	err  error
++	once         sync.Once
++	done         chan struct{}
++	sourceDone   chan error
++	mu           sync.Mutex
++	err          error
++	stopObserved bool
 +}
 +
 +const playbackSettlementTimeout = 1500 * time.Millisecond
 +
 +func newPlayback(
-+	source core.Producer, consumer core.Consumer, destination core.Producer,
++	stream *Stream, source core.Producer, consumer core.Consumer, destination core.Producer,
 +) *playback {
 +	return &playback{
-+		source: source, consumer: consumer, destination: destination,
-+		done: make(chan struct{}),
++		stream: stream, source: source, consumer: consumer, destination: destination,
++		done: make(chan struct{}), sourceDone: make(chan error, 1),
 +	}
 +}
 +
 +func (p *playback) settle(stopSource, sourceFailed bool) error {
++	if sourceFailed {
++		p.fail()
++	}
 +	p.once.Do(func() {
 +		go p.runSettlement(stopSource, sourceFailed)
 +	})
@@ -63,8 +69,12 @@ index 1f8c4ade..a699f9fe 100644
 +
 +func (p *playback) runSettlement(stopSource, sourceFailed bool) {
 +	failed := sourceFailed
++	var sourceStopped chan error
 +	if stopSource {
-+		failed = p.source.Stop() != nil || failed
++		sourceStopped = make(chan error, 1)
++		go func() {
++			sourceStopped <- p.source.Stop()
++		}()
 +	}
 +	if settler, ok := p.consumer.(backchannelSettler); ok {
 +		failed = settler.SettleBackchannel() != nil || failed
@@ -72,9 +82,15 @@ index 1f8c4ade..a699f9fe 100644
 +	if p.destination != nil {
 +		failed = p.destination.Stop() != nil || failed
 +	}
++	if sourceStopped != nil {
++		failed = <-sourceStopped != nil || failed
++		startErr := <-p.sourceDone
++		failed = (startErr != nil && !errors.Is(startErr, io.EOF)) || failed
++	}
 +	if failed {
 +		p.fail()
 +	}
++	p.stream.completePlayback(p)
 +	close(p.done)
 +}
 +
@@ -93,8 +109,20 @@ index 1f8c4ade..a699f9fe 100644
 +	}
 +}
 +
++func (p *playback) observeStop() {
++	p.mu.Lock()
++	p.stopObserved = true
++	p.mu.Unlock()
++}
++
++func (p *playback) wasStopObserved() bool {
++	p.mu.Lock()
++	defer p.mu.Unlock()
++	return p.stopObserved
++}
++
 +func (s *Stream) registerPlayback(p *playback) error {
- 	s.mu.Lock()
++	s.mu.Lock()
 +	defer s.mu.Unlock()
 +	if len(s.playbacks) != 0 {
 +		return errBackchannelBusy
@@ -115,34 +143,70 @@ index 1f8c4ade..a699f9fe 100644
 +	s.mu.Unlock()
 +
 +	var result error
-+	allFinished := true
 +	for _, active := range playbacks {
++		active.observeStop()
 +		if err := active.settle(true, false); err != nil {
 +			result = errBackchannelSettlement
 +		}
-+		if !active.finished() {
-+			allFinished = false
-+			continue
-+		}
-+		s.RemoveProducer(active.source)
-+		if active.destination != nil {
-+			s.RemoveInternalConsumer(active.consumer)
++		if active.finished() {
++			s.removePlayback(active)
 +		}
 +	}
-+
-+	s.mu.Lock()
-+	if allFinished && len(playbacks) == len(s.playbacks) {
-+		s.playbacks = nil
-+	}
-+	s.mu.Unlock()
 +	return result
 +}
 +
-+func (s *Stream) stopOtherInternalProducers() {
++func (s *Stream) completePlayback(active *playback) {
 +	s.mu.Lock()
++	defer s.mu.Unlock()
++	for i, producer := range s.producers {
++		if producer.conn == active.source {
++			s.producers = append(s.producers[:i], s.producers[i+1:]...)
++			break
++		}
++	}
++	if active.destination != nil {
++		for i, consumer := range s.consumers {
++			if consumer == active.consumer {
++				s.consumers = append(s.consumers[:i], s.consumers[i+1:]...)
++				break
++			}
++		}
++	}
++	if active.wasStopObserved() {
++		s.removePlaybackLocked(active)
++	}
++}
++
++func (s *Stream) removePlayback(active *playback) {
++	s.mu.Lock()
++	s.removePlaybackLocked(active)
++	s.mu.Unlock()
++}
++
++func (s *Stream) removePlaybackLocked(active *playback) {
++	for i, playback := range s.playbacks {
++		if playback == active {
++			s.playbacks = append(s.playbacks[:i], s.playbacks[i+1:]...)
++			break
++		}
++	}
++}
++
++func (s *Stream) stopOtherInternalProducers() {
+ 	s.mu.Lock()
 +	defer s.mu.Unlock()
  	for _, producer := range s.producers {
  		if producer.state == stateInternal && producer.conn != nil {
++			owned := false
++			for _, active := range s.playbacks {
++				if active.source == producer.conn {
++					owned = true
++					break
++				}
++			}
++			if owned {
++				continue
++			}
  			_ = producer.conn.Stop()
  		}
  	}
@@ -171,11 +235,11 @@ index 1f8c4ade..a699f9fe 100644
  
  	for _, producer := range s.producers {
  		if producer.conn == nil {
-@@ -50,10 +184,20 @@ func (s *Stream) Play(urlOrProd any) error {
+@@ -50,10 +248,18 @@ func (s *Stream) Play(urlOrProd any) error {
  		}
  
  		s.AddInternalProducer(src)
-+		active := newPlayback(src, cons, nil)
++		active := newPlayback(s, src, cons, nil)
 +		if err := s.registerPlayback(active); err != nil {
 +			_ = src.Stop()
 +			s.RemoveProducer(src)
@@ -186,22 +250,20 @@ index 1f8c4ade..a699f9fe 100644
 -			_ = src.Start()
 -			s.RemoveProducer(src)
 +			err := src.Start()
++			active.sourceDone <- err
 +			failed := err != nil && !errors.Is(err, io.EOF)
 +			_ = active.settle(failed, failed)
-+			if active.finished() {
-+				s.RemoveProducer(src)
-+			}
  		}()
  
  		return nil
-@@ -87,19 +231,30 @@ func (s *Stream) Play(urlOrProd any) error {
+@@ -87,19 +293,25 @@ func (s *Stream) Play(urlOrProd any) error {
  
  		s.AddInternalProducer(src)
  		s.AddInternalConsumer(cons)
 -
 -		go func() {
 -			_ = dst.Start()
-+		active := newPlayback(src, cons, dst)
++		active := newPlayback(s, src, cons, dst)
 +		if err := s.registerPlayback(active); err != nil {
  			_ = src.Stop()
 +			_ = dst.Stop()
@@ -213,9 +275,6 @@ index 1f8c4ade..a699f9fe 100644
 +		go func() {
 +			err := dst.Start()
 +			_ = active.settle(true, err != nil)
-+			if active.finished() {
-+				s.RemoveInternalConsumer(cons)
-+			}
  		}()
  
  		go func() {
@@ -225,45 +284,18 @@ index 1f8c4ade..a699f9fe 100644
 -			_ = dst.Stop()
 -			s.RemoveProducer(src)
 +			err := src.Start()
++			active.sourceDone <- err
 +			failed := err != nil && !errors.Is(err, io.EOF)
 +			_ = active.settle(failed, failed)
-+			if active.finished() {
-+				s.RemoveProducer(src)
-+			}
  		}()
  
  		return nil
-diff --git a/internal/streams/producer.go b/internal/streams/producer.go
-index 09e2dcc5..e904d4c2 100644
---- a/internal/streams/producer.go
-+++ b/internal/streams/producer.go
-@@ -203,6 +203,11 @@ func (p *Producer) reconnect(workerID, retry int) {
- 		return
- 	}
- 
-+	// Successful reconnect hands ownership to a new worker generation. This
-+	// invalidates any concurrent reconnect attempt queued for the old worker.
-+	p.workerID++
-+	nextWorkerID := p.workerID
-+
- 	for _, media := range conn.GetMedias() {
- 		switch media.Direction {
- 		case core.DirectionRecvonly:
-@@ -239,7 +244,7 @@ func (p *Producer) reconnect(workerID, retry int) {
- 	// swap connections
- 	p.conn = conn
- 
--	go p.worker(conn, workerID)
-+	go p.worker(conn, nextWorkerID)
- }
- 
- func (p *Producer) stop() {
 diff --git a/internal/streams/play_lifecycle_review_test.go b/internal/streams/play_lifecycle_review_test.go
 new file mode 100644
-index 00000000..df79e7db
+index 00000000..57bca070
 --- /dev/null
 +++ b/internal/streams/play_lifecycle_review_test.go
-@@ -0,0 +1,324 @@
+@@ -0,0 +1,517 @@
 +package streams
 +
 +import (
@@ -283,6 +315,7 @@ index 00000000..df79e7db
 +	stopOnce   sync.Once
 +	stopped    chan struct{}
 +	startErr   error
++	stopDelay  time.Duration
 +}
 +
 +type lifecycleReconnectSource struct {
@@ -296,6 +329,45 @@ index 00000000..df79e7db
 +}
 +
 +func (s *lifecycleReconnectSource) Stop() error { return nil }
++
++type lifecycleSlowStopSource struct {
++	*lifecycleSource
++	stopStarted chan struct{}
++	stopRelease chan struct{}
++	stopCalls   int
++	stopMu      sync.Mutex
++}
++
++type lifecycleDelayedFailureSource struct {
++	*lifecycleSource
++	startEntered  chan struct{}
++	returnFailure chan struct{}
++}
++
++func (s *lifecycleDelayedFailureSource) Start() error {
++	close(s.startEntered)
++	<-s.returnFailure
++	return errors.New("synthetic delayed source failure")
++}
++
++func (s *lifecycleDelayedFailureSource) Stop() error { return nil }
++
++func (s *lifecycleSlowStopSource) Stop() error {
++	s.stopMu.Lock()
++	s.stopCalls++
++	if s.stopCalls == 1 {
++		close(s.stopStarted)
++	}
++	s.stopMu.Unlock()
++	<-s.stopRelease
++	return s.lifecycleSource.Stop()
++}
++
++func (s *lifecycleSlowStopSource) calls() int {
++	s.stopMu.Lock()
++	defer s.stopMu.Unlock()
++	return s.stopCalls
++}
 +
 +func newLifecycleSource(block bool) *lifecycleSource {
 +	codec := &core.Codec{Name: core.CodecPCMA, ClockRate: 8000}
@@ -319,6 +391,9 @@ index 00000000..df79e7db
 +}
 +func (s *lifecycleSource) Stop() error {
 +	s.stopOnce.Do(func() {
++		if s.stopDelay > 0 {
++			time.Sleep(s.stopDelay)
++		}
 +		if s.startBlock != nil {
 +			close(s.startBlock)
 +		}
@@ -333,6 +408,7 @@ index 00000000..df79e7db
 +	settleCount int
 +	settled     chan struct{}
 +	settleBlock chan struct{}
++	settleDelay time.Duration
 +	mu          sync.Mutex
 +}
 +
@@ -361,9 +437,13 @@ index 00000000..df79e7db
 +	}
 +	err := c.settleErr
 +	block := c.settleBlock
++	delay := c.settleDelay
 +	c.mu.Unlock()
 +	if block != nil {
 +		<-block
++	}
++	if delay > 0 {
++		time.Sleep(delay)
 +	}
 +	return err
 +}
@@ -485,6 +565,43 @@ index 00000000..df79e7db
 +	}
 +}
 +
++func TestPlayEmptyWaitsForConcurrentSourceFailureBeforeSuccess(t *testing.T) {
++	source := &lifecycleDelayedFailureSource{
++		lifecycleSource: newLifecycleSource(false),
++		startEntered:    make(chan struct{}),
++		returnFailure:   make(chan struct{}),
++	}
++	backchannel := newLifecycleBackchannel()
++	stream := &Stream{producers: []*Producer{{conn: backchannel, state: stateExternal, url: "synthetic:xiaomi"}}}
++	if err := stream.Play(source); err != nil {
++		t.Fatal(err)
++	}
++	select {
++	case <-source.startEntered:
++	case <-time.After(time.Second):
++		close(source.returnFailure)
++		t.Fatal("source start did not enter")
++	}
++
++	result := make(chan error, 1)
++	go func() { result <- stream.Play("") }()
++	select {
++	case err := <-result:
++		close(source.returnFailure)
++		t.Fatalf("Play empty completed before source result: %v", err)
++	case <-time.After(100 * time.Millisecond):
++	}
++	close(source.returnFailure)
++	select {
++	case err := <-result:
++		if !errors.Is(err, errBackchannelSettlement) {
++			t.Fatalf("concurrent source error = %v, want fixed settlement failure", err)
++		}
++	case <-time.After(time.Second):
++		t.Fatal("Play empty did not settle after source result")
++	}
++}
++
 +func TestPlayEmptyTimesOutBlockedSettlementAndKeepsGenerationBusy(t *testing.T) {
 +	source := newLifecycleSource(true)
 +	backchannel := newLifecycleBackchannel()
@@ -510,6 +627,114 @@ index 00000000..df79e7db
 +		t.Fatalf("post-timeout overlap error = %v, want busy", err)
 +	}
 +	close(backchannel.settleBlock)
++}
++
++func TestLateSettlementRemovesInternalProducerAfterAllWaitersTimeOut(t *testing.T) {
++	source := newLifecycleSource(false)
++	backchannel := newLifecycleBackchannel()
++	backchannel.settleBlock = make(chan struct{})
++	external := &Producer{conn: backchannel, state: stateExternal, url: "synthetic:xiaomi"}
++	stream := &Stream{producers: []*Producer{external}}
++	if err := stream.Play(source); err != nil {
++		t.Fatal(err)
++	}
++	select {
++	case <-backchannel.settled:
++	case <-time.After(time.Second):
++		t.Fatal("natural source end did not enter settlement")
++	}
++
++	result := make(chan error, 1)
++	active := stream.playbacks[0]
++	go func() { result <- stream.Play("") }()
++	select {
++	case err := <-result:
++		if !errors.Is(err, errBackchannelSettlement) {
++			t.Fatalf("blocked settlement error = %v, want fixed failure", err)
++		}
++	case <-time.After(2 * time.Second):
++		close(backchannel.settleBlock)
++		<-result
++		t.Fatal("blocked settlement exceeded fixed timeout")
++	}
++
++	close(backchannel.settleBlock)
++	select {
++	case <-active.done:
++	case <-time.After(time.Second):
++		t.Fatal("late settlement did not finish")
++	}
++	stream.mu.Lock()
++	defer stream.mu.Unlock()
++	if len(stream.producers) != 1 || stream.producers[0] != external {
++		t.Fatalf("late settlement left %d producers, want only shared external producer", len(stream.producers))
++	}
++	if len(stream.playbacks) != 0 {
++		t.Fatalf("late settlement left %d active playbacks, want 0", len(stream.playbacks))
++	}
++}
++
++func TestPlayEmptyDoesNotStopActivePlaybackSourceTwiceAfterTimeout(t *testing.T) {
++	source := &lifecycleSlowStopSource{
++		lifecycleSource: newLifecycleSource(true),
++		stopStarted:     make(chan struct{}),
++		stopRelease:     make(chan struct{}),
++	}
++	backchannel := newLifecycleBackchannel()
++	external := &Producer{conn: backchannel, state: stateExternal, url: "synthetic:xiaomi"}
++	stream := &Stream{producers: []*Producer{external}}
++	if err := stream.Play(source); err != nil {
++		t.Fatal(err)
++	}
++
++	result := make(chan error, 1)
++	go func() { result <- stream.Play("") }()
++	select {
++	case <-source.stopStarted:
++	case <-time.After(time.Second):
++		close(source.stopRelease)
++		<-result
++		t.Fatal("settlement did not start source stop")
++	}
++	select {
++	case err := <-result:
++		if !errors.Is(err, errBackchannelSettlement) {
++			close(source.stopRelease)
++			t.Fatalf("blocked source stop error = %v, want fixed failure", err)
++		}
++	case <-time.After(2 * time.Second):
++		close(source.stopRelease)
++		<-result
++		t.Fatal("second source stop blocked the bounded Play empty result")
++	}
++	if calls := source.calls(); calls != 1 {
++		close(source.stopRelease)
++		t.Fatalf("source stop calls = %d, want exactly 1", calls)
++	}
++	close(source.stopRelease)
++}
++
++func TestPlayEmptySettlesSourceAndBackchannelWithinOneBoundedWindow(t *testing.T) {
++	source := newLifecycleSource(true)
++	source.stopDelay = 900 * time.Millisecond
++	backchannel := newLifecycleBackchannel()
++	backchannel.settleDelay = 900 * time.Millisecond
++	external := &Producer{conn: backchannel, state: stateExternal, url: "synthetic:xiaomi"}
++	stream := &Stream{producers: []*Producer{external}}
++	if err := stream.Play(source); err != nil {
++		t.Fatal(err)
++	}
++	if err := stream.Play(""); err != nil {
++		t.Fatalf("parallel bounded settlement error = %v, want success", err)
++	}
++	stream.mu.Lock()
++	defer stream.mu.Unlock()
++	if len(stream.producers) != 1 || stream.producers[0] != external {
++		t.Fatalf("parallel settlement left %d producers, want only shared external producer", len(stream.producers))
++	}
++	if len(stream.playbacks) != 0 {
++		t.Fatalf("parallel settlement left %d active playbacks, want 0", len(stream.playbacks))
++	}
 +}
 +
 +func TestOverlappingPlayIsRejectedWithoutStartingSecondSource(t *testing.T) {
@@ -588,6 +813,31 @@ index 00000000..df79e7db
 +	producer.mu.Unlock()
 +	close(release)
 +}
+diff --git a/internal/streams/producer.go b/internal/streams/producer.go
+index 09e2dcc5..e904d4c2 100644
+--- a/internal/streams/producer.go
++++ b/internal/streams/producer.go
+@@ -203,6 +203,11 @@ func (p *Producer) reconnect(workerID, retry int) {
+ 		return
+ 	}
+ 
++	// Successful reconnect hands ownership to a new worker generation. This
++	// invalidates any concurrent reconnect attempt queued for the old worker.
++	p.workerID++
++	nextWorkerID := p.workerID
++
+ 	for _, media := range conn.GetMedias() {
+ 		switch media.Direction {
+ 		case core.DirectionRecvonly:
+@@ -239,7 +244,7 @@ func (p *Producer) reconnect(workerID, retry int) {
+ 	// swap connections
+ 	p.conn = conn
+ 
+-	go p.worker(conn, workerID)
++	go p.worker(conn, nextWorkerID)
+ }
+ 
+ func (p *Producer) stop() {
 diff --git a/internal/streams/stream.go b/internal/streams/stream.go
 index 984c73ed..072725b7 100644
 --- a/internal/streams/stream.go
@@ -724,7 +974,7 @@ index 02ea3bb1..cbeb01eb 100644
 +	return err
 +}
 diff --git a/pkg/xiaomi/miss/client.go b/pkg/xiaomi/miss/client.go
-index 3113632a..f46a754a 100644
+index 3113632a..9132918b 100644
 --- a/pkg/xiaomi/miss/client.go
 +++ b/pkg/xiaomi/miss/client.go
 @@ -6,8 +6,10 @@ import (
@@ -1244,7 +1494,7 @@ index 3113632a..f46a754a 100644
  	if err != nil {
  		return err
 diff --git a/pkg/xiaomi/miss/cs2/conn.go b/pkg/xiaomi/miss/cs2/conn.go
-index b2a63932..86899b4c 100644
+index b2a63932..2f47d142 100644
 --- a/pkg/xiaomi/miss/cs2/conn.go
 +++ b/pkg/xiaomi/miss/cs2/conn.go
 @@ -4,6 +4,7 @@ import (
@@ -1323,7 +1573,7 @@ index b2a63932..86899b4c 100644
  
  	_, err := c.Conn.Write(req)
  	return err
-@@ -299,7 +312,7 @@ func marshalCmd(channel byte, seq uint16, cmd uint32, payload []byte) []byte {
+@@ -299,7 +317,7 @@ func marshalCmd(channel byte, seq uint16, cmd uint32, payload []byte) []byte {
  
  func newUDPConn(host string, port int) (net.Conn, error) {
  	// We using raw net.UDPConn, because RemoteAddr should be changed during handshake.
@@ -1332,7 +1582,7 @@ index b2a63932..86899b4c 100644
  	if err != nil {
  		return nil, err
  	}
-@@ -414,51 +427,84 @@ func newDataChannel(pushSize, popSize int) *dataChannel {
+@@ -414,51 +432,84 @@ func newDataChannel(pushSize, popSize int) *dataChannel {
  		c.pushSize = pushSize
  	}
  	if popSize >= 0 {
@@ -1362,13 +1612,13 @@ index b2a63932..86899b4c 100644
 +	waitSize     int
 +	popBuf       chan receivedData
 +	maxFrameSize int
- }
- 
++}
++
 +type receivedData struct {
 +	payload    []byte
 +	receivedAt time.Time
-+}
-+
+ }
+ 
 +var errPopBufferFull = errors.New("pop buffer is full")
 +var errFrameTooLarge = errors.New("frame too large")
 +
@@ -1426,7 +1676,7 @@ index b2a63932..86899b4c 100644
  }
 diff --git a/pkg/xiaomi/miss/cs2/conn_test.go b/pkg/xiaomi/miss/cs2/conn_test.go
 new file mode 100644
-index 00000000..d1b54b8f
+index 00000000..b72e4858
 --- /dev/null
 +++ b/pkg/xiaomi/miss/cs2/conn_test.go
 @@ -0,0 +1,95 @@
@@ -1527,7 +1777,7 @@ index 00000000..d1b54b8f
 +}
 diff --git a/pkg/xiaomi/miss/cs2/lifecycle_review_test.go b/pkg/xiaomi/miss/cs2/lifecycle_review_test.go
 new file mode 100644
-index 00000000..c75be2cc
+index 00000000..fa174216
 --- /dev/null
 +++ b/pkg/xiaomi/miss/cs2/lifecycle_review_test.go
 @@ -0,0 +1,135 @@
@@ -1555,10 +1805,10 @@ index 00000000..c75be2cc
 +}
 +
 +func (c *scriptedConn) Write(src []byte) (int, error) { return len(src), nil }
-+func (c *scriptedConn) Close() error                  { return nil }
-+func (c *scriptedConn) LocalAddr() net.Addr           { return nil }
-+func (c *scriptedConn) RemoteAddr() net.Addr          { return nil }
-+func (c *scriptedConn) SetDeadline(time.Time) error   { return nil }
++func (c *scriptedConn) Close() error                { return nil }
++func (c *scriptedConn) LocalAddr() net.Addr         { return nil }
++func (c *scriptedConn) RemoteAddr() net.Addr        { return nil }
++func (c *scriptedConn) SetDeadline(time.Time) error { return nil }
 +func (c *scriptedConn) SetReadDeadline(time.Time) error {
 +	return nil
 +}
@@ -1668,7 +1918,7 @@ index 00000000..c75be2cc
 +}
 diff --git a/pkg/xiaomi/miss/lifecycle_review_test.go b/pkg/xiaomi/miss/lifecycle_review_test.go
 new file mode 100644
-index 00000000..87ab6bb4
+index 00000000..37d30b3d
 --- /dev/null
 +++ b/pkg/xiaomi/miss/lifecycle_review_test.go
 @@ -0,0 +1,809 @@
@@ -2482,7 +2732,7 @@ index 00000000..87ab6bb4
 +	}
 +}
 diff --git a/pkg/xiaomi/miss/producer.go b/pkg/xiaomi/miss/producer.go
-index dcea284e..8f6ad30a 100644
+index dcea284e..299c828b 100644
 --- a/pkg/xiaomi/miss/producer.go
 +++ b/pkg/xiaomi/miss/producer.go
 @@ -1,8 +1,12 @@

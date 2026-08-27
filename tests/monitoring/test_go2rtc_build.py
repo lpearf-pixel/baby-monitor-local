@@ -142,6 +142,10 @@ def test_verify_and_apply_patch_changes_only_approved_protocol_paths(
     for name in (
         "TestPlaybackSettlementDoesNotReplaceProducer",
         "TestReconnectBackoffDoesNotDuplicateWorkers",
+        "TestLateSettlementRemovesInternalProducerAfterAllWaitersTimeOut",
+        "TestPlayEmptySettlesSourceAndBackchannelWithinOneBoundedWindow",
+        "TestPlayEmptyDoesNotStopActivePlaybackSourceTwiceAfterTimeout",
+        "TestPlayEmptyWaitsForConcurrentSourceFailureBeforeSuccess",
     ):
         assert f"func {name}" in playback
     assert "producer.reconnect(2, 1)" in playback
@@ -170,8 +174,8 @@ def test_verify_and_apply_patch_changes_only_approved_protocol_paths(
 
 def test_patch_scope_is_exact_and_requires_the_upstream_regression() -> None:
     assert ALLOWED_PATCH_CHANGES == {
-        "internal/streams/play.go": (168, 13),
-        "internal/streams/play_lifecycle_review_test.go": (324, 0),
+        "internal/streams/play.go": (225, 13),
+        "internal/streams/play_lifecycle_review_test.go": (517, 0),
         "internal/streams/producer.go": (6, 1),
         "internal/streams/stream.go": (1, 0),
         "pkg/iso/codecs.go": (1, 1),
@@ -270,7 +274,7 @@ def test_run_upstream_protocol_gate_uses_fixed_lifecycle_commands(tmp_path: Path
                 "test",
                 "./internal/streams",
                 "-run",
-                "^(TestPlayEmpty|TestNaturalSourceEnd|TestNaturalSourceEOF|TestCancelAndNaturalEnd)",
+                "^(TestPlayEmpty|TestNaturalSourceEnd|TestNaturalSourceEOF|TestCancelAndNaturalEnd|TestLateSettlementRemovesInternalProducerAfterAllWaitersTimeOut)",
                 "-count=1",
             ],
             {
@@ -318,7 +322,7 @@ def test_run_upstream_protocol_diagnostic_gate_uses_fixed_focused_and_race_comma
             "./pkg/xiaomi/miss",
             "./internal/streams",
             "-run",
-            "^(TestWritePacketRejectsEmptyAndAdvancesChannel3Sequence|TestSpeakerLifecycleCountsOnlySuccessfulOpusPayload|TestSpeakerLifecycleReportsSuccessfulOpusPacketsAndBytes|TestRepeatedSpeakerLifecycleKeepsMediaReadable|TestPlaybackSettlementDoesNotReplaceProducer|TestReconnectBackoffDoesNotDuplicateWorkers|TestReadTimeoutClassificationIsPayloadFree)$",
+            "^(TestWritePacketRejectsEmptyAndAdvancesChannel3Sequence|TestSpeakerLifecycleCountsOnlySuccessfulOpusPayload|TestSpeakerLifecycleReportsSuccessfulOpusPacketsAndBytes|TestRepeatedSpeakerLifecycleKeepsMediaReadable|TestPlaybackSettlementDoesNotReplaceProducer|TestReconnectBackoffDoesNotDuplicateWorkers|TestReadTimeoutClassificationIsPayloadFree|TestLateSettlementRemovesInternalProducerAfterAllWaitersTimeOut|TestPlayEmptySettlesSourceAndBackchannelWithinOneBoundedWindow|TestPlayEmptyDoesNotStopActivePlaybackSourceTwiceAfterTimeout|TestPlayEmptyWaitsForConcurrentSourceFailureBeforeSuccess)$",
             "-count=1",
         ],
         [
@@ -329,7 +333,7 @@ def test_run_upstream_protocol_diagnostic_gate_uses_fixed_focused_and_race_comma
             "./pkg/xiaomi/miss",
             "./internal/streams",
             "-run",
-            "^(TestWritePacketRejectsEmptyAndAdvancesChannel3Sequence|TestSpeakerLifecycleCountsOnlySuccessfulOpusPayload|TestSpeakerLifecycleReportsSuccessfulOpusPacketsAndBytes|TestRepeatedSpeakerLifecycleKeepsMediaReadable|TestPlaybackSettlementDoesNotReplaceProducer|TestReconnectBackoffDoesNotDuplicateWorkers|TestReadTimeoutClassificationIsPayloadFree)$",
+            "^(TestWritePacketRejectsEmptyAndAdvancesChannel3Sequence|TestSpeakerLifecycleCountsOnlySuccessfulOpusPayload|TestSpeakerLifecycleReportsSuccessfulOpusPacketsAndBytes|TestRepeatedSpeakerLifecycleKeepsMediaReadable|TestPlaybackSettlementDoesNotReplaceProducer|TestReconnectBackoffDoesNotDuplicateWorkers|TestReadTimeoutClassificationIsPayloadFree|TestLateSettlementRemovesInternalProducerAfterAllWaitersTimeOut|TestPlayEmptySettlesSourceAndBackchannelWithinOneBoundedWindow|TestPlayEmptyDoesNotStopActivePlaybackSourceTwiceAfterTimeout|TestPlayEmptyWaitsForConcurrentSourceFailureBeforeSuccess)$",
             "-count=1",
         ],
     ]
