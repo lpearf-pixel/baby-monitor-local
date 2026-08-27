@@ -18,6 +18,7 @@ from packages.monitoring.go2rtc_build import (
     install_candidate,
     metadata_matches,
     rollback_latest,
+    run_upstream_protocol_diagnostic_gate,
     run_upstream_protocol_gate,
     verify_and_apply_patch,
 )
@@ -127,6 +128,24 @@ def test_verify_and_apply_patch_changes_only_approved_protocol_paths(
     assert 'StartAtom("hvc1")' in (source / "pkg/iso/codecs.go").read_text(
         encoding="utf-8"
     )
+    lifecycle = (source / "pkg/xiaomi/miss/lifecycle_review_test.go").read_text(
+        encoding="utf-8"
+    )
+    playback = (
+        source / "internal/streams/play_lifecycle_review_test.go"
+    ).read_text(encoding="utf-8")
+    for name in (
+        "TestRepeatedSpeakerLifecycleKeepsMediaReadable",
+        "TestReadTimeoutClassificationIsPayloadFree",
+    ):
+        assert f"func {name}" in lifecycle
+    for name in (
+        "TestPlaybackSettlementDoesNotReplaceProducer",
+        "TestReconnectBackoffDoesNotDuplicateWorkers",
+    ):
+        assert f"func {name}" in playback
+    producer = (source / "pkg/xiaomi/miss/producer.go").read_text(encoding="utf-8")
+    assert 'errors.New("xiaomi: media read timeout")' in producer
     changed = set(_git(source, "diff", "--name-only").splitlines())
     changed.update(
         _git(source, "ls-files", "--others", "--exclude-standard").splitlines()
@@ -149,7 +168,7 @@ def test_verify_and_apply_patch_changes_only_approved_protocol_paths(
 def test_patch_scope_is_exact_and_requires_the_upstream_regression() -> None:
     assert ALLOWED_PATCH_CHANGES == {
         "internal/streams/play.go": (168, 13),
-        "internal/streams/play_lifecycle_review_test.go": (257, 0),
+        "internal/streams/play_lifecycle_review_test.go": (305, 0),
         "internal/streams/stream.go": (1, 0),
         "pkg/iso/codecs.go": (1, 1),
         "pkg/xiaomi/miss/backchannel.go": (49, 9),
@@ -157,8 +176,8 @@ def test_patch_scope_is_exact_and_requires_the_upstream_regression() -> None:
         "pkg/xiaomi/miss/cs2/conn.go": (58, 12),
         "pkg/xiaomi/miss/cs2/conn_test.go": (36, 0),
         "pkg/xiaomi/miss/cs2/lifecycle_review_test.go": (135, 0),
-        "pkg/xiaomi/miss/lifecycle_review_test.go": (695, 0),
-        "pkg/xiaomi/miss/producer.go": (28, 0),
+        "pkg/xiaomi/miss/lifecycle_review_test.go": (770, 0),
+        "pkg/xiaomi/miss/producer.go": (35, 1),
     }
 
 
@@ -274,6 +293,110 @@ def test_run_upstream_protocol_gate_redacts_every_failure(
 
     with pytest.raises(Go2RTCBuildError, match="^GO2RTC_PROTOCOL_GATE_FAILED$"):
         run_upstream_protocol_gate(tmp_path, "/fixed/go", runner=runner)
+
+
+def test_run_upstream_protocol_diagnostic_gate_uses_fixed_focused_and_race_commands(
+    tmp_path: Path,
+) -> None:
+    calls: list[list[str]] = []
+
+    def runner(args: list[str], **_kwargs: object) -> subprocess.CompletedProcess[bytes]:
+        calls.append(args)
+        return subprocess.CompletedProcess(args, 0)
+
+    run_upstream_protocol_diagnostic_gate(tmp_path, "/fixed/go", runner=runner)
+
+    assert calls == [
+        [
+            "/fixed/go",
+            "test",
+            "./pkg/xiaomi/miss",
+            "./internal/streams",
+            "-run",
+            "^(TestRepeatedSpeakerLifecycleKeepsMediaReadable|TestPlaybackSettlementDoesNotReplaceProducer|TestReconnectBackoffDoesNotDuplicateWorkers|TestReadTimeoutClassificationIsPayloadFree)$",
+            "-count=1",
+        ],
+        [
+            "/fixed/go",
+            "test",
+            "-race",
+            "./pkg/xiaomi/miss",
+            "./internal/streams",
+            "-run",
+            "^(TestRepeatedSpeakerLifecycleKeepsMediaReadable|TestPlaybackSettlementDoesNotReplaceProducer|TestReconnectBackoffDoesNotDuplicateWorkers|TestReadTimeoutClassificationIsPayloadFree)$",
+            "-count=1",
+        ],
+    ]
+
+
+@pytest.mark.parametrize(
+    "failure",
+    (OSError("private"), subprocess.CalledProcessError(1, ["go", "test"])),
+)
+def test_run_upstream_protocol_diagnostic_gate_redacts_every_failure(
+    tmp_path: Path, failure: BaseException
+) -> None:
+    def runner(*_args: object, **_kwargs: object) -> subprocess.CompletedProcess[bytes]:
+        raise failure
+
+    with pytest.raises(
+        Go2RTCBuildError, match="^GO2RTC_PROTOCOL_DIAGNOSTIC_FAILED$"
+    ):
+        run_upstream_protocol_diagnostic_gate(tmp_path, "/fixed/go", runner=runner)
+
+
+def test_protocol_test_clones_pinned_patch_without_installing(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str]
+) -> None:
+    patch = tmp_path / "patches/go2rtc-macos-hybrid-hd.patch"
+    patch.parent.mkdir(parents=True)
+    patch.write_text("synthetic", encoding="ascii")
+    commands: list[list[str]] = []
+    applied: list[tuple[Path, Path]] = []
+    gated: list[tuple[Path, str]] = []
+    monkeypatch.setattr(go2rtc_build_cli, "_platform_guard", lambda: None)
+    monkeypatch.setattr(
+        go2rtc_build_cli,
+        "_go_toolchain",
+        lambda: ("/fixed/go", "go1.24.13", {"PATH": "/fixed"}),
+    )
+    monkeypatch.setattr(
+        go2rtc_build_cli,
+        "_run",
+        lambda args, **_kwargs: commands.append(args) or "",
+    )
+    monkeypatch.setattr(
+        go2rtc_build_cli,
+        "verify_and_apply_patch",
+        lambda source, patch_path: applied.append((source, patch_path))
+        or go2rtc_build_module.GO2RTC_COMMIT,
+    )
+    monkeypatch.setattr(
+        go2rtc_build_cli,
+        "run_upstream_protocol_diagnostic_gate",
+        lambda source, go, **_kwargs: gated.append((source, go)),
+    )
+
+    go2rtc_build_cli._protocol_test(tmp_path)
+
+    assert commands[0][:4] == ["git", "clone", "--filter=blob:none", "--no-checkout"]
+    assert commands[1] == [
+        "git",
+        "checkout",
+        "--detach",
+        go2rtc_build_module.GO2RTC_COMMIT,
+    ]
+    assert len(applied) == 1
+    assert applied[0][1] == patch.resolve()
+    assert gated == [(applied[0][0], "/fixed/go")]
+    assert not any(
+        token in command
+        for command in commands
+        for token in ("build", "codesign", "install", "launchctl")
+    )
+    assert capsys.readouterr().out == (
+        "go2rtc_protocol_test=D2_BOUNDARY_HARDENED_CAUSE_UNPROVEN\n"
+    )
 
 
 def test_build_runs_protocol_gate_before_compiling_candidate() -> None:

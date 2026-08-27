@@ -19,7 +19,7 @@ GO2RTC_DESIGNATED_REQUIREMENT = (
 )
 ALLOWED_PATCH_CHANGES = {
     "internal/streams/play.go": (168, 13),
-    "internal/streams/play_lifecycle_review_test.go": (257, 0),
+    "internal/streams/play_lifecycle_review_test.go": (305, 0),
     "internal/streams/stream.go": (1, 0),
     "pkg/iso/codecs.go": (1, 1),
     "pkg/xiaomi/miss/backchannel.go": (49, 9),
@@ -27,8 +27,8 @@ ALLOWED_PATCH_CHANGES = {
     "pkg/xiaomi/miss/cs2/conn.go": (58, 12),
     "pkg/xiaomi/miss/cs2/conn_test.go": (36, 0),
     "pkg/xiaomi/miss/cs2/lifecycle_review_test.go": (135, 0),
-    "pkg/xiaomi/miss/lifecycle_review_test.go": (695, 0),
-    "pkg/xiaomi/miss/producer.go": (28, 0),
+    "pkg/xiaomi/miss/lifecycle_review_test.go": (770, 0),
+    "pkg/xiaomi/miss/producer.go": (35, 1),
 }
 PROTOCOL_GATE_TIMEOUT_SECONDS = 120
 
@@ -313,6 +313,54 @@ def run_upstream_protocol_gate(
             )
     except (OSError, subprocess.SubprocessError) as exc:
         raise Go2RTCBuildError("GO2RTC_PROTOCOL_GATE_FAILED") from exc
+
+
+def run_upstream_protocol_diagnostic_gate(
+    source_dir: Path,
+    go: str,
+    *,
+    runner: Callable[..., subprocess.CompletedProcess[Any]] = subprocess.run,
+) -> None:
+    test_pattern = (
+        "^(TestRepeatedSpeakerLifecycleKeepsMediaReadable|"
+        "TestPlaybackSettlementDoesNotReplaceProducer|"
+        "TestReconnectBackoffDoesNotDuplicateWorkers|"
+        "TestReadTimeoutClassificationIsPayloadFree)$"
+    )
+    commands = (
+        [
+            go,
+            "test",
+            "./pkg/xiaomi/miss",
+            "./internal/streams",
+            "-run",
+            test_pattern,
+            "-count=1",
+        ],
+        [
+            go,
+            "test",
+            "-race",
+            "./pkg/xiaomi/miss",
+            "./internal/streams",
+            "-run",
+            test_pattern,
+            "-count=1",
+        ],
+    )
+    try:
+        for command in commands:
+            runner(
+                command,
+                cwd=source_dir,
+                check=True,
+                stdin=subprocess.DEVNULL,
+                stdout=subprocess.DEVNULL,
+                stderr=subprocess.DEVNULL,
+                timeout=PROTOCOL_GATE_TIMEOUT_SECONDS,
+            )
+    except (OSError, subprocess.SubprocessError) as exc:
+        raise Go2RTCBuildError("GO2RTC_PROTOCOL_DIAGNOSTIC_FAILED") from exc
 
 
 def verify_and_apply_patch(

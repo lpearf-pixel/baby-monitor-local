@@ -4,7 +4,7 @@ PYTHON311 ?= /usr/local/bin/python3.11
 BASH ?= /bin/bash
 .DEFAULT_GOAL := help
 
-.PHONY: help alpha-update alpha-install alpha-start alpha-stop alpha-restart alpha-go2rtc-restart alpha-status alpha-guardian-start alpha-guardian-test alpha-guardian-test-live alpha-guardian-scene-test alpha-audio-status alpha-audio-test alpha-remote-preflight alpha-remote-status alpha-remote-configure alpha-remote-test alpha-voice-status alpha-voice-test alpha-voice-start alpha-voice-stop alpha-voice-listen-start alpha-voice-listen-status alpha-voice-listen-stop alpha-voice-camera-test alpha-voice-camera-status alpha-voice-camera-probe alpha-voice-preflight alpha-voice-v0-test alpha-voice-v0-probe alpha-voice-v0-stability alpha-voice-keychain-helper-build alpha-voice-keychain-migrate alpha-voice-keychain-check alpha-voice-converter-install alpha-voice-speaker-install alpha-voice-speaker-check alpha-voice-asr-install alpha-voice-ecapa-source alpha-voice-ecapa-install alpha-voice-ecapa-probe alpha-voice-paraformer-install alpha-voice-enroll-dad alpha-voice-enroll-mom alpha-voice-asr-capture alpha-voice-asr-capture-fixed alpha-voice-asr-capture-fixed-all alpha-voice-asr-capture-all alpha-voice-asr-evaluate alpha-voice-asr-bakeoff alpha-voice-asr-paraformer alpha-voice-asr-recover alpha-voice-vad-diagnostic alpha-voice-models-install alpha-voice-model-benchmark alpha-visual-status alpha-visual-performance alpha-visual-diagnostic alpha-visual-launchd-update alpha-logs alpha-quality-hd alpha-quality-info alpha-quality-rollback alpha-source-check alpha-subtype-probe alpha-subtype-apply alpha-go2rtc-info alpha-go2rtc-rebuild alpha-go2rtc-rollback alpha-xiaomi-media-preflight alpha-xiaomi-media-diagnostic alpha-realtime-models-check alpha-realtime-models-install alpha-ws2021-collect-calibrated alpha-ws2021-collect-model alpha-ws2021-model-train-bootstrap alpha-ws2021-model-train alpha-ws2021-model-export alpha-ws2021-model-check
+.PHONY: help alpha-update alpha-install alpha-start alpha-stop alpha-restart alpha-go2rtc-restart alpha-status alpha-guardian-start alpha-guardian-test alpha-guardian-test-live alpha-guardian-scene-test alpha-audio-status alpha-audio-test alpha-remote-preflight alpha-remote-status alpha-remote-configure alpha-remote-test alpha-voice-status alpha-voice-test alpha-voice-start alpha-voice-stop alpha-voice-listen-start alpha-voice-listen-status alpha-voice-listen-stop alpha-voice-camera-test alpha-voice-camera-status alpha-voice-camera-probe alpha-voice-preflight alpha-voice-v0-test alpha-voice-v0-probe alpha-voice-v0-stability alpha-voice-keychain-helper-build alpha-voice-keychain-migrate alpha-voice-keychain-check alpha-voice-converter-install alpha-voice-speaker-install alpha-voice-speaker-check alpha-voice-asr-install alpha-voice-ecapa-source alpha-voice-ecapa-install alpha-voice-ecapa-probe alpha-voice-paraformer-install alpha-voice-enroll-dad alpha-voice-enroll-mom alpha-voice-asr-capture alpha-voice-asr-capture-fixed alpha-voice-asr-capture-fixed-all alpha-voice-asr-capture-all alpha-voice-asr-evaluate alpha-voice-asr-bakeoff alpha-voice-asr-paraformer alpha-voice-asr-recover alpha-voice-vad-diagnostic alpha-voice-models-install alpha-voice-model-benchmark alpha-visual-status alpha-visual-performance alpha-visual-diagnostic alpha-visual-launchd-update alpha-logs alpha-quality-hd alpha-quality-info alpha-quality-rollback alpha-source-check alpha-subtype-probe alpha-subtype-apply alpha-go2rtc-info alpha-go2rtc-rebuild alpha-go2rtc-rollback alpha-go2rtc-protocol-test alpha-xiaomi-media-preflight alpha-xiaomi-media-diagnostic alpha-realtime-models-check alpha-realtime-models-install alpha-ws2021-collect-calibrated alpha-ws2021-collect-model alpha-ws2021-model-train-bootstrap alpha-ws2021-model-train alpha-ws2021-model-export alpha-ws2021-model-check
 
 help:
 	@echo "Baby Monitor Local Alpha commands:"
@@ -77,6 +77,7 @@ help:
 	@echo "  make alpha-go2rtc-info       Show non-sensitive pinned build metadata"
 	@echo "  make alpha-go2rtc-rebuild    Rebuild the pinned patched go2rtc binary"
 	@echo "  make alpha-go2rtc-rollback   Restore the newest valid go2rtc backup"
+	@echo "  make alpha-go2rtc-protocol-test Run synthetic pinned Xiaomi protocol tests"
 	@echo "  make alpha-xiaomi-media-preflight Check macOS media identity without playback"
 	@echo "  make alpha-xiaomi-media-diagnostic Inspect the existing Xiaomi producer"
 	@echo "  make alpha-realtime-models-check    Verify pinned realtime visual models"
@@ -107,6 +108,9 @@ alpha-go2rtc-rebuild:
 
 alpha-go2rtc-rollback:
 	@$(PYTHON) tools/go2rtc_build.py rollback
+
+alpha-go2rtc-protocol-test:
+	@$(PYTHON) tools/go2rtc_build.py protocol-test
 
 alpha-xiaomi-media-preflight:
 	@$(PYTHON) tools/xiaomi_macos_preflight.py

@@ -25,6 +25,7 @@ from packages.monitoring.go2rtc_build import (
     metadata_matches,
     read_metadata,
     rollback_latest,
+    run_upstream_protocol_diagnostic_gate,
     run_upstream_protocol_gate,
     sha256_file,
     verify_and_apply_patch,
@@ -236,6 +237,34 @@ def _rollback(root: Path) -> None:
     print("go2rtc_build=ROLLED_BACK")
 
 
+def _protocol_test(root: Path) -> None:
+    _platform_guard()
+    _binary, _metadata_path, _backups, patch = _paths(root)
+    if not patch.is_file():
+        raise Go2RTCBuildError("PATCH_NOT_FOUND")
+    go, _go_version, build_env = _go_toolchain()
+    with tempfile.TemporaryDirectory(prefix="baby-monitor-go2rtc-protocol-") as temporary:
+        source = Path(temporary) / "source"
+        _run(
+            [
+                "git",
+                "clone",
+                "--filter=blob:none",
+                "--no-checkout",
+                UPSTREAM_URL,
+                str(source),
+            ]
+        )
+        _run(["git", "checkout", "--detach", GO2RTC_COMMIT], cwd=source)
+        verify_and_apply_patch(source, patch)
+        run_upstream_protocol_diagnostic_gate(
+            source,
+            go,
+            runner=functools.partial(subprocess.run, env=build_env),
+        )
+    print("go2rtc_protocol_test=D2_BOUNDARY_HARDENED_CAUSE_UNPROVEN")
+
+
 def parser() -> argparse.ArgumentParser:
     result = argparse.ArgumentParser(description="Manage the pinned Intel macOS go2rtc build")
     result.add_argument(
@@ -244,7 +273,9 @@ def parser() -> argparse.ArgumentParser:
         default=Path(__file__).resolve().parents[1],
         help=argparse.SUPPRESS,
     )
-    result.add_argument("command", choices=("ensure", "rebuild", "info", "rollback"))
+    result.add_argument(
+        "command", choices=("ensure", "rebuild", "info", "rollback", "protocol-test")
+    )
     return result
 
 
@@ -257,6 +288,8 @@ def main(argv: list[str] | None = None) -> int:
             _build(options.root, force=True)
         elif options.command == "info":
             _info(options.root)
+        elif options.command == "protocol-test":
+            _protocol_test(options.root)
         else:
             _rollback(options.root)
     except Go2RTCBuildError as exc:

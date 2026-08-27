@@ -1039,6 +1039,7 @@ def test_installer_installs_acceptance_test_dependencies() -> None:
         ("alpha-go2rtc-info", "info"),
         ("alpha-go2rtc-rebuild", "rebuild"),
         ("alpha-go2rtc-rollback", "rollback"),
+        ("alpha-go2rtc-protocol-test", "protocol-test"),
     ],
 )
 def test_makefile_exposes_go2rtc_build_lifecycle(target: str, command: str) -> None:

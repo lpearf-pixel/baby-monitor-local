@@ -238,7 +238,7 @@ new file mode 100644
 index 00000000..79ec1578
 --- /dev/null
 +++ b/internal/streams/play_lifecycle_review_test.go
-@@ -0,0 +1,257 @@
+@@ -0,0 +1,305 @@
 +package streams
 +
 +import (
@@ -494,6 +494,54 @@ index 00000000..79ec1578
 +	}
 +	if err := stream.Play(""); err != nil {
 +		t.Fatal(err)
++	}
++}
++
++func TestPlaybackSettlementDoesNotReplaceProducer(t *testing.T) {
++	backchannel := newLifecycleBackchannel()
++	external := &Producer{conn: backchannel, state: stateExternal, url: "synthetic:xiaomi"}
++	stream := &Stream{producers: []*Producer{external}}
++
++	for i := 0; i < 6; i++ {
++		if err := stream.Play(newLifecycleSource(true)); err != nil {
++			t.Fatalf("cycle %d play: %v", i, err)
++		}
++		if err := stream.Play(""); err != nil {
++			t.Fatalf("cycle %d settle: %v", i, err)
++		}
++		if len(stream.producers) != 1 || stream.producers[0] != external {
++			t.Fatalf("cycle %d replaced shared external producer", i)
++		}
++	}
++	if backchannel.settleCount != 6 {
++		t.Fatalf("settlement count = %d, want 6", backchannel.settleCount)
++	}
++}
++
++func TestReconnectBackoffDoesNotDuplicateWorkers(t *testing.T) {
++	const scheme = "lifecycle-stale-reconnect"
++	calls := 0
++	HandleFunc(scheme, func(string) (core.Producer, error) {
++		calls++
++		return nil, errors.New("synthetic reconnect should not run")
++	})
++	producer := &Producer{
++		url:      scheme + ":source",
++		state:    stateStart,
++		workerID: 2,
++	}
++
++	var group sync.WaitGroup
++	for i := 0; i < 32; i++ {
++		group.Add(1)
++		go func() {
++			defer group.Done()
++			producer.reconnect(1, 1)
++		}()
++	}
++	group.Wait()
++	if calls != 0 || producer.workerID != 2 {
++		t.Fatalf("stale reconnect calls/worker = %d/%d, want 0/2", calls, producer.workerID)
 +	}
 +}
 diff --git a/internal/streams/stream.go b/internal/streams/stream.go
@@ -1472,7 +1520,7 @@ new file mode 100644
 index 00000000..87ab6bb4
 --- /dev/null
 +++ b/pkg/xiaomi/miss/lifecycle_review_test.go
-@@ -0,0 +1,695 @@
+@@ -0,0 +1,770 @@
 +package miss
 +
 +import (
@@ -1480,6 +1528,7 @@ index 00000000..87ab6bb4
 +	"encoding/json"
 +	"errors"
 +	"net"
++	"strings"
 +	"sync"
 +	"testing"
 +	"time"
@@ -2168,22 +2217,98 @@ index 00000000..87ab6bb4
 +		}
 +	}
 +}
++
++type lifecycleMediaConn struct {
++	*lifecycleReviewConn
++	media chan struct{}
++}
++
++func (c *lifecycleMediaConn) ReadPacket() ([]byte, []byte, error) {
++	if _, ok := <-c.media; !ok {
++		return nil, nil, errors.New("synthetic media closed")
++	}
++	return []byte{0}, []byte{1}, nil
++}
++
++func TestRepeatedSpeakerLifecycleKeepsMediaReadable(t *testing.T) {
++	base := newLifecycleReviewConn()
++	conn := &lifecycleMediaConn{
++		lifecycleReviewConn: base,
++		media:               make(chan struct{}, 6),
++	}
++	key := make([]byte, 32)
++	base.key = key
++	client := newClient(conn, key, "")
++	client.sleep = func(time.Duration) {}
++	client.startCommandDispatcher()
++	t.Cleanup(func() { _ = client.Close() })
++	for i := 0; i < 6; i++ {
++		conn.media <- struct{}{}
++		session, err := client.StartSpeaker()
++		if err != nil {
++			t.Fatalf("cycle %d start: %v", i, err)
++		}
++		if _, payload, err := conn.ReadPacket(); err != nil || len(payload) != 1 {
++			t.Fatalf("cycle %d media read: payload=%d err=%v", i, len(payload), err)
++		}
++		if err := session.Stop(); err != nil {
++			t.Fatalf("cycle %d stop: %v", i, err)
++		}
++	}
++	starts, responses, stops, pending, _ := base.snapshot()
++	if starts != 6 || responses != 6 || stops != 6 || pending != 0 {
++		t.Fatalf("starts/responses/stops/pending = %d/%d/%d/%d, want 6/6/6/0", starts, responses, stops, pending)
++	}
++}
++
++type lifecycleTimeoutError struct{}
++
++func (lifecycleTimeoutError) Error() string   { return "private payload marker" }
++func (lifecycleTimeoutError) Timeout() bool   { return true }
++func (lifecycleTimeoutError) Temporary() bool { return true }
++
++type lifecycleTimeoutConn struct{ *lifecycleReviewConn }
++
++func (c *lifecycleTimeoutConn) ReadPacket() ([]byte, []byte, error) {
++	return nil, nil, lifecycleTimeoutError{}
++}
++
++func TestReadTimeoutClassificationIsPayloadFree(t *testing.T) {
++	base := newLifecycleReviewConn()
++	conn := &lifecycleTimeoutConn{lifecycleReviewConn: base}
++	key := make([]byte, 32)
++	base.key = key
++	client := newClient(conn, key, "")
++	client.startCommandDispatcher()
++	t.Cleanup(func() { _ = client.Close() })
++	producer := &Producer{client: client}
++
++	err := producer.Start()
++	if err == nil || err.Error() != "xiaomi: media read timeout" {
++		t.Fatalf("timeout classification = %v, want fixed payload-free error", err)
++	}
++	if strings.Contains(err.Error(), "private") {
++		t.Fatal("timeout classification exposed transport payload")
++	}
++}
 diff --git a/pkg/xiaomi/miss/producer.go b/pkg/xiaomi/miss/producer.go
 index dcea284e..8f6ad30a 100644
 --- a/pkg/xiaomi/miss/producer.go
 +++ b/pkg/xiaomi/miss/producer.go
-@@ -1,8 +1,10 @@
+@@ -1,8 +1,12 @@
  package miss
  
  import (
 +	"encoding/json"
++	"errors"
  	"fmt"
++	"net"
  	"net/url"
 +	"sync"
  	"time"
  
  	"github.com/AlexxIT/go2rtc/pkg/core"
-@@ -15,6 +17,32 @@ import (
+@@ -15,6 +19,32 @@ import (
  type Producer struct {
  	core.Connection
  	client *Client
@@ -2216,3 +2341,16 @@ index dcea284e..8f6ad30a 100644
  }
  
  func Dial(rawURL string) (core.Producer, error) {
+@@ -134,7 +164,11 @@ func (p *Producer) Start() error {
+ 		_ = p.client.SetDeadline(time.Now().Add(10 * time.Second))
+ 		pkt, err := p.client.ReadPacket()
+ 		if err != nil {
+-			return err
++			var timeout net.Error
++			if errors.As(err, &timeout) && timeout.Timeout() {
++				return errors.New("xiaomi: media read timeout")
++			}
++			return errors.New("xiaomi: media read failure")
+ 		}
+ 
+ 		p.Recv += len(pkt.Payload)
