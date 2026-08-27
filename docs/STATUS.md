@@ -613,6 +613,16 @@
   pass 126/126 and the complete Voice gate passes 451/451. The installed i9 is now at
   `6e54f55`; Voice-only stop/start passed, Voice is healthy idle, Camera Reply is false
   and the video source remains PASS. Clean supervised V3E remains pending.
+- A new supervised Task 17 attempt passed two immediate-follow-up dialogues and then
+  failed closed on a third wake whose follow-up was not acknowledged. Speaker lifecycle
+  advanced only for the wake and remained clean closed at 22/22/22/22 with no failure,
+  pending response or residual sender. Commit `3069141` adds eight fixed integer-only
+  transition counters; no PCM, transcript, path or free-form text is added. Tests pass
+  27/27 for the affected status/runtime slice and 454/454 for the complete Voice gate.
+  After installation, one fresh diagnostic dialogue passed at 24/24/24/24. It observed
+  ten replay frames but zero replay utterances, proving that successful follow-up used
+  normal live input after settlement. Camera Reply was restored false; clean V3E is
+  still pending and the intermittent input-stage miss remains unclassified.
 - Installed-i9 audio-source discovery now verifies that the Xiaomi source exposes HEVC
   video plus Opus audio and that the fixed loopback `audio_analysis` alias exposes only
   Opus. The real input is supported 48 kHz stereo Opus; the fixed FFmpeg boundary

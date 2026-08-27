@@ -352,10 +352,16 @@ quarantines reply echo without consuming the armed turn. Affected tests pass 126
 the complete Voice gate passes 451/451, and installed Voice-only stop/start plus source
 checks pass with Camera Reply disabled.
 
-**Next:** add aggregate-only stage evidence if it is still needed to diagnose a future
-miss, then repeat all V3E quotas under adult supervision from fresh process/lifecycle
-counters. Any miss, movement, truncation, duplicate, producer replacement or residual
-state fails closed. Software and installation evidence do not count as this device gate.
+Aggregate-only stage evidence is now installed at `3069141`. A new attempt passed two
+dialogues then failed on the third follow-up; a subsequent diagnostic dialogue passed
+with ten replay frames but zero replay utterances. The successful follow-up therefore
+used normal live input, and the intermittent miss is not evidence for enlarging the
+buffer or lowering recognition thresholds.
+
+**Next:** repeat all V3E quotas under adult supervision from fresh process/lifecycle
+counters while reading fixed transition deltas after every group. Any miss, movement,
+truncation, duplicate, producer replacement or residual state fails closed. Software,
+installation and the single diagnostic success do not count as the complete device gate.
 
 ## P5 — Final 72-hour release gate
 

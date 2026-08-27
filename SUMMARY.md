@@ -8,7 +8,7 @@ Updated: 2026-08-27
 - Stable Xiaomi line: `stable/xiaomi-alpha` at `0df20ae`.
 - Active Camera Reply review line: `codex/xiaomi-camera-reply-lifecycle-review`, based
   on accepted Voice head `4d479b8`; its published Task 8 checkpoint is `a622a7a`.
-  The installed implementation head is `6e54f55`; the latest V3E diagnosis evidence
+  The installed implementation head is `3069141`; the latest V3E diagnosis evidence
   head is `68dbbf3`. Neither has been pushed from this review line.
   Camera Reply Tasks 1–7 are local through `e358aaf`, with the real macOS TTY correction
   at `5768894`.
@@ -126,6 +126,14 @@ Updated: 2026-08-27
   451/451. Voice-only stop/start, healthy idle and source PASS were confirmed after
   installation with Camera Reply still false. This is software/install evidence only;
   the clean V3E real-device matrix must restart from fresh counters.
+  The first supervised retry then passed two complete dialogues but failed closed on a
+  third wake whose immediate follow-up received no acknowledgement. Lifecycle advanced
+  only once to clean closed `22/22/22/22`, excluding a speaker settlement failure.
+  Fixed aggregate-only transition counters were added and installed at `3069141`;
+  complete Voice evidence is now 454/454. A fresh diagnostic dialogue then passed at
+  `24/24/24/24`: ten buffered replay frames were observed, but zero replay utterances,
+  so that successful follow-up used ordinary live input. Camera Reply is false again;
+  the full clean matrix remains pending and no recognition threshold was lowered.
   The accepted Voice branch is published at `4d479b8`; the lifecycle-review branch is
   published through `a622a7a`, before local Task 9. Neither has been merged
   into a protected branch.

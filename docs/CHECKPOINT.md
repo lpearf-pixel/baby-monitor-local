@@ -1320,3 +1320,18 @@ provenance 只存在内存中，固定回复 echo/无效 speech 不消耗 armed 
 只执行 Voice stop/start，结果均 PASS，未重启 go2rtc；安装后 Voice healthy/idle、count 0，
 Camera Reply 私有开关仍为 false，source PASS 且实际协商仍为 `cs2+udp`、HEVC 2560x1440。
 提交树再跑相关四模块 126/126。未执行摄像头实机播放，clean V3E 仍需从新计数基线监督重跑。
+
+随后开始监督 V3E 尾部缓冲验收。新进程基线为 processed 0、lifecycle 17/17/17/17、speaker
+closed、零 failure/pending/residual。前两组 `小小` + 立即 `开始喂奶` 均完整、无重复、无转动，
+机器分别到 19/19/19/19 与 21/21/21/21。第三组只有唤醒回复，跟进无回应；processed 仅增到
+5，lifecycle 仅增到 clean closed 22/22/22/22，source 仍 PASS。该 run 立即 fail closed，开关
+恢复 false，只重启 Voice。
+
+为区分输入阶段，提交 `3069141` 增加八个固定有界整数计数：armed timeout、ignored
+follow-up、output failure、replay frame、replay ignored、replay utterance、utterance 与 VAD
+speech frame。无 PCM、转写、路径或自由文本。TDD RED 3/3 后 GREEN，相关 status/runtime
+27/27、完整 Voice 454/454、compile/diff/privacy PASS。安装根前进到 `3069141`，Voice-only
+stop/start PASS。一次新诊断对话完整、无重复、无转动，processed 2，lifecycle clean closed
+24/24/24/24；计数为 replay_frames=10、replay_utterances=0、ignored_followups=0、
+output_failures=0，说明该次跟进走 settlement 后正常 live 输入。随后开关再次恢复 false，
+Voice-only stop/start PASS。该单组不构成 clean V3E，间歇性输入 miss 仍未分类。

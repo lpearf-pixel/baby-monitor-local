@@ -1020,13 +1020,15 @@ reply. These are non-permitted misses; Camera Reply is disabled again.
 
 - [x] Reproduce and classify launchd error 37 with bounded, redacted job-state evidence;
       retain component-only ownership and do not restart go2rtc or the full Alpha.
-- [ ] Add aggregate-only transition evidence for VAD absence, ASR no-match, ignored
+- [x] Add aggregate-only transition evidence for VAD absence, ASR no-match, ignored
       follow-up, armed timeout and output failure; never persist PCM or transcript.
+      Installed commit `3069141` exposes only eight fixed bounded integer counters.
 - [x] RED then GREEN the approved five-frame in-memory tail queue, replay provenance,
       echo quarantine and same-generation settlement ordering. Fresh software evidence:
       affected modules 126 passed; complete Voice gate 451 passed.
-- [ ] RED/GREEN only the proven defect, then run focused Voice/Camera Reply/lifecycle
-      gates, compile, shell/Make and privacy checks.
+- [x] RED/GREEN only the proven defect, then run focused Voice/Camera Reply/lifecycle
+      gates, compile, shell/Make and privacy checks. Tail-buffer Voice gate is 451/451;
+      aggregate evidence raises the fresh complete Voice gate to 454/454.
 - [ ] With an adult present, start from fresh process and lifecycle counters and repeat
       5 standalone wakes, 3 two-stage dialogues, 3 silent timeouts and 5 non-wakes.
 - [ ] Fail closed on any miss, movement, truncation, duplicate, timeout outside the
@@ -1050,3 +1052,12 @@ after same-generation closed settlement, zeroized on every discard/cleanup bound
 and tagged only in memory. Replay-origin echo/invalid speech cannot consume the armed
 turn; valid closed speech still acknowledges once. No threshold, transport, producer,
 care-write or persistence boundary changes.
+
+The first new supervised matrix attempt passed two complete dialogues, then failed
+closed when the third wake replied but its immediate `开始喂奶` did not. Machine evidence
+advanced only one reply, ended closed at lifecycle 22/22/22/22 and had zero transport
+failure/pending/residual state. Aggregate evidence was then implemented and installed.
+One fresh diagnostic dialogue passed at lifecycle 24/24/24/24; it recorded ten replay
+frames but zero replay utterances, showing that this successful follow-up arrived on
+normal live input after settlement. Camera Reply was restored false. The complete clean
+matrix still must restart; no threshold or buffer expansion is justified by this result.
