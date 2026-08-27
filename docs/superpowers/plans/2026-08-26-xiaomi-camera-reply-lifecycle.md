@@ -9,7 +9,9 @@
 > The 2026-08-27 transport-auto diagnostic amendment is approved. Task 8 software is
 > complete at `f153cbdf9c46577831f8fe5fe3b31160118676ec`; Task 9 software is complete at
 > `1885da27d7ba72af81d0f3cb00cd96147b998a2a`. Neither installed read-only command was
-> run. Tasks 10–14 are not started and Task 15 real playback is not authorized.
+> run. Task 10 software is complete at
+> `c85fb39b2328a4305da12f2b51c2e2cde61bef59`; Tasks 11–14 are not started and
+> Task 15 real playback is not authorized.
 
 **Goal:** Preserve the completed lifecycle fixes, diagnose the remaining D2 shared-source
 timeout with `transport=auto`, and make video, camera microphone, AI reply and future
@@ -529,6 +531,7 @@ producer count or media-byte growth is claimed.
 - Modify: `tools/voice_camera_reply.py`
 - Modify: `tests/voice/test_camera_reply.py`
 - Modify: `tests/tools/test_voice_camera_reply.py`
+- Modify: `tests/voice/test_listen_only_runtime.py`
 
 **Interfaces:**
 - Replace the single `_PROTOCOL` value with:
@@ -574,25 +577,25 @@ the installed API or camera.
 
 **Human required:** none.
 
-- [ ] **Step 1: RED source parsing.** Test one UDP and one TCP producer; test active
+- [x] **Step 1: RED source parsing.** Test one UDP and one TCP producer; test active
   internal playback in both producer orders. Reject unknown protocol, missing/nonzero
   generation violations, two external producers and protocol drift.
-- [ ] **Step 2: RED start/stop ownership.** Start records protocol and nonzero generation;
+- [x] **Step 2: RED start/stop ownership.** Start records protocol and nonzero generation;
   stop returns COMPLETE only for the same protocol and generation in closed state.
   Reconnect, generation zero or producer replacement returns AMBIGUOUS.
-- [ ] **Step 3: RED marker v2.** Publish/load both allowlisted protocols, reject schema v1,
+- [x] **Step 3: RED marker v2.** Publish/load both allowlisted protocols, reject schema v1,
   explicit transport intent, protocol mismatch and current-build mismatch. Failed probes
   still invalidate prior acceptance before camera access.
-- [ ] **Step 4: Run RED.**
+- [x] **Step 4: Run RED.**
 
   ```bash
   .venv-alpha/bin/python -m pytest -q \
     tests/voice/test_camera_reply.py \
     tests/tools/test_voice_camera_reply.py
   ```
-- [ ] **Step 5: Implement the minimal parser, transport ownership and schema-v2 marker.**
+- [x] **Step 5: Implement the minimal parser, transport ownership and schema-v2 marker.**
   Do not alter the runtime Xiaomi URI, reply request or go2rtc process.
-- [ ] **Step 6: Run GREEN and the fixed Camera Reply gate.**
+- [x] **Step 6: Run GREEN and the fixed Camera Reply gate.**
 
   ```bash
   .venv-alpha/bin/python -m pytest -q \
@@ -603,7 +606,7 @@ the installed API or camera.
     services/voice/camera_reply.py tools/voice_camera_reply.py
   git diff --check
   ```
-- [ ] **Step 7: Commit the focused slice.**
+- [x] **Step 7: Commit the focused slice.**
 
   ```bash
   git add services/voice/camera_reply.py tools/voice_camera_reply.py \
@@ -613,6 +616,14 @@ the installed API or camera.
 
 **Acceptance:** `transport=auto` stays unchanged; UDP and TCP are observed values. A
 protocol/generation change during playback can never produce COMPLETE or READY.
+
+**Execution evidence (2026-08-27):** the first Task 10 run recorded 11 expected RED
+failures for TCP parsing/start, schema-v2 load/publish and updated status readiness.
+The minimal implementation now records the active observed protocol and generation,
+requires both at closed settlement, and publishes schema v2 only from coherent nonzero
+closed evidence. Fresh Camera Reply is 121/121, listen-only compatibility is 7/7 and
+the full Voice gate is 439/439; compilation, privacy and diff checks pass. No installed
+API, speaker playback, source mutation or service restart was used.
 
 **Next:** attempt a deterministic software reproduction of the remaining D2 boundary.
 

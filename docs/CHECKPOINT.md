@@ -1163,3 +1163,13 @@ producer `id` 只用于内存内替换检测，HEVC 与 Opus 增长分别来自�
 Task 9/compatibility GREEN 为 86/86，compile、Make dry-run、privacy/diff 检查通过。未运行
 安装态 CLI、未读取或播放实机媒体、未重启服务，因此不声明真实 protocol/字节增长
 PASS。下一项为 Task 10 protocol-neutral、generation-bound marker schema v2。
+
+同日完成 Camera Reply lifecycle Task 10 软件切片，业务提交为 `c85fb39`。初始聚焦
+运行记录 11 个预期 RED：TCP producer 仍被硬编码 UDP 拒绝、schema-v2 marker 无法
+load/publish、旧 status readiness 不识别新 marker。实现移除固定 `_PROTOCOL`，保持
+配置意图 `auto`，只接受观察到的 `cs2+udp`/`cs2+tcp`；start 保存实际协议和非零
+generation，stop 仅在相同协议、相同 generation、closed 且无残余状态时 COMPLETE。
+marker v2 只含当前 build identity、`transport_mode=auto` 与 negotiated protocol，v1
+闭合失效。fresh Camera Reply 121/121、listen-only 7/7、完整 Voice 439/439，compile、
+privacy/diff 检查通过。未请求安装态 API、未播放、未改 source、未重启服务；下一项为
+Task 11 deterministic D2 软件复现/分类。

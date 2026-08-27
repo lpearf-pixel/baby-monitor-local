@@ -479,7 +479,14 @@
   rejects explicit transport selection, duplicate Xiaomi sources, malformed/unknown
   producer media and replacement across snapshots. It reads HEVC and Opus receiver
   counters independently and exposes only bounded aggregate fields. Fresh focused and
-  compatibility evidence is 86/86. The installed CLI was not run; Task 10 is next.
+  compatibility evidence is 86/86. The installed CLI was not run.
+- Camera Reply lifecycle Task 10 is software-complete at `c85fb39`. Both `cs2+udp` and
+  `cs2+tcp` are accepted only as observed protocols while configuration intent stays
+  `auto`; start records the protocol and nonzero generation, and stop requires the same
+  values at closed settlement. Acceptance marker schema v2 contains current build
+  identity, `transport_mode=auto` and the observed protocol; schema v1 is stale. Fresh
+  Camera Reply/listen-only/full Voice evidence is 121/121, 7/7 and 439/439. No installed
+  API or real playback ran; Task 11 is next.
 - Installed-i9 audio-source discovery now verifies that the Xiaomi source exposes HEVC
   video plus Opus audio and that the fixed loopback `audio_analysis` alias exposes only
   Opus. The real input is supported 48 kHz stereo Opus; the fixed FFmpeg boundary
