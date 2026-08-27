@@ -209,6 +209,36 @@ HEAD、真实命令和真实结果的记录。
 - decision：keep；mapping 数固定为 1，不采用通用 fuzzy 算法
 - next single action：按 exact-first 顺序接入 armed listen-only controller
 
+### R4 — Listen-only 多动作接线 GREEN
+
+- 日期：2026-08-27
+- branch / exact HEAD：`codex/xiaomi-camera-reply-lifecycle-review` / `d30da28`
+- dirty/unrelated state：Task 3 已聚焦提交；本 slice 只改 controller、相邻测试、计划和日志
+- authority：software-only；未启用或播放 Camera Reply
+- hypothesis：H4；exact-first + armed-only explicit correction 能保持 reply echo、replay和
+  timeout 现有边界
+- files changed：`services/voice/listen_only.py`、`tests/voice/test_listen_only.py`、
+  计划和本日志
+- RED command/result：Task 4 focused 初跑 8 failed / 135 passed；首败为 exact diaper
+  command 被旧 Feeding-only controller 返回 `listen_only_followup_far`
+- GREEN command/result：Task 4 四文件 focused 为 142 passed，exit 0
+- focused/full command/result：listen-only/runtime/TTS/Camera Reply 142 passed；full NOT_RUN
+- corpus：source-controlled synthetic exact/corrected/negative strings，license=`GENERATED`
+- positives/accepted/rejected：4 diaper/burping exact follow-ups、1 corrected Feeding、2
+  medication candidates和1 one-utterance exact action均达到固定预期
+- negatives/false accepts：idle action和 unsafe question保持静默；现有 echo、replay、timeout、
+  cancellation和Camera Reply回归全部通过；false accepts=0
+- latency p50/p95/RSS：NOT_RUN；controller fake ASR 软件测试
+- privacy scan：outcome 只含固定 reason/response/phase，无 command/transcript 字段
+- Camera Reply flag/lifecycle：生产开关未读取或修改，保持 false；Camera Reply 测试通过，
+  未执行实机播放
+- Baby Care write/outbox/signing：controller 未导入、未构造、未调用
+- evidence proves：exact low-risk 只确认一次并回 idle；correction 只在 armed exact miss 后运行；
+  medication 只返回 silent high-risk candidate；one-utterance 不运行 correction
+- evidence does not prove：真实 Paraformer 召回、家庭声学条件或 Baby Care 写入
+- decision：keep；进入 aggregate-only counter slice
+- next single action：为每个 terminal action 增加固定有界计数，且不暴露 transcript
+
 每条新记录使用一个连续编号 `R1`、`R2`……，并完整写出以下字段：
 
 ```text

@@ -345,7 +345,7 @@ every safety family and every other action remains rejected.
 - Produces: existing `ListenOnlyOutcome` with fixed reasons; low-risk actions may use
   existing `listen_only_received`, medication uses a no-audio high-risk candidate reason.
 
-- [ ] **Step 1: Preserve exact-first ordering**
+- [x] **Step 1: Preserve exact-first ordering**
 
   In an armed follow-up:
 
@@ -360,25 +360,25 @@ every safety family and every other action remains rejected.
   call correction for idle input, `wake_with_command`, wake classification, reply echo
   or replay-only invalid speech.
 
-- [ ] **Step 2: Acknowledge low-risk actions once**
+- [x] **Step 2: Acknowledge low-risk actions once**
 
   Exact Feeding, diaper and burping results call the existing `_acknowledge()` once and
   reset to idle. A corrected Feeding result follows the same one-shot path. Do not add a
   second TTS code or modify Camera Reply accepted-code sets in this slice.
 
-- [ ] **Step 3: Fail closed for medication**
+- [x] **Step 3: Fail closed for medication**
 
   Exact medication candidates reset to idle and return fixed reason
   `listen_only_high_risk_candidate` with `response_code=None`. They do not call TTS,
   `parse_feeding_command()`, worker signing, outbox or Baby Care.
 
-- [ ] **Step 4: Preserve existing echo, timeout and zeroization behavior**
+- [x] **Step 4: Preserve existing echo, timeout and zeroization behavior**
 
   Rerun all reply-echo, delayed echo, replay, tail-buffer, deadline, cancellation and
   output-failure tests. An invalid corrected candidate must consume the one armed
   utterance and return idle without a response.
 
-- [ ] **Step 5: Run focused GREEN**
+- [x] **Step 5: Run focused GREEN**
 
   ```bash
   .venv-alpha/bin/python -m pytest -q \
@@ -390,7 +390,7 @@ every safety family and every other action remains rejected.
 
   Expected: no Camera Reply vocabulary/lifecycle regression and no Baby Care call.
 
-- [ ] **Step 6: Append behavior and regression results to the review log**
+- [x] **Step 6: Append behavior and regression results to the review log**
 
 **Acceptance:** armed low-risk multi-actions receive one syntactic acknowledgement;
 medication is recognized only as a silent high-risk candidate; every path returns idle

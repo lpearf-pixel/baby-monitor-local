@@ -265,7 +265,6 @@ def test_delayed_live_reply_echo_prefix_is_stripped_from_closed_command() -> Non
 @pytest.mark.parametrize(
     ("followup", "reason"),
     [
-        ("开始为奶", "listen_only_followup_near_start"),
         ("我再请说", "listen_only_followup_near_reply_echo"),
         ("天气怎么样", "listen_only_followup_far"),
     ],

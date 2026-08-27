@@ -8,12 +8,12 @@ import unicodedata
 from dataclasses import dataclass
 from typing import Literal, Protocol
 
-from services.voice.intent import DialogueState, parse_feeding_command
+from services.voice.asr_correction import correct_armed_followup
+from services.voice.care_action import CareActionMatch, classify_exact_action
 from services.voice.wake import classify_wake
 
 
 ARMED_TIMEOUT_NS = 8_000_000_000
-_REFERENCE_TIME = "2026-01-01T00:00:00+00:00"
 _CLAIM = re.compile(r"^我是(?:爸爸|妈妈)[,，、\s]+(.+)$")
 _REPLY_ECHOES = (
     re.compile(r"^我在[\s,，。！？、；;:：]*请说[\s,，。！？、；;:：]*(.*)$"),
@@ -91,14 +91,27 @@ class ListenOnlyController:
                 reply_echo = False
                 if command is not None:
                     command, reply_echo = _strip_reply_echo(command)
-                if command is None or not _is_closed_command(command):
-                    if reply_echo:
-                        return self._outcome("listen_only_reply_echo_ignored")
-                    if from_replay:
-                        return self._outcome("listen_only_replay_ignored")
-                    self._reset()
-                    return self._outcome(_rejected_followup_reason(command))
-                return self._acknowledge(cancelled)
+                exact = None if command is None else _classify_exact_command(command)
+                if exact is not None:
+                    return self._handle_action(exact, cancelled)
+                if command is not None and not reply_echo and not from_replay:
+                    correction = correct_armed_followup(command)
+                    if correction is not None:
+                        corrected = _classify_exact_command(
+                            correction.canonical_command
+                        )
+                        if corrected is not None:
+                            return self._handle_action(
+                                corrected,
+                                cancelled,
+                                corrected=True,
+                            )
+                if reply_echo:
+                    return self._outcome("listen_only_reply_echo_ignored")
+                if from_replay:
+                    return self._outcome("listen_only_replay_ignored")
+                self._reset()
+                return self._outcome(_rejected_followup_reason(command))
 
             wake = classify_wake(text)
             if wake.kind == "standalone_wake":
@@ -109,12 +122,10 @@ class ListenOnlyController:
                 self._armed_deadline_ns = self._monotonic_ns() + ARMED_TIMEOUT_NS
                 self._armed_speech_started = False
                 return self._outcome("listen_only_armed", "listen_only_ready")
-            if (
-                wake.kind == "wake_with_command"
-                and wake.command is not None
-                and _is_closed_command(wake.command)
-            ):
-                return self._acknowledge(cancelled)
+            if wake.kind == "wake_with_command" and wake.command is not None:
+                exact = _classify_exact_command(wake.command)
+                if exact is not None:
+                    return self._handle_action(exact, cancelled)
             return self._outcome("listen_only_ignored")
         except Exception:
             self._reset()
@@ -146,11 +157,35 @@ class ListenOnlyController:
     def reset(self) -> None:
         self._reset()
 
-    def _acknowledge(self, cancelled: StopEvent) -> ListenOnlyOutcome:
+    def _handle_action(
+        self,
+        action: CareActionMatch,
+        cancelled: StopEvent,
+        *,
+        corrected: bool = False,
+    ) -> ListenOnlyOutcome:
+        if action.risk == "high" or not action.allow_ack:
+            self._reset()
+            return self._outcome("listen_only_high_risk_candidate")
+        return self._acknowledge(
+            cancelled,
+            reason=(
+                "listen_only_acknowledged_corrected"
+                if corrected
+                else "listen_only_acknowledged"
+            ),
+        )
+
+    def _acknowledge(
+        self,
+        cancelled: StopEvent,
+        *,
+        reason: str = "listen_only_acknowledged",
+    ) -> ListenOnlyOutcome:
         self._reset()
         if not self._synthesizer.speak_code("listen_only_received", cancelled):
             return self._outcome("voice_output_unavailable")
-        return self._outcome("listen_only_acknowledged", "listen_only_received")
+        return self._outcome(reason, "listen_only_received")
 
     def _reset(self) -> None:
         self._phase = "idle"
@@ -172,35 +207,11 @@ def _command_without_optional_wake(text: str) -> str | None:
     return text
 
 
-def _is_closed_command(command: str) -> bool:
+def _classify_exact_command(command: str) -> CareActionMatch | None:
     claim = _CLAIM.fullmatch(command)
     if claim is not None:
         command = claim.group(1)
-    states = (
-        DialogueState.idle(observed_at=_REFERENCE_TIME),
-        DialogueState.pending(
-            observed_at=_REFERENCE_TIME,
-            started_at=_REFERENCE_TIME,
-            expected_version=1,
-            mode="unknown",
-        ),
-        DialogueState.pending(
-            observed_at=_REFERENCE_TIME,
-            started_at=_REFERENCE_TIME,
-            expected_version=1,
-            mode="direct_breastfeeding",
-        ),
-        DialogueState.needs_confirmation(
-            observed_at=_REFERENCE_TIME,
-            started_at=_REFERENCE_TIME,
-            expected_version=1,
-            mode="unknown",
-            proposal_digest="a" * 64,
-            warning_digest=None,
-            warning_codes=(),
-        ),
-    )
-    return any(parse_feeding_command(command, state).intent_type is not None for state in states)
+    return classify_exact_action(command)
 
 
 def _strip_reply_echo(command: str) -> tuple[str, bool]:
