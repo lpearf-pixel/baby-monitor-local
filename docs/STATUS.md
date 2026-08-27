@@ -498,7 +498,16 @@
   runtime stages plus `raw_audio_persisted=false`. Stage failures are ordered and
   payload-free; VAD failure prevents ASR startup. Generated/audio software passes 80/80
   and full Voice passes 439/439. The live chain was not run, so no real microphone PASS
-  is claimed; Task 13 is next.
+  is claimed.
+- Camera Reply lifecycle Task 13 software is complete at `015f6e4`. Empty channel-3
+  payload is rejected before transport write or sequence consumption; emitted frames
+  prove channel 3, monotonic sequence and distinct header/payload offsets. Successful
+  audio packet/byte counters are bounded and Python requires both to advance between
+  the owned active and same-generation closed snapshots before COMPLETE. Fresh affected
+  evidence is 163/163, Camera Reply is 123/123, monitoring provenance is 23/23 and the
+  exact pinned normal/race target passes. Independent fix-round review reports no
+  Critical or Important findings. No installed API, camera media or playback ran;
+  audibility remains unproved, Camera Reply is disabled and Task 14 is next.
 - Installed-i9 audio-source discovery now verifies that the Xiaomi source exposes HEVC
   video plus Opus audio and that the fixed loopback `audio_analysis` alias exposes only
   Opus. The real input is supported 48 kHz stereo Opus; the fixed FFmpeg boundary

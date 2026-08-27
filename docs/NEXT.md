@@ -261,17 +261,17 @@ start of every probe; installed status is NOT_PROVEN. D3/D4 were not run.
 The approved transport-auto amendment is recorded at `8654866`; Task 8 software is
 complete at `f153cbd` with 62/62 synthetic checks. Its installed preflight was not run.
 
-**Prerequisites:** Tasks 9 through 12 are complete at `1885da2`, `c85fb39`, `faa3d4b`
-and `91c97bc`: configuration
+**Prerequisites:** Tasks 9 through 13 are complete at `1885da2`, `c85fb39`, `faa3d4b`,
+`91c97bc` and `015f6e4`: configuration
 stays `transport=auto`, runtime parsing requires one external Xiaomi producer, and reply
 settlement owns the observed protocol plus nonzero generation. Installed diagnostics
 have not run. Real speaker playback remains outside the current authorization and later
 requires an adult at the camera.
 
-**Codex can:** execute Task 13's generated AI reply encoding/channel-3 settlement gate
-without reading household audio, changing the source or playing audio.
+**Codex can:** execute Task 14's full software/review checkpoint without reading
+household audio, changing the source or playing audio.
 
-**Human required:** none for Task 13 software. Task 15 later requires separate approval
+**Human required:** none for Task 14 software. Task 15 later requires separate approval
 and supervision. Forcing TCP/UDP or creating a second connection remains prohibited.
 
 **Acceptance and tests:** The original fixed vocabulary and privacy boundaries remain
@@ -287,9 +287,14 @@ payload-free classification. This does not explain the real D2 media loss.
 **Task 12 result:** software aggregate stages and strict 48 kHz stereo Opus are complete
 at `91c97bc`; the live microphone chain remains unrun and no real readiness is claimed.
 
-**Next:** execute Task 13 generated AI reply bytes/channel-3 settlement gate without
-hardware playback. Retain the accepted i9 speaker and leave Camera Reply disabled; do
-not enter D3/D4.
+**Task 13 result:** generated reply delivery software is complete at `015f6e4`.
+Zero payload cannot consume channel-3 sequence or produce a successful count; exact
+pinned normal/race tests prove channel, sequence, header/payload offsets and bounded
+successful packet/byte accounting. Python COMPLETE requires current-generation counter
+growth. This is not an audibility claim.
+
+**Next:** execute Task 14 full software/review checkpoint without hardware playback.
+Retain the accepted i9 speaker and leave Camera Reply disabled; do not enter D3/D4.
 
 ## P5 — Final 72-hour release gate
 

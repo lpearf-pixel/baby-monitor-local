@@ -1191,3 +1191,13 @@ affected fixture 45/45、`alpha-voice-v0-test` 80/80、完整 Voice 439/439，co
 privacy/diff 检查通过。未运行 live chain、未读取家庭音频、未输出 transcript、未播放或
 重启，因此不声明真实 camera microphone PASS。下一项为 Task 13 生成 AI 回复字节与
 channel-3 settlement 纯软件门。
+
+同日完成 Camera Reply lifecycle Task 13 软件切片，业务提交为 `015f6e4`。固定上游
+补丁现在在任何 transport write 或序号消费前拒绝空 payload，并用真实 net.Pipe 帧验证
+channel 3、单调序号和互不重叠的 header/payload。只有成功写入的音频包和字节才进入
+有界计数；Python stop 还要求本次 active baseline 到相同 protocol/generation 的 closed
+快照之间两个计数都增长，否则保持 AMBIGUOUS。审查发现原 protocol-test 未运行新测试，
+经 2 RED 修复后，普通与 race 命令均覆盖 CS2 帧和生命周期计数。Fresh affected 163/163、
+Camera Reply 123/123、monitoring 23/23、固定上游 normal/race PASS，独立修复轮为
+0 Critical / 0 Important。未访问安装态服务、摄像头媒体或扬声器，未发布 marker；
+结论仍为 `D2_BOUNDARY_HARDENED_CAUSE_UNPROVEN`。下一项为 Task 14 全软件/审查检查点。

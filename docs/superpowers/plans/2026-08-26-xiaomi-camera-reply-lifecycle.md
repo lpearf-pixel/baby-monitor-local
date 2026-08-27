@@ -822,27 +822,27 @@ the installed loopback service.
 
 **Human required:** none for software.
 
-- [ ] **Step 1: RED each false-positive completion.** Reject sendonly metadata without
+- [x] **Step 1: RED each false-positive completion.** Reject sendonly metadata without
   bytes, zero payload, duplicate header, wrong sample rate/channels, sequence reuse,
   HTTP 2xx without same-generation closed settlement and producer replacement.
-- [ ] **Step 2: Run RED.**
+- [x] **Step 2: Run RED.**
 
   ```bash
   .venv-alpha/bin/python -m pytest -q \
     tests/voice/test_camera_reply.py tests/voice/test_tts.py \
     tests/monitoring/test_go2rtc_build.py
   ```
-- [ ] **Step 3: Implement only the minimal proven correction.** The existing
+- [x] **Step 3: Implement only the minimal proven correction.** The existing
   `copy(req[offset+hdrSize:], payload)` fix and its test remain mandatory and are not
   duplicated in another layer.
-- [ ] **Step 4: Run GREEN plus exact Go/race gates.**
+- [x] **Step 4: Run GREEN plus exact Go/race gates.**
 
   ```bash
   make alpha-voice-camera-test
   make alpha-go2rtc-protocol-test
   git diff --check
   ```
-- [ ] **Step 5: Commit only changed files.**
+- [x] **Step 5: Commit only changed files.**
 
   ```bash
   git add services/voice/camera_reply.py services/voice/tts.py \
@@ -854,6 +854,18 @@ the installed loopback service.
 
 **Acceptance:** software proves bytes and lifecycle, not audibility. Camera Reply stays
 disabled and no acceptance marker is published.
+
+**Execution evidence (2026-08-27):** Task 13 software is complete at `015f6e4`.
+The fixed upstream patch rejects zero-length channel-3 payload before transport write
+or sequence consumption, preserves the header/payload offsets, proves channel 3 and
+monotonic sequence, and exposes bounded counters only after successful audio writes.
+Python completion now requires both counters to advance between the owned active and
+same-generation closed snapshots. Fresh affected tests pass 163/163, the Camera Reply
+entry passes 123/123, the monitoring provenance gate passes 23/23 and the exact pinned
+normal/race target returns `D2_BOUNDARY_HARDENED_CAUSE_UNPROVEN`. Compilation,
+diff/privacy checks and independent fix-round review pass with 0 Critical / 0 Important.
+No installed service, camera media or playback was used, Camera Reply remains disabled
+and no acceptance marker exists.
 
 **Next:** run the full software/review checkpoint.
 
