@@ -6,8 +6,9 @@
 >
 > **Status:** Software Tasks 1–6 complete at
 > `e66302ef1ab448705dc05d03086d52bf69f0e124`; Task 7 stopped closed at D2.
-> The 2026-08-27 transport-auto diagnostic amendment is approved for planning;
-> Tasks 8–14 are not started and Task 15 real playback is not authorized.
+> The 2026-08-27 transport-auto diagnostic amendment is approved. Task 8 software is
+> complete at `f153cbdf9c46577831f8fe5fe3b31160118676ec`; its installed read-only command
+> was not run. Tasks 9–14 are not started and Task 15 real playback is not authorized.
 
 **Goal:** Preserve the completed lifecycle fixes, diagnose the remaining D2 shared-source
 timeout with `transport=auto`, and make video, camera microphone, AI reply and future
@@ -312,6 +313,9 @@ design. Keeping `transport=auto` may legitimately observe either allowlisted pro
 
 ### Task 8: Add the side-effect-free macOS media preflight
 
+**Status:** Software complete at `f153cbdf9c46577831f8fe5fe3b31160118676ec`.
+No installed launchd/firewall query or real media/playback action was run.
+
 **Files:**
 - Create: `packages/monitoring/xiaomi_macos_preflight.py`
 - Create: `tools/xiaomi_macos_preflight.py`
@@ -355,13 +359,13 @@ run the real read-only preflight from the logged-in i9 context.
 **Human required:** only if macOS reports a blocked/unknown Local Network state that
 requires System Settings interaction. No password prompt is part of the automatic gate.
 
-- [ ] **Step 1: Write RED tests for identity and ownership.** Require the exact signed
+- [x] **Step 1: Write RED tests for identity and ownership.** Require the exact signed
   app, reject `cdhash`, reject zero/two launchd owners, and require the launchd PID to
   own the loopback listener. Fake output contains no real path or PID.
-- [ ] **Step 2: Write RED tests for permission uncertainty.** A firewall query failure
+- [x] **Step 2: Write RED tests for permission uncertainty.** A firewall query failure
   must produce `local_network_unknown`, never `ready`; a blocked app must produce
   `local_network_blocked`.
-- [ ] **Step 3: Run RED.**
+- [x] **Step 3: Run RED.**
 
   ```bash
   .venv-alpha/bin/python -m pytest -q \
@@ -370,12 +374,12 @@ requires System Settings interaction. No password prompt is part of the automati
   ```
 
   Expected: collection or behavior failures because the preflight does not exist.
-- [ ] **Step 4: Implement the minimal bounded runner and CLI.** Use fixed argv only,
+- [x] **Step 4: Implement the minimal bounded runner and CLI.** Use fixed argv only,
   `shell=False`, ten-second maximum commands, `/dev/null` stdin and closed result codes.
   Do not print command output, executable paths, PIDs or exception text.
-- [ ] **Step 5: Add `make alpha-xiaomi-media-preflight`.** It is read-only and never
+- [x] **Step 5: Add `make alpha-xiaomi-media-preflight`.** It is read-only and never
   restarts, signs, registers, unblocks or opens an app.
-- [ ] **Step 6: Run GREEN and static gates.**
+- [x] **Step 6: Run GREEN and static gates.**
 
   ```bash
   .venv-alpha/bin/python -m pytest -q \
@@ -388,7 +392,7 @@ requires System Settings interaction. No password prompt is part of the automati
   make -n alpha-xiaomi-media-preflight
   git diff --check
   ```
-- [ ] **Step 7: Commit the focused slice.**
+- [x] **Step 7: Commit the focused slice.**
 
   ```bash
   git add Makefile packages/monitoring/xiaomi_macos_preflight.py \
@@ -401,6 +405,12 @@ requires System Settings interaction. No password prompt is part of the automati
 
 **Acceptance:** only `ready` permits later installed diagnostics. `unknown` is a stop,
 not a warning. Software tests do not query the real firewall or launchd domain.
+
+**Execution evidence (2026-08-27):** the initial focused run produced the expected two
+missing-module collection errors. After the minimal implementation, the fresh Task 8
+gate passed 62/62; Python compilation, Make dry-run, ASCII/privacy and diff checks also
+passed. The CLI was not executed against the installed host, so no `ready` result is
+claimed.
 
 **Next:** prove configuration intent and the single external producer.
 

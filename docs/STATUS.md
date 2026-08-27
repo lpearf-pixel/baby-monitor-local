@@ -468,6 +468,13 @@
   makes every new probe revoke prior acceptance before camera access and only republishes
   after complete success. Installed status is NOT_PROVEN, D3/D4 were not run, and Camera
   Reply is not a delivered capability and remains disabled.
+- The approved transport-auto diagnostic amendment is recorded at `8654866`. Task 8
+  software is complete at `f153cbd`: fixed, bounded commands verify the exact signed
+  `Go2RTC.app`, reject `cdhash`, require one running launchd owner with the exact app
+  command, require that PID to own only the loopback 1984 listener, and classify the
+  exact app-firewall response as available, blocked or unknown. The synthetic gate is
+  62/62 and compilation/Make/diff/privacy checks pass. The installed command was not
+  run, so macOS readiness and camera media remain unclaimed; Task 9 is next.
 - Installed-i9 audio-source discovery now verifies that the Xiaomi source exposes HEVC
   video plus Opus audio and that the fixed loopback `audio_analysis` alias exposes only
   Opus. The real input is supported 48 kHz stereo Opus; the fixed FFmpeg boundary

@@ -25,6 +25,12 @@ Updated: 2026-08-27
   to 0. The stale D1 marker was removed and failed probes now invalidate any prior
   acceptance before camera access (`59a8ab4`); installed status is NOT_PROVEN and
   Camera Reply remains disabled. D3/D4 were not run.
+  The transport-auto diagnostic amendment is recorded at `8654866`. Its Task 8
+  software preflight is complete locally at `f153cbd`: it verifies the stable app
+  requirement, one exact launchd owner, loopback listener ownership and an explicit
+  app-firewall result using bounded, redacted commands. Synthetic Task 8 evidence is
+  62/62. The installed preflight was not run, no media was accessed or played, and
+  Task 9 single-producer diagnosis is next.
   The accepted Voice branch is published at `4d479b8`; the lifecycle-review branch is
   published at `f610d7b` before the current draft documents. Neither has been merged
   into a protected branch.
@@ -492,10 +498,10 @@ legacy branch into this line without a separate integration decision.
    already user-confirmed PASS.
 5. P4 private-access software is complete, but installation/login, grants, Serve and
    two-iPhone acceptance are explicitly deferred until the final optional stage.
-6. Keep Camera Reply V3 disabled. D1 passed, but D2 failed closed on cumulative reply 4
-   with a real Xiaomi CS2 UDP media timeout and connection-generation reset. Retain
-   i9-only output. Any TCP experiment or second camera connection is a new architecture
-   decision outside the approved lifecycle repair; do not continue D3/D4 automatically.
+6. Keep Camera Reply V3 disabled. Task 8 macOS preflight software is complete at
+   `f153cbd`, but no installed result is claimed. Next implement Task 9's read-only
+   `transport=auto` and single-producer diagnostic. Do not force UDP/TCP, create a
+   second camera connection or continue D3/D4 automatically.
 7. Complete the final 72-hour release gate before any release/tag decision.
 8. Define per-parent acknowledgement and false-positive feedback only through a future
    contract where Baby Care consumes Guardian's read-only feed and owns identity/write

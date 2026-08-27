@@ -1144,3 +1144,13 @@ residual、source PASS、Voice healthy。D2 前两次同样 COMPLETE；第三次
 授权移除该精确文件，并以 RED/GREEN 修复 `59a8ab4`：probe 在任何摄像头访问前先安全
 撤销旧 marker，控制终端不可用和后置健康检查失败均不再留下历史 READY。安装 checkout
 固定门 106/106，状态为 NOT_PROVEN；source PASS、Voice healthy/listen_only，未播放音频。
+
+同日批准并完成 transport-auto 诊断计划 Task 8 软件切片，业务提交为 `f153cbd`。
+新增固定 macOS 预检接口和 CLI：只通过 `shell=False`、`/dev/null` stdin、10 秒上限及
+1 MiB 合并输出上限运行固定命令；精确验证稳定 `Go2RTC.app` requirement、拒绝
+`cdhash`、验证单一 launchd PID 及其 app/config 参数、验证该 PID 独占 loopback 1984
+listener，并将 app-firewall 结果闭合为 available/blocked/unknown。初始 RED 为两个
+missing-module collection error；fresh GREEN 为 62/62，compile、Make dry-run、
+ASCII/privacy/diff 检查通过。本切片未执行安装态预检、未访问摄像头媒体、未播放、
+未安装或重启服务；因此不声明 macOS 或实机 PASS。下一项为 Task 9 单一 producer 与
+`transport=auto` 只读软件诊断。

@@ -5,8 +5,9 @@
 **Status:** Approved 2026-08-26; software Tasks 1–6 completed at
 `e66302ef1ab448705dc05d03086d52bf69f0e124`. D0/D1 later passed, but D2 stopped
 closed on cumulative interaction 4. The transport-auto and shared-producer diagnostic
-amendment below was approved on 2026-08-27; its software work is not yet started and
-real playback remains unauthorized.
+amendment below was approved on 2026-08-27. Task 8 software is complete at
+`f153cbdf9c46577831f8fe5fe3b31160118676ec`; the installed preflight was not run,
+Tasks 9–14 are not started and real playback remains unauthorized.
 
 **Supersedes:** the backchannel lifecycle, completion semantics and fixed-UDP
 acceptance assumption in `2026-08-26-xiaomi-camera-reply-design.md`. Its fixed reply
@@ -389,10 +390,11 @@ future gate and is never inferred from those replies.
 
 ## Approval gate
 
-The original approval authorized software Tasks 1–6. The 2026-08-27 approval authorizes
-recording this amendment and its implementation plan; this documentation slice stops
-before production code. A later continuation may execute the new software-only tasks
-on the current feature branch. Neither approval authorizes enabling Camera Reply,
+The original approval authorized software Tasks 1–6. The 2026-08-27 approval authorized
+recording this amendment and plan, and the later explicit instruction authorized Task 8
+software only. Task 8 is complete without executing its installed preflight. Later
+software tasks require a continuation instruction on the current feature branch.
+Neither approval authorizes enabling Camera Reply,
 changing private settings, running a camera probe, installing a candidate, forcing a
 transport, adding a connection, pushing, creating a PR, merging or modifying protected
 branches. Any new real-device playback requires separate explicit authorization.

@@ -258,17 +258,18 @@ the shared Xiaomi CS2 UDP source timed out and reconnected at generation 0. The 
 i9 speaker remains the production output; Camera Reply is disabled and no marker is
 accepted. `59a8ab4` removes the stale-proof path by invalidating prior acceptance at the
 start of every probe; installed status is NOT_PROVEN. D3/D4 were not run.
+The approved transport-auto amendment is recorded at `8654866`; Task 8 software is
+complete at `f153cbd` with 62/62 synthetic checks. Its installed preflight was not run.
 
-**Prerequisites:** P4 software checkpoint complete. The real speaker gate additionally
-requires a healthy installed `cs2+udp` source, current pinned go2rtc build metadata and
-an adult at the camera. P4 phone installation/acceptance may proceed independently.
+**Prerequisites:** Task 9 keeps `transport=auto`, reads only bounded loopback aggregate
+state and requires exactly one external Xiaomi producer. Real speaker playback remains
+outside the current authorization and later requires an adult at the camera.
 
-**Codex can:** preserve the completed software patch and redacted D0–D2 evidence. Do not
-repeat the device gate under the same architecture.
+**Codex can:** implement Task 9 pure parsers, fake HTTP tests and its read-only diagnostic
+entry without changing the source, opening a second Xiaomi connection or playing audio.
 
-**Human required:** choose a separately specified future direction if Camera Reply is
-still required. Switching to CS2 TCP or creating a dedicated second camera connection
-would change the approved architecture and requires a new design and device gate.
+**Human required:** none for Task 9 software. Task 15 later requires separate approval
+and supervision. Forcing TCP/UDP or creating a second connection remains prohibited.
 
 **Acceptance and tests:** The original fixed vocabulary and privacy boundaries remain
 in force. The replacement software gate passed all named lifecycle and review
@@ -276,8 +277,8 @@ regressions, 20 clean synthetic generations, exact patch provenance, zero post-s
 writes, zero pending responses/residual senders, propagated failures and no
 Voice/source regression. Software tests never operate the real speaker.
 
-**Next:** retain the accepted i9 speaker and leave Camera Reply disabled. Do not enter
-D3/D4 unless a new architecture is explicitly designed and approved.
+**Next:** execute Task 9 transport-auto single-producer software diagnostics. Retain the
+accepted i9 speaker and leave Camera Reply disabled; do not enter D3/D4.
 
 ## P5 — Final 72-hour release gate
 
