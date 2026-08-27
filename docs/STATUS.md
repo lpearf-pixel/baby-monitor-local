@@ -451,7 +451,7 @@
   the Voice worker is healthy on the prior i9-speaker path, and source health is PASS.
   Camera Reply is not a delivered capability and must not be re-enabled until the
   approved replacement passes separately authorized supervised D0–D4.
-- The follow-up lifecycle review is published at `f610d7b` on
+- The follow-up lifecycle branch is published through Task 8 checkpoint `a622a7a` on
   `codex/xiaomi-camera-reply-lifecycle-review`; the approved replacement software
   Tasks 1–6 are complete locally at `e66302e`. The exact pinned patch now uses a
   bounded dispatcher, CS2 ingress-time response ownership, generation-owned speaker
@@ -474,7 +474,12 @@
   command, require that PID to own only the loopback 1984 listener, and classify the
   exact app-firewall response as available, blocked or unknown. The synthetic gate is
   62/62 and compilation/Make/diff/privacy checks pass. The installed command was not
-  run, so macOS readiness and camera media remain unclaimed; Task 9 is next.
+  run, so macOS readiness and camera media remain unclaimed.
+- Task 9 single-producer software diagnostics are complete at `1885da2`. The parser
+  rejects explicit transport selection, duplicate Xiaomi sources, malformed/unknown
+  producer media and replacement across snapshots. It reads HEVC and Opus receiver
+  counters independently and exposes only bounded aggregate fields. Fresh focused and
+  compatibility evidence is 86/86. The installed CLI was not run; Task 10 is next.
 - Installed-i9 audio-source discovery now verifies that the Xiaomi source exposes HEVC
   video plus Opus audio and that the fixed loopback `audio_analysis` alias exposes only
   Opus. The real input is supported 48 kHz stereo Opus; the fixed FFmpeg boundary

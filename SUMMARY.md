@@ -7,7 +7,7 @@ Updated: 2026-08-27
 - Repository: `lpearf-pixel/baby-monitor-local` (public).
 - Stable Xiaomi line: `stable/xiaomi-alpha` at `0df20ae`.
 - Active Camera Reply review line: `codex/xiaomi-camera-reply-lifecycle-review`, based
-  on accepted Voice head `4d479b8`; its published review checkpoint is `f610d7b`.
+  on accepted Voice head `4d479b8`; its published Task 8 checkpoint is `a622a7a`.
   Camera Reply Tasks 1–7 are local through `e358aaf`, with the real macOS TTY correction
   at `5768894`.
   The supervised tone passed, but V3E failed closed after a stuck interaction,
@@ -30,9 +30,14 @@ Updated: 2026-08-27
   requirement, one exact launchd owner, loopback listener ownership and an explicit
   app-firewall result using bounded, redacted commands. Synthetic Task 8 evidence is
   62/62. The installed preflight was not run, no media was accessed or played, and
-  Task 9 single-producer diagnosis is next.
+  Task 9 single-producer software diagnosis is complete locally at `1885da2`: it
+  validates the transport-auto configuration, exactly one producer, UDP/TCP protocol
+  allowlist, independent HEVC/Opus receiver growth and in-memory producer replacement
+  detection. Its fresh software/compatibility gate is 86/86. The installed diagnostic
+  was not run and no real media result is claimed; Task 10 protocol-neutral marker v2
+  is next.
   The accepted Voice branch is published at `4d479b8`; the lifecycle-review branch is
-  published at `f610d7b` before the current draft documents. Neither has been merged
+  published through `a622a7a`, before local Task 9. Neither has been merged
   into a protected branch.
 - The evidence-retention line is based on the published Dashboard snapshot `69e2d5b`;
   the Dashboard remains complete and its published branch is not rewritten.
@@ -498,10 +503,10 @@ legacy branch into this line without a separate integration decision.
    already user-confirmed PASS.
 5. P4 private-access software is complete, but installation/login, grants, Serve and
    two-iPhone acceptance are explicitly deferred until the final optional stage.
-6. Keep Camera Reply V3 disabled. Task 8 macOS preflight software is complete at
-   `f153cbd`, but no installed result is claimed. Next implement Task 9's read-only
-   `transport=auto` and single-producer diagnostic. Do not force UDP/TCP, create a
-   second camera connection or continue D3/D4 automatically.
+6. Keep Camera Reply V3 disabled. Task 8 preflight and Task 9 single-producer software
+   diagnostics are complete at `f153cbd` and `1885da2`; neither installed command has
+   been run. Next implement Task 10's protocol-neutral, generation-bound marker schema
+   v2. Do not force UDP/TCP, create a second camera connection or continue D3/D4.
 7. Complete the final 72-hour release gate before any release/tag decision.
 8. Define per-parent acknowledgement and false-positive feedback only through a future
    contract where Baby Care consumes Guardian's read-only feed and owns identity/write

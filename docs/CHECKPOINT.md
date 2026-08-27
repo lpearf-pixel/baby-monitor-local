@@ -1154,3 +1154,12 @@ missing-module collection error；fresh GREEN 为 62/62，compile、Make dry-run
 ASCII/privacy/diff 检查通过。本切片未执行安装态预检、未访问摄像头媒体、未播放、
 未安装或重启服务；因此不声明 macOS 或实机 PASS。下一项为 Task 9 单一 producer 与
 `transport=auto` 只读软件诊断。
+
+同日完成 Task 9 单一 producer 软件诊断，业务提交为 `1885da2`。固定上游源码核对确认
+producer `id` 只用于内存内替换检测，HEVC 与 Opus 增长分别来自对应 receiver 的
+`bytes`，不再用总 `bytes_recv` 推断两条链路。配置门拒绝显式 UDP/TCP、重复 YAML key、
+第二 Xiaomi URI 和非 `source` 派生 alias；API 门拒绝零/双 producer、未知协议、畸形
+媒体与快照间 replacement。初始 RED 为两个 missing-module collection error；fresh
+Task 9/compatibility GREEN 为 86/86，compile、Make dry-run、privacy/diff 检查通过。未运行
+安装态 CLI、未读取或播放实机媒体、未重启服务，因此不声明真实 protocol/字节增长
+PASS。下一项为 Task 10 protocol-neutral、generation-bound marker schema v2。

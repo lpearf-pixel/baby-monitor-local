@@ -7,8 +7,9 @@
 > **Status:** Software Tasks 1–6 complete at
 > `e66302ef1ab448705dc05d03086d52bf69f0e124`; Task 7 stopped closed at D2.
 > The 2026-08-27 transport-auto diagnostic amendment is approved. Task 8 software is
-> complete at `f153cbdf9c46577831f8fe5fe3b31160118676ec`; its installed read-only command
-> was not run. Tasks 9–14 are not started and Task 15 real playback is not authorized.
+> complete at `f153cbdf9c46577831f8fe5fe3b31160118676ec`; Task 9 software is complete at
+> `1885da27d7ba72af81d0f3cb00cd96147b998a2a`. Neither installed read-only command was
+> run. Tasks 10–14 are not started and Task 15 real playback is not authorized.
 
 **Goal:** Preserve the completed lifecycle fixes, diagnose the remaining D2 shared-source
 timeout with `transport=auto`, and make video, camera microphone, AI reply and future
@@ -464,27 +465,27 @@ snapshot. No camera settings or connections are changed.
 
 **Human required:** none while the current producer is healthy.
 
-- [ ] **Step 1: Write RED configuration tests.** A valid config has exactly one Xiaomi
+- [x] **Step 1: Write RED configuration tests.** A valid config has exactly one Xiaomi
   expression named `source`, no explicit `transport` query and only aliases derived
   from `source`. Reject explicit UDP/TCP, a second Xiaomi URI and a direct Xiaomi alias.
-- [ ] **Step 2: Write RED API tests.** Accept exactly one producer with either allowlisted
+- [x] **Step 2: Write RED API tests.** Accept exactly one producer with either allowlisted
   negotiated protocol; reject zero/two producers, malformed media, unknown protocol
   and a replacement between snapshots. Closed idle lifecycle generation 0 is valid;
   active Camera Reply generation 0 is rejected in Task 10.
-- [ ] **Step 3: Write RED privacy tests.** CLI output must contain only the approved
+- [x] **Step 3: Write RED privacy tests.** CLI output must contain only the approved
   aggregate keys and must not contain fixture URI, address, account, DID, IDs or raw
   media descriptions.
-- [ ] **Step 4: Run RED.**
+- [x] **Step 4: Run RED.**
 
   ```bash
   .venv-alpha/bin/python -m pytest -q \
     tests/monitoring/test_xiaomi_media_diagnostic.py \
     tests/tools/test_xiaomi_media_diagnostic.py
   ```
-- [ ] **Step 5: Implement the pure parser and bounded two-snapshot collector.** The
+- [x] **Step 5: Implement the pure parser and bounded two-snapshot collector.** The
   collector uses a five-second maximum interval, a 1 MiB response cap, proxy-free
   loopback HTTP and no persistence.
-- [ ] **Step 6: Add `make alpha-xiaomi-media-diagnostic` and run GREEN.**
+- [x] **Step 6: Add `make alpha-xiaomi-media-diagnostic` and run GREEN.**
 
   ```bash
   .venv-alpha/bin/python -m pytest -q \
@@ -495,7 +496,7 @@ snapshot. No camera settings or connections are changed.
   make -n alpha-xiaomi-media-diagnostic
   git diff --check
   ```
-- [ ] **Step 7: Commit the focused slice.**
+- [x] **Step 7: Commit the focused slice.**
 
   ```bash
   git add Makefile packages/monitoring/xiaomi_media_diagnostic.py \
@@ -509,6 +510,13 @@ snapshot. No camera settings or connections are changed.
 **Acceptance:** the installed result can say `configured_transport=auto`, exactly one
 producer and the observed protocol without printing private connection data. Video byte
 growth does not imply audio or speaker readiness.
+
+**Execution evidence (2026-08-27):** RED first produced two missing-module collection
+errors. The implementation validates one transport-auto Xiaomi source, retains the
+upstream producer `id` only in memory, and compares HEVC and Opus receiver counters
+independently. Fresh Task 9/compatibility evidence is 86/86; compilation, Make dry-run,
+privacy and diff checks pass. The installed CLI was not run, so no real protocol,
+producer count or media-byte growth is claimed.
 
 **Next:** make Camera Reply acceptance protocol-neutral and generation-bound.
 

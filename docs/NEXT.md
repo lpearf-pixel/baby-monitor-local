@@ -261,14 +261,15 @@ start of every probe; installed status is NOT_PROVEN. D3/D4 were not run.
 The approved transport-auto amendment is recorded at `8654866`; Task 8 software is
 complete at `f153cbd` with 62/62 synthetic checks. Its installed preflight was not run.
 
-**Prerequisites:** Task 9 keeps `transport=auto`, reads only bounded loopback aggregate
-state and requires exactly one external Xiaomi producer. Real speaker playback remains
-outside the current authorization and later requires an adult at the camera.
+**Prerequisites:** Task 9 software is complete at `1885da2`: it keeps `transport=auto`,
+reads only bounded loopback aggregate state and requires exactly one external Xiaomi
+producer. Its installed command has not run. Real speaker playback remains outside the
+current authorization and later requires an adult at the camera.
 
-**Codex can:** implement Task 9 pure parsers, fake HTTP tests and its read-only diagnostic
-entry without changing the source, opening a second Xiaomi connection or playing audio.
+**Codex can:** implement Task 10 protocol-neutral Camera Reply acceptance and marker
+schema v2 using synthetic responses only, without changing the source or playing audio.
 
-**Human required:** none for Task 9 software. Task 15 later requires separate approval
+**Human required:** none for Task 10 software. Task 15 later requires separate approval
 and supervision. Forcing TCP/UDP or creating a second connection remains prohibited.
 
 **Acceptance and tests:** The original fixed vocabulary and privacy boundaries remain
@@ -277,8 +278,8 @@ regressions, 20 clean synthetic generations, exact patch provenance, zero post-s
 writes, zero pending responses/residual senders, propagated failures and no
 Voice/source regression. Software tests never operate the real speaker.
 
-**Next:** execute Task 9 transport-auto single-producer software diagnostics. Retain the
-accepted i9 speaker and leave Camera Reply disabled; do not enter D3/D4.
+**Next:** execute Task 10 protocol-neutral, generation-bound marker schema v2. Retain
+the accepted i9 speaker and leave Camera Reply disabled; do not enter D3/D4.
 
 ## P5 — Final 72-hour release gate
 
