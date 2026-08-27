@@ -44,6 +44,7 @@ def _stream_payload(
     medias: list[object] | None = None,
     speaker_state: str = "closed",
     generation: int = 2,
+    protocol: str = "cs2+udp",
 ) -> bytes:
     if medias is None:
         medias = [
@@ -55,7 +56,7 @@ def _stream_payload(
         {
             "producers": [
                 {
-                    "protocol": "cs2+udp",
+                    "protocol": protocol,
                     "remote_addr": "private-marker",
                     "url": "xiaomi://private-marker",
                     "medias": medias,
@@ -83,10 +84,15 @@ def _wrapped_stream_payload(**kwargs: object) -> bytes:
 
 
 def _active_stream_payload(
-    *, generation: int = 2, internal_first: bool = False
+    *,
+    generation: int = 2,
+    internal_first: bool = False,
+    protocol: str = "cs2+udp",
 ) -> bytes:
     document = json.loads(
-        _stream_payload(speaker_state="active", generation=generation)
+        _stream_payload(
+            speaker_state="active", generation=generation, protocol=protocol
+        )
     )
     internal = {
         "format_name": "ffmpeg",
@@ -127,6 +133,13 @@ def test_parser_returns_only_closed_readiness_evidence() -> None:
     assert not hasattr(expected, "payload")
 
 
+@pytest.mark.parametrize("protocol", ["cs2+udp", "cs2+tcp"])
+def test_parser_accepts_each_auto_negotiated_protocol(protocol: str) -> None:
+    evidence = parse_source_media(_stream_payload(protocol=protocol))
+
+    assert evidence.protocol == protocol
+
+
 @pytest.mark.parametrize(
     "payload",
     [
@@ -142,7 +155,7 @@ def test_parser_returns_only_closed_readiness_evidence() -> None:
         b'{"producers":[],"consumers":[]}',
         b'{"producers":[null],"consumers":[]}',
         b'{"producers":[{"protocol":1,"medias":[]}],"consumers":[]}',
-        b'{"producers":[{"protocol":"cs2+tcp","medias":[]}],"consumers":[]}',
+        b'{"producers":[{"protocol":"cs2+quic","medias":[]}],"consumers":[]}',
         b'{"producers":[{"protocol":"cs2+udp","medias":"x"}],"consumers":[]}',
         b'{"producers":[{"protocol":"cs2+udp","medias":[]}],"consumers":{}}',
     ],
@@ -274,17 +287,20 @@ def test_inspect_uses_only_fixed_loopback_get_timeout_and_cap(tmp_path: Path) ->
     assert response.closed is True
 
 
+@pytest.mark.parametrize("protocol", ["cs2+udp", "cs2+tcp"])
 @pytest.mark.parametrize("internal_first", [False, True])
 def test_start_and_stop_use_only_fixed_percent_encoded_posts(
-    tmp_path: Path, internal_first: bool
+    tmp_path: Path, internal_first: bool, protocol: str
 ) -> None:
     media = _media_file(tmp_path)
     start_response = FakeResponse(
         _active_stream_payload(
-            generation=2, internal_first=internal_first
+            generation=2,
+            internal_first=internal_first,
+            protocol=protocol,
         )
     )
-    stop_response = FakeResponse(_stream_payload())
+    stop_response = FakeResponse(_stream_payload(protocol=protocol))
     opener = RecordingOpener([start_response, stop_response])
     transport = LoopbackCameraReplyTransport(tmp_path, opener=opener)
 
@@ -558,6 +574,39 @@ def test_stop_requires_the_generation_owned_by_this_start(
     assert transport.stop() == CameraReplyResult(
         CameraReplyCode.AMBIGUOUS, False
     )
+
+
+def test_stop_rejects_protocol_drift_for_the_owned_generation(
+    tmp_path: Path,
+) -> None:
+    opener = RecordingOpener(
+        [
+            FakeResponse(_active_stream_payload(protocol="cs2+udp")),
+            FakeResponse(_stream_payload(protocol="cs2+tcp")),
+        ]
+    )
+    transport = LoopbackCameraReplyTransport(tmp_path, opener=opener)
+
+    assert transport.start(_media_file(tmp_path)).code is CameraReplyCode.READY
+    assert transport.stop() == CameraReplyResult(
+        CameraReplyCode.AMBIGUOUS, False
+    )
+
+
+def test_parser_rejects_two_external_lifecycle_producers() -> None:
+    document = json.loads(_stream_payload())
+    document["producers"].append(document["producers"][0].copy())
+
+    with pytest.raises(ValueError, match="^CAMERA_REPLY_UNAVAILABLE$"):
+        parse_source_media(json.dumps(document).encode())
+
+
+def test_parser_fail_closes_on_unhashable_protocol_value() -> None:
+    document = json.loads(_stream_payload())
+    document["producers"][0]["protocol"] = ["cs2+udp"]
+
+    with pytest.raises(ValueError, match="^CAMERA_REPLY_UNAVAILABLE$"):
+        parse_source_media(json.dumps(document).encode())
 
 
 def test_status_writer_atomically_publishes_only_bounded_fields(tmp_path: Path) -> None:

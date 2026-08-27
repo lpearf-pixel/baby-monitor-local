@@ -7,6 +7,7 @@ import pty
 import stat
 import tty as tty_module
 import wave
+from dataclasses import replace
 from pathlib import Path
 
 import pytest
@@ -53,20 +54,22 @@ def _metadata(root: Path) -> BuildMetadata:
     return metadata
 
 
-def _marker(root: Path, metadata: BuildMetadata) -> Path:
+def _marker(
+    root: Path, metadata: BuildMetadata, *, protocol: str = "cs2+udp"
+) -> Path:
     status = root / "runtime/status"
     status.mkdir(parents=True, mode=0o700)
     path = status / "voice-camera-reply-acceptance.json"
     path.write_text(
         json.dumps(
             {
-                "schema_version": 1,
+                "schema_version": 2,
                 "accepted": True,
                 "upstream_commit": metadata.upstream_commit,
                 "patch_sha256": metadata.patch_sha256,
                 "binary_sha256": metadata.binary_sha256,
-                "protocol": "cs2+udp",
-                "audio_codec": "opus",
+                "transport_mode": "auto",
+                "negotiated_protocol": protocol,
             },
             sort_keys=True,
             separators=(",", ":"),
@@ -78,16 +81,24 @@ def _marker(root: Path, metadata: BuildMetadata) -> Path:
     return path
 
 
-def _evidence() -> CameraReplyEvidence:
+def _evidence(
+    *, protocol: str = "cs2+udp", generation: int = 2
+) -> CameraReplyEvidence:
     return CameraReplyEvidence(
         source_ready=True,
         video_ready=True,
         incoming_audio_ready=True,
         sendonly_audio_ready=True,
-        protocol="cs2+udp",
+        protocol=protocol,
         video_codec="HEVC",
         incoming_audio_codec="OPUS",
         sendonly_audio_codec="OPUS",
+        speaker_state="closed",
+        speaker_session_generation=generation,
+        speaker_start_requests=generation,
+        speaker_start_responses=generation,
+        speaker_stop_commands=generation,
+        producer_generation=generation,
     )
 
 
@@ -108,17 +119,71 @@ def test_controlling_tty_supports_real_nonseekable_terminal_io() -> None:
         os.close(master_fd)
 
 
-def test_acceptance_loads_only_exact_current_private_marker(tmp_path: Path) -> None:
+@pytest.mark.parametrize("protocol", ["cs2+udp", "cs2+tcp"])
+def test_acceptance_loads_only_exact_current_private_marker(
+    tmp_path: Path, protocol: str
+) -> None:
     metadata = _metadata(tmp_path)
-    marker = _marker(tmp_path, metadata)
+    marker = _marker(tmp_path, metadata, protocol=protocol)
 
-    assert CameraReplyAcceptance.load(tmp_path, metadata) == _evidence()
+    assert CameraReplyAcceptance.load(tmp_path, metadata) == _evidence(
+        protocol=protocol, generation=0
+    )
     assert stat.S_IMODE(marker.stat().st_mode) == 0o600
+
+
+@pytest.mark.parametrize("protocol", ["cs2+udp", "cs2+tcp"])
+def test_acceptance_publishes_schema_v2_from_closed_owned_generation(
+    tmp_path: Path, protocol: str
+) -> None:
+    metadata = _metadata(tmp_path)
+    evidence = _evidence(protocol=protocol)
+
+    assert CameraReplyAcceptance.publish(tmp_path, metadata, evidence) is True
+
+    marker = tmp_path / "runtime/status/voice-camera-reply-acceptance.json"
+    assert json.loads(marker.read_bytes()) == {
+        "schema_version": 2,
+        "accepted": True,
+        "upstream_commit": metadata.upstream_commit,
+        "patch_sha256": metadata.patch_sha256,
+        "binary_sha256": metadata.binary_sha256,
+        "transport_mode": "auto",
+        "negotiated_protocol": protocol,
+    }
+
+
+@pytest.mark.parametrize(
+    "evidence",
+    [
+        _evidence(generation=0),
+        _evidence(protocol="cs2+quic"),
+        replace(_evidence(generation=1), speaker_start_requests=True),
+    ],
+)
+def test_acceptance_refuses_unowned_or_unknown_protocol_evidence(
+    tmp_path: Path, evidence: CameraReplyEvidence
+) -> None:
+    metadata = _metadata(tmp_path)
+
+    assert CameraReplyAcceptance.publish(tmp_path, metadata, evidence) is False
+    assert not (
+        tmp_path / "runtime/status/voice-camera-reply-acceptance.json"
+    ).exists()
 
 
 @pytest.mark.parametrize(
     "mutation",
-    ["unknown", "stale", "protocol", "codec", "mode", "symlink"],
+    [
+        "unknown",
+        "stale",
+        "protocol",
+        "protocol_shape",
+        "transport",
+        "schema",
+        "mode",
+        "symlink",
+    ],
 )
 def test_acceptance_rejects_invalid_marker_without_repair(
     tmp_path: Path, mutation: str
@@ -126,16 +191,29 @@ def test_acceptance_rejects_invalid_marker_without_repair(
     metadata = _metadata(tmp_path)
     marker = _marker(tmp_path, metadata)
     original = marker.read_bytes()
-    if mutation in {"unknown", "stale", "protocol", "codec"}:
+    if mutation in {
+        "unknown",
+        "stale",
+        "protocol",
+        "protocol_shape",
+        "transport",
+        "schema",
+    }:
         payload = json.loads(original)
         if mutation == "unknown":
             payload["private_detail"] = "must-not-leak"
         elif mutation == "stale":
             payload["binary_sha256"] = "0" * 64
         elif mutation == "protocol":
-            payload["protocol"] = "cs2+tcp"
+            payload["negotiated_protocol"] = "cs2+quic"
+        elif mutation == "protocol_shape":
+            payload["negotiated_protocol"] = ["cs2+udp"]
+        elif mutation == "transport":
+            payload["transport_mode"] = "udp"
+        elif mutation == "schema":
+            payload["schema_version"] = 1
         else:
-            payload["audio_codec"] = "pcma"
+            raise AssertionError("unreachable")
         marker.write_text(json.dumps(payload), encoding="ascii")
         marker.chmod(0o600)
         original = marker.read_bytes()
@@ -255,7 +333,7 @@ def test_probe_uses_tty_fixed_health_gates_one_second_tone_and_cleanup(
         assert source.getframerate() == 16_000
         assert source.getnframes() == 16_000
     assert list(temporary_parent.iterdir()) == []
-    assert CameraReplyAcceptance.load(root, metadata) == _evidence()
+    assert CameraReplyAcceptance.load(root, metadata) == _evidence(generation=0)
     status_path = root / "runtime/status/voice-camera-reply.json"
     assert status_path.is_file()
     assert stat.S_IMODE(status_path.stat().st_mode) == 0o600

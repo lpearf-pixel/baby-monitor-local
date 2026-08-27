@@ -12,7 +12,7 @@ from collections.abc import Callable
 from dataclasses import asdict, dataclass
 from enum import StrEnum
 from pathlib import Path
-from typing import Any, Protocol
+from typing import Any, Literal, Protocol
 from urllib.parse import urlencode
 from urllib.request import OpenerDirector, ProxyHandler, Request, build_opener
 
@@ -29,7 +29,8 @@ _ORIGIN = "http://127.0.0.1:1984"
 _INSPECT_URL = f"{_ORIGIN}/api/streams?src=source"
 _MAX_BYTES = 1_048_576
 _TIMEOUT_SECONDS = 2.0
-_PROTOCOL = "cs2+udp"
+_TRANSPORT_MODE = "auto"
+_NEGOTIATED_PROTOCOLS = frozenset({"cs2+udp", "cs2+tcp"})
 _VIDEO_MEDIA = "video, recvonly, H265"
 _INCOMING_AUDIO_MEDIA = "audio, recvonly, OPUS/48000/2"
 _SENDONLY_AUDIO_MEDIA = "audio, sendonly, OPUS/48000/2"
@@ -51,8 +52,8 @@ _ACCEPTANCE_FIELDS = frozenset(
         "upstream_commit",
         "patch_sha256",
         "binary_sha256",
-        "protocol",
-        "audio_codec",
+        "transport_mode",
+        "negotiated_protocol",
     }
 )
 
@@ -75,7 +76,7 @@ class CameraReplyEvidence:
     video_ready: bool
     incoming_audio_ready: bool
     sendonly_audio_ready: bool
-    protocol: str
+    protocol: Literal["cs2+udp", "cs2+tcp"]
     video_codec: str
     incoming_audio_codec: str
     sendonly_audio_codec: str
@@ -123,6 +124,49 @@ class CameraReplyStatus:
             raise ValueError(_UNAVAILABLE)
 
 
+def _publishable_evidence(evidence: object) -> bool:
+    if not isinstance(evidence, CameraReplyEvidence):
+        return False
+    generation = evidence.speaker_session_generation
+    counters = (
+        generation,
+        evidence.speaker_start_requests,
+        evidence.speaker_start_responses,
+        evidence.speaker_stop_commands,
+        evidence.speaker_write_failures,
+        evidence.speaker_stop_failures,
+        evidence.pending_command_responses,
+        evidence.residual_sender_count,
+        evidence.producer_generation,
+    )
+    return bool(
+        evidence.source_ready is True
+        and evidence.video_ready is True
+        and evidence.incoming_audio_ready is True
+        and evidence.sendonly_audio_ready is True
+        and type(evidence.protocol) is str
+        and evidence.protocol in _NEGOTIATED_PROTOCOLS
+        and evidence.video_codec == "HEVC"
+        and evidence.incoming_audio_codec == "OPUS"
+        and evidence.sendonly_audio_codec == "OPUS"
+        and evidence.speaker_state == "closed"
+        and all(
+            type(value) is int and 0 <= value <= 1_000_000_000
+            for value in counters
+        )
+        and 0 < generation <= 1_000_000_000
+        and evidence.speaker_start_requests == generation
+        and evidence.speaker_start_responses == generation
+        and evidence.speaker_stop_commands == generation
+        and evidence.speaker_write_failures == 0
+        and evidence.speaker_stop_failures == 0
+        and evidence.pending_command_responses == 0
+        and evidence.residual_sender_count == 0
+        and evidence.last_failure_stage == "none"
+        and evidence.producer_generation == generation
+    )
+
+
 class CameraReplyAcceptance:
     @classmethod
     def invalidate(cls, root: Path) -> bool:
@@ -161,13 +205,14 @@ class CameraReplyAcceptance:
         if (
             not isinstance(payload, dict)
             or set(payload) != _ACCEPTANCE_FIELDS
-            or payload["schema_version"] != 1
+            or payload["schema_version"] != 2
             or payload["accepted"] is not True
             or payload["upstream_commit"] != build_metadata.upstream_commit
             or payload["patch_sha256"] != build_metadata.patch_sha256
             or payload["binary_sha256"] != build_metadata.binary_sha256
-            or payload["protocol"] != _PROTOCOL
-            or payload["audio_codec"] != "opus"
+            or payload["transport_mode"] != _TRANSPORT_MODE
+            or type(payload["negotiated_protocol"]) is not str
+            or payload["negotiated_protocol"] not in _NEGOTIATED_PROTOCOLS
         ):
             return None
         return CameraReplyEvidence(
@@ -175,15 +220,22 @@ class CameraReplyAcceptance:
             video_ready=True,
             incoming_audio_ready=True,
             sendonly_audio_ready=True,
-            protocol=_PROTOCOL,
+            protocol=payload["negotiated_protocol"],
             video_codec="HEVC",
             incoming_audio_codec="OPUS",
             sendonly_audio_codec="OPUS",
         )
 
     @classmethod
-    def publish(cls, root: Path, build_metadata: BuildMetadata) -> bool:
+    def publish(
+        cls,
+        root: Path,
+        build_metadata: BuildMetadata,
+        evidence: CameraReplyEvidence,
+    ) -> bool:
         path = root / _ACCEPTANCE_RELATIVE
+        if not _publishable_evidence(evidence):
+            return False
         try:
             root = root.resolve(strict=True)
             parent = path.parent
@@ -205,13 +257,13 @@ class CameraReplyAcceptance:
                 ):
                     return False
             document = {
-                "schema_version": 1,
+                "schema_version": 2,
                 "accepted": True,
                 "upstream_commit": build_metadata.upstream_commit,
                 "patch_sha256": build_metadata.patch_sha256,
                 "binary_sha256": build_metadata.binary_sha256,
-                "protocol": _PROTOCOL,
-                "audio_codec": "opus",
+                "transport_mode": _TRANSPORT_MODE,
+                "negotiated_protocol": evidence.protocol,
             }
             payload = (
                 json.dumps(document, sort_keys=True, separators=(",", ":"))
@@ -304,7 +356,10 @@ def _closed_object(pairs: list[tuple[str, Any]]) -> dict[str, Any]:
 
 def parse_source_media(payload: bytes) -> CameraReplyEvidence:
     return _parse_source_media_lifecycle(
-        payload, expected_state="closed", expected_generation=None
+        payload,
+        expected_state="closed",
+        expected_generation=None,
+        expected_protocol=None,
     )
 
 
@@ -313,6 +368,7 @@ def _parse_source_media_lifecycle(
     *,
     expected_state: str,
     expected_generation: int | None,
+    expected_protocol: str | None,
 ) -> CameraReplyEvidence:
     if type(payload) is not bytes or not 0 < len(payload) <= _MAX_BYTES:
         raise ValueError(_UNAVAILABLE)
@@ -359,7 +415,10 @@ def _parse_source_media_lifecycle(
     ):
         raise ValueError(_UNAVAILABLE)
     lifecycle_producers = [
-        item for item in producers if item.get("protocol") == _PROTOCOL
+        item
+        for item in producers
+        if lifecycle_fields.issubset(item)
+        and {"speaker_state", "last_failure_stage"}.issubset(item)
     ]
     if len(lifecycle_producers) != 1:
         raise ValueError(_UNAVAILABLE)
@@ -377,7 +436,9 @@ def _parse_source_media_lifecycle(
     protocol = producer.get("protocol")
     medias = producer.get("medias")
     if (
-        protocol != _PROTOCOL
+        type(protocol) is not str
+        or protocol not in _NEGOTIATED_PROTOCOLS
+        or (expected_protocol is not None and protocol != expected_protocol)
         or not isinstance(medias, list)
         or any(type(media) is not str for media in medias)
         or len(medias) != 3
@@ -423,7 +484,7 @@ def _parse_source_media_lifecycle(
         video_ready=True,
         incoming_audio_ready=True,
         sendonly_audio_ready=True,
-        protocol=_PROTOCOL,
+        protocol=protocol,
         video_codec="HEVC",
         incoming_audio_codec="OPUS",
         sendonly_audio_codec="OPUS",
@@ -455,6 +516,7 @@ class LoopbackCameraReplyTransport:
         self._opener = opener or build_opener(ProxyHandler({}))
         self._lock = threading.Lock()
         self._active_generation: int | None = None
+        self._active_protocol: str | None = None
 
     def inspect(self) -> CameraReplyEvidence | None:
         if not self._lock.acquire(blocking=False):
@@ -494,10 +556,12 @@ class LoopbackCameraReplyTransport:
                     payload,
                     expected_state="active",
                     expected_generation=None,
+                    expected_protocol=None,
                 )
             except Exception:
                 return CameraReplyResult(CameraReplyCode.AMBIGUOUS, True)
             self._active_generation = evidence.speaker_session_generation
+            self._active_protocol = evidence.protocol
             return CameraReplyResult(CameraReplyCode.READY, True)
         finally:
             self._lock.release()
@@ -513,16 +577,21 @@ class LoopbackCameraReplyTransport:
             )
             try:
                 payload = self._request(request)
-                if self._active_generation is None:
+                if (
+                    self._active_generation is None
+                    or self._active_protocol is None
+                ):
                     raise ValueError(_UNAVAILABLE)
                 _parse_source_media_lifecycle(
                     payload,
                     expected_state="closed",
                     expected_generation=self._active_generation,
+                    expected_protocol=self._active_protocol,
                 )
             except Exception:
                 return CameraReplyResult(CameraReplyCode.AMBIGUOUS, False)
             self._active_generation = None
+            self._active_protocol = None
             return CameraReplyResult(CameraReplyCode.COMPLETE, False)
         finally:
             self._lock.release()

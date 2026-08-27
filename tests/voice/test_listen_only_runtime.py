@@ -12,7 +12,11 @@ from services.voice.capture import UtteranceResult
 from services.voice.listen_only import ListenOnlyOutcome
 from packages.contracts.settings import VoiceCareSettings
 from packages.monitoring.go2rtc_build import BuildMetadata
-from services.voice.camera_reply import CameraReplyAcceptance, CameraReplyCode
+from services.voice.camera_reply import (
+    CameraReplyAcceptance,
+    CameraReplyCode,
+    CameraReplyEvidence,
+)
 from services.voice.listen_only_runtime import (
     ListenOnlyVoiceWorker,
     PlaybackDucker,
@@ -315,7 +319,22 @@ def test_camera_reply_readiness_requires_flag_and_current_marker(
         CameraReplyCode.NOT_PROVEN
     )
 
-    assert CameraReplyAcceptance.publish(tmp_path, metadata) is True
+    evidence = CameraReplyEvidence(
+        source_ready=True,
+        video_ready=True,
+        incoming_audio_ready=True,
+        sendonly_audio_ready=True,
+        protocol="cs2+udp",
+        video_codec="HEVC",
+        incoming_audio_codec="OPUS",
+        sendonly_audio_codec="OPUS",
+        speaker_session_generation=1,
+        speaker_start_requests=1,
+        speaker_start_responses=1,
+        speaker_stop_commands=1,
+        producer_generation=1,
+    )
+    assert CameraReplyAcceptance.publish(tmp_path, metadata, evidence) is True
     assert camera_reply_readiness(_listen_settings(camera=True), tmp_path) is (
         CameraReplyCode.READY
     )

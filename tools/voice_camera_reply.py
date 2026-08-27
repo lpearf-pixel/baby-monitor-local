@@ -320,12 +320,13 @@ def run_probe(
 
     source_healthy = runner(source_command, _COMMAND_TIMEOUT_SECONDS)
     voice_healthy = runner(voice_command, _COMMAND_TIMEOUT_SECONDS)
-    media_healthy = transport.inspect() is not None
+    final_evidence = transport.inspect()
+    media_healthy = final_evidence is not None
     marker_current = bool(
         source_healthy
         and voice_healthy
         and media_healthy
-        and CameraReplyAcceptance.publish(root, metadata)
+        and CameraReplyAcceptance.publish(root, metadata, final_evidence)
         and CameraReplyAcceptance.load(root, metadata) is not None
     )
     code = CameraReplyCode.COMPLETE if marker_current else CameraReplyCode.UNAVAILABLE
