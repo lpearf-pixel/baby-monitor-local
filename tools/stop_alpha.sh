@@ -12,6 +12,31 @@ VOICE_ASR_OPERATOR_LABEL="com.babymonitor.voice-asr-operator"
 TUNNEL_LABEL="com.babymonitor.ollama-tunnel"
 VOICE_ONLY_STOP=0
 
+wait_voice_jobs_unloaded() {
+  local domain="$1"
+  local voice_target="${domain}/${VOICE_LABEL}"
+  local operator_target="${domain}/${VOICE_ASR_OPERATOR_LABEL}"
+  local voice_loaded
+  local operator_loaded
+  local attempt
+
+  for attempt in {1..20}; do
+    voice_loaded=0
+    operator_loaded=0
+    if launchctl print "$voice_target" >/dev/null 2>&1; then
+      voice_loaded=1
+    fi
+    if launchctl print "$operator_target" >/dev/null 2>&1; then
+      operator_loaded=1
+    fi
+    if [[ "$voice_loaded" -eq 0 && "$operator_loaded" -eq 0 ]]; then
+      return 0
+    fi
+    sleep 0.1
+  done
+  return 1
+}
+
 if [[ "$#" -eq 1 && "$1" == "--voice-only" ]]; then
   VOICE_ONLY_STOP=1
 elif [[ "$#" -ne 0 ]]; then
@@ -45,6 +70,10 @@ if [[ "$VOICE_ONLY_STOP" -eq 1 ]]; then
     fi
     if launchctl print "${VOICE_DOMAIN}/${VOICE_ASR_OPERATOR_LABEL}" >/dev/null 2>&1; then
       launchctl bootout "${VOICE_DOMAIN}/${VOICE_ASR_OPERATOR_LABEL}" >/dev/null
+    fi
+    if ! wait_voice_jobs_unloaded "$VOICE_DOMAIN"; then
+      echo "voice_stop=FAIL reason=service_stop_timeout" >&2
+      exit 1
     fi
   else
     stop_pidfile "$ROOT/runtime/pids/voice.pid"

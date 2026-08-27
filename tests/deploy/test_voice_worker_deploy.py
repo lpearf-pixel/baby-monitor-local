@@ -16,6 +16,94 @@ def _write_executable(path: Path, content: str) -> None:
     path.chmod(0o755)
 
 
+def _voice_stop_project(tmp_path: Path, *, settle: bool) -> tuple[Path, dict[str, str]]:
+    project = tmp_path / "project"
+    (project / "tools").mkdir(parents=True)
+    shutil.copy2(ROOT / "tools/stop_alpha.sh", project / "tools/stop_alpha.sh")
+    home = tmp_path / "home"
+    (home / "Library/LaunchAgents").mkdir(parents=True)
+    state = tmp_path / "state"
+    state.mkdir()
+    for label in ("com.babymonitor.voice", "com.babymonitor.voice-asr-operator"):
+        (state / label).write_text("loaded\n", encoding="ascii")
+    fake_bin = tmp_path / "bin"
+    fake_bin.mkdir()
+    _write_executable(fake_bin / "uname", "#!/bin/sh\necho Darwin\n")
+    _write_executable(fake_bin / "id", "#!/bin/sh\necho 501\n")
+    _write_executable(fake_bin / "sleep", "#!/bin/sh\nexit 0\n")
+    settle_line = (
+        'count=$(cat "$marker.linger")\n'
+        'if test "$count" -le 1; then rm -f "$marker" "$marker.linger"; exit 1; fi\n'
+        'count=$((count - 1))\nprintf "%s" "$count" > "$marker.linger"\n'
+        if settle
+        else ":\n"
+    )
+    _write_executable(
+        fake_bin / "launchctl",
+        "#!/bin/sh\n"
+        "set -eu\n"
+        "command=$1\ntarget=$2\nlabel=${target##*/}\n"
+        'marker="$VOICE_STOP_STATE/$label"\n'
+        "case $command in\n"
+        "  print)\n"
+        '    if test -f "$marker.linger"; then\n'
+        f"      {settle_line}"
+        "    fi\n"
+        '    test -f "$marker"\n'
+        "    ;;\n"
+        "  bootout)\n"
+        '    printf "2" > "$marker.linger"\n'
+        "    ;;\n"
+        "  *) exit 2;;\n"
+        "esac\n",
+    )
+    environment = os.environ.copy()
+    environment.update(
+        {
+            "HOME": str(home),
+            "PATH": f"{fake_bin}:{environment['PATH']}",
+            "VOICE_STOP_STATE": str(state),
+        }
+    )
+    return project, environment
+
+
+def test_voice_stop_waits_for_launchd_bootout_settlement(tmp_path: Path) -> None:
+    project, environment = _voice_stop_project(tmp_path, settle=True)
+
+    result = subprocess.run(
+        ["bash", "tools/stop_alpha.sh", "--voice-only"],
+        cwd=project,
+        env=environment,
+        check=False,
+        capture_output=True,
+        text=True,
+    )
+
+    assert result.returncode == 0
+    assert result.stdout == "voice_stop=PASS\n"
+    state = Path(environment["VOICE_STOP_STATE"])
+    assert not (state / "com.babymonitor.voice").exists()
+    assert not (state / "com.babymonitor.voice-asr-operator").exists()
+
+
+def test_voice_stop_fails_closed_when_launchd_never_settles(tmp_path: Path) -> None:
+    project, environment = _voice_stop_project(tmp_path, settle=False)
+
+    result = subprocess.run(
+        ["bash", "tools/stop_alpha.sh", "--voice-only"],
+        cwd=project,
+        env=environment,
+        check=False,
+        capture_output=True,
+        text=True,
+    )
+
+    assert result.returncode != 0
+    assert result.stdout == ""
+    assert result.stderr == "voice_stop=FAIL reason=service_stop_timeout\n"
+
+
 def test_voice_launchd_is_independent_interactive_and_private() -> None:
     payload = plistlib.loads(
         (ROOT / "deploy/launchd/com.babymonitor.voice.plist.example").read_bytes()
