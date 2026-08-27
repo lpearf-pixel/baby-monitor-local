@@ -1244,3 +1244,19 @@ Voice-only 启用、原 V3E 交互矩阵与回滚验证。
 发送调用；该静态证据不能覆盖实机转动事实。source 未经完整栈重启自行恢复为单一
 `transport=auto` producer，实际 `cs2+udp`。因此正式实机唤醒词收敛为 `嘿小小`，Camera
 Reply 与 V3E 保持 fail closed，下一步只允许单独的扬声器/移动隔离门。
+
+随后单独的一秒固定音调再次由成人确认可听且无转动，marker 重新成为 current。紧接着
+恢复一次受控 V3E：`嘿小小` 只播放到 `我在` 即停止，摄像头转动且仅回复一次。Voice
+固定状态为 `CAMERA_REPLY_AMBIGUOUS`、6370 ms；同一脱敏日志窗口出现 Xiaomi media
+timeout 与派生接收 EOF。恢复后的 API 快照不是预期的单 producer，而是一个新的 Xiaomi
+producer 加一个仅剩 `internal` 标识的旧播放 producer。立即把私有开关恢复为 false，
+仅重启 Voice，不再执行播放。随后 receive-only V0 probe PASS：48 kHz、双声道、60.000 秒、
+1,920,000 解码字节、2465 chunks、`raw_audio_persisted=false`。
+
+Task 16 以 TDD 开始修复有限 TTS 的 EOF/stop 竞态。真实固定回复离线渲染为合法的
+49,176-byte AIFF、16 kHz mono、1.40875 秒；go2rtc 对文件输入使用 `-re`，旧实现从 start
+返回起只等标称时长便 stop。新增 RED 首先证明 0.10 秒媒体只有两个 50 ms wait，随后最小
+GREEN 在原 10 秒总门限和 2 秒 stop reserve 内增加固定 0.5 秒 FFmpeg drain。Fresh Camera
+Reply 126/126、Voice 443/443、固定上游 exact normal/race protocol gate 与 py_compile/
+diff-check 均 PASS。该软件证据未安装、未播放、未证明摄像头不转动。失败 marker 尚未
+删除，旧 internal producer 尚未通过 go2rtc-only recovery 清理；二者均是下一次实机前置。

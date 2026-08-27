@@ -545,6 +545,27 @@
   `0x112`, and the project has no motor send call; this narrows but does not dismiss the
   observed movement. Source later self-recovered as one `transport=auto` producer with
   observed `cs2+udp`. Camera Reply remains disabled and V3E remains unaccepted.
+- A later isolated one-second camera tone passed again with adult-confirmed audibility
+  and no movement. The following live `嘿小小` retry was a hard fail: only the leading
+  `我在` was audible, the camera moved and exactly one reply occurred. The fixed status
+  was `CAMERA_REPLY_AMBIGUOUS` at 6370 ms. In the same bounded window go2rtc recorded a
+  Xiaomi media timeout and receiver EOF; the stream subsequently exposed one new
+  Xiaomi producer plus one stale `internal` playback producer. The private flag is
+  false. A receive-only V0 probe then decoded 60.000 seconds of 48 kHz stereo Opus and
+  persisted no raw audio, proving receive recovery but not reply recovery.
+- Task 16 software is locally GREEN but not installed or accepted. Offline rendering
+  produced a valid 49,176-byte, 16 kHz mono AIFF with a 1.40875-second duration. The
+  fixed go2rtc file path is realtime-paced with `-re`, while the former Python path
+  issued stop at the nominal media duration. The minimum fix adds a non-configurable,
+  cancellation-aware 0.5-second FFmpeg drain inside the existing 10-second operation
+  limit. Camera Reply passes 126/126, Voice 443/443 and the exact pinned normal/race
+  protocol gate passes. No camera playback validated this change. The current marker
+  must be invalidated and go2rtc alone recovered before another supervised attempt.
+- Runtime configuration currently reports Xiaomi model `chuangmi.camera.039a01`, while
+  the approved MJSXJ17CM specification and upstream support record identify
+  `chuangmi.camera.039c01`. This discrepancy is not yet classified as causal and was
+  not changed. Reconcile it through the local Xiaomi device listing before any source
+  URI mutation; keep transport auto and the single-producer boundary.
 - Installed-i9 audio-source discovery now verifies that the Xiaomi source exposes HEVC
   video plus Opus audio and that the fixed loopback `audio_analysis` alias exposes only
   Opus. The real input is supported 48 kHz stereo Opus; the fixed FFmpeg boundary

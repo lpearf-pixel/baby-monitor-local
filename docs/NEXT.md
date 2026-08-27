@@ -261,8 +261,11 @@ production output because the ignored Camera Reply flag is still false.
 The later controlled activation did not pass V3E: one live `嘿小小` reply was audible
 from the camera but coincided with observed camera movement, so the flag was rolled back
 to false and only Voice restarted. An i9-only control then accepted `嘿小小` once with
-no movement; bare `小小` was not acoustically reliable. The installed user-facing wake
-phrase is therefore `嘿小小`, while the internal normalized keyword remains `小小`.
+no movement; bare `小小` was not acoustically reliable. A subsequent isolated tone
+passed without movement, but the next live retry played only `我在`, moved the camera,
+returned AMBIGUOUS and left one stale internal playback producer after Xiaomi media
+timeout/replacement. The installed user-facing wake phrase is therefore `嘿小小`, while
+the internal normalized keyword remains `小小`; Camera Reply remains unaccepted.
 The approved transport-auto amendment is recorded at `8654866`; Task 8 software is
 complete at `f153cbd` with 62/62 synthetic checks. Its installed preflight was not run.
 
@@ -274,9 +277,11 @@ installed preflight, which failed closed; the installed media diagnostic did not
 Real speaker playback Task 15 is complete; production activation remains a distinct
 configuration change and still requires adult supervision plus the existing rollback.
 
-**Codex can:** keep the private flag false and prepare one isolated speaker/movement
-gate without changing transport or producer count. Do not resume the full V3E matrix
-until that gate passes.
+**Codex can:** keep the private flag false, finish Task 16's bounded FFmpeg drain slice,
+and prepare component-only recovery. Do not resume the full V3E matrix until the failed
+marker is invalidated, go2rtc is recovered to exactly one producer, the runtime model
+identity discrepancy is reconciled and one supervised fixed reply passes without
+truncation, movement, timeout or replacement.
 
 **Human required:** approve the production-output switch and supervise the fixed wake,
 dialogue, silent-timeout and non-wake interactions. Forcing TCP/UDP or creating a second
@@ -312,10 +317,18 @@ runtime evidence was one `transport=auto` producer, observed `cs2+udp`, generati
 increasing video/audio bytes, no replacement, healthy Voice and a current schema-v2
 marker. No household audio was persisted and no full-stack restart occurred.
 
-**Next:** retain the accepted i9 speaker and private flag `false`. With an adult present,
-first isolate one fixed camera-speaker reply from human movement and confirm no camera
-turn, producer replacement, timeout or duplicate output. Only then resume the V3E
-matrix using canonical `嘿小小`; any movement fails closed and restores i9-only output.
+**Task 16 status:** local software fix pending commit. The failed live retry provided
+aggregate evidence for a finite-file EOF/stop race: a valid 1.40875-second TTS input was
+realtime paced, stopped at nominal duration, returned AMBIGUOUS and left a stale
+internal producer. A fixed 0.5-second cancellation-aware drain now precedes stop inside
+the existing operation limit. Camera Reply 126/126, Voice 443/443 and exact pinned
+normal/race protocol gates pass. No real speaker playback has validated the fix.
+
+**Next:** retain the accepted i9 speaker and private flag `false`. Obtain explicit
+deletion approval for the failed marker, recover only go2rtc, require one clean producer
+and reconcile the configured/device model identity. Then, with an adult present, run
+one fixed camera reply and confirm full phrase, no movement, replacement, timeout,
+duplicate or residual internal producer. Only then resume V3E using `嘿小小`.
 
 ## P5 — Final 72-hour release gate
 

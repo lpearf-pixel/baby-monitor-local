@@ -962,13 +962,15 @@ def test_camera_output_closes_success_lifecycle_before_resuming_capture(
     result = output.deliver_code("listen_only_ready", threading.Event())
 
     assert result == CameraReplyResult(CameraReplyCode.COMPLETE, True)
-    assert events == [
+    assert events[:4] == [
         "pause",
         "inspect",
         "render",
         "start",
-        "wait",
-        "wait",
+    ]
+    assert len(events[4:-4]) >= 12
+    assert set(events[4:-4]) == {"wait"}
+    assert events[-4:] == [
         "stop",
         "guard",
         "resume",
@@ -978,6 +980,31 @@ def test_camera_output_closes_success_lifecycle_before_resuming_capture(
     assert output.speak_code("private-code", threading.Event()) is False
     assert status_writer.statuses[0].completed_count == 1
     assert status_writer.statuses[0].failed_count == 0
+
+
+def test_camera_output_allows_bounded_ffmpeg_drain_before_stop(
+    tmp_path: Path,
+) -> None:
+    media = _media_file(tmp_path)
+    rendered = RenderedReply(media, 0.10, tmp_path.resolve())
+    events: list[str] = []
+    clock = OutputClock(events, media)
+    output = CameraReplyOutput(
+        transport=OutputTransport(events),
+        renderer=OutputRenderer(events, rendered),
+        ducker=OutputDucker(events),
+        monotonic=clock.monotonic,
+        sleep=clock.sleep,
+        post_playback_guard_seconds=0.0,
+    )
+
+    assert output.deliver_code("listen_only_ready", threading.Event()) == (
+        CameraReplyResult(CameraReplyCode.COMPLETE, True)
+    )
+    stop_index = events.index("stop")
+    assert events[:stop_index].count("wait") >= 12
+    assert sum(clock.sleeps) == pytest.approx(0.60)
+    assert max(clock.sleeps) <= 0.05
 
 
 @pytest.mark.parametrize(

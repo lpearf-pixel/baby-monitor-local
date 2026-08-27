@@ -41,6 +41,7 @@ _FIXED_REPLY_CODES = frozenset(
 _MAX_OPERATION_SECONDS = 10.0
 _STOP_RESERVE_SECONDS = 2.0
 _MAX_WAIT_INCREMENT_SECONDS = 0.05
+_FFMPEG_DRAIN_SECONDS = 0.5
 _MAX_GUARD_SECONDS = 0.5
 _ACCEPTANCE_RELATIVE = Path(
     "runtime/status/voice-camera-reply-acceptance.json"
@@ -1015,7 +1016,9 @@ class CameraReplyOutput:
         cancelled: CancelEvent,
         started_at: float,
     ) -> bool:
-        duration_deadline = self._monotonic() + duration_seconds
+        duration_deadline = (
+            self._monotonic() + duration_seconds + _FFMPEG_DRAIN_SECONDS
+        )
         reserved_deadline = (
             started_at
             + _MAX_OPERATION_SECONDS

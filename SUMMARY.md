@@ -71,6 +71,21 @@ Updated: 2026-08-27
   negotiated `cs2+udp`, generation 6, increasing video/audio bytes, no replacement and
   a current schema-v2 marker. The private production flag remains false pending the
   separate V3E controlled-activation matrix.
+  A later isolated one-second tone again passed with adult-confirmed audibility and no
+  movement. The immediately following live V3E retry then played only the leading
+  `我在`, moved the camera and produced exactly one reply. Voice recorded
+  `CAMERA_REPLY_AMBIGUOUS` at 6370 ms; the same bounded log window showed Xiaomi media
+  timeout, receiver EOF and producer replacement. The recovered stream contained one
+  current Xiaomi producer plus one stale `internal` playback producer, so the private
+  flag was restored to false and no further playback ran. A receive-only 60-second
+  Opus probe then passed with 60.000 decoded seconds and no raw-audio persistence.
+  Task 16 is in progress: offline inspection found the valid 16 kHz mono TTS file is
+  1.409 seconds while go2rtc paces file input with `-re`; the old client stopped at the
+  nominal duration with no FFmpeg drain margin. The local software fix adds a fixed
+  bounded 0.5-second drain before stop; Camera Reply 126/126, Voice 443/443 and exact
+  pinned normal/race protocol gates pass. This is not real-device acceptance. The
+  failed marker and stale internal producer still require explicit marker invalidation
+  and a go2rtc-only recovery before any new supervised gate.
   The accepted Voice branch is published at `4d479b8`; the lifecycle-review branch is
   published through `a622a7a`, before local Task 9. Neither has been merged
   into a protected branch.
@@ -538,13 +553,14 @@ legacy branch into this line without a separate integration decision.
    already user-confirmed PASS.
 5. P4 private-access software is complete, but installation/login, grants, Serve and
    two-iPhone acceptance are explicitly deferred until the final optional stage.
-6. Keep Camera Reply V3 disabled while its accepted schema-v2 marker remains current.
-   Task 15 passed 6/6 generated supervised replies at `b4da03f`, but the later
-   production activation failed closed on the first audible live camera reply because
-   the adult observed camera movement. The flag is again `false`; i9-only control then
-   accepted `嘿小小` once with no movement, while bare `小小` was not acoustically
-   reliable. Next is an isolated, adult-supervised speaker/movement gate before any
-   V3E matrix; do not force UDP/TCP or create a second camera connection.
+6. Keep Camera Reply V3 disabled. Task 15 passed 6/6 generated supervised replies at
+   `b4da03f`, but two later live activations failed closed with camera movement. The
+   newest retry also truncated `我在，请说` after `我在`, returned AMBIGUOUS, replaced
+   the Xiaomi producer and left one stale internal playback producer. Task 16's bounded
+   FFmpeg drain fix is software-green but not installed or device-accepted. Next,
+   explicitly invalidate the failed marker, recover go2rtc only, verify exactly one
+   producer, and run one supervised fixed reply; do not force UDP/TCP or add a second
+   camera connection.
 7. Complete the final 72-hour release gate before any release/tag decision.
 8. Define per-parent acknowledgement and false-positive feedback only through a future
    contract where Baby Care consumes Guardian's read-only feed and owns identity/write

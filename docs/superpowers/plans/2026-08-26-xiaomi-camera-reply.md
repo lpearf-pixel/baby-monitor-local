@@ -723,3 +723,27 @@ git commit -m "docs: record Xiaomi camera reply acceptance"
 ```
 
 Do not push, merge, tag or modify `main` without a separate explicit instruction.
+
+---
+
+### Task 16: Close the finite-TTS EOF/stop race after the failed live V3E retry
+
+**Status (2026-08-27): IN PROGRESS, Camera Reply disabled.** A supervised live retry
+played only the leading `我在`, returned `CAMERA_REPLY_AMBIGUOUS`, coincided with
+camera movement and left one stale internal playback producer. The Xiaomi producer
+then timed out and was replaced. The receive-only 60-second Opus probe recovered and
+passed without persisting raw audio. No further real speaker playback is allowed in
+this task.
+
+- [x] Add a RED regression proving fixed TTS waits through a bounded post-duration
+  FFmpeg drain window before issuing speaker stop.
+- [x] Add the minimum bounded drain implementation without changing transport,
+  producer count, codec or reply vocabulary.
+- [x] Run focused Camera Reply/Voice tests, exact go2rtc protocol tests and static/
+  privacy checks. Do not use software tests as real-device acceptance.
+- [x] Record the failed live evidence and exact recovery boundary in the authoritative
+  handoff documents. Keep `camera_reply_enabled: false`.
+- [ ] Only after a separate supervised authorization: invalidate the failed marker,
+  recover the go2rtc component, repeat the isolated tone gate, then try one fixed live
+  reply. Any truncation, movement, producer replacement or residual internal producer
+  fails closed.
