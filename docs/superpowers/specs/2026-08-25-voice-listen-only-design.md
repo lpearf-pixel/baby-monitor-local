@@ -13,6 +13,16 @@ fixed acknowledgement and briefly arms the next utterance, while `小小` plus a
 in one utterance continues directly. Household input audio and ASR text remain
 memory-only.
 
+**Installed acoustic amendment (2026-08-27):** the user-facing real-i9 wake phrase is
+`嘿小小`, matching the previously approved Hey-Siri interaction. `嘿` is stripped only
+at the existing exact wake boundary, so the internal normalized keyword remains `小小`
+and arbitrary leading words, fuzzy matches and homophones remain rejected. A bare
+`小小` stays valid at the deterministic text-classifier boundary, but it is not an
+installed acceptance phrase: supervised evidence found that the fixed Paraformer did
+not reliably decode that short utterance, while `嘿小小` produced one accepted reply.
+Do not claim bare-`小小` acoustic support without a separately approved and supervised
+real-device gate.
+
 This mode exists to make the receive/VAD/ASR/wake/output loop usable before Dad/Mom
 speaker enrollment and Baby Care write acceptance are complete. It is not the full Voice
 Care mode and must not create, update, cancel or confirm a care record.
@@ -243,11 +253,12 @@ Installed i9 acceptance uses no baby and no care write. It requires:
 
 1. fixed artifact and source preflight PASS;
 2. listener ready after bounded warm-up;
-3. at least five standalone exact `小小` trials each produce one `我在，请说。`;
+3. at least five standalone exact user-facing `嘿小小` trials each produce one
+   `我在，请说。`; the normalized classifier input remains `小小`;
 4. at least three standalone wakes followed by a closed command acknowledge once and
    return to idle;
 5. at least three standalone wakes with no next command time out silently, after which a
-   command without a new `小小` receives no response;
+   command without a new `嘿小小` receives no response;
 6. at least five ordinary-speech/no-wake controls receive no acknowledgement;
 7. one i9 reply produces no self-trigger;
 8. source/model/TTS fault injection and stop/start recover without stuck `armed` state;

@@ -610,16 +610,19 @@ git commit -m "docs: add Xiaomi camera reply operations"
 
 ### Task 8: Run installed i9 gates and record the V3 checkpoint
 
-**Status (2026-08-26): FAILED CLOSED at V3E.** Steps 1-4 were executed on the
+**Status (2026-08-27): FAILED CLOSED at V3E.** Steps 1-4 were executed on the
 installed i9. The adult heard the one-second generated tone and the post-health
-gate passed. After enabling the private flag, the first supervised interaction
-batch produced a stuck interaction and unexpected camera movement. Aggregate
-runtime evidence then showed four completed reply attempts followed by a CS2 UDP
-read timeout and Voice audio EOF. Voice was stopped, the private flag was restored
-to `false`, the acceptance marker was invalidated, and listen-only Voice was
-restarted with the accepted i9 speaker path. No further camera sends are allowed
-under this plan. V3E remains failed; Steps 6-7 may record the failure but must not
-claim V3 or P5 eligibility.
+gate passed. Later lifecycle fixes and Task 15 passed six generated replies. During
+the separately approved production activation, the first live `嘿小小` reply was
+audible from the camera but the adult observed unexpected camera movement; a bare
+`小小` did not wake. The private flag was immediately restored to `false` and only
+Voice was restarted. A subsequent i9-only control accepted `嘿小小` exactly once,
+did not accept bare `小小`, and produced no camera movement. Installed preflight
+passed with Keychain, Paraformer and Silero available; source recovered without a
+full-stack restart and remained one `transport=auto` producer observed as `cs2+udp`.
+V3E remains failed. No further camera send is allowed until an adult-supervised,
+speaker-only movement-isolation gate is explicitly resumed; Steps 6-7 must not claim
+V3 or P5 eligibility.
 
 **Files:**
 - Modify after evidence: `docs/CHECKPOINT.md`
@@ -687,7 +690,7 @@ Require `CAMERA_REPLY_READY`, healthy listen-only Voice and unchanged source hea
 
 - [ ] **Step 5: Complete V3E supervised interactions — FAILED CLOSED**
 
-Record aggregate counts only: at least 5 standalone wakes, 3 wake-plus-follow-up
+Record aggregate counts only: at least 5 standalone `嘿小小` wakes, 3 wake-plus-follow-up
 dialogues, 3 silent timeouts and 5 non-wake controls. Confirm both fixed replies come
 from the camera, with zero duplicate replies, self-triggers, overlaps or stuck armed
 states. Re-run source, Dashboard, Guardian, gauge, environment and Voice status after

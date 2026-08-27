@@ -539,10 +539,12 @@ legacy branch into this line without a separate integration decision.
 5. P4 private-access software is complete, but installation/login, grants, Serve and
    two-iPhone acceptance are explicitly deferred until the final optional stage.
 6. Keep Camera Reply V3 disabled while its accepted schema-v2 marker remains current.
-   Task 15 now passes 6/6 supervised replies at `b4da03f`, with no movement, timeout,
-   reconnect or media regression. Next is a separately controlled private-flag
-   activation and V3E wake/dialogue/timeout/non-wake matrix; do not force UDP/TCP or
-   create a second camera connection.
+   Task 15 passed 6/6 generated supervised replies at `b4da03f`, but the later
+   production activation failed closed on the first audible live camera reply because
+   the adult observed camera movement. The flag is again `false`; i9-only control then
+   accepted `嘿小小` once with no movement, while bare `小小` was not acoustically
+   reliable. Next is an isolated, adult-supervised speaker/movement gate before any
+   V3E matrix; do not force UDP/TCP or create a second camera connection.
 7. Complete the final 72-hour release gate before any release/tag decision.
 8. Define per-parent acknowledgement and false-positive feedback only through a future
    contract where Baby Care consumes Guardian's read-only feed and owns identity/write

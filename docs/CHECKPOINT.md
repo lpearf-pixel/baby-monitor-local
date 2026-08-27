@@ -1233,3 +1233,14 @@ GREEN 为探针 27/27、Camera Reply 125/125、完整 Voice 442/442，compile、
 current，完整 Voice 再次 442/442。全程未保存家庭音频、未发送 PTZ、未重启完整 Alpha，
 也未修改受保护分支。私有生产 `camera_reply_enabled` 仍为 false；下一项是单独受控的
 Voice-only 启用、原 V3E 交互矩阵与回滚验证。
+
+随后执行受控 V3E 激活。先发现两个 Voice LaunchAgent 仍运行旧工作树 `4d479b8`，与已
+验收业务提交 `b4da03f` 不一致；保留完整忽略运行工件，将该工作树 detached 到
+`b4da03f` 并仅重建 Voice/operator plist 后，登录态预检对 Keychain、Paraformer、Silero
+全部 PASS。生产开关启用后的第一条 `嘿小小` 回复可从摄像头听到，但成人观察到摄像头
+转动；按硬停止线立即将开关恢复为 false，仅重启 Voice，不再播放。后续 i9-only 对照中，
+裸 `小小` 无回复，`嘿小小` 只回复一次，`processed_count=1`，摄像头未转动。固定上游
+命令表显示 speaker start/stop 为 `0x106`/`0x108`、motor 为独立 `0x112`，仓库无 motor
+发送调用；该静态证据不能覆盖实机转动事实。source 未经完整栈重启自行恢复为单一
+`transport=auto` producer，实际 `cs2+udp`。因此正式实机唤醒词收敛为 `嘿小小`，Camera
+Reply 与 V3E 保持 fail closed，下一步只允许单独的扬声器/移动隔离门。

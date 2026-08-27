@@ -532,6 +532,19 @@
   6, increasing video and camera-audio bytes, no producer replacement and healthy
   listen-only Voice. The schema-v2 marker is current. The ignored private production
   flag remains false, so this is device acceptance rather than production enablement.
+- The subsequent controlled V3E activation failed closed. Initial diagnosis found both
+  Voice LaunchAgents still pointed at the older `4d479b8` worktree while the accepted
+  lifecycle code was `b4da03f`; the complete ignored Voice runtime was therefore moved
+  to detached `b4da03f` without moving a branch, and both LaunchAgents were corrected.
+  Login preflight then passed with Keychain, Paraformer and Silero available. With
+  Camera Reply enabled, one live `嘿小小` response was audible from the camera but the
+  adult observed camera movement, so the flag was immediately restored to `false` and
+  only Voice restarted. In the i9-only control, bare `小小` produced no response while
+  `嘿小小` produced exactly one reply (`processed_count=1`) with no camera movement.
+  The pinned source defines speaker start/stop as `0x106`/`0x108`, motor as distinct
+  `0x112`, and the project has no motor send call; this narrows but does not dismiss the
+  observed movement. Source later self-recovered as one `transport=auto` producer with
+  observed `cs2+udp`. Camera Reply remains disabled and V3E remains unaccepted.
 - Installed-i9 audio-source discovery now verifies that the Xiaomi source exposes HEVC
   video plus Opus audio and that the fixed loopback `audio_analysis` alias exposes only
   Opus. The real input is supported 48 kHz stereo Opus; the fixed FFmpeg boundary

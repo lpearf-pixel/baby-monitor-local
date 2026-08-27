@@ -258,6 +258,11 @@ probe to stop its fixed tone before waiting for human input. The clean matrix pa
 cumulative audible replies with no camera movement, one producer, generation 6, no
 replacement and a current schema-v2 marker. The accepted i9 speaker remains the
 production output because the ignored Camera Reply flag is still false.
+The later controlled activation did not pass V3E: one live `嘿小小` reply was audible
+from the camera but coincided with observed camera movement, so the flag was rolled back
+to false and only Voice restarted. An i9-only control then accepted `嘿小小` once with
+no movement; bare `小小` was not acoustically reliable. The installed user-facing wake
+phrase is therefore `嘿小小`, while the internal normalized keyword remains `小小`.
 The approved transport-auto amendment is recorded at `8654866`; Task 8 software is
 complete at `f153cbd` with 62/62 synthetic checks. Its installed preflight was not run.
 
@@ -269,8 +274,9 @@ installed preflight, which failed closed; the installed media diagnostic did not
 Real speaker playback Task 15 is complete; production activation remains a distinct
 configuration change and still requires adult supervision plus the existing rollback.
 
-**Codex can:** prepare the existing private-flag activation and Voice-only restart,
-then run the fixed V3E aggregate matrix without changing transport or producer count.
+**Codex can:** keep the private flag false and prepare one isolated speaker/movement
+gate without changing transport or producer count. Do not resume the full V3E matrix
+until that gate passes.
 
 **Human required:** approve the production-output switch and supervise the fixed wake,
 dialogue, silent-timeout and non-wake interactions. Forcing TCP/UDP or creating a second
@@ -306,8 +312,10 @@ runtime evidence was one `transport=auto` producer, observed `cs2+udp`, generati
 increasing video/audio bytes, no replacement, healthy Voice and a current schema-v2
 marker. No household audio was persisted and no full-stack restart occurred.
 
-**Next:** retain the accepted i9 speaker and private flag `false` until a separately
-controlled activation runs the original V3E interaction matrix and proves rollback.
+**Next:** retain the accepted i9 speaker and private flag `false`. With an adult present,
+first isolate one fixed camera-speaker reply from human movement and confirm no camera
+turn, producer replacement, timeout or duplicate output. Only then resume the V3E
+matrix using canonical `嘿小小`; any movement fails closed and restores i9-only output.
 
 ## P5 — Final 72-hour release gate
 
