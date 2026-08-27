@@ -1,11 +1,12 @@
 diff --git a/internal/streams/play.go b/internal/streams/play.go
-index 1f8c4ade..711c50ac 100644
+index 1f8c4ade..a699f9fe 100644
 --- a/internal/streams/play.go
 +++ b/internal/streams/play.go
-@@ -2,31 +2,164 @@ package streams
+@@ -2,31 +2,165 @@ package streams
  
  import (
  	"errors"
++	"io"
 +	"sync"
  	"time"
  
@@ -170,7 +171,7 @@ index 1f8c4ade..711c50ac 100644
  
  	for _, producer := range s.producers {
  		if producer.conn == nil {
-@@ -50,10 +183,19 @@ func (s *Stream) Play(urlOrProd any) error {
+@@ -50,10 +184,20 @@ func (s *Stream) Play(urlOrProd any) error {
  		}
  
  		s.AddInternalProducer(src)
@@ -185,14 +186,15 @@ index 1f8c4ade..711c50ac 100644
 -			_ = src.Start()
 -			s.RemoveProducer(src)
 +			err := src.Start()
-+			_ = active.settle(err != nil, err != nil)
++			failed := err != nil && !errors.Is(err, io.EOF)
++			_ = active.settle(failed, failed)
 +			if active.finished() {
 +				s.RemoveProducer(src)
 +			}
  		}()
  
  		return nil
-@@ -87,19 +229,29 @@ func (s *Stream) Play(urlOrProd any) error {
+@@ -87,19 +231,30 @@ func (s *Stream) Play(urlOrProd any) error {
  
  		s.AddInternalProducer(src)
  		s.AddInternalConsumer(cons)
@@ -223,7 +225,8 @@ index 1f8c4ade..711c50ac 100644
 -			_ = dst.Stop()
 -			s.RemoveProducer(src)
 +			err := src.Start()
-+			_ = active.settle(err != nil, err != nil)
++			failed := err != nil && !errors.Is(err, io.EOF)
++			_ = active.settle(failed, failed)
 +			if active.finished() {
 +				s.RemoveProducer(src)
 +			}
@@ -232,14 +235,15 @@ index 1f8c4ade..711c50ac 100644
  		return nil
 diff --git a/internal/streams/play_lifecycle_review_test.go b/internal/streams/play_lifecycle_review_test.go
 new file mode 100644
-index 00000000..df1de1b2
+index 00000000..79ec1578
 --- /dev/null
 +++ b/internal/streams/play_lifecycle_review_test.go
-@@ -0,0 +1,237 @@
+@@ -0,0 +1,257 @@
 +package streams
 +
 +import (
 +	"errors"
++	"io"
 +	"sync"
 +	"testing"
 +	"time"
@@ -372,6 +376,25 @@ index 00000000..df1de1b2
 +	}
 +	if backchannel.settleCount != 1 {
 +		t.Fatalf("backchannel settlement count = %d, want 1", backchannel.settleCount)
++	}
++}
++
++func TestNaturalSourceEOFSucceedsForFiniteMedia(t *testing.T) {
++	source := newLifecycleSource(false)
++	source.startErr = io.EOF
++	backchannel := newLifecycleBackchannel()
++	stream := &Stream{producers: []*Producer{{conn: backchannel, state: stateExternal, url: "synthetic:xiaomi"}}}
++
++	if err := stream.Play(source); err != nil {
++		t.Fatal(err)
++	}
++	select {
++	case <-backchannel.settled:
++	case <-time.After(time.Second):
++		t.Fatal("finite media EOF did not settle backchannel")
++	}
++	if err := stream.Play(""); err != nil {
++		t.Fatalf("finite media EOF settlement error = %v, want success", err)
 +	}
 +}
 +

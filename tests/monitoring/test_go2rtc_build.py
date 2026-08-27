@@ -148,8 +148,8 @@ def test_verify_and_apply_patch_changes_only_approved_protocol_paths(
 
 def test_patch_scope_is_exact_and_requires_the_upstream_regression() -> None:
     assert ALLOWED_PATCH_CHANGES == {
-        "internal/streams/play.go": (165, 13),
-        "internal/streams/play_lifecycle_review_test.go": (237, 0),
+        "internal/streams/play.go": (168, 13),
+        "internal/streams/play_lifecycle_review_test.go": (257, 0),
         "internal/streams/stream.go": (1, 0),
         "pkg/iso/codecs.go": (1, 1),
         "pkg/xiaomi/miss/backchannel.go": (49, 9),
@@ -247,7 +247,7 @@ def test_run_upstream_protocol_gate_uses_fixed_lifecycle_commands(tmp_path: Path
                 "test",
                 "./internal/streams",
                 "-run",
-                "^(TestPlayEmpty|TestNaturalSourceEnd|TestCancelAndNaturalEnd)",
+                "^(TestPlayEmpty|TestNaturalSourceEnd|TestNaturalSourceEOF|TestCancelAndNaturalEnd)",
                 "-count=1",
             ],
             {

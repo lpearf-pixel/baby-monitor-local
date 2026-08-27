@@ -18,8 +18,8 @@ GO2RTC_DESIGNATED_REQUIREMENT = (
     f'=designated => identifier "{GO2RTC_BUNDLE_IDENTIFIER}"'
 )
 ALLOWED_PATCH_CHANGES = {
-    "internal/streams/play.go": (165, 13),
-    "internal/streams/play_lifecycle_review_test.go": (237, 0),
+    "internal/streams/play.go": (168, 13),
+    "internal/streams/play_lifecycle_review_test.go": (257, 0),
     "internal/streams/stream.go": (1, 0),
     "pkg/iso/codecs.go": (1, 1),
     "pkg/xiaomi/miss/backchannel.go": (49, 9),
@@ -296,7 +296,7 @@ def run_upstream_protocol_gate(
             "test",
             "./internal/streams",
             "-run",
-            "^(TestPlayEmpty|TestNaturalSourceEnd|TestCancelAndNaturalEnd)",
+            "^(TestPlayEmpty|TestNaturalSourceEnd|TestNaturalSourceEOF|TestCancelAndNaturalEnd)",
             "-count=1",
         ],
     )
@@ -418,6 +418,7 @@ def verify_and_apply_patch(
         "func TestPlayEmptyTimesOutBlockedSettlementAndKeepsGenerationBusy(t *testing.T)",
         "func TestNaturalSourceFailurePropagatesOnEmptyStop(t *testing.T)",
         "func TestNaturalSourceEndSettlesBackchannelOnce(t *testing.T)",
+        "func TestNaturalSourceEOFSucceedsForFiniteMedia(t *testing.T)",
         "func TestCancelAndNaturalEndDoNotDoubleStop(t *testing.T)",
     )
     if (
