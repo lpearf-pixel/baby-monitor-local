@@ -1,8 +1,11 @@
 from __future__ import annotations
 
+import pytest
+
 from services.audio.feasibility import (
     AudioFeasibilityError,
     AudioMediaResult,
+    AudioReadinessResult,
     AudioReceiveResult,
     SyntheticOpusResult,
 )
@@ -97,3 +100,55 @@ def test_synthetic_cli_reports_counts_without_payload(monkeypatch, capsys) -> No
         "decoded_seconds=1.000",
         "raw_audio_persisted=false",
     ]
+
+
+def test_chain_cli_prints_only_fixed_aggregate_stages(monkeypatch, capsys) -> None:
+    monkeypatch.setattr(
+        voice_audio_probe,
+        "probe_audio_readiness",
+        lambda: AudioReadinessResult(True, True, True, True, True, False),
+    )
+
+    result = voice_audio_probe.main(["chain"])
+
+    assert result == 0
+    assert capsys.readouterr().out.splitlines() == [
+        "result=PASS",
+        "camera_audio_media_available=true",
+        "opus_48000_stereo_available=true",
+        "pcm_decode_available=true",
+        "vad_progression_available=true",
+        "asr_runtime_available=true",
+        "raw_audio_persisted=false",
+    ]
+
+
+def test_chain_cli_redacts_runtime_failure(monkeypatch, capsys) -> None:
+    def fail() -> AudioReadinessResult:
+        raise AudioFeasibilityError("asr_runtime_unavailable")
+
+    monkeypatch.setattr(voice_audio_probe, "probe_audio_readiness", fail)
+
+    assert voice_audio_probe.main(["chain"]) == 2
+    assert capsys.readouterr().out == (
+        "result=FAIL\nreason=asr_runtime_unavailable\n"
+    )
+
+
+def test_chain_probe_stops_before_asr_when_vad_progression_is_invalid(
+    tmp_path,
+) -> None:
+    calls: list[str] = []
+
+    with pytest.raises(AudioFeasibilityError, match="vad_progression_unavailable"):
+        voice_audio_probe.probe_audio_readiness(
+            project_root=tmp_path,
+            media_inspector=lambda: AudioMediaResult(
+                "hevc", "opus", "opus", 48_000, 2
+            ),
+            receiver=lambda: AudioReceiveResult(1.0, 32_000, 1),
+            vad_probe=lambda _root: (False, False, False),
+            asr_probe=lambda _root: calls.append("asr") or True,
+        )
+
+    assert calls == []

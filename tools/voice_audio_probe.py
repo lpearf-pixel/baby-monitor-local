@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import argparse
 import sys
+from collections.abc import Callable
 from pathlib import Path
 
 
@@ -12,6 +13,8 @@ if str(ROOT) not in sys.path:
 from services.audio.feasibility import (
     AudioFeasibilityError,
     AudioMediaResult,
+    AudioReadinessResult,
+    evaluate_audio_readiness,
     inspect_audio_media,
     receive_audio_window,
     verify_synthetic_opus,
@@ -27,6 +30,9 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
     live = subparsers.add_parser("live", help="Decode and discard a bounded live window.")
     live.add_argument("--duration", required=True, type=int, choices=(60, 600))
     subparsers.add_parser("synthetic", help="Verify an in-memory synthetic Opus round trip.")
+    subparsers.add_parser(
+        "chain", help="Verify independent microphone, decode, VAD and ASR stages."
+    )
     return parser.parse_args(argv)
 
 
@@ -38,9 +44,107 @@ def _print_media(media: AudioMediaResult) -> None:
     print(f"channels={media.channels}")
 
 
+def _print_readiness(result: AudioReadinessResult) -> None:
+    for field in (
+        "camera_audio_media_available",
+        "opus_48000_stereo_available",
+        "pcm_decode_available",
+        "vad_progression_available",
+        "asr_runtime_available",
+        "raw_audio_persisted",
+    ):
+        print(f"{field}={'true' if getattr(result, field) else 'false'}")
+
+
+def _probe_vad_progression(root: Path) -> tuple[bool, ...]:
+    try:
+        from services.voice.artifacts import voice_artifact_spec
+        from services.voice.silero_runtime import SileroOnnxSegmenter
+        from tools.voice_asr_calibrate import _load_disabled_settings
+        from tools.voice_vad_diagnostic import _generated_control_pcm
+
+        settings = _load_disabled_settings(root)
+        segmenter = SileroOnnxSegmenter(
+            voice_artifact_spec(settings, "silero-vad-v6.2"),
+            project_root=root,
+        )
+        try:
+            analysis = segmenter.analyze(_generated_control_pcm())
+        finally:
+            segmenter.close()
+        return (False, bool(analysis.spans), False)
+    except Exception:
+        raise AudioFeasibilityError("vad_progression_unavailable") from None
+
+
+def _probe_asr_runtime(root: Path) -> bool:
+    asr = None
+    try:
+        from services.voice.artifacts import voice_artifact_spec
+        from services.voice.paraformer import ParaformerProcess
+        from tools.voice_asr_calibrate import _load_disabled_settings
+
+        settings = _load_disabled_settings(root)
+        asr = ParaformerProcess(
+            voice_artifact_spec(
+                settings, "sherpa-onnx-paraformer-zh-2023-09-14"
+            ),
+            project_root=root,
+        )
+    except Exception:
+        raise AudioFeasibilityError("asr_runtime_unavailable") from None
+    finally:
+        if asr is not None:
+            asr.close()
+    return True
+
+
+def _receive_one_second() -> AudioReceiveResult:
+    return receive_audio_window(duration_seconds=1)
+
+
+def probe_audio_readiness(
+    *,
+    project_root: Path = ROOT,
+    media_inspector: Callable[[], AudioMediaResult] = inspect_audio_media,
+    receiver: Callable[[], AudioReceiveResult] = _receive_one_second,
+    vad_probe: Callable[[Path], tuple[bool, ...]] = _probe_vad_progression,
+    asr_probe: Callable[[Path], bool] = _probe_asr_runtime,
+) -> AudioReadinessResult:
+    root = project_root.resolve(strict=True)
+    media = media_inspector()
+    receive = receiver()
+    evaluate_audio_readiness(
+        media,
+        receive,
+        vad_progression=(False, True, False),
+        asr_runtime_available=True,
+    )
+    vad_progression = vad_probe(root)
+    evaluate_audio_readiness(
+        media,
+        receive,
+        vad_progression=vad_progression,
+        asr_runtime_available=True,
+    )
+    asr_runtime_available = asr_probe(root)
+
+    return evaluate_audio_readiness(
+        media,
+        receive,
+        vad_progression=vad_progression,
+        asr_runtime_available=asr_runtime_available,
+    )
+
+
 def main(argv: list[str] | None = None) -> int:
     args = parse_args(argv)
     try:
+        if args.command == "chain":
+            result = probe_audio_readiness()
+            print("result=PASS")
+            _print_readiness(result)
+            return 0
         if args.command == "synthetic":
             result = verify_synthetic_opus()
             print("result=PASS")

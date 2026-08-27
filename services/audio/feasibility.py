@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import math
 import subprocess
 from collections.abc import Callable
 from dataclasses import dataclass
@@ -23,6 +24,8 @@ _REASON_CODES = frozenset(
         "audio_decode_unavailable",
         "audio_decode_stalled",
         "audio_decode_failed",
+        "vad_progression_unavailable",
+        "asr_runtime_unavailable",
         "synthetic_opus_failed",
         "internal_error",
     }
@@ -67,6 +70,16 @@ class SyntheticOpusResult:
     decoded_seconds: float
 
 
+@dataclass(frozen=True)
+class AudioReadinessResult:
+    camera_audio_media_available: bool
+    opus_48000_stereo_available: bool
+    pcm_decode_available: bool
+    vad_progression_available: bool
+    asr_runtime_available: bool
+    raw_audio_persisted: bool
+
+
 def inspect_audio_media(*, probe: MediaProbe | None = None) -> AudioMediaResult:
     active_probe = probe or StreamProbe(timeout_seconds=10)
     try:
@@ -82,9 +95,8 @@ def inspect_audio_media(*, probe: MediaProbe | None = None) -> AudioMediaResult:
         return bool(
             audio is not None
             and getattr(audio, "codec", "").lower() == "opus"
-            and getattr(audio, "sample_rate", None)
-            in {8_000, 12_000, 16_000, 24_000, 48_000}
-            and getattr(audio, "channels", None) in {1, 2}
+            and getattr(audio, "sample_rate", None) == 48_000
+            and getattr(audio, "channels", None) == 2
         )
 
     if not supported_opus(source.audio):
@@ -147,6 +159,49 @@ def receive_audio_window(
         decoded_seconds=decoded_bytes / bytes_per_second,
         decoded_bytes=decoded_bytes,
         chunk_count=chunk_count,
+    )
+
+
+def evaluate_audio_readiness(
+    media: AudioMediaResult,
+    receive: AudioReceiveResult,
+    *,
+    vad_progression: tuple[bool, ...],
+    asr_runtime_available: bool,
+) -> AudioReadinessResult:
+    if (
+        type(media) is not AudioMediaResult
+        or media.source_video_codec not in {"hevc", "h265"}
+        or media.source_audio_codec != "opus"
+        or media.alias_audio_codec != "opus"
+        or media.sample_rate_hz != 48_000
+        or media.channels != 2
+    ):
+        raise AudioFeasibilityError("source_audio_unsupported")
+    if (
+        type(receive) is not AudioReceiveResult
+        or not math.isfinite(receive.decoded_seconds)
+        or receive.decoded_seconds <= 0
+        or receive.decoded_bytes <= 0
+        or receive.chunk_count <= 0
+        or receive.decoded_bytes != round(receive.decoded_seconds * 32_000)
+    ):
+        raise AudioFeasibilityError("audio_decode_unavailable")
+    if (
+        type(vad_progression) is not tuple
+        or vad_progression != (False, True, False)
+        or any(type(value) is not bool for value in vad_progression)
+    ):
+        raise AudioFeasibilityError("vad_progression_unavailable")
+    if asr_runtime_available is not True:
+        raise AudioFeasibilityError("asr_runtime_unavailable")
+    return AudioReadinessResult(
+        camera_audio_media_available=True,
+        opus_48000_stereo_available=True,
+        pcm_decode_available=True,
+        vad_progression_available=True,
+        asr_runtime_available=True,
+        raw_audio_persisted=False,
     )
 
 
