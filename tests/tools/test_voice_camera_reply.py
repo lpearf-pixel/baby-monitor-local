@@ -343,6 +343,49 @@ def test_probe_uses_tty_fixed_health_gates_one_second_tone_and_cleanup(
     assert len(runner.calls) == 5
 
 
+def test_probe_settles_fixed_tone_before_waiting_for_human_confirmation(
+    tmp_path: Path,
+) -> None:
+    root = tmp_path / "repo"
+    root.mkdir(mode=0o700)
+    _metadata(root)
+    temporary_parent = tmp_path / "system-temp"
+    temporary_parent.mkdir(mode=0o700)
+    events: list[str] = []
+
+    class OrderedTTY(FakeTTY):
+        def readline(self, limit: int = -1) -> str:
+            events.append("readline")
+            return super().readline(limit)
+
+    class OrderedTransport(FakeTransport):
+        def start(self, media: Path) -> CameraReplyResult:
+            events.append("start")
+            return super().start(media)
+
+        def stop(self) -> CameraReplyResult:
+            events.append("stop")
+            return super().stop()
+
+    def sleep(seconds: float) -> None:
+        events.append("sleep")
+        assert seconds == 1.0
+
+    report = run_probe(
+        root,
+        transport=OrderedTransport(),
+        tty=OrderedTTY("YES\n"),
+        runner=FixedRunner(),
+        platform_system="Darwin",
+        platform_machine="x86_64",
+        temporary_parent=temporary_parent,
+        sleep=sleep,
+    )
+
+    assert report.code is CameraReplyCode.COMPLETE
+    assert events == ["start", "sleep", "stop", "readline"]
+
+
 def test_status_report_marks_current_acceptance_ready(tmp_path: Path) -> None:
     metadata = _metadata(tmp_path)
     _marker(tmp_path, metadata)

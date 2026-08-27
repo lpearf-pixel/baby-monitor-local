@@ -11,8 +11,9 @@ import struct
 import subprocess
 import sys
 import tempfile
+import time
 import wave
-from collections.abc import Iterator
+from collections.abc import Callable, Iterator
 from contextlib import contextmanager
 from dataclasses import dataclass
 from pathlib import Path
@@ -46,6 +47,7 @@ _APP = Path(".local/Go2RTC.app")
 _PATCH = Path("patches/go2rtc-macos-hybrid-hd.patch")
 _STATUS = Path("runtime/status/voice-camera-reply.json")
 _COMMAND_TIMEOUT_SECONDS = 10.0
+_TONE_DURATION_SECONDS = 1.0
 
 
 class Runner(Protocol):
@@ -208,6 +210,7 @@ def run_probe(
     platform_system: str | None = None,
     platform_machine: str | None = None,
     temporary_parent: Path | None = None,
+    sleep: Callable[[float], None] = time.sleep,
 ) -> ProbeReport:
     root = root.resolve()
     if not CameraReplyAcceptance.invalidate(root):
@@ -244,6 +247,7 @@ def run_probe(
     tone: Path | None = None
     tone_started = False
     tone_confirmed = False
+    tone_stopped = False
     stop_result = CameraReplyResult(CameraReplyCode.COMPLETE, False)
     try:
         temporary_root = Path(
@@ -265,6 +269,16 @@ def run_probe(
             _publish_status(root, result)
             return result
         tty.write("camera_reply_tone_started=true\n")
+        tty.flush()
+        sleep(_TONE_DURATION_SECONDS)
+        try:
+            stop_result = transport.stop()
+        except Exception:
+            stop_result = CameraReplyResult(
+                CameraReplyCode.AMBIGUOUS, False
+            )
+        finally:
+            tone_stopped = True
         tty.write("type_yes_if_tone_heard_from_camera=")
         tty.flush()
         tone_confirmed = tty.readline(5) == "YES\n"
@@ -280,7 +294,7 @@ def run_probe(
         _publish_status(root, result)
         return result
     finally:
-        if tone_started:
+        if tone_started and not tone_stopped:
             try:
                 stop_result = transport.stop()
             except Exception:
