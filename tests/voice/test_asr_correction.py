@@ -1,8 +1,11 @@
 from __future__ import annotations
 
+from types import MappingProxyType
+
 import pytest
 
-from services.voice.asr_correction import correct_armed_followup
+import services.voice.asr_correction as correction_module
+from services.voice.asr_correction import CorrectionResult, correct_armed_followup
 
 
 def test_reviewed_synthetic_feeding_confusion_is_correctable() -> None:
@@ -40,3 +43,34 @@ def test_reviewed_synthetic_feeding_confusion_is_correctable() -> None:
 )
 def test_correction_rejects_every_unreviewed_or_unsafe_form(command: str) -> None:
     assert correct_armed_followup(command) is None
+
+
+@pytest.mark.parametrize(
+    "command",
+    [
+        "开时喂奶",
+        "开始围奶",
+        "开始喂耐",
+        "开始喂",
+        "开始喂牛奶",
+        "现在开始喂奶",
+    ],
+)
+def test_unreviewed_nearby_strings_do_not_gain_generic_fuzzy_acceptance(
+    command: str,
+) -> None:
+    assert correct_armed_followup(command) is None
+
+
+def test_stale_mapping_must_reenter_exact_low_risk_feeding_classifier(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    monkeypatch.setattr(
+        correction_module,
+        "_CORRECTIONS",
+        MappingProxyType(
+            {"synthetic": CorrectionResult("开始喂药", "feeding")}
+        ),
+    )
+
+    assert correct_armed_followup("synthetic") is None

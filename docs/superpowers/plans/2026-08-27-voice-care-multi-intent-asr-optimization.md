@@ -277,7 +277,7 @@ while Feeding V1 and unsupported commands remain unchanged and fail closed.
   `correct_armed_followup(command: str) -> CorrectionResult | None`, with fixed
   `canonical_command` and `action_family`; no distance/probability field.
 
-- [ ] **Step 1: Add a source-controlled correction result**
+- [x] **Step 1: Add a source-controlled correction result**
 
   ```python
   @dataclass(frozen=True, slots=True)
@@ -295,24 +295,24 @@ while Feeding V1 and unsupported commands remain unchanged and fail closed.
   Do not infer additional entries from edit distance. Each later entry requires its own
   positive and adversarial tests plus review-log rationale.
 
-- [ ] **Step 2: Add pre-correction guards**
+- [x] **Step 2: Add pre-correction guards**
 
   Reject bounded marker families for negation, no-action-yet, stop, cancel and question.
   Reject known neighboring Feeding semantics and every non-Feeding action-domain token.
   Run these guards before mapping lookup.
 
-- [ ] **Step 3: Add post-correction validation**
+- [x] **Step 3: Add post-correction validation**
 
   Require `classify_exact_action(canonical_command)` to return a low-risk Feeding result.
   A stale mapping or a mapping to medication/non-Feeding fails closed.
 
-- [ ] **Step 4: Prove no fuzzy algorithm exists**
+- [x] **Step 4: Prove no fuzzy algorithm exists**
 
   Add a structural test or source assertion that this module does not import/call the
   diagnostic `_edit_distance` function and does not use RapidFuzz, Levenshtein,
   embeddings or an ASR model.
 
-- [ ] **Step 5: Run focused GREEN**
+- [x] **Step 5: Run focused GREEN**
 
   ```bash
   .venv-alpha/bin/python -m pytest -q \
@@ -320,7 +320,7 @@ while Feeding V1 and unsupported commands remain unchanged and fail closed.
     tests/voice/test_care_action.py
   ```
 
-- [ ] **Step 6: Append the correction decision to the review log**
+- [x] **Step 6: Append the correction decision to the review log**
 
   Record the exact number of approved mappings, false accepts and test counts. Do not
   claim the synthetic `开始为奶` is one of the four private live transcripts.

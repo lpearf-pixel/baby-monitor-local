@@ -177,6 +177,38 @@ HEAD、真实命令和真实结果的记录。
 - decision：keep；只作为 listen-only 内部层
 - next single action：实现 armed-only source-controlled correction 并跑 Task 3 focused GREEN
 
+### R3 — Armed 显式 Feeding 纠错 GREEN
+
+- 日期：2026-08-27
+- branch / exact HEAD：`codex/xiaomi-camera-reply-lifecycle-review` / `eceeefb`
+- dirty/unrelated state：Task 2 已聚焦提交；本 slice 只新增 correction 模块和相邻测试
+- authority：software-only；不安装模型、不读取家庭输入
+- hypothesis：H4；一个审查过的 source-controlled mapping 可安全补足 synthetic near-start，
+  无需通用 edit distance
+- files changed：新增 `services/voice/asr_correction.py`，修改
+  `tests/voice/test_asr_correction.py`、计划和本日志
+- RED command/result：模块级 RED 已在 R1 记录；post-validation 独立 RED 为 1 failed，
+  实际错误是 stale mapping 可把 medication canonical 直接返回
+- GREEN command/result：`tests/voice/test_asr_correction.py tests/voice/test_care_action.py`，
+  51 passed，exit 0
+- focused/full command/result：focused 51 passed；full NOT_RUN
+- corpus：1 个 approved synthetic mapping 和 source-controlled adversarial strings，
+  license=`GENERATED`
+- positives/accepted/rejected：approved mappings=1，positive accepted=1
+- negatives/false accepts：26 个显式安全/近邻/跨动作及 exact classifier controls通过，
+  false accepts=0
+- latency p50/p95/RSS：NOT_RUN；未调用 ASR
+- privacy scan：只含 synthetic fixed phrases；模块不返回距离、概率或输入文本字段
+- Camera Reply flag/lifecycle：未读取或修改；目标保持 false；未播放
+- Baby Care write/outbox/signing：未导入、未构造、未调用
+- evidence proves：只有 `开始为奶` 的显式映射可纠正；未知一字符近邻、否定、停止、
+  取消、疑问、语义邻居、跨动作和 medication 均拒绝；canonical 必须重新通过低风险 Feeding
+  exact classifier
+- evidence does not prove：该 synthetic confusion 就是家庭实机四次 transcript，或真实召回
+  已改善
+- decision：keep；mapping 数固定为 1，不采用通用 fuzzy 算法
+- next single action：按 exact-first 顺序接入 armed listen-only controller
+
 每条新记录使用一个连续编号 `R1`、`R2`……，并完整写出以下字段：
 
 ```text
