@@ -269,6 +269,44 @@ HEAD、真实命令和真实结果的记录。
 - decision：keep；进入 generated/public aggregate benchmark
 - next single action：先为 manifest和evaluator写 RED，再实现无 transcript benchmark
 
+### R6 — Generated Paraformer 动作 benchmark
+
+- 日期：2026-08-28
+- branch / exact HEAD：`codex/xiaomi-camera-reply-lifecycle-review` / `0fb90cb`
+- dirty/unrelated state：Task 5 已聚焦提交；本 slice 只新增 benchmark tool/test、计划和
+  本日志
+- authority：software-only；允许 macOS Tingting 生成临时测试音频；禁止播放和家庭采集
+- hypothesis：H4；当前 Paraformer加闭集层可覆盖低风险动作，药物高风险短句必须独立
+  通过 exact gate
+- files changed：新增 `tools/voice_action_benchmark.py`、
+  `tests/tools/test_voice_action_benchmark.py`，修改计划和本日志
+- RED command/result：初始 module RED 为 1 collection error；首轮 GREEN 尝试为
+  2 failed / 10 passed，分别捕获损坏 WAV 的未封装 EOF 和 false accept 被误计入
+  exact matches；per-action 聚合独立 RED 为 1 failed
+- GREEN command/result：benchmark tests 12 passed，exit 0
+- focused/full command/result：benchmark unit 12 passed；真实 generated candidate
+  `gate_passed=false`；full repository 尚未运行
+- corpus：Tingting generated-only、24 positives / 48 adversarial negatives、四个固定 rate、
+  license=`GENERATED`；临时 WAV 在退出时删除
+- positives/accepted/rejected：总计21/24正确；Feeding 4/4、diaper start/complete 8/8、
+  burping start/complete 6/6、medication start 3/3、medication complete 0/3；后三条被拒绝
+- negatives/false accepts：48/48 rejected，false accepts=0
+- latency p50/p95/RSS：87 ms / 196 ms / NOT_RUN（子进程没有可信的独立RSS边界）
+- privacy scan：CLI JSON只含固定action code与聚合计数；无fixture ID、路径、PCM或
+  transcript；临时目录自动清理
+- Camera Reply flag/lifecycle：未读取或修改；保持 false；没有播放
+- Baby Care write/outbox/signing：未构造、未调用；medication 只在内存成为 high-risk
+  candidate
+- evidence proves：当前本地 Paraformer在该generated corpus上低风险18/18、medication
+  start 3/3、全部负例48/48；medication complete exact gate未通过
+- evidence does not prove：家庭声学准确率、真实成人召回、公开模型许可或medication完成
+  命令可发布
+- disproved/environment note：沙箱内 macOS `say` 可成功返回空WAV；真实登录用户上下文
+  单条格式门为16kHz/mono/16-bit且帧数为正，故generated benchmark必须使用该上下文
+- decision：keep current Paraformer用于Feeding/diaper/burping软件层；不放宽 medication、
+  不安装KWS/HR/FunASR；medication complete保持fail closed并延后独立高风险设计
+- next single action：运行Task 7完整软件、编译、diff和隐私门并同步真实状态
+
 每条新记录使用一个连续编号 `R1`、`R2`……，并完整写出以下字段：
 
 ```text

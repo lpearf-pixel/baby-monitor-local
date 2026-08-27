@@ -483,17 +483,17 @@ Feeding without retaining what the caregiver said.
 - Produces: aggregate candidate metrics: evaluated, correct, false accepts, rejected,
   p50/p95 latency, RSS if available and gate pass/fail. It emits no transcript.
 
-- [ ] **Step 1: Write manifest-validation RED tests**
+- [x] **Step 1: Write manifest-validation RED tests**
 
   Reject symlinks, traversal, missing license, household/private source kinds, duplicate
   files, invalid PCM, unknown action codes and free-form expected text.
 
-- [ ] **Step 2: Write evaluation RED tests**
+- [x] **Step 2: Write evaluation RED tests**
 
   Use injected fake ASR engines. Require exact/corrected distinction, high-risk
   medication classification, false-accept count and no transcript field in JSON output.
 
-- [ ] **Step 3: Implement the minimal aggregate evaluator**
+- [x] **Step 3: Implement the minimal aggregate evaluator**
 
   Run the current classifier over engine results in memory, immediately discard text,
   and serialize only fixed metrics. When `--manifest` is omitted on macOS, mirror the
@@ -502,7 +502,7 @@ Feeding without retaining what the caregiver said.
   evaluate it and delete the directory on every exit path. Do not reuse the historical
   Whisper benchmark's candidate list or change its evidence.
 
-- [ ] **Step 4: Build the first generated corpus**
+- [x] **Step 4: Build the first generated corpus**
 
   Generate exactly 24 positive samples covering all approved exact actions and 48
   adversarial negatives covering no wake, negation, stop/cancel, question, semantic
@@ -510,7 +510,7 @@ Feeding without retaining what the caregiver said.
   temporary directory and mark the manifest `source_kind=generated`,
   `license=GENERATED`; do not track the WAV files.
 
-- [ ] **Step 5: Run the current Paraformer candidate**
+- [x] **Step 5: Run the current Paraformer candidate**
 
   ```bash
   .venv-alpha/bin/python -m pytest -q tests/tools/test_voice_action_benchmark.py
@@ -522,7 +522,7 @@ Feeding without retaining what the caregiver said.
   The CLI owns and removes its temporary generated corpus. Never paste its private
   temporary path into Git or the review log. Record only aggregate output.
 
-- [ ] **Step 6: Apply the upstream decision gate**
+- [x] **Step 6: Apply the upstream decision gate**
 
   - If restricted correction reaches the positive target with zero false accepts, keep
     the current Paraformer and do not install another model.
@@ -533,11 +533,13 @@ Feeding without retaining what the caregiver said.
   - ContextualParaformer requires a separate model-migration spec and is not executable
     under this plan.
 
-- [ ] **Step 7: Append exact metrics and the keep/reject decision to the review log**
+- [x] **Step 7: Append exact metrics and the keep/reject decision to the review log**
 
 **Acceptance:** the same fixed corpus compares current behavior without leaking text;
 zero false accepts is mandatory, and model alternatives remain behind license/approval
-gates.
+gates. Current generated result is `gate_passed=false`: low-risk actions and all negatives
+pass, but exact high-risk `medication_complete_candidate` is 0/3. It remains fail closed;
+Task 8 medication acceptance is blocked pending a separately approved high-risk design.
 
 **Commit boundary:** when authorized, `test: benchmark closed voice care actions`.
 
