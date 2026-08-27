@@ -1061,3 +1061,13 @@ One fresh diagnostic dialogue passed at lifecycle 24/24/24/24; it recorded ten r
 frames but zero replay utterances, showing that this successful follow-up arrived on
 normal live input after settlement. Camera Reply was restored false. The complete clean
 matrix still must restart; no threshold or buffer expansion is justified by this result.
+
+Further supervised evidence closes the stage classification. Exact live reply-echo
+quarantine at `cfcf687` did not fix the miss: reply-echo count stayed zero while one
+follow-up was rejected. No-text distance buckets at installed `73c88bf` then observed
+five follow-up attempts with one human-confirmed success and four near-start rejects;
+near-reply-echo and far were both zero. Lifecycle ended clean closed 34/34/34/34. Do not
+accept arbitrary edit distance. The next proposed behavior slice requires separate
+approval and must accept only an affirmative start-shaped armed follow-up after fixed
+particle removal, with explicit negation/stop/cancel/question rejection and adversarial
+tests before any new device matrix.

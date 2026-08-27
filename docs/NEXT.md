@@ -363,6 +363,14 @@ counters while reading fixed transition deltas after every group. Any miss, move
 truncation, duplicate, producer replacement or residual state fails closed. Software,
 installation and the single diagnostic success do not count as the complete device gate.
 
+The next attempt is blocked before another full matrix: installed `73c88bf` classified
+four of five follow-ups as rejected near-start text, with zero near-reply-echo and zero
+far. Do not enlarge the tail buffer or accept arbitrary edit distance. First approve and
+implement a closed start-command correction that is limited to armed follow-up, requires
+an affirmative start shape, strips only fixed terminal particles, and rejects negation,
+stop, cancel and question forms. Then run synthetic adversarial controls before another
+small supervised sample and only resume V3E if that sample is clean.
+
 ## P5 — Final 72-hour release gate
 
 **Status:** Not started.

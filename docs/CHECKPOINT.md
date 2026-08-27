@@ -1335,3 +1335,17 @@ stop/start PASS。一次新诊断对话完整、无重复、无转动，processe
 24/24/24/24；计数为 replay_frames=10、replay_utterances=0、ignored_followups=0、
 output_failures=0，说明该次跟进走 settlement 后正常 live 输入。随后开关再次恢复 false，
 Voice-only stop/start PASS。该单组不构成 clean V3E，间歇性输入 miss 仍未分类。
+
+后续 clean matrix 首组再次失败；新聚合证明 replay_frames=5、replay_utterances=0、
+vad_speech_frames=35、utterances=5、ignored_followups=1，speaker 仅完成唤醒并 clean closed
+25/25/25/25。因此不是拾音缺失或 speaker settlement。`cfcf687` 用 RED/GREEN 增加精确延迟
+reply echo 隔离，Voice 456/456；实机重测仍失败且 reply_echo_ignored=0、ignored_followups=1，
+否定 exact echo 为完整根因。
+
+`73c88bf` 随后只增加无文本距离分类，近 start、近 reply echo 与 far 均为固定状态/整数，
+不接受任何近似命令。受影响测试 42/42、完整 Voice 459/459、compile/diff/privacy PASS。
+安装后成人连续测试五次 follow-up，仅一次观察成功；机器记录 ignored_followups=4，四次均为
+ignored_near_start，ignored_near_reply_echo=0、ignored_far=0。最终 lifecycle 34/34/34/34、
+closed、零 failure/pending/residual。开关恢复 false，Voice-only stop/start PASS。结论为 ASR
+输出稳定接近 start 命令但不精确；禁止直接放宽到 edit-distance<=2，下一行为切片需先批准
+带否定/停止/取消/疑问阻断的 affirmative start-shape 纠错合同。

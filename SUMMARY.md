@@ -8,7 +8,7 @@ Updated: 2026-08-27
 - Stable Xiaomi line: `stable/xiaomi-alpha` at `0df20ae`.
 - Active Camera Reply review line: `codex/xiaomi-camera-reply-lifecycle-review`, based
   on accepted Voice head `4d479b8`; its published Task 8 checkpoint is `a622a7a`.
-  The installed implementation head is `3069141`; the latest V3E diagnosis evidence
+  The installed implementation head is `73c88bf`; the latest V3E diagnosis evidence
   head is `68dbbf3`. Neither has been pushed from this review line.
   Camera Reply Tasks 1–7 are local through `e358aaf`, with the real macOS TTY correction
   at `5768894`.
@@ -134,6 +134,15 @@ Updated: 2026-08-27
   `24/24/24/24`: ten buffered replay frames were observed, but zero replay utterances,
   so that successful follow-up used ordinary live input. Camera Reply is false again;
   the full clean matrix remains pending and no recognition threshold was lowered.
+  Exact delayed-reply echo quarantine was added at `cfcf687`, but a fresh supervised
+  miss recorded `reply_echo_ignored=0` and `ignored_followups=1`, disproving echo as the
+  complete cause. Commit `73c88bf` therefore classifies rejected text without exposing
+  it. In five supervised follow-up attempts only one was human-observed successful;
+  all four rejected follow-ups were `near_start`, with zero near-reply-echo and zero
+  far classifications. Lifecycle remained clean closed at 34/34/34/34. Camera Reply is
+  false again. The next behavior change requires explicit approval for a conservative
+  start-command correction that blocks negation/stop/question forms; generic edit-
+  distance acceptance is prohibited.
   The accepted Voice branch is published at `4d479b8`; the lifecycle-review branch is
   published through `a622a7a`, before local Task 9. Neither has been merged
   into a protected branch.

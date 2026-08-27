@@ -623,6 +623,15 @@
   ten replay frames but zero replay utterances, proving that successful follow-up used
   normal live input after settlement. Camera Reply was restored false; clean V3E is
   still pending and the intermittent input-stage miss remains unclassified.
+- Follow-up diagnosis is now classified. Exact delayed reply echo handling at
+  `cfcf687` did not close the live miss: a fresh failure had reply-echo count zero and
+  one ignored follow-up. Installed commit `73c88bf` adds no-text near-start/near-echo/
+  far buckets; affected tests pass 42/42 and the complete Voice gate passes 459/459.
+  Across five supervised follow-up attempts, the adult observed one success and four
+  misses. All four misses were near-start, with zero near-echo and zero far; lifecycle
+  remained clean closed at 34/34/34/34 with no failure, pending response or residual.
+  Camera Reply is false. Generic fuzzy acceptance remains prohibited because negative
+  or stop commands can also be close in edit distance.
 - Installed-i9 audio-source discovery now verifies that the Xiaomi source exposes HEVC
   video plus Opus audio and that the fixed loopback `audio_analysis` alias exposes only
   Opus. The real input is supported 48 kHz stereo Opus; the fixed FFmpeg boundary
