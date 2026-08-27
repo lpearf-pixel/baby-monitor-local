@@ -6,7 +6,7 @@
 - Design: approved.
 - Environment monitoring design and implementation plan: approved on 2026-08-05.
 - Stable Xiaomi Alpha commit: `0df20ae` on `stable/xiaomi-alpha`.
-- Active local development branch: `codex/voice-care-v1-gate-v1`.
+- Active local development branch: `codex/xiaomi-camera-reply-lifecycle-review`.
 - 2026-08-20 go2rtc lifecycle correction: the installed macOS path now has one
   user-level launchd owner. `alpha-start` bootstraps a missing job, kickstarts only a
   loaded unhealthy job, never falls back to a second direct process, and verifies the
@@ -449,16 +449,18 @@
   recorded four reply completions followed by a CS2 UDP timeout and Voice audio EOF.
   The private camera-reply flag is back to `false`, the current marker is not accepted,
   the Voice worker is healthy on the prior i9-speaker path, and source health is PASS.
-  Camera Reply is not a delivered capability and must not be re-enabled without a new
-  approved design that resolves backchannel lifecycle/reconnect safety.
+  Camera Reply is not a delivered capability and must not be re-enabled until the
+  approved replacement passes separately authorized supervised D0–D4.
 - The follow-up lifecycle review is published at `f610d7b` on
-  `codex/xiaomi-camera-reply-lifecycle-review`. On the exact pinned upstream commit,
-  synthetic-only RED evidence reproduced command-channel overflow as
-  `cs2: pop buffer is full` followed by shared media failure. Five speaker lifecycle
-  cases and four Streams settlement cases also failed for the reviewed reasons, so the
-  root-cause gate is `H1_H2_CONFIRMED` with H3 independently confirmed. The replacement
-  lifecycle design and TDD plan are draft-only; no production patch, settings change,
-  camera playback, install or acceptance marker has been made.
+  `codex/xiaomi-camera-reply-lifecycle-review`; the approved replacement software
+  Tasks 1–6 are complete locally at `e66302e`. The exact pinned patch now uses a
+  bounded dispatcher, CS2 ingress-time response ownership, generation-owned speaker
+  sessions, bounded exactly-once Streams settlement and current-generation Python
+  completion. Fresh gates are repository focused 106/106, Voice 431/431, frontend
+  73/73 and full Python 1648/1648; exact Go focused/race gates pass and independent
+  review reports 0 Critical / 0 Important. No production setting, camera playback,
+  install or acceptance marker changed; Camera Reply remains disabled until separately
+  approved supervised D0–D4.
 - Installed-i9 audio-source discovery now verifies that the Xiaomi source exposes HEVC
   video plus Opus audio and that the fixed loopback `audio_analysis` alias exposes only
   Opus. The real input is supported 48 kHz stereo Opus; the fixed FFmpeg boundary

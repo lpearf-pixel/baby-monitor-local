@@ -1117,3 +1117,16 @@ failure、natural end 和 cancel/natural race 都没有协议 settlement。因�
 `H1_H2_CONFIRMED`，H3 独立确认。全部证据无网络、无摄像头、无家庭音频或私有配置。
 新的 lifecycle spec/plan 已形成草案；规格批准前不写生产补丁，不启用或安装 Camera
 Reply，也不执行实机 probe。
+
+2026-08-27 完成已批准 Camera Reply lifecycle 软件 Tasks 1–6，业务提交为
+`e66302ef1ab448705dc05d03086d52bf69f0e124`。最终补丁保持固定 upstream
+`b465651a94c1f637d566a8c660b4fad102b35153` 与 `cs2+udp`，实现有界 command
+dispatcher、命令入队时间所有权、generation-owned speaker session、停止前禁写、首个
+错误保持、1.5 秒有界且 exactly-once 的 Streams settlement，以及 Python start/stop
+同 generation 完成证明。两轮独立复审提出的 8 项及最终 2 项 Important 均经
+RED/GREEN 关闭，最终结论 0 Critical / 0 Important。Fresh 证据为精确补丁 apply、三组
+Go focused 与三组 race PASS，repository focused 106/106、Voice 431/431、frontend
+73/73、full Python 1648/1648、compile/Make dry-run/diff/privacy PASS。额外扩大运行的
+upstream `internal/streams` 两项 source-registration 失败在未打补丁的同一固定提交原样
+复现，不属于本次回归。全过程未访问摄像头、未播放或保存家庭音频、未安装 candidate、
+未发布 marker。Camera Reply 继续 disabled；实机 D0–D4 仍需单独批准和成人监督。

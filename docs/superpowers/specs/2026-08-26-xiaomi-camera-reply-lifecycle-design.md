@@ -2,8 +2,9 @@
 
 **Date:** 2026-08-26
 
-**Status:** Draft — synthetic root-cause gate complete; production implementation
-requires explicit approval
+**Status:** Approved 2026-08-26; software Tasks 1–6 completed at
+`e66302ef1ab448705dc05d03086d52bf69f0e124`. Installed/device D0–D4 remains a
+separately authorized supervised gate.
 
 **Supersedes:** only the backchannel lifecycle and completion semantics in
 `2026-08-26-xiaomi-camera-reply-design.md`. Its fixed reply vocabulary, privacy

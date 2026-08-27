@@ -1,7 +1,8 @@
 # Xiaomi Camera Reply Lifecycle Repair Implementation Plan
 
-> **Status:** Draft; Tasks 1–6 require approval of the lifecycle design. Task 7 is a
-> separate real-device authorization and is not approved by the design.
+> **Status:** Software Tasks 1–6 complete at
+> `e66302ef1ab448705dc05d03086d52bf69f0e124`; Task 7 remains a separate
+> real-device authorization and is not approved by the design.
 
 **Goal:** Close the confirmed Xiaomi command-response, speaker-generation, write-error
 and Streams-settlement defects without changing the pinned camera transport or breaking
@@ -62,12 +63,12 @@ the exact build gate.
 
 **Human required:** none.
 
-- [ ] Extend the synthetic upstream repository fixture with the exact current
+- [x] Extend the synthetic upstream repository fixture with the exact current
   `client.go`, `backchannel.go`, `producer.go`, `cs2/conn.go` and `streams/play.go`
   preconditions needed by the lifecycle patch. Reject any unexpected upstream text.
-- [ ] Add repository tests requiring the nine named Go lifecycle tests and their exact
+- [x] Add repository tests requiring the nine named Go lifecycle tests and their exact
   fixed package test commands before `go build`.
-- [ ] Recreate the test-only upstream patch in a pristine temporary clone and run:
+- [x] Recreate the test-only upstream patch in a pristine temporary clone and run:
 
   ```bash
   go test ./pkg/xiaomi/miss/cs2 -run TestRepeatedSpeakerResponsesDoNotCloseMediaChannel -count=1
@@ -75,8 +76,8 @@ the exact build gate.
   go test ./internal/streams -run 'TestPlayEmpty|TestNaturalSourceEnd|TestCancelAndNaturalEnd' -count=1
   ```
 
-- [ ] Record the expected REDs without retaining the temporary clone in Git.
-- [ ] Run the repository focused RED:
+- [x] Record the expected REDs without retaining the temporary clone in Git.
+- [x] Run the repository focused RED:
 
   ```bash
   .venv-alpha/bin/python -m pytest -q tests/monitoring/test_go2rtc_build.py
@@ -100,15 +101,15 @@ network, camera access, missing dependency or a mirrored mock.
 
 **Human required:** none.
 
-- [ ] RED: require the 11th speaker response not to close incoming media; require one
+- [x] RED: require the 11th speaker response not to close incoming media; require one
   accepted response per waiter; require unknown, duplicate, malformed and connection-
   close cases to settle with fixed failures and no raw output.
-- [ ] Implement one post-login goroutine as the sole `ReadCommand` consumer. Register
+- [x] Implement one post-login goroutine as the sole `ReadCommand` consumer. Register
   a waiter before sending its request, use fixed capacities/timeouts and settle all
   waiters on connection close.
-- [ ] Drain known unawaited responses without unbounded storage. Unknown or malformed
+- [x] Drain known unawaited responses without unbounded storage. Unknown or malformed
   input disables Camera Reply but does not intentionally stop incoming media.
-- [ ] GREEN:
+- [x] GREEN:
 
   ```bash
   go test ./pkg/xiaomi/miss/cs2 -count=1
@@ -134,22 +135,22 @@ pending response count returns to zero and only fixed aggregate diagnostics exis
 
 **Human required:** none.
 
-- [ ] RED/GREEN `TestSpeakerLifecycleStartsAndStopsExactlyOnce`: one request, one
+- [x] RED/GREEN `TestSpeakerLifecycleStartsAndStopsExactlyOnce`: one request, one
   accepted response and one stop transport ACK.
-- [ ] RED/GREEN `TestSpeakerLifecycleRejectsOverlappingStart`: no second command and a
+- [x] RED/GREEN `TestSpeakerLifecycleRejectsOverlappingStart`: no second command and a
   stable busy failure.
-- [ ] RED/GREEN `TestSpeakerLifecycleStopsWritesAfterStop`: stop marks the generation
+- [x] RED/GREEN `TestSpeakerLifecycleStopsWritesAfterStop`: stop marks the generation
   non-writable before the stop command and stale handlers cannot write into a newer
   generation.
-- [ ] RED/GREEN `TestSpeakerLifecycleSurfacesFirstWriteError`: preserve the first
+- [x] RED/GREEN `TestSpeakerLifecycleSurfacesFirstWriteError`: preserve the first
   channel-3 failure through Producer settlement.
-- [ ] RED/GREEN `TestRepeatedSpeakerLifecycleLeavesNoActiveGeneration`: at least 20
+- [x] RED/GREEN `TestRepeatedSpeakerLifecycleLeavesNoActiveGeneration`: at least 20
   cycles with start/response/stop `20/20/20`, zero pending responses, zero residual
   sender and zero active generation.
-- [ ] Remove the unconditional one-second sleep only after the response-gated readiness
+- [x] Remove the unconditional one-second sleep only after the response-gated readiness
   test is GREEN.
-- [ ] Prove stop idempotency and failure stickiness under concurrent write/stop races.
-- [ ] Run:
+- [x] Prove stop idempotency and failure stickiness under concurrent write/stop races.
+- [x] Run:
 
   ```bash
   go test ./pkg/xiaomi/miss -count=1
@@ -174,15 +175,15 @@ the shared Producer incoming media connection is not stopped as normal cleanup.
 
 **Human required:** none.
 
-- [ ] RED/GREEN `TestPlayEmptySettlesBackchannelBeforeSuccess`.
-- [ ] RED/GREEN `TestPlayEmptyPropagatesBackchannelStopFailure`.
-- [ ] RED/GREEN `TestNaturalSourceEndSettlesBackchannelOnce`.
-- [ ] RED/GREEN `TestCancelAndNaturalEndDoNotDoubleStop`.
-- [ ] Add cancellation, source-start failure, source-error and settlement-timeout cases.
-- [ ] Keep one playback-generation result until the owning empty-source stop observes
+- [x] RED/GREEN `TestPlayEmptySettlesBackchannelBeforeSuccess`.
+- [x] RED/GREEN `TestPlayEmptyPropagatesBackchannelStopFailure`.
+- [x] RED/GREEN `TestNaturalSourceEndSettlesBackchannelOnce`.
+- [x] RED/GREEN `TestCancelAndNaturalEndDoNotDoubleStop`.
+- [x] Add cancellation, source-start failure, source-error and settlement-timeout cases.
+- [x] Keep one playback-generation result until the owning empty-source stop observes
   it; do not lose a natural-end failure.
-- [ ] Ensure the optional interface does not alter non-Xiaomi consumers.
-- [ ] Run:
+- [x] Ensure the optional interface does not alter non-Xiaomi consumers.
+- [x] Run:
 
   ```bash
   go test ./internal/streams -count=1
@@ -212,16 +213,16 @@ only after the bounded result and propagates failures as non-success.
 
 **Human required:** none.
 
-- [ ] Generate the smallest upstream diff and set the exact path/numstat allowlist.
+- [x] Generate the smallest upstream diff and set the exact path/numstat allowlist.
   Verify old preconditions before apply and new postconditions after apply.
-- [ ] Run all lifecycle Go packages before build. A missing test, altered upstream file,
+- [x] Run all lifecycle Go packages before build. A missing test, altered upstream file,
   package failure or unexpected diff returns a stable build error.
-- [ ] Invalidate the old acceptance marker through the changed patch digest. Do not
+- [x] Invalidate the old acceptance marker through the changed patch digest. Do not
   publish a replacement marker.
-- [ ] Update fake loopback tests so HTTP stop failure, timeout or malformed response
+- [x] Update fake loopback tests so HTTP stop failure, timeout or malformed response
   can never return `CAMERA_REPLY_COMPLETE`; preserve no-fallback-after-send behavior.
-- [ ] Add only the approved fixed aggregate diagnostics and redaction tests.
-- [ ] Run:
+- [x] Add only the approved fixed aggregate diagnostics and redaction tests.
+- [x] Run:
 
   ```bash
   .venv-alpha/bin/python -m pytest -q tests/monitoring/test_go2rtc_build.py
@@ -247,9 +248,9 @@ approved focused slices.
 
 **Human required:** none unless a review finding changes the approved architecture.
 
-- [ ] Run focused upstream Go packages, race tests, patch build tests, Camera Reply
+- [x] Run focused upstream Go packages, race tests, patch build tests, Camera Reply
   tests and Voice tests.
-- [ ] Run:
+- [x] Run:
 
   ```bash
   make alpha-voice-test
@@ -259,17 +260,23 @@ approved focused slices.
   git diff --check
   ```
 
-- [ ] Validate changed shell with `bash -n`, Make entries with `make -n`, and scan the
+- [x] Validate changed shell with `bash -n`, Make entries with `make -n`, and scan the
   tracked diff for secrets, private network literals, media, transcripts, SQLite,
   runtime settings and local paths.
-- [ ] Request an independent review of concurrency, dispatcher ownership, settlement
+- [x] Request an independent review of concurrency, dispatcher ownership, settlement
   error propagation, patch provenance and privacy. Resolve every Critical/Important
   finding with RED/GREEN evidence.
-- [ ] Update the plan and handoff documents with exact commits and fresh counts.
+- [x] Update the plan and handoff documents with exact commits and fresh counts.
 
 **Acceptance:** all software gates pass from the committed tree; tracked worktree is
 clean; no real camera action occurred; report explicitly says software does not prove
 the camera issue solved.
+
+**Execution evidence (2026-08-27):** exact pinned patch apply and three focused Go
+packages plus their race gates passed; repository focused 106/106, Voice 431/431,
+frontend 73/73 and full Python 1648/1648 passed. Independent review concluded
+0 Critical / 0 Important after two fix rounds. No camera, installed service, household
+audio or acceptance marker was used.
 
 **Next:** stop and request separate authorization for Task 7.
 
@@ -277,7 +284,8 @@ the camera issue solved.
 
 ### Task 7: Supervised installed/device gates — not currently authorized
 
-**Status:** blocked on Tasks 1–6, explicit user approval and an adult at the camera.
+**Status:** software prerequisite complete; still blocked on separate explicit user
+approval and an adult at the camera.
 
 Follow D0–D4 from the lifecycle review. Start with Camera Reply disabled and verify the
 source, i9 Voice output, Dashboard, Mi Home and microSD path. Install only the reviewed

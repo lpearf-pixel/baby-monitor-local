@@ -1,6 +1,6 @@
 # Baby Monitor Local Project Summary
 
-Updated: 2026-08-26
+Updated: 2026-08-27
 
 ## Snapshot
 
@@ -13,11 +13,12 @@ Updated: 2026-08-26
   The supervised tone passed, but V3E failed closed after a stuck interaction,
   unexpected camera movement, CS2 timeout and Voice audio EOF. Camera reply is disabled
   and not accepted; the healthy listen-only Voice worker uses the prior i9 speaker.
-  Pure-software fixed-upstream RED fixtures now establish `H1_H2_CONFIRMED` and H3:
-  command-response overflow closes shared media, speaker sessions are asymmetric,
-  channel-3 errors are lost, and Streams does not settle explicit/natural completion.
-  A replacement lifecycle spec and implementation plan are drafted; production repair
-  remains blocked on explicit spec approval and no real camera action is authorized.
+  The approved replacement lifecycle software Tasks 1–6 are complete locally at
+  `e66302e`: bounded command dispatch, ingress-time response ownership,
+  generation-owned speaker state, bounded exactly-once Streams settlement, sticky
+  failures and current-generation Python completion. Independent review is clean at
+  0 Critical / 0 Important. Camera Reply remains disabled; no candidate was installed
+  and supervised device D0–D4 is not yet authorized.
   The accepted Voice branch is published at `4d479b8`; the lifecycle-review branch is
   published at `f610d7b` before the current draft documents. Neither has been merged
   into a protected branch.
@@ -485,8 +486,9 @@ legacy branch into this line without a separate integration decision.
    already user-confirmed PASS.
 5. P4 private-access software is complete, but installation/login, grants, Serve and
    two-iPhone acceptance are explicitly deferred until the final optional stage.
-6. Keep Camera Reply V3 disabled: its single-tone gate passed but supervised interaction
-   failed closed. Retain i9-only output for the local release gate.
+6. Keep Camera Reply V3 disabled. Its replacement lifecycle software gate is complete,
+   but supervised installed/device D0–D4 still requires separate approval; retain
+   i9-only output meanwhile.
 7. Complete the final 72-hour release gate before any release/tag decision.
 8. Define per-parent acknowledgement and false-positive feedback only through a future
    contract where Baby Care consumes Guardian's read-only feed and owns identity/write
@@ -542,7 +544,7 @@ only the bounded log window needed to identify the first actionable failure.
 3. Verify repository root, remote, branch, HEAD, upstream, dirty state and recent log.
 4. Preserve `uv.lock` and any other user changes; do not reset or clean.
 5. Reconcile local and remote feature histories before any push or branch integration.
-6. Do not re-enable Camera Reply V3 under its current plan. Do not resume P4 installed
+6. Do not re-enable Camera Reply V3 before supervised D0–D4. Do not resume P4 installed
    or two-iPhone work until the user explicitly returns to remote access at the end.
 7. Use focused tests for the slice and the full gate only at the next milestone or
    stable-branch integration.
