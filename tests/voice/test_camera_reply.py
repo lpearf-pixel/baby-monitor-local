@@ -906,6 +906,12 @@ class OutputDucker:
     def pause(self) -> None:
         self.events.append("pause")
 
+    def capture_tail(self) -> None:
+        self.events.append("capture_tail")
+
+    def discard_tail(self) -> None:
+        self.events.append("discard_tail")
+
     def resume(self) -> None:
         self.events.append("resume")
 
@@ -969,7 +975,9 @@ def test_camera_output_closes_success_lifecycle_before_resuming_capture(
         "start",
     ]
     assert len(events[4:-4]) >= 12
-    assert set(events[4:-4]) == {"wait"}
+    assert set(events[4:-4]) == {"capture_tail", "wait"}
+    assert events[4:-4].count("capture_tail") == 1
+    assert events.index("capture_tail") < events.index("stop")
     assert events[-4:] == [
         "stop",
         "guard",
@@ -1002,9 +1010,36 @@ def test_camera_output_allows_bounded_ffmpeg_drain_before_stop(
         CameraReplyResult(CameraReplyCode.COMPLETE, True)
     )
     stop_index = events.index("stop")
+    capture_index = events.index("capture_tail")
+    assert events.index("start") < capture_index < stop_index
+    assert events[capture_index + 1 : stop_index].count("wait") >= 10
     assert events[:stop_index].count("wait") >= 12
     assert sum(clock.sleeps) == pytest.approx(0.60)
     assert max(clock.sleeps) <= 0.05
+
+
+def test_camera_output_discards_tail_before_resume_on_failed_settlement(
+    tmp_path: Path,
+) -> None:
+    media = _media_file(tmp_path)
+    events: list[str] = []
+    clock = OutputClock(events, media)
+    output = CameraReplyOutput(
+        transport=OutputTransport(
+            events,
+            stop_result=CameraReplyResult(CameraReplyCode.AMBIGUOUS, False),
+        ),
+        renderer=OutputRenderer(events, RenderedReply(media, 0.10, tmp_path.resolve())),
+        ducker=OutputDucker(events),
+        monotonic=clock.monotonic,
+        sleep=clock.sleep,
+        post_playback_guard_seconds=0.0,
+    )
+
+    result = output.deliver_code("listen_only_ready", threading.Event())
+
+    assert result.code is CameraReplyCode.AMBIGUOUS
+    assert events.index("stop") < events.index("discard_tail") < events.index("resume")
 
 
 @pytest.mark.parametrize(

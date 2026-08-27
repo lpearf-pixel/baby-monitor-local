@@ -1022,6 +1022,9 @@ reply. These are non-permitted misses; Camera Reply is disabled again.
       retain component-only ownership and do not restart go2rtc or the full Alpha.
 - [ ] Add aggregate-only transition evidence for VAD absence, ASR no-match, ignored
       follow-up, armed timeout and output failure; never persist PCM or transcript.
+- [x] RED then GREEN the approved five-frame in-memory tail queue, replay provenance,
+      echo quarantine and same-generation settlement ordering. Fresh software evidence:
+      affected modules 126 passed; complete Voice gate 451 passed.
 - [ ] RED/GREEN only the proven defect, then run focused Voice/Camera Reply/lifecycle
       gates, compile, shell/Make and privacy checks.
 - [ ] With an adult present, start from fresh process and lifecycle counters and repeat
@@ -1040,3 +1043,10 @@ follow-up cause is ordering, not an unclassified ASR result: the fixed 0.5-secon
 drain completes before transport stop and before `PlaybackDucker.resume()`, so immediate
 post-prompt input can still be discarded. Earlier resume overlaps an unsettled speaker
 generation and requires explicit echo/self-trigger design approval; no change was made.
+
+The user subsequently approved the bounded tail-buffer design. Implementation is fixed
+to five 100 ms frames captured only after the nominal media deadline, replayed only
+after same-generation closed settlement, zeroized on every discard/cleanup boundary,
+and tagged only in memory. Replay-origin echo/invalid speech cannot consume the armed
+turn; valid closed speech still acknowledges once. No threshold, transport, producer,
+care-write or persistence boundary changes.

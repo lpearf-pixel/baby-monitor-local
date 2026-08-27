@@ -65,6 +65,62 @@ def test_duck_consumes_and_drops_input_then_resumes_with_empty_assembler() -> No
     assert resumed.pcm == b"c" * FRAME_BYTES
 
 
+def test_tail_capture_replays_first_five_frames_fifo_after_resume() -> None:
+    decoder = Decoder(
+        [DecoderRead(bytes([value]) * FRAME_BYTES) for value in range(1, 8)]
+    )
+    pump = ExactFrameAudioPump(decoder)
+
+    pump.begin_duck()
+    pump.begin_tail_capture()
+    dropped = [pump.read_frame() for _ in range(6)]
+    pump.end_duck()
+    replayed = [pump.read_frame() for _ in range(5)]
+    live = pump.read_frame()
+
+    assert all(frame.dropped and frame.pcm == b"" for frame in dropped)
+    assert [frame.pcm for frame in replayed] == [
+        bytes([value]) * FRAME_BYTES for value in range(1, 6)
+    ]
+    assert all(frame.replayed for frame in replayed)
+    assert live.pcm == bytes([7]) * FRAME_BYTES
+    assert live.replayed is False
+
+
+def test_tail_capture_is_cleared_by_new_duck_failure_and_close() -> None:
+    decoder = Decoder(
+        [
+            DecoderRead(b"a" * FRAME_BYTES),
+            DecoderRead(b"", AudioFailureReason.AUDIO_STALE),
+            DecoderRead(b"b" * FRAME_BYTES),
+            DecoderRead(b"c" * FRAME_BYTES),
+        ]
+    )
+    pump = ExactFrameAudioPump(decoder)
+
+    pump.begin_duck()
+    pump.begin_tail_capture()
+    pump.read_frame()
+    assert pump.replay_buffered_frames == 1
+    failed = pump.read_frame()
+    assert failed.failure_reason is AudioFailureReason.AUDIO_STALE
+    assert pump.replay_buffered_frames == 0
+
+    pump.begin_tail_capture()
+    pump.read_frame()
+    assert pump.replay_buffered_frames == 1
+    pump.discard_replay()
+    assert pump.replay_buffered_frames == 0
+
+    pump.begin_tail_capture()
+    pump.read_frame()
+    assert pump.replay_buffered_frames == 1
+    pump.begin_duck()
+    assert pump.replay_buffered_frames == 0
+    pump.close()
+    assert pump.replay_buffered_frames == 0
+
+
 def test_source_failure_clears_partial_pcm_and_is_bounded() -> None:
     decoder = Decoder(
         [

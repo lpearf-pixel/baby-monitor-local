@@ -56,6 +56,7 @@ _STATUS_REASONS = {
     "listen_only_armed",
     "listen_only_acknowledged",
     "listen_only_timeout",
+    "listen_only_replay_ignored",
 }
 _FRAME_BYTES = 3_200
 _CLAIM = re.compile(r"^我是(爸爸|妈妈)[,，、\s]+(.+)$")

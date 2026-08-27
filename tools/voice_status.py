@@ -14,6 +14,7 @@ _REASONS = {
     "voice_output_unavailable", "idle", "ignored",
     "listen_only_idle", "listen_only_ignored", "listen_only_acknowledging",
     "listen_only_armed", "listen_only_acknowledged", "listen_only_timeout",
+    "listen_only_replay_ignored",
 }
 
 

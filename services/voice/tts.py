@@ -47,6 +47,10 @@ class CancelEvent(Protocol):
 class CaptureDucker(Protocol):
     def pause(self) -> None: ...
 
+    def capture_tail(self) -> None: ...
+
+    def discard_tail(self) -> None: ...
+
     def resume(self) -> None: ...
 
 
@@ -63,6 +67,12 @@ class CommandRunner(Protocol):
 
 class NoopCaptureDucker:
     def pause(self) -> None:
+        return None
+
+    def capture_tail(self) -> None:
+        return None
+
+    def discard_tail(self) -> None:
         return None
 
     def resume(self) -> None:

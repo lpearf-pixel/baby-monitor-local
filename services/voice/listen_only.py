@@ -14,6 +14,11 @@ from services.voice.wake import classify_wake
 ARMED_TIMEOUT_NS = 8_000_000_000
 _REFERENCE_TIME = "2026-01-01T00:00:00+00:00"
 _CLAIM = re.compile(r"^我是(?:爸爸|妈妈)[,，、\s]+(.+)$")
+_REPLAY_ECHOES = (
+    re.compile(r"^我在[\s,，。！？、；;:：]*请说[\s,，。！？、；;:：]*(.*)$"),
+    re.compile(r"^我听到了[\s,，。！？、；;:：]*(.*)$"),
+)
+_BOUNDARY = " \t\r\n,，。！？、；;:："
 
 
 class Asr(Protocol):
@@ -56,7 +61,13 @@ class ListenOnlyController:
     def phase(self) -> Literal["idle", "armed"]:
         return self._phase
 
-    def handle(self, pcm: bytes, cancelled: StopEvent) -> ListenOnlyOutcome:
+    def handle(
+        self,
+        pcm: bytes,
+        cancelled: StopEvent,
+        *,
+        from_replay: bool = False,
+    ) -> ListenOnlyOutcome:
         was_armed = self._phase == "armed"
         if was_armed:
             now_ns = self._monotonic_ns()
@@ -64,8 +75,8 @@ class ListenOnlyController:
                 self._armed_deadline_ns is not None
                 and now_ns <= self._armed_deadline_ns
             )
-            self._reset()
             if not may_finish:
+                self._reset()
                 return self._outcome("listen_only_timeout")
         try:
             result = self._asr.transcribe(pcm)
@@ -74,7 +85,12 @@ class ListenOnlyController:
                 raise ValueError
             if was_armed:
                 command = _command_without_optional_wake(text)
+                if from_replay and command is not None:
+                    command, _echo = _strip_replay_echo(command)
                 if command is None or not _is_closed_command(command):
+                    if from_replay:
+                        return self._outcome("listen_only_replay_ignored")
+                    self._reset()
                     return self._outcome("listen_only_ignored")
                 return self._acknowledge(cancelled)
 
@@ -179,6 +195,14 @@ def _is_closed_command(command: str) -> bool:
         ),
     )
     return any(parse_feeding_command(command, state).intent_type is not None for state in states)
+
+
+def _strip_replay_echo(command: str) -> tuple[str, bool]:
+    for pattern in _REPLAY_ECHOES:
+        matched = pattern.fullmatch(command)
+        if matched is not None:
+            return matched.group(1).strip(_BOUNDARY), True
+    return command, False
 
 
 __all__ = ["ListenOnlyController", "ListenOnlyOutcome"]

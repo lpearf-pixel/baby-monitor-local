@@ -962,10 +962,20 @@ class CameraReplyOutput:
                             self._sleep(min(self._guard_seconds, remaining))
                         except Exception:
                             settlement_failed = True
+                    if settlement_failed or result.code is not CameraReplyCode.COMPLETE:
+                        try:
+                            self._ducker.discard_tail()
+                        except Exception:
+                            settlement_failed = True
                     try:
                         self._ducker.resume()
                     except Exception:
                         settlement_failed = True
+                    if settlement_failed:
+                        try:
+                            self._ducker.discard_tail()
+                        except Exception:
+                            pass
                 if settlement_failed:
                     result = CameraReplyResult(
                         CameraReplyCode.AMBIGUOUS
@@ -1016,21 +1026,30 @@ class CameraReplyOutput:
         cancelled: CancelEvent,
         started_at: float,
     ) -> bool:
-        duration_deadline = (
-            self._monotonic() + duration_seconds + _FFMPEG_DRAIN_SECONDS
-        )
+        nominal_deadline = self._monotonic() + duration_seconds
+        duration_deadline = nominal_deadline + _FFMPEG_DRAIN_SECONDS
         reserved_deadline = (
             started_at
             + _MAX_OPERATION_SECONDS
             - _STOP_RESERVE_SECONDS
             - self._guard_seconds
         )
+        tail_capture_started = False
         while self._monotonic() < duration_deadline:
-            if cancelled.is_set() or self._monotonic() >= reserved_deadline:
+            now = self._monotonic()
+            if cancelled.is_set() or now >= reserved_deadline:
                 return False
+            if not tail_capture_started and now >= nominal_deadline:
+                self._ducker.capture_tail()
+                tail_capture_started = True
             remaining = min(
-                duration_deadline - self._monotonic(),
-                reserved_deadline - self._monotonic(),
+                duration_deadline - now,
+                reserved_deadline - now,
+                (
+                    duration_deadline - now
+                    if tail_capture_started
+                    else nominal_deadline - now
+                ),
                 _MAX_WAIT_INCREMENT_SECONDS,
             )
             if remaining <= 0:

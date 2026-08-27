@@ -75,8 +75,15 @@ class PlaybackDucker:
         self._collector.reset()
         self._vad.reset()
 
+    def capture_tail(self) -> None:
+        self._pump.begin_tail_capture()
+
+    def discard_tail(self) -> None:
+        self._pump.discard_replay()
+
     def close(self) -> None:
         self.resume()
+        self.discard_tail()
 
     def _drain(self) -> None:
         while not self._stop.is_set():
@@ -112,6 +119,7 @@ class ListenOnlyVoiceWorker:
         self._clock = clock or (lambda: datetime.now().astimezone())
         self._monotonic_ns = monotonic_ns
         self._processed_count = 0
+        self._utterance_from_replay = False
         self._closed = False
 
     def step(self, cancelled: StopEvent) -> None:
@@ -134,14 +142,19 @@ class ListenOnlyVoiceWorker:
                 self._write("degraded", "voice_model_unavailable", None)
                 return
             if vad.speech:
+                if frame.replayed:
+                    self._utterance_from_replay = True
                 self._controller.on_speech_started(started_ns)
             utterance = self._collector.push(frame.pcm, vad)
             if utterance is None:
                 self._write("healthy", expired.reason, None)
                 return
             outcome: ListenOnlyOutcome = self._controller.handle(
-                utterance.pcm, cancelled
+                utterance.pcm,
+                cancelled,
+                from_replay=self._utterance_from_replay,
             )
+            self._utterance_from_replay = False
             if outcome.reason in {
                 "voice_model_unavailable",
                 "voice_output_unavailable",
@@ -194,6 +207,7 @@ class ListenOnlyVoiceWorker:
         self._pump.close()
 
     def _reset_capture(self) -> None:
+        self._utterance_from_replay = False
         self._collector.reset()
         self._vad.reset()
         self._controller.reset()

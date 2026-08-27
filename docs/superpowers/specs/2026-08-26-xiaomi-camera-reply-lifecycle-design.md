@@ -400,3 +400,35 @@ Neither approval authorizes enabling Camera Reply,
 changing private settings, running a camera probe, installing a candidate, forcing a
 transport, adding a connection, pushing, creating a PR, merging or modifying protected
 branches. Any new real-device playback requires separate explicit authorization.
+
+## Approved V3E immediate-follow-up amendment
+
+The 2026-08-27 V3E run proved that the fixed 0.5-second finite-file drain can outlive
+the audible `我在，请说` prompt while `PlaybackDucker` still discards camera input.
+This explains intermittent loss of a follow-up begun immediately after the prompt. The
+approved correction keeps the speaker generation and stop settlement unchanged; it
+does not resume ordinary live processing before settlement.
+
+At the nominal rendered-media deadline, the ducker switches from discard to a fixed
+five-frame tail-capture mode. The existing drain thread retains at most five exact
+100 ms mono PCM frames in memory while the remaining 0.5-second FFmpeg drain and
+same-generation stop complete. After closed settlement, `resume()` exposes those frames
+to the normal VAD/collector before new decoder frames. The queue is never written to
+disk, never logged, never included in status, and is zeroized on replacement, failure,
+new playback, cancellation and close. Overflow fails closed by preserving the earliest
+five frames and dropping later tail frames.
+
+Replay provenance remains attached only in memory. If a replay-origin utterance is a
+closed care command, the existing listen-only acknowledgement applies. A fixed reply
+echo prefix may be stripped before the closed parser. Echo-only or other non-closed
+replay-origin speech does not consume the armed turn; it remains bounded by the original
+eight-second deadline. A non-replay invalid utterance keeps the existing return-to-idle
+behavior. No fuzzy wake matching, AEC claim, care write, transcript persistence,
+recognition-threshold change or second producer is introduced.
+
+Software tests must prove the five-frame bound, FIFO replay, overflow policy,
+zeroization/cleanup, capture-switch ordering before drain and stop, no pre-settlement
+worker delivery, replay echo quarantine, combined echo-plus-command acceptance and all
+existing timeout/cancellation/single-flight gates. Real playback remains separately
+supervised and fails closed on movement, truncation, duplicate output or lifecycle
+residuals.

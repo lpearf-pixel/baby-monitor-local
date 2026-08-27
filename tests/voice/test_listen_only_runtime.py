@@ -93,6 +93,7 @@ class Controller:
         self.expired = expired or ListenOnlyOutcome("listen_only_idle", None, "idle")
         self.started: list[int] = []
         self.handled: list[bytes] = []
+        self.replayed: list[bool] = []
         self.reset_count = 0
 
     def expire(self, _now_ns: int) -> ListenOnlyOutcome:
@@ -102,8 +103,11 @@ class Controller:
         self.started.append(now_ns)
         return True
 
-    def handle(self, pcm: bytes, _cancelled) -> ListenOnlyOutcome:
+    def handle(
+        self, pcm: bytes, _cancelled, *, from_replay: bool = False
+    ) -> ListenOnlyOutcome:
         self.handled.append(pcm)
+        self.replayed.append(from_replay)
         return self.outcome
 
     def reset(self) -> None:
@@ -149,6 +153,7 @@ def test_worker_routes_one_completed_utterance_to_listen_only_controller() -> No
 
     assert controller.started == [1_000_000_000]
     assert controller.handled == [b"u" * 32_000]
+    assert controller.replayed == [False]
     assert vad.reset_count == 1
     assert status.values[-1] == {
         "mode": "listen_only",
@@ -157,6 +162,25 @@ def test_worker_routes_one_completed_utterance_to_listen_only_controller() -> No
         "processed_count": 1,
         "last_latency_ms": 80,
     }
+
+
+def test_worker_preserves_replay_provenance_for_completed_utterance() -> None:
+    controller = Controller(
+        ListenOnlyOutcome("listen_only_acknowledged", "listen_only_received", "idle")
+    )
+    worker = ListenOnlyVoiceWorker(
+        pump=Pump([PumpFrame(b"p" * 3_200, replayed=True)]),
+        vad=Vad(VadResult(True, 0.9)),
+        collector=Collector(UtteranceResult(b"u" * 32_000, "terminal_silence")),
+        controller=controller,
+        asr_closer=AsrCloser(),
+        status_writer=Status(),
+        monotonic_ns=iter((1_000_000_000, 1_080_000_000)).__next__,
+    )
+
+    worker.step(threading.Event())
+
+    assert controller.replayed == [True]
 
 
 def test_worker_source_failure_resets_only_voice_state_and_fails_closed() -> None:
