@@ -87,6 +87,8 @@ class CameraReplyEvidence:
     speaker_stop_commands: int = 0
     speaker_write_failures: int = 0
     speaker_stop_failures: int = 0
+    speaker_audio_packets: int = 0
+    speaker_audio_bytes: int = 0
     pending_command_responses: int = 0
     residual_sender_count: int = 0
     last_failure_stage: str = "none"
@@ -135,6 +137,8 @@ def _publishable_evidence(evidence: object) -> bool:
         evidence.speaker_stop_commands,
         evidence.speaker_write_failures,
         evidence.speaker_stop_failures,
+        evidence.speaker_audio_packets,
+        evidence.speaker_audio_bytes,
         evidence.pending_command_responses,
         evidence.residual_sender_count,
         evidence.producer_generation,
@@ -160,6 +164,8 @@ def _publishable_evidence(evidence: object) -> bool:
         and evidence.speaker_stop_commands == generation
         and evidence.speaker_write_failures == 0
         and evidence.speaker_stop_failures == 0
+        and evidence.speaker_audio_packets > 0
+        and evidence.speaker_audio_bytes > 0
         and evidence.pending_command_responses == 0
         and evidence.residual_sender_count == 0
         and evidence.last_failure_stage == "none"
@@ -397,6 +403,8 @@ def _parse_source_media_lifecycle(
         "speaker_stop_commands",
         "speaker_write_failures",
         "speaker_stop_failures",
+        "speaker_audio_packets",
+        "speaker_audio_bytes",
         "pending_command_responses",
         "residual_sender_count",
         "producer_generation",
@@ -495,6 +503,8 @@ def _parse_source_media_lifecycle(
         speaker_stop_commands=producer["speaker_stop_commands"],
         speaker_write_failures=producer["speaker_write_failures"],
         speaker_stop_failures=producer["speaker_stop_failures"],
+        speaker_audio_packets=producer["speaker_audio_packets"],
+        speaker_audio_bytes=producer["speaker_audio_bytes"],
         pending_command_responses=producer["pending_command_responses"],
         residual_sender_count=producer["residual_sender_count"],
         last_failure_stage=producer["last_failure_stage"],
@@ -517,6 +527,8 @@ class LoopbackCameraReplyTransport:
         self._lock = threading.Lock()
         self._active_generation: int | None = None
         self._active_protocol: str | None = None
+        self._active_audio_packets: int | None = None
+        self._active_audio_bytes: int | None = None
 
     def inspect(self) -> CameraReplyEvidence | None:
         if not self._lock.acquire(blocking=False):
@@ -562,6 +574,8 @@ class LoopbackCameraReplyTransport:
                 return CameraReplyResult(CameraReplyCode.AMBIGUOUS, True)
             self._active_generation = evidence.speaker_session_generation
             self._active_protocol = evidence.protocol
+            self._active_audio_packets = evidence.speaker_audio_packets
+            self._active_audio_bytes = evidence.speaker_audio_bytes
             return CameraReplyResult(CameraReplyCode.READY, True)
         finally:
             self._lock.release()
@@ -580,18 +594,27 @@ class LoopbackCameraReplyTransport:
                 if (
                     self._active_generation is None
                     or self._active_protocol is None
+                    or self._active_audio_packets is None
+                    or self._active_audio_bytes is None
                 ):
                     raise ValueError(_UNAVAILABLE)
-                _parse_source_media_lifecycle(
+                evidence = _parse_source_media_lifecycle(
                     payload,
                     expected_state="closed",
                     expected_generation=self._active_generation,
                     expected_protocol=self._active_protocol,
                 )
+                if (
+                    evidence.speaker_audio_packets <= self._active_audio_packets
+                    or evidence.speaker_audio_bytes <= self._active_audio_bytes
+                ):
+                    raise ValueError(_UNAVAILABLE)
             except Exception:
                 return CameraReplyResult(CameraReplyCode.AMBIGUOUS, False)
             self._active_generation = None
             self._active_protocol = None
+            self._active_audio_packets = None
+            self._active_audio_bytes = None
             return CameraReplyResult(CameraReplyCode.COMPLETE, False)
         finally:
             self._lock.release()

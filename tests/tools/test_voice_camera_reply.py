@@ -98,6 +98,8 @@ def _evidence(
         speaker_start_requests=generation,
         speaker_start_responses=generation,
         speaker_stop_commands=generation,
+        speaker_audio_packets=generation,
+        speaker_audio_bytes=generation * 100,
         producer_generation=generation,
     )
 

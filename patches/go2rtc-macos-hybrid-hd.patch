@@ -705,7 +705,7 @@ index 3113632a..f46a754a 100644
  func NewClient(rawURL string) (*Client, error) {
  	u, err := url.Parse(rawURL)
  	if err != nil {
-@@ -72,13 +78,83 @@ func NewClient(rawURL string) (*Client, error) {
+@@ -72,13 +78,85 @@ func NewClient(rawURL string) (*Client, error) {
  		return nil, err
  	}
  
@@ -741,6 +741,8 @@ index 3113632a..f46a754a 100644
 +	speakerStopCommands   uint64
 +	speakerWriteFailures  uint64
 +	speakerStopFailures   uint64
++	speakerAudioPackets   uint64
++	speakerAudioBytes     uint64
 +	lastFailureStage      string
 +}
 +
@@ -790,7 +792,7 @@ index 3113632a..f46a754a 100644
  }
  
  const (
-@@ -203,9 +279,192 @@ func (c *Client) StartAudio() error {
+@@ -203,9 +281,192 @@ func (c *Client) StartAudio() error {
  	return c.WriteCommand(data)
  }
  
@@ -985,7 +987,7 @@ index 3113632a..f46a754a 100644
  }
  
  // SpeakerCodec if the camera model has a non-standard two-way codec.
-@@ -255,7 +514,183 @@ func (c *Client) ReadPacket() (*Packet, error) {
+@@ -255,7 +516,210 @@ func (c *Client) ReadPacket() (*Packet, error) {
  	return pkt, nil
  }
  
@@ -1011,7 +1013,12 @@ index 3113632a..f46a754a 100644
 +	}
 +	c.speakerMu.Unlock()
 +
-+	err := c.writeAudioPacket(codecID, payload)
++	var err error
++	if len(payload) == 0 {
++		err = errSpeakerAudioWrite
++	} else {
++		err = c.writeAudioPacket(codecID, payload)
++	}
 +	if err != nil {
 +		c.speakerMu.Lock()
 +		if c.speakerGen == generation {
@@ -1023,6 +1030,12 @@ index 3113632a..f46a754a 100644
 +		c.speakerMu.Unlock()
 +		return errSpeakerAudioWrite
 +	}
++	c.speakerMu.Lock()
++	if c.speakerGen == generation {
++		incrementSpeakerCount(&c.speakerAudioPackets)
++		incrementSpeakerBytes(&c.speakerAudioBytes, len(payload))
++	}
++	c.speakerMu.Unlock()
 +	return nil
 +}
 +
@@ -1109,6 +1122,18 @@ index 3113632a..f46a754a 100644
 +	}
 +}
 +
++func incrementSpeakerBytes(value *uint64, size int) {
++	if size <= 0 || *value >= maxSpeakerDiagnosticCount {
++		return
++	}
++	remaining := maxSpeakerDiagnosticCount - *value
++	if uint64(size) > remaining {
++		*value = maxSpeakerDiagnosticCount
++	} else {
++		*value += uint64(size)
++	}
++}
++
 +func (c *Client) recordFailureStageLocked(stage string) {
 +	if c.lastFailureStage == "" {
 +		c.lastFailureStage = stage
@@ -1123,6 +1148,8 @@ index 3113632a..f46a754a 100644
 +	SpeakerStopCommands      uint64 `json:"speaker_stop_commands"`
 +	SpeakerWriteFailures     uint64 `json:"speaker_write_failures"`
 +	SpeakerStopFailures      uint64 `json:"speaker_stop_failures"`
++	SpeakerAudioPackets      uint64 `json:"speaker_audio_packets"`
++	SpeakerAudioBytes        uint64 `json:"speaker_audio_bytes"`
 +	PendingCommandResponses  uint64 `json:"pending_command_responses"`
 +	LastFailureStage         string `json:"last_failure_stage"`
 +}
@@ -1161,6 +1188,8 @@ index 3113632a..f46a754a 100644
 +		SpeakerStopCommands:      c.speakerStopCommands,
 +		SpeakerWriteFailures:     c.speakerWriteFailures,
 +		SpeakerStopFailures:      c.speakerStopFailures,
++		SpeakerAudioPackets:      c.speakerAudioPackets,
++		SpeakerAudioBytes:        c.speakerAudioBytes,
 +		PendingCommandResponses:  pending,
 +		LastFailureStage:         stage,
 +	}
@@ -1222,7 +1251,26 @@ index b2a63932..86899b4c 100644
  	}
  	cmd = binary.LittleEndian.Uint32(buf)
  	data = buf[4:]
-@@ -265,7 +278,7 @@ func (c *Conn) WritePacket(hdr, payload []byte) error {
+@@ -242,6 +255,8 @@ func (c *Conn) WriteCommand(cmd uint32, data []byte) error {
+ 
+ const hdrSize = 32
+ 
++var errInvalidMediaPacket = errors.New("invalid media packet")
++
+ func (c *Conn) ReadPacket() (hdr, payload []byte, err error) {
+ 	data, ok := c.channels[2].Pop()
+ 	if !ok {
+@@ -251,6 +266,9 @@ func (c *Conn) ReadPacket() (hdr, payload []byte, err error) {
+ }
+ 
+ func (c *Conn) WritePacket(hdr, payload []byte) error {
++	if len(hdr) != hdrSize || len(payload) == 0 {
++		return errInvalidMediaPacket
++	}
+ 	const offset = 12
+ 
+ 	n := hdrSize + uint32(len(payload))
+@@ -265,7 +283,7 @@ func (c *Conn) WritePacket(hdr, payload []byte) error {
  	c.seqCh3++
  	binary.BigEndian.PutUint32(req[8:], n)
  	copy(req[offset:], hdr)
@@ -1337,14 +1385,16 @@ new file mode 100644
 index 00000000..d1b54b8f
 --- /dev/null
 +++ b/pkg/xiaomi/miss/cs2/conn_test.go
-@@ -0,0 +1,36 @@
+@@ -0,0 +1,95 @@
 +package cs2
 +
 +import (
 +	"bytes"
++	"encoding/binary"
 +	"io"
 +	"net"
 +	"testing"
++	"time"
 +)
 +
 +func TestWritePacketCopiesPayload(t *testing.T) {
@@ -1372,6 +1422,63 @@ index 00000000..d1b54b8f
 +	}
 +	if !bytes.Equal(got[12+hdrSize:], payload) {
 +		t.Fatal("payload mismatch")
++	}
++}
++
++func TestWritePacketRejectsEmptyAndAdvancesChannel3Sequence(t *testing.T) {
++	header := bytes.Repeat([]byte{0x5A}, hdrSize)
++	emptyReader, emptyWriter := net.Pipe()
++	emptyConn := &Conn{Conn: emptyWriter}
++	emptyResult := make(chan error, 1)
++	go func() { emptyResult <- emptyConn.WritePacket(header, nil) }()
++	select {
++	case err := <-emptyResult:
++		if err == nil {
++			t.Fatal("empty payload was accepted")
++		}
++	case <-time.After(100 * time.Millisecond):
++		_ = emptyReader.Close()
++		_ = emptyWriter.Close()
++		<-emptyResult
++		t.Fatal("empty payload attempted a transport write")
++	}
++	if emptyConn.seqCh3 != 0 {
++		t.Fatal("empty payload consumed channel-3 sequence")
++	}
++	_ = emptyReader.Close()
++	_ = emptyWriter.Close()
++
++	mediaReader, mediaWriter := net.Pipe()
++	defer mediaReader.Close()
++	defer mediaWriter.Close()
++	conn := &Conn{Conn: mediaWriter}
++	if conn.seqCh3 != 0 {
++		t.Fatal("empty payload was accepted")
++	}
++
++	payloads := [][]byte{{0x11, 0x12}, {0x21, 0x22, 0x23}}
++	written := make(chan error, len(payloads))
++	for index, payload := range payloads {
++		go func(value []byte) { written <- conn.WritePacket(header, value) }(payload)
++		frame := make([]byte, 12+hdrSize+len(payload))
++		if _, err := io.ReadFull(mediaReader, frame); err != nil {
++			t.Fatal(err)
++		}
++		if frame[5] != 3 {
++			t.Fatalf("channel = %d, want 3", frame[5])
++		}
++		if sequence := binary.BigEndian.Uint16(frame[6:]); sequence != uint16(index) {
++			t.Fatalf("sequence = %d, want %d", sequence, index)
++		}
++		if !bytes.Equal(frame[12:12+hdrSize], header) {
++			t.Fatal("header was not written at the header offset")
++		}
++		if !bytes.Equal(frame[12+hdrSize:], payload) {
++			t.Fatal("payload was not written at the payload offset")
++		}
++		if err := <-written; err != nil {
++			t.Fatal(err)
++		}
 +	}
 +}
 diff --git a/pkg/xiaomi/miss/cs2/lifecycle_review_test.go b/pkg/xiaomi/miss/cs2/lifecycle_review_test.go
@@ -1520,7 +1627,7 @@ new file mode 100644
 index 00000000..87ab6bb4
 --- /dev/null
 +++ b/pkg/xiaomi/miss/lifecycle_review_test.go
-@@ -0,0 +1,770 @@
+@@ -0,0 +1,809 @@
 +package miss
 +
 +import (
@@ -2289,6 +2396,45 @@ index 00000000..87ab6bb4
 +	}
 +	if strings.Contains(err.Error(), "private") {
 +		t.Fatal("timeout classification exposed transport payload")
++	}
++}
++
++func TestSpeakerLifecycleCountsOnlySuccessfulOpusPayload(t *testing.T) {
++	conn := newLifecycleReviewConn()
++	client := newLifecycleReviewClient(conn)
++	t.Cleanup(func() { _ = client.Close() })
++	session, err := client.StartSpeaker()
++	if err != nil {
++		t.Fatal(err)
++	}
++	if err := session.WriteAudio(codecOPUS, nil); !errors.Is(err, errSpeakerAudioWrite) {
++		t.Fatalf("empty write error = %v, want fixed audio write failure", err)
++	}
++	status := client.SpeakerLifecycleStatus()
++	if status.SpeakerAudioPackets != 0 || status.SpeakerAudioBytes != 0 {
++		t.Fatalf("empty packet/bytes = %d/%d, want 0/0", status.SpeakerAudioPackets, status.SpeakerAudioBytes)
++	}
++}
++
++func TestSpeakerLifecycleReportsSuccessfulOpusPacketsAndBytes(t *testing.T) {
++	conn := newLifecycleReviewConn()
++	client := newLifecycleReviewClient(conn)
++	t.Cleanup(func() { _ = client.Close() })
++	session, err := client.StartSpeaker()
++	if err != nil {
++		t.Fatal(err)
++	}
++	for _, payload := range [][]byte{{1, 2, 3}, {4, 5}} {
++		if err := session.WriteAudio(codecOPUS, payload); err != nil {
++			t.Fatal(err)
++		}
++	}
++	if err := session.Stop(); err != nil {
++		t.Fatal(err)
++	}
++	status := client.SpeakerLifecycleStatus()
++	if status.SpeakerAudioPackets != 2 || status.SpeakerAudioBytes != 5 {
++		t.Fatalf("packet/bytes = %d/%d, want 2/5", status.SpeakerAudioPackets, status.SpeakerAudioBytes)
 +	}
 +}
 diff --git a/pkg/xiaomi/miss/producer.go b/pkg/xiaomi/miss/producer.go

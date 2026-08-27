@@ -23,11 +23,11 @@ ALLOWED_PATCH_CHANGES = {
     "internal/streams/stream.go": (1, 0),
     "pkg/iso/codecs.go": (1, 1),
     "pkg/xiaomi/miss/backchannel.go": (49, 9),
-    "pkg/xiaomi/miss/client.go": (439, 4),
-    "pkg/xiaomi/miss/cs2/conn.go": (58, 12),
-    "pkg/xiaomi/miss/cs2/conn_test.go": (36, 0),
+    "pkg/xiaomi/miss/client.go": (468, 4),
+    "pkg/xiaomi/miss/cs2/conn.go": (63, 12),
+    "pkg/xiaomi/miss/cs2/conn_test.go": (95, 0),
     "pkg/xiaomi/miss/cs2/lifecycle_review_test.go": (135, 0),
-    "pkg/xiaomi/miss/lifecycle_review_test.go": (770, 0),
+    "pkg/xiaomi/miss/lifecycle_review_test.go": (809, 0),
     "pkg/xiaomi/miss/producer.go": (35, 1),
 }
 PROTOCOL_GATE_TIMEOUT_SECONDS = 120
@@ -280,7 +280,7 @@ def run_upstream_protocol_gate(
             "test",
             "./pkg/xiaomi/miss/cs2",
             "-run",
-            "^(TestWritePacketCopiesPayload|TestRepeatedSpeakerResponsesDoNotCloseMediaChannel|TestCommandChannel)",
+            "^(TestWritePacketCopiesPayload|TestWritePacketRejectsEmptyAndAdvancesChannel3Sequence|TestRepeatedSpeakerResponsesDoNotCloseMediaChannel|TestCommandChannel)",
             "-count=1",
         ],
         [
@@ -322,7 +322,10 @@ def run_upstream_protocol_diagnostic_gate(
     runner: Callable[..., subprocess.CompletedProcess[Any]] = subprocess.run,
 ) -> None:
     test_pattern = (
-        "^(TestRepeatedSpeakerLifecycleKeepsMediaReadable|"
+        "^(TestWritePacketRejectsEmptyAndAdvancesChannel3Sequence|"
+        "TestSpeakerLifecycleCountsOnlySuccessfulOpusPayload|"
+        "TestSpeakerLifecycleReportsSuccessfulOpusPacketsAndBytes|"
+        "TestRepeatedSpeakerLifecycleKeepsMediaReadable|"
         "TestPlaybackSettlementDoesNotReplaceProducer|"
         "TestReconnectBackoffDoesNotDuplicateWorkers|"
         "TestReadTimeoutClassificationIsPayloadFree)$"
@@ -331,6 +334,7 @@ def run_upstream_protocol_diagnostic_gate(
         [
             go,
             "test",
+            "./pkg/xiaomi/miss/cs2",
             "./pkg/xiaomi/miss",
             "./internal/streams",
             "-run",
@@ -341,6 +345,7 @@ def run_upstream_protocol_diagnostic_gate(
             go,
             "test",
             "-race",
+            "./pkg/xiaomi/miss/cs2",
             "./pkg/xiaomi/miss",
             "./internal/streams",
             "-run",
@@ -441,6 +446,7 @@ def verify_and_apply_patch(
         regressions_after = ""
     required_regression_fragments = (
         "func TestWritePacketCopiesPayload(t *testing.T)",
+        "func TestWritePacketRejectsEmptyAndAdvancesChannel3Sequence(t *testing.T)",
         "reader, writer := net.Pipe()",
         "got := make([]byte, 12+len(header)+len(payload))",
         "bytes.Equal(got[12:12+hdrSize], header)",
@@ -461,6 +467,8 @@ def verify_and_apply_patch(
         "func TestSpeakerLifecycleRejectsQueuedPreAckResponseAfterAck(t *testing.T)",
         "func TestSpeakerLifecycleRejectsPreviousResponseDuringQuiescence(t *testing.T)",
         "func TestSpeakerLifecycleKeepsFirstFailureStage(t *testing.T)",
+        "func TestSpeakerLifecycleCountsOnlySuccessfulOpusPayload(t *testing.T)",
+        "func TestSpeakerLifecycleReportsSuccessfulOpusPacketsAndBytes(t *testing.T)",
         "func TestPlayEmptySettlesBackchannelBeforeSuccess(t *testing.T)",
         "func TestPlayEmptyPropagatesBackchannelStopFailure(t *testing.T)",
         "func TestPlayEmptyTimesOutBlockedSettlementAndKeepsGenerationBusy(t *testing.T)",

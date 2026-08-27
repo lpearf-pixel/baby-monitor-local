@@ -45,6 +45,8 @@ def _stream_payload(
     speaker_state: str = "closed",
     generation: int = 2,
     protocol: str = "cs2+udp",
+    audio_packets: int | None = None,
+    audio_bytes: int | None = None,
 ) -> bytes:
     if medias is None:
         medias = [
@@ -52,6 +54,10 @@ def _stream_payload(
             "audio, recvonly, OPUS/48000/2",
             "audio, sendonly, OPUS/48000/2",
         ]
+    if audio_packets is None:
+        audio_packets = generation - (speaker_state == "active")
+    if audio_bytes is None:
+        audio_bytes = audio_packets * 100
     return json.dumps(
         {
             "producers": [
@@ -67,6 +73,8 @@ def _stream_payload(
                     "speaker_stop_commands": generation - (speaker_state == "active"),
                     "speaker_write_failures": 0,
                     "speaker_stop_failures": 0,
+                    "speaker_audio_packets": audio_packets,
+                    "speaker_audio_bytes": audio_bytes,
                     "pending_command_responses": 0,
                     "residual_sender_count": int(speaker_state == "active"),
                     "last_failure_stage": "none",
@@ -120,6 +128,8 @@ def test_parser_returns_only_closed_readiness_evidence() -> None:
         speaker_stop_commands=2,
         speaker_write_failures=0,
         speaker_stop_failures=0,
+        speaker_audio_packets=2,
+        speaker_audio_bytes=200,
         pending_command_responses=0,
         residual_sender_count=0,
         last_failure_stage="none",
@@ -138,6 +148,15 @@ def test_parser_accepts_each_auto_negotiated_protocol(protocol: str) -> None:
     evidence = parse_source_media(_stream_payload(protocol=protocol))
 
     assert evidence.protocol == protocol
+
+
+def test_parser_exposes_only_bounded_successful_audio_counts() -> None:
+    evidence = parse_source_media(
+        _stream_payload(audio_packets=3, audio_bytes=240)
+    )
+
+    assert evidence.speaker_audio_packets == 3
+    assert evidence.speaker_audio_bytes == 240
 
 
 @pytest.mark.parametrize(
@@ -583,6 +602,27 @@ def test_stop_rejects_protocol_drift_for_the_owned_generation(
         [
             FakeResponse(_active_stream_payload(protocol="cs2+udp")),
             FakeResponse(_stream_payload(protocol="cs2+tcp")),
+        ]
+    )
+    transport = LoopbackCameraReplyTransport(tmp_path, opener=opener)
+
+    assert transport.start(_media_file(tmp_path)).code is CameraReplyCode.READY
+    assert transport.stop() == CameraReplyResult(
+        CameraReplyCode.AMBIGUOUS, False
+    )
+
+
+def test_stop_rejects_closed_lifecycle_without_current_generation_audio_bytes(
+    tmp_path: Path,
+) -> None:
+    opener = RecordingOpener(
+        [
+            FakeResponse(
+                _active_stream_payload(generation=2)
+            ),
+            FakeResponse(
+                _stream_payload(generation=2, audio_packets=1, audio_bytes=100)
+            ),
         ]
     )
     transport = LoopbackCameraReplyTransport(tmp_path, opener=opener)
