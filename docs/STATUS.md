@@ -605,12 +605,14 @@
 - Task 17 launchd settlement is fixed locally at `03aec97`. Voice-only stop now starts
   both bootouts, polls both fixed labels for at most 20 x 100 ms, returns PASS only when
   both are absent, and otherwise returns the stable `service_stop_timeout`; fresh deploy
-  and lifecycle evidence is 14/14. The remaining follow-up defect is an ordering
-  conflict: the 0.5-second finite-file drain added by Task 16 precedes transport stop and
-  `PlaybackDucker.resume()`, so camera input is deliberately discarded after the adult
-  has heard the prompt end. Earlier resume could accept immediate speech but overlaps an
-  unsettled speaker generation and may admit acoustic echo. No such behavior change has
-  been made; it requires an approved bounded echo/self-trigger design.
+  and lifecycle evidence is 14/14. The approved follow-up correction is implemented at
+  `6e54f55`: the last five exact 100 ms input frames during finite-file drain remain
+  memory-only, are replayed FIFO only after same-generation closed settlement, carry
+  memory-only replay provenance, and are discarded/zeroized on failure, new playback
+  and close. Reply echo or invalid replay cannot consume an armed turn. Affected tests
+  pass 126/126 and the complete Voice gate passes 451/451. The installed i9 is now at
+  `6e54f55`; Voice-only stop/start passed, Voice is healthy idle, Camera Reply is false
+  and the video source remains PASS. Clean supervised V3E remains pending.
 - Installed-i9 audio-source discovery now verifies that the Xiaomi source exposes HEVC
   video plus Opus audio and that the fixed loopback `audio_analysis` alias exposes only
   Opus. The real input is supported 48 kHz stereo Opus; the fixed FFmpeg boundary

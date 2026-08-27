@@ -324,7 +324,8 @@ internal producer. A fixed 0.5-second cancellation-aware drain now precedes stop
 the existing operation limit. Camera Reply 126/126, Voice 443/443 and exact pinned
 normal/race protocol gates pass. No real speaker playback has validated the fix.
 
-Installed recovery is complete at detached `16f7652`: the failed marker was deleted
+The historical installed recovery checkpoint at detached `16f7652` is complete: the
+failed marker was deleted
 with explicit approval, only go2rtc and Voice restarted, and the recovered source has
 one Xiaomi producer, zero internal producer, closed/clean speaker state, video PASS and
 a post-restart 60-second Opus receive PASS with no persistence. Camera Reply is disabled
@@ -344,16 +345,17 @@ successful counts do not substitute for a clean matrix. The final reply lifecycl
 source were clean, the private flag is false, and Voice was restarted to healthy idle.
 
 The launchd error-37 path is fixed locally at `03aec97`; Voice-only stop now waits for
-both jobs to settle and fails closed after two seconds. The remaining evidence-backed
-conflict is that the Task 16 FFmpeg drain keeps input ducked for 0.5 seconds after the
-audible prompt.
+both jobs to settle and fails closed after two seconds. The bounded post-prompt capture
+design is implemented and installed at `6e54f55`. It retains only five 100 ms frames in
+memory during drain, releases them only after same-generation closed settlement and
+quarantines reply echo without consuming the armed turn. Affected tests pass 126/126,
+the complete Voice gate passes 451/451, and installed Voice-only stop/start plus source
+checks pass with Camera Reply disabled.
 
-**Next:** approve a bounded post-prompt capture design. The implementation must accept
-speech begun immediately after the audible prompt without persisting PCM/transcript,
-while preventing reply echo from consuming the armed turn and preserving same-generation
-speaker settlement. Then add aggregate-only stage evidence, run focused Voice/lifecycle
-gates and repeat V3E from a fresh baseline. Any miss, movement, truncation, duplicate,
-producer replacement or residual state fails closed.
+**Next:** add aggregate-only stage evidence if it is still needed to diagnose a future
+miss, then repeat all V3E quotas under adult supervision from fresh process/lifecycle
+counters. Any miss, movement, truncation, duplicate, producer replacement or residual
+state fails closed. Software and installation evidence do not count as this device gate.
 
 ## P5 — Final 72-hour release gate
 

@@ -1308,3 +1308,15 @@ Task 17 首个软件切片以真实 errno 证据确认 37 为 `Operation already
 执行，而 `PlaybackDucker.resume()` 在整个 deliver finally 才发生；因此提示音已被成人听完
 后，摄像头输入仍可能被丢弃 0.5 秒。提前 resume 会与未结算 speaker generation 重叠并
 引入 echo/self-trigger 风险，属于需要批准的行为设计；本切片未修改该边界。
+
+用户批准 V3E 尾部内存缓冲设计后，Task 17 第二个软件切片以 TDD 实现于 `6e54f55`。
+首轮六条行为测试先因缺少 capture/replay 接口失败；实现后相关四模块 126/126、完整 Voice
+门 451/451 通过。输入只在 nominal media deadline 后保留最早五个 100 ms PCM frame，队列
+不持久化、不进入日志/状态；same-generation closed settlement 后才 FIFO replay。replay
+provenance 只存在内存中，固定回复 echo/无效 speech 不消耗 armed turn，闭合命令仍仅确认
+一次；failure/new playback/close 会清理并覆写队列。Python compile、diff 与隐私扫描通过。
+
+安装根从 detached `16f7652` 前进到 `6e54f55`，保留既有未跟踪 `Interactive` 与 `test.sh`。
+只执行 Voice stop/start，结果均 PASS，未重启 go2rtc；安装后 Voice healthy/idle、count 0，
+Camera Reply 私有开关仍为 false，source PASS 且实际协商仍为 `cs2+udp`、HEVC 2560x1440。
+提交树再跑相关四模块 126/126。未执行摄像头实机播放，clean V3E 仍需从新计数基线监督重跑。

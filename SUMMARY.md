@@ -8,8 +8,8 @@ Updated: 2026-08-27
 - Stable Xiaomi line: `stable/xiaomi-alpha` at `0df20ae`.
 - Active Camera Reply review line: `codex/xiaomi-camera-reply-lifecycle-review`, based
   on accepted Voice head `4d479b8`; its published Task 8 checkpoint is `a622a7a`.
-  The installed implementation head is `16f7652`; the latest pre-V3E evidence head is
-  `a6de0ba`. Neither has been pushed from this review line.
+  The installed implementation head is `6e54f55`; the latest V3E diagnosis evidence
+  head is `68dbbf3`. Neither has been pushed from this review line.
   Camera Reply Tasks 1–7 are local through `e358aaf`, with the real macOS TTY correction
   at `5768894`.
   The supervised tone passed, but V3E failed closed after a stuck interaction,
@@ -118,11 +118,14 @@ Updated: 2026-08-27
   marker remains current. Do not call this a clean V3E pass.
   Task 17 has closed the launchd half at `03aec97`: Voice-only stop now waits up to two
   seconds for both jobs to disappear and fails closed on timeout; focused deployment
-  evidence is 14/14. The follow-up miss has a concrete ordering conflict: Task 16's
-  fixed 0.5-second FFmpeg drain runs while `PlaybackDucker` still discards camera input,
-  so speech immediately after the audible prompt can lose its leading frames. Moving
-  resume earlier would overlap capture with an unsettled speaker generation and needs
-  an approved echo/self-trigger design before implementation.
+  evidence is 14/14. The approved follow-up correction is implemented and installed at
+  `6e54f55`: five exact 100 ms frames are retained only in memory during the finite-file
+  drain, exposed only after same-generation closed settlement, and tagged as replay so
+  fixed reply echo cannot consume the armed turn. Failure/new playback/close clears and
+  zeroizes the queue. Affected modules pass 126/126 and the complete Voice gate passes
+  451/451. Voice-only stop/start, healthy idle and source PASS were confirmed after
+  installation with Camera Reply still false. This is software/install evidence only;
+  the clean V3E real-device matrix must restart from fresh counters.
   The accepted Voice branch is published at `4d479b8`; the lifecycle-review branch is
   published through `a622a7a`, before local Task 9. Neither has been merged
   into a protected branch.
@@ -590,12 +593,11 @@ legacy branch into this line without a separate integration decision.
    already user-confirmed PASS.
 5. P4 private-access software is complete, but installation/login, grants, Serve and
    two-iPhone acceptance are explicitly deferred until the final optional stage.
-6. Keep Camera Reply V3 disabled. Task 16's bounded FFmpeg drain is installed and its
-   tone/live smoke passed. The later V3E run reached all successful interaction quotas,
-   but one launchd no-response and two missed follow-ups keep the clean gate failed.
-   Launchd error 37 is fixed at `03aec97`; next approve and implement a bounded
-   post-prompt capture design that preserves speaker settlement and echo safety, then
-   repeat the matrix from a fresh counter baseline. Do not force
+6. Keep Camera Reply V3 disabled. Task 16's bounded FFmpeg drain and Task 17's bounded
+   in-memory post-prompt capture are installed; software and component-only restart
+   gates pass. The earlier V3E run remains failed closed. Next repeat the entire matrix
+   under adult supervision from a fresh counter baseline; any miss, movement,
+   truncation, duplicate or residual fails the run. Do not force
    UDP/TCP, lower recognition gates or add a second camera connection.
 7. Complete the final 72-hour release gate before any release/tag decision.
 8. Define per-parent acknowledgement and false-positive feedback only through a future
