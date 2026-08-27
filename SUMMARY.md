@@ -8,7 +8,8 @@ Updated: 2026-08-27
 - Stable Xiaomi line: `stable/xiaomi-alpha` at `0df20ae`.
 - Active Camera Reply review line: `codex/xiaomi-camera-reply-lifecycle-review`, based
   on accepted Voice head `4d479b8`; its published Task 8 checkpoint is `a622a7a`.
-  The current local implementation head is `b4da03f`; it has not been pushed.
+  The installed implementation head is `16f7652`; the latest pre-V3E evidence head is
+  `a6de0ba`. Neither has been pushed from this review line.
   Camera Reply Tasks 1–7 are local through `e358aaf`, with the real macOS TTY correction
   at `5768894`.
   The supervised tone passed, but V3E failed closed after a stuck interaction,
@@ -103,6 +104,18 @@ Updated: 2026-08-27
   no new Xiaomi timeout or audio EOF appeared. The flag was restored to false and
   Voice/source remained healthy. Task 16 is complete; this is only standalone wake 1/5
   for the clean V3E matrix, not full V3E acceptance.
+  The resumed V3E run reached the successful quotas of 5 standalone wakes, at least
+  3 two-stage dialogues, 3 silent timeouts and 5 non-wake controls. Every audible
+  reply in those successful trials was complete, non-duplicated and caused no observed
+  movement; the final source was one clean `cs2+udp` producer with lifecycle 17/17/17/17,
+  zero write/stop/pending/residual failure, and video PASS. V3E nevertheless remains
+  failed closed: the first resumed wake had no response because both Voice launchd jobs
+  were absent after `alpha-voice-start` returned error 37, and the dialogue segment had
+  two single-reply attempts whose follow-up received no acknowledgement. Separate
+  launchd bootstrap restored Voice, but neither the error-37 cause nor the missed
+  follow-up stage is yet proven. The private flag is false, a fresh Voice process is
+  healthy/idle with count zero, no recent raw-audio-like file exists, and the schema-v2
+  marker remains current. Do not call this a clean V3E pass.
   The accepted Voice branch is published at `4d479b8`; the lifecycle-review branch is
   published through `a622a7a`, before local Task 9. Neither has been merged
   into a protected branch.
@@ -570,15 +583,12 @@ legacy branch into this line without a separate integration decision.
    already user-confirmed PASS.
 5. P4 private-access software is complete, but installation/login, grants, Serve and
    two-iPhone acceptance are explicitly deferred until the final optional stage.
-6. Keep Camera Reply V3 disabled. Task 15 passed 6/6 generated supervised replies at
-   `b4da03f`, but two later live activations failed closed with camera movement. The
-   newest retry also truncated `我在，请说` after `我在`, returned AMBIGUOUS, replaced
-   the Xiaomi producer and left one stale internal playback producer. Task 16's bounded
-   FFmpeg drain fix is software-green but not installed or device-accepted. Next,
-   The failed marker was invalidated, go2rtc-only recovery restored one producer, and
-   the post-fix isolated tone plus one fixed live reply both passed without movement.
-   Next resume the remaining V3E matrix from clean standalone wake 1/5; do not force
-   UDP/TCP or add a second camera connection.
+6. Keep Camera Reply V3 disabled. Task 16's bounded FFmpeg drain is installed and its
+   tone/live smoke passed. The later V3E run reached all successful interaction quotas,
+   but one launchd no-response and two missed follow-ups keep the clean gate failed.
+   Next diagnose launchd error 37 and add bounded aggregate stage evidence for missed
+   follow-ups, then repeat the matrix from a fresh counter baseline. Do not force
+   UDP/TCP, lower recognition gates or add a second camera connection.
 7. Complete the final 72-hour release gate before any release/tag decision.
 8. Define per-parent acknowledgement and false-positive feedback only through a future
    contract where Baby Care consumes Guardian's read-only feed and owns identity/write

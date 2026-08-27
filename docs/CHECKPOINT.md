@@ -1282,3 +1282,18 @@ Xiaomi producer、零 internal producer、speaker closed、generation 0、零 re
 source 保持单 Xiaomi producer、零 internal、HEVC 2560x1440 PASS；最新 media timeout/
 audio EOF 仍停留在修复前时间。随后恢复私有开关 false，仅重启 Voice，Voice healthy idle，
 source 再次 PASS。Task 16 完成；该结果只计 clean V3E standalone wake 1/5。
+
+同日继续 V3E。恢复后四次独立唤醒均完整回复且无转动；三轮最初对话由人工报告成功，
+但机器只记录五次而非六次播放，随后一次补测仅有唤醒提示、`开始喂奶` 无确认；最后一次
+受控对话准确新增两次播放。由总计八次对话段播放可证明至少三组完整双阶段对话，同时
+也证明存在两次未确认 follow-up。三次静默超时均只有一次提示并正常回 idle；五个非唤醒
+对照保持 `processed_count=5`、generation 17 不变。最终 producer 为单一 `cs2+udp`，
+lifecycle 17/17/17/17，零 write/stop/pending/residual failure，视频 2560x1440 PASS，成人
+全程未观察到转动、截断或重复。
+
+该运行另复现 Voice lifecycle 缺口：一次 `alpha-voice-start` 返回 error 37 后两个 Voice
+launchd job 均缺失，首个唤醒无响应；分别 bootstrap Voice 与 ASR operator 后恢复。回滚时
+组合启动再次返回 error 37，分步 bootstrap 成功。根因尚未证明。验收按规则保持 fail
+closed：私有 Camera Reply flag 已恢复 false，新 Voice PID warm-up 后 healthy/idle、计数
+归零，Dashboard/source PASS，marker current，最近一小时无 raw-audio-like 文件。成功数量
+不等于 clean V3E；下一步先诊断 launchd 37 与 follow-up 阶段，再从新基线重跑。

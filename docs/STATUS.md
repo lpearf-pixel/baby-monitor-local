@@ -587,6 +587,21 @@
   producer; video remained 2560x1440 PASS and no new media timeout/audio EOF appeared.
   The flag was restored to false and Voice returned healthy idle. This is clean V3E
   standalone wake 1/5, not completion of the dialogue/timeout/non-wake matrix.
+- The resumed V3E run achieved the required successful sample counts, but the clean
+  gate did not pass. Four additional standalone wakes completed; the dialogue attempts
+  produced eight camera replies, proving at least three complete two-reply dialogues
+  but also two wake-only attempts with no follow-up acknowledgement; three silent
+  timeouts each produced one prompt and returned idle; five non-wake controls left both
+  `processed_count` and speaker generation unchanged. The final live aggregate before
+  rollback was one `cs2+udp` producer, generation/start/response/stop 17/17/17/17,
+  zero write/stop failures, zero pending/residual state and `last_failure_stage=none`.
+  The first resumed wake also produced no response because both Voice launchd jobs were
+  absent after the combined start returned error 37. Separate bootstrap restored them,
+  but the launchd cause and missed-follow-up stage remain unproven. Camera Reply is
+  disabled again; a fresh Voice PID is healthy/idle at count zero, source/Dashboard are
+  healthy, the marker remains current and no recent raw-audio-like file was found.
+  Therefore Camera Reply is device-proven for bounded replies but V3E is not yet a
+  clean production acceptance.
 - Installed-i9 audio-source discovery now verifies that the Xiaomi source exposes HEVC
   video plus Opus audio and that the fixed loopback `audio_analysis` alias exposes only
   Opus. The real input is supported 48 kHz stereo Opus; the fixed FFmpeg boundary

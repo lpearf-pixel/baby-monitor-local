@@ -338,12 +338,17 @@ Final aggregate lifecycle was 2/2/2/2 with positive Opus packets/bytes, one Xiao
 producer and zero internal/pending/residual/failure state; no new timeout/EOF occurred.
 The private flag is false again. Count this as clean V3E standalone wake 1/5 only.
 
-**Next:** retain the i9 speaker and private flag `false` between supervised batches.
-Task 16 is complete and the clean V3E matrix is at standalone wake 1/5. With an adult
-present, continue four standalone wakes, three wake-plus-follow-up dialogues, three
-silent timeouts and five non-wake controls. Any truncation, movement, replacement,
-timeout outside the intended silent case, duplicate or residual internal producer
-fails closed immediately.
+**Task 17 status:** V3E FAILED CLOSED after reaching all successful interaction quotas.
+The run contained one launchd no-response and two missed follow-up acknowledgements, so
+successful counts do not substitute for a clean matrix. The final reply lifecycle and
+source were clean, the private flag is false, and Voice was restarted to healthy idle.
+
+**Next:** diagnose the repeatable `alpha-voice-start` error 37 without broad service
+restart, and add bounded aggregate transition evidence that distinguishes follow-up
+VAD absence, ASR no-match, ignored command, timeout and output failure without storing
+PCM or transcript. Fix only evidence-backed defects, rerun focused Voice/lifecycle
+gates, then repeat V3E from a fresh baseline with an adult present. Any miss, movement,
+truncation, duplicate, producer replacement or residual state fails closed.
 
 ## P5 — Final 72-hour release gate
 

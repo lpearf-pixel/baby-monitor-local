@@ -991,3 +991,44 @@ occurred and no protected branch was changed.
 
 **Next:** keep the private production flag false until a separately approved controlled
 activation repeats the V3E wake/dialogue/timeout/non-wake matrix and its rollback gate.
+
+---
+
+### Task 16: Finite-file drain repair and supervised recovery — complete
+
+The bounded 0.5-second FFmpeg drain repair is committed at `16f7652`. After explicit
+marker invalidation, component-only recovery restored one Xiaomi producer and a fresh
+60-second receive-only Opus gate passed without persistence. An isolated tone and one
+canonical wake were audible once, complete and movement-free; the flag returned false.
+Fresh software evidence is Camera Reply 126/126, Voice 443/443 and the exact pinned
+normal/race protocol gate. This completed the repair, not the full V3E matrix.
+
+---
+
+### Task 17: Controlled V3E matrix — failed closed, diagnosis required
+
+**Status:** Successful quotas reached; clean acceptance failed.
+
+**Observed evidence:** the run reached 5 standalone wakes, at least 3 complete
+two-stage dialogues, 3 silent timeouts and 5 non-wake controls. The clean lifecycle
+ended at generation/start/response/stop 17/17/17/17 with no write, stop, pending,
+residual or producer failure. However, one wake occurred while both Voice launchd jobs
+were absent after start error 37, and two dialogue attempts produced only the wake
+reply. These are non-permitted misses; Camera Reply is disabled again.
+
+**Next software slice:**
+
+- [ ] Reproduce and classify launchd error 37 with bounded, redacted job-state evidence;
+      retain component-only ownership and do not restart go2rtc or the full Alpha.
+- [ ] Add aggregate-only transition evidence for VAD absence, ASR no-match, ignored
+      follow-up, armed timeout and output failure; never persist PCM or transcript.
+- [ ] RED/GREEN only the proven defect, then run focused Voice/Camera Reply/lifecycle
+      gates, compile, shell/Make and privacy checks.
+- [ ] With an adult present, start from fresh process and lifecycle counters and repeat
+      5 standalone wakes, 3 two-stage dialogues, 3 silent timeouts and 5 non-wakes.
+- [ ] Fail closed on any miss, movement, truncation, duplicate, timeout outside the
+      silent case, producer replacement, pending response or residual sender.
+
+**Delivery boundary:** no browser talkback, PTZ, Baby Care write, raw household audio,
+transport forcing, second Xiaomi producer, full-stack restart, push or protected-branch
+change.
