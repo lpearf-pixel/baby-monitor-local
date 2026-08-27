@@ -125,6 +125,24 @@ class CameraReplyStatus:
 
 class CameraReplyAcceptance:
     @classmethod
+    def invalidate(cls, root: Path) -> bool:
+        path = root / _ACCEPTANCE_RELATIVE
+        try:
+            if not path.exists() and not path.is_symlink():
+                return True
+            if not cls._secure_leaf(root, path):
+                return False
+            path.unlink()
+            directory_fd = os.open(path.parent, os.O_RDONLY)
+            try:
+                os.fsync(directory_fd)
+            finally:
+                os.close(directory_fd)
+            return True
+        except (OSError, RuntimeError):
+            return False
+
+    @classmethod
     def load(
         cls, root: Path, build_metadata: BuildMetadata
     ) -> CameraReplyEvidence | None:

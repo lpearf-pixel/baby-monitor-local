@@ -210,6 +210,10 @@ def run_probe(
     temporary_parent: Path | None = None,
 ) -> ProbeReport:
     root = root.resolve()
+    if not CameraReplyAcceptance.invalidate(root):
+        result = _report(CameraReplyCode.UNAVAILABLE)
+        _publish_status(root, result)
+        return result
     system = platform_system if platform_system is not None else platform.system()
     machine = platform_machine if platform_machine is not None else platform.machine()
     metadata = _current_metadata(root)
@@ -401,6 +405,10 @@ def main(argv: list[str] | None = None) -> int:
         report = status_report(ROOT)
         print_report(report)
         return 0 if report.acceptance_marker_current else 2
+    if not CameraReplyAcceptance.invalidate(ROOT):
+        report = _report(CameraReplyCode.UNAVAILABLE)
+        print_report(report)
+        return 2
     try:
         with open_controlling_tty() as tty:
             report = run_probe(

@@ -323,14 +323,37 @@ def test_probe_rejects_non_tty_before_commands_or_camera(tmp_path: Path) -> None
     assert transport.events == []
 
 
-def test_failed_post_check_preserves_existing_marker_byte_for_byte(
+def test_probe_entrypoint_invalidates_marker_when_tty_is_unavailable(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    metadata = _metadata(tmp_path)
+    marker = _marker(tmp_path, metadata)
+
+    class UnavailableTTY:
+        def __enter__(self):
+            raise OSError("synthetic unavailable tty")
+
+        def __exit__(self, *args: object) -> None:
+            return None
+
+    monkeypatch.setattr(voice_camera_reply, "ROOT", tmp_path)
+    monkeypatch.setattr(
+        voice_camera_reply,
+        "open_controlling_tty",
+        lambda: UnavailableTTY(),
+    )
+
+    assert voice_camera_reply.main(["probe"]) == 2
+    assert not marker.exists()
+
+
+def test_failed_post_check_invalidates_existing_acceptance_marker(
     tmp_path: Path,
 ) -> None:
     root = tmp_path / "repo"
     root.mkdir(mode=0o700)
     metadata = _metadata(root)
     marker = _marker(root, metadata)
-    original = marker.read_bytes()
     temporary_parent = tmp_path / "system-temp"
     temporary_parent.mkdir(mode=0o700)
 
@@ -346,7 +369,7 @@ def test_failed_post_check_preserves_existing_marker_byte_for_byte(
 
     assert report.code is CameraReplyCode.UNAVAILABLE
     assert report.acceptance_marker_current is False
-    assert marker.read_bytes() == original
+    assert not marker.exists()
 
 
 def test_probe_output_contains_only_allowlisted_aggregate_fields(capsys) -> None:
