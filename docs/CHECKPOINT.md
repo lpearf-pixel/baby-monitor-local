@@ -1349,3 +1349,21 @@ ignored_near_start，ignored_near_reply_echo=0、ignored_far=0。最终 lifecycl
 closed、零 failure/pending/residual。开关恢复 false，Voice-only stop/start PASS。结论为 ASR
 输出稳定接近 start 命令但不精确；禁止直接放宽到 edit-distance<=2，下一行为切片需先批准
 带否定/停止/取消/疑问阻断的 affirmative start-shape 纠错合同。
+
+## 2026-08-27 Voice Care 多护理动作 ASR 优化文档门
+
+以远端 `codex/xiaomi-camera-reply-lifecycle-review` 精确 HEAD
+`4f599225f908d8052006353a9dafec03eed40fdf` 为基线，只读复核当前 intent、listen-only、
+Feeding V1 合同和 near-start 交接证据。代码确认当前业务闭集只支持 Feeding；换尿布、拍嗝
+和喂药即使可能被 Paraformer 转写，也尚未被业务解析器安全识别。
+
+用户批准把优化方案和后续复盘过程写入项目。本 docs-only slice 新增多动作设计、逐任务
+实施计划和 append-oriented review log，并在 AGENTS/SUMMARY/STATUS/NEXT 建立入口。设计
+保持 exact-first：Feeding 先做 armed/action-scoped 显式纠错；换尿布和拍嗝仅作为后续闭集
+listen-only gate；喂药仅为 high-risk candidate，禁止近似纠错、误导性保存确认和 Baby Care
+写入；其他动作逐项小规格，不开放式兜底。
+
+本检查点没有修改业务代码、模型、配置或 go2rtc，没有访问摄像头、家庭音频或 transcript，
+没有运行新的软件/实机测试，也没有 commit、push、PR 或保护分支操作。Camera Reply 继续
+false。下一步需单独获得实现授权，且必须从 synthetic/public RED corpus 开始，并在每个
+slice 后追加 review log。

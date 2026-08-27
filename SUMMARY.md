@@ -143,6 +143,14 @@ Updated: 2026-08-27
   false again. The next behavior change requires explicit approval for a conservative
   start-command correction that blocks negation/stop/question forms; generic edit-
   distance acceptance is prohibited.
+  On 2026-08-27 the user approved a docs-only multi-action ASR optimization design at
+  `docs/superpowers/specs/2026-08-27-voice-care-multi-intent-asr-optimization-design.md`,
+  with its task plan and append-oriented review log in the adjacent plan/review paths.
+  Implementation has not started. Feeding remains the first gate; diaper change and
+  burping are later closed listen-only gates; medication is a high-risk candidate with
+  no approximate correction, positive save acknowledgement or Baby Care write. Current
+  `VoiceCareIntentV1` remains Feeding-only, Camera Reply remains false, and the next
+  authorized code action must begin with synthetic/public RED tests.
   The accepted Voice branch is published at `4d479b8`; the lifecycle-review branch is
   published through `a622a7a`, before local Task 9. Neither has been merged
   into a protected branch.

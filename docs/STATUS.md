@@ -632,6 +632,14 @@
   remained clean closed at 34/34/34/34 with no failure, pending response or residual.
   Camera Reply is false. Generic fuzzy acceptance remains prohibited because negative
   or stop commands can also be close in edit distance.
+- The 2026-08-27 docs-only ASR optimization design is approved and recorded at
+  `docs/superpowers/specs/2026-08-27-voice-care-multi-intent-asr-optimization-design.md`,
+  with an executable plan and append-oriented review log. No implementation or fresh
+  test has run. The current external contract remains Feeding-only. The ordered future
+  gates are Feeding near-start, closed listen-only diaper/burping recognition, then a
+  medication high-risk candidate with no correction, save acknowledgement or Baby Care
+  write. Camera Reply remains false; the next code action requires separate authority
+  and must start with synthetic/public RED tests.
 - Installed-i9 audio-source discovery now verifies that the Xiaomi source exposes HEVC
   video plus Opus audio and that the fixed loopback `audio_analysis` alias exposes only
   Opus. The real input is supported 48 kHz stereo Opus; the fixed FFmpeg boundary

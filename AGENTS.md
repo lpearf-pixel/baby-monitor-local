@@ -120,6 +120,19 @@
 - Full-care Voice enrollment must use the ASR candidate selected by the current formal
   gate (currently the pinned Paraformer), never a historical Whisper fallback. Before
   touching Voice capture/enrollment, read the current Voice spec, plan and handoff state.
+- Voice care action recognition is a closed, risk-tiered registry. The current external
+  `VoiceCareIntentV1` remains Feeding-only; diaper change and burping may enter
+  listen-only only after their independent gates, while medication is always a
+  high-risk candidate requiring a separately approved confirmation contract. Never
+  infer an unregistered action, medication name/dose or care outcome from nearest text.
+- ASR correction may run only for an exact-wake armed follow-up after exact parsing
+  fails. It must use reviewed action-scoped mappings, re-enter the exact parser and
+  reject negation, stop, cancel, question and cross-action forms. Generic edit-distance,
+  prefix/suffix shape, KWS-only or open-ended model acceptance is prohibited.
+- Multi-action ASR work must read and append
+  `docs/reviews/2026-08-27-voice-care-multi-intent-asr-optimization-log.md`; record exact
+  heads, RED/GREEN commands, aggregate counts and disproved hypotheses without household
+  PCM or transcript.
 - Put reusable or long procedures in repository scripts; do not require multiline
   heredocs or large terminal pastes.
 - Repository shell scripts must be ASCII-only, UTF-8 with LF endings, compatible with

@@ -365,11 +365,26 @@ installation and the single diagnostic success do not count as the complete devi
 
 The next attempt is blocked before another full matrix: installed `73c88bf` classified
 four of five follow-ups as rejected near-start text, with zero near-reply-echo and zero
-far. Do not enlarge the tail buffer or accept arbitrary edit distance. First approve and
-implement a closed start-command correction that is limited to armed follow-up, requires
-an affirmative start shape, strips only fixed terminal particles, and rejects negation,
-stop, cancel and question forms. Then run synthetic adversarial controls before another
-small supervised sample and only resume V3E if that sample is clean.
+far. Do not enlarge the tail buffer or accept arbitrary edit distance.
+
+The user approved a docs-only multi-action ASR optimization design on 2026-08-27. Its
+authoritative entry points are:
+
+- `docs/superpowers/specs/2026-08-27-voice-care-multi-intent-asr-optimization-design.md`;
+- `docs/superpowers/plans/2026-08-27-voice-care-multi-intent-asr-optimization.md`;
+- `docs/reviews/2026-08-27-voice-care-multi-intent-asr-optimization-log.md`.
+
+The design keeps Feeding as the first repair, adds diaper change and burping only as
+later closed listen-only gates, and treats medication only as a high-risk candidate with
+no correction, positive save acknowledgement or Baby Care write. Other actions require
+their own small specification and tests. It explicitly rejects generic edit distance,
+cross-action correction and open-ended intent classification.
+
+**Next:** wait for explicit implementation authority, then start only at plan Task 1:
+add the synthetic/public RED corpus and append the review log. Do not write GREEN first,
+install a model, enable Camera Reply, run household playback, commit or push under the
+current docs-only authority. After software gates, isolate ASR with Camera Reply false;
+only a clean small supervised sample may unblock the separate V3E matrix.
 
 ## P5 — Final 72-hour release gate
 
