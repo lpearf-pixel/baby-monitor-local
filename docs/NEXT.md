@@ -261,18 +261,19 @@ start of every probe; installed status is NOT_PROVEN. D3/D4 were not run.
 The approved transport-auto amendment is recorded at `8654866`; Task 8 software is
 complete at `f153cbd` with 62/62 synthetic checks. Its installed preflight was not run.
 
-**Prerequisites:** Tasks 9 through 13 are complete at `1885da2`, `c85fb39`, `faa3d4b`,
-`91c97bc` and `015f6e4`: configuration
+**Prerequisites:** Tasks 9 through 14 are complete at `1885da2`, `c85fb39`, `faa3d4b`,
+`91c97bc`, `015f6e4` and `9bc032b`: configuration
 stays `transport=auto`, runtime parsing requires one external Xiaomi producer, and reply
-settlement owns the observed protocol plus nonzero generation. Installed diagnostics
-have not run. Real speaker playback remains outside the current authorization and later
+settlement owns the observed protocol plus nonzero generation. Task 14 later ran the
+installed preflight, which failed closed; the installed media diagnostic did not run.
+Real speaker playback remains outside the current authorization and later
 requires an adult at the camera.
 
-**Codex can:** execute Task 14's full software/review checkpoint without reading
-household audio, changing the source or playing audio.
+**Codex can:** stop at this checkpoint. A later separately authorized Task 15 may first
+restore a trustworthy installed preflight and then run the bounded supervised matrix.
 
-**Human required:** none for Task 14 software. Task 15 later requires separate approval
-and supervision. Forcing TCP/UDP or creating a second connection remains prohibited.
+**Human required:** Task 15 requires separate approval and adult supervision. Forcing
+TCP/UDP or creating a second connection remains prohibited.
 
 **Acceptance and tests:** The original fixed vocabulary and privacy boundaries remain
 in force. The replacement software gate passed all named lifecycle and review
@@ -293,8 +294,14 @@ pinned normal/race tests prove channel, sequence, header/payload offsets and bou
 successful packet/byte accounting. Python COMPLETE requires current-generation counter
 growth. This is not an audibility claim.
 
-**Next:** execute Task 14 full software/review checkpoint without hardware playback.
-Retain the accepted i9 speaker and leave Camera Reply disabled; do not enter D3/D4.
+**Task 14 result:** full software and review checkpoint is complete at `9bc032b`.
+Full Python passes 1732/1732, frontend passes 73/73, and independent review is clean.
+The installed preflight failed closed as `app_identity_invalid`; the installed media
+diagnostic did not run. Decision: `MACOS_PREFLIGHT_BLOCKED`.
+
+**Next:** stop. Retain the accepted i9 speaker and leave Camera Reply disabled. Task 15
+real-device work is not authorized and cannot start until the installed preflight is
+trustworthy.
 
 ## P5 — Final 72-hour release gate
 

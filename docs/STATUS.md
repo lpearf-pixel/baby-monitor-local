@@ -507,7 +507,18 @@
   evidence is 163/163, Camera Reply is 123/123, monitoring provenance is 23/23 and the
   exact pinned normal/race target passes. Independent fix-round review reports no
   Critical or Important findings. No installed API, camera media or playback ran;
-  audibility remains unproved, Camera Reply is disabled and Task 14 is next.
+  audibility remains unproved and Camera Reply remains disabled.
+- Camera Reply lifecycle Task 14 software/review is complete at `9bc032b`. Review-gap
+  fixes make ambiguous settlement sticky, bind start/stop to the real producer ID,
+  classify VAD as speech presence in fixed leading/middle/trailing windows, advance the
+  worker generation after successful reconnect, and require macOS preflight readiness
+  before config or loopback API access. Fresh affected evidence is 222/222, Camera
+  Reply 124/124, Voice V0 82/82, Voice 442/442, full Python 1732/1732 and frontend
+  73/73; exact pinned normal/race and static/privacy gates pass. Independent review is
+  clean at 0 Critical / 0 Important / 0 Minor. The installed preflight failed closed as
+  `app_identity_invalid`; the installed media diagnostic was skipped. Decision:
+  `MACOS_PREFLIGHT_BLOCKED`. No real media or playback ran, no marker exists and Task 15
+  remains unauthorized.
 - Installed-i9 audio-source discovery now verifies that the Xiaomi source exposes HEVC
   video plus Opus audio and that the fixed loopback `audio_analysis` alias exposes only
   Opus. The real input is supported 48 kHz stereo Opus; the fixed FFmpeg boundary

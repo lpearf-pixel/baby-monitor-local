@@ -8,10 +8,11 @@
 > `e66302ef1ab448705dc05d03086d52bf69f0e124`; Task 7 stopped closed at D2.
 > The 2026-08-27 transport-auto diagnostic amendment is approved. Task 8 software is
 > complete at `f153cbdf9c46577831f8fe5fe3b31160118676ec`; Task 9 software is complete at
-> `1885da27d7ba72af81d0f3cb00cd96147b998a2a`. Neither installed read-only command was
-> run. Task 10 software is complete at
-> `c85fb39b2328a4305da12f2b51c2e2cde61bef59`; Tasks 11–14 are not started and
-> Task 15 real playback is not authorized.
+> `1885da27d7ba72af81d0f3cb00cd96147b998a2a`. Task 10 software is complete at
+> `c85fb39b2328a4305da12f2b51c2e2cde61bef59`; Tasks 11–14 are complete through
+> the reviewed Task 14 business head `9bc032b0179ab672db9a0b99a174f149d5bc7a30`.
+> The installed preflight failed closed, the installed media diagnostic was skipped,
+> and Task 15 real playback is not authorized.
 
 **Goal:** Preserve the completed lifecycle fixes, diagnose the remaining D2 shared-source
 timeout with `transport=auto`, and make video, camera microphone, AI reply and future
@@ -884,7 +885,7 @@ install or restart it.
 
 **Human required:** only if review discovers a material architecture conflict.
 
-- [ ] **Step 1: Run focused Python and Go gates from the committed tree.**
+- [x] **Step 1: Run focused Python and Go gates from the committed tree.**
 
   ```bash
   make alpha-xiaomi-media-preflight
@@ -897,7 +898,7 @@ install or restart it.
 
   The two installed diagnostic commands are run only after their software tests and
   remain read-only; an unknown macOS permission state stops installed diagnosis.
-- [ ] **Step 2: Run repository verification.**
+- [x] **Step 2: Run repository verification.**
 
   ```bash
   .venv-alpha/bin/python -m compileall -q packages services tools
@@ -906,16 +907,16 @@ install or restart it.
   bash -n tools/*.sh
   git diff --check
   ```
-- [ ] **Step 3: Scan the final tracked diff.** Reject credentials, private addresses,
+- [x] **Step 3: Scan the final tracked diff.** Reject credentials, private addresses,
   Xiaomi URI/session data, keys, command payloads, audio, transcripts, runtime settings,
   SQLite and generated local artifacts.
-- [ ] **Step 4: Review concurrency and ownership.** Confirm one dispatcher, one producer,
+- [x] **Step 4: Review concurrency and ownership.** Confirm one dispatcher, one producer,
   protocol/generation binding, exactly-once settlement, no post-stop write, no duplicate
   worker and no full-stack restart path.
-- [ ] **Step 5: Record one root-cause decision.** Use only
+- [x] **Step 5: Record one root-cause decision.** Use only
   `D2_CAUSE_CONFIRMED`, `D2_BOUNDARY_HARDENED_CAUSE_UNPROVEN` or
   `MACOS_PREFLIGHT_BLOCKED`; do not claim device success.
-- [ ] **Step 6: Update handoff documents and commit.**
+- [x] **Step 6: Update handoff documents and commit.**
 
   ```bash
   git add SUMMARY.md docs/STATUS.md docs/CHECKPOINT.md docs/NEXT.md \
@@ -926,6 +927,16 @@ install or restart it.
 
 **Acceptance:** tracked worktree is clean, software review has no Critical/Important,
 Camera Reply remains disabled, and documentation separates all four capability gates.
+
+**Evidence:** Task 14 review-gap fixes are committed at `9bc032b`. Fresh affected
+tests pass 222/222, Camera Reply 124/124, Voice V0 82/82 and Voice 442/442. The exact
+pinned normal/race protocol target passes; full Python passes 1732/1732 and frontend
+passes 73/73; compile, shell, diff and privacy gates pass. Independent fix-round review
+reports 0 Critical / 0 Important / 0 Minor. The installed preflight returned
+`app_identity_invalid` with zero launchd owner and unknown Local Network state from this
+checkout, so the installed media diagnostic was not run. Decision:
+`MACOS_PREFLIGHT_BLOCKED`. No camera media, playback, install, restart or marker publish
+occurred.
 
 **Next:** stop. Task 15 requires new explicit real-device authorization.
 

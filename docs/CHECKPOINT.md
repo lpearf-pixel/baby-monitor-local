@@ -1201,3 +1201,16 @@ channel 3、单调序号和互不重叠的 header/payload。只有成功写入�
 Camera Reply 123/123、monitoring 23/23、固定上游 normal/race PASS，独立修复轮为
 0 Critical / 0 Important。未访问安装态服务、摄像头媒体或扬声器，未发布 marker；
 结论仍为 `D2_BOUNDARY_HARDENED_CAUSE_UNPROVEN`。下一项为 Task 14 全软件/审查检查点。
+
+同日完成 Camera Reply lifecycle Task 14 软件/审查检查点，业务修复提交为 `9bc032b`。
+首轮独立复审的五项 Important 均按 RED/GREEN 关闭：ambiguous settlement 结果保持且不
+重发 stop，start/stop 绑定真实 producer ID，VAD 三元组统一为前/中/后窗口的 speech
+presence，成功 reconnect 推进 worker generation 并拒绝同代并发重复建连，媒体诊断在
+任何配置读取和 HTTP 请求前强制 macOS preflight ready。复审随后发现 VAD classifier 与
+readiness 契约语义相反；新增 classifier-to-readiness 集成 RED 后修正，最终复审为
+0 Critical / 0 Important / 0 Minor。Fresh affected 222/222、Camera Reply 124/124、
+Voice V0 82/82、Voice 442/442、完整 Python 1732/1732、frontend 73/73、固定上游
+normal/race、compile、shell、diff 和 privacy 全部 PASS。安装态 preflight 从本 checkout
+返回 `app_identity_invalid`、launchd owner 0、Local Network unknown，因此按门禁跳过
+安装态媒体诊断并记录 `MACOS_PREFLIGHT_BLOCKED`。未访问摄像头媒体、未播放、未安装或
+重启服务、未发布 marker；Task 15 仍未授权。
