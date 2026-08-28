@@ -71,11 +71,16 @@ state without touching production settings, venvs, plists or services.
 - Create: `tools/voice_contextual_runner.py`
 - Create: `tests/voice/test_contextual_paraformer.py`
 
-- [ ] Write RED tests for fixed hotword digest/order, 16 kHz PCM framing, canonical
+- [x] Write RED tests for fixed hotword digest/order, 16 kHz PCM framing, canonical
       response, startup/request/output bounds, crash/timeout settlement and no network.
-- [ ] Implement one candidate-only child using `ContextualParaformer(...,
+- [x] Implement one candidate-only child using `ContextualParaformer(...,
       quantize=True)` and the fixed hotword string.
-- [ ] Prove child termination and no production module/config import.
+- [x] Prove child termination and no production module/config import.
+
+Task 3 evidence: the missing-process-module RED was observed. The combined Task 1-3 gate
+is 22/22; request timeout terminates the process group and malformed responses fail
+closed. The official bundle's `model_eb.onnx` naming mismatch is handled only through a
+child-private `model_eb_quant.onnx` symlink alias; the immutable bundle is unchanged.
 
 **Acceptance:** the candidate returns an `AsrResult` or one fixed unavailable failure;
 no timeout or malformed response leaves a child alive.
