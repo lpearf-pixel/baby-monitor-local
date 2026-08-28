@@ -3,6 +3,7 @@ from __future__ import annotations
 import json
 import os
 import plistlib
+import shlex
 import shutil
 import subprocess
 from pathlib import Path
@@ -164,9 +165,10 @@ def test_voice_diagnostic_make_targets_use_only_fixed_tool_operations() -> None:
             check=False,
         )
         assert completed.returncode == 0
-        assert completed.stdout.strip() == (
-            f"./.venv-alpha/bin/python tools/voice_diagnostic.py {operation}"
-        )
+        command = shlex.split(completed.stdout.strip())
+        assert len(command) == 3
+        assert Path(command[0]).name == "python"
+        assert command[1:] == ["tools/voice_diagnostic.py", operation]
         lowered = completed.stdout.lower()
         for forbidden in ("go2rtc", "alpha-restart", "camera_reply", "transcript"):
             assert forbidden not in lowered

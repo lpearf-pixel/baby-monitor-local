@@ -271,6 +271,38 @@ def test_worker_correlates_same_utterance_and_outcome_once_for_diagnostics() -> 
     assert diagnostic.closed is True
 
 
+def test_worker_does_not_enqueue_diagnostic_after_cancellation_during_handle() -> None:
+    cancelled = threading.Event()
+    diagnostic = DiagnosticWriter()
+
+    class CancellingController(Controller):
+        def handle(self, pcm: bytes, event, *, from_replay: bool = False):
+            outcome = super().handle(pcm, event, from_replay=from_replay)
+            event.set()
+            return outcome
+
+    worker = ListenOnlyVoiceWorker(
+        pump=Pump([PumpFrame(b"p" * 3_200)]),
+        vad=Vad(VadResult(True, 0.9)),
+        collector=Collector(UtteranceResult(b"u" * 32_000, "terminal_silence")),
+        controller=CancellingController(
+            ListenOnlyOutcome("listen_only_ignored", None, "idle")
+        ),
+        asr_closer=AsrCloser(),
+        status_writer=Status(),
+        diagnostic_tap=DiagnosticTap(
+            DiagnosticAsrObservation("available", "synthetic", "synthetic")
+        ),
+        diagnostic_writer=diagnostic,
+        epoch=lambda: 1_100.0,
+        monotonic_ns=iter((1_000_000_000, 1_080_000_000)).__next__,
+    )
+
+    worker.step(cancelled)
+
+    assert diagnostic.records == []
+
+
 def test_worker_preserves_replay_provenance_for_completed_utterance() -> None:
     controller = Controller(
         ListenOnlyOutcome("listen_only_acknowledged", "listen_only_received", "idle")

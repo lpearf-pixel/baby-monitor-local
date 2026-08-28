@@ -215,19 +215,21 @@ class ListenOnlyVoiceWorker:
                 30_000,
                 max(0, (self._monotonic_ns() - started_ns) // 1_000_000),
             )
-            self._offer_diagnostic(
-                utterance.pcm,
-                outcome,
-                observation=(
-                    self._diagnostic_tap.take_observation()
-                    if self._diagnostic_tap is not None
-                    else None
-                ),
-                captured_epoch=diagnostic_epoch,
-                phase_before="armed" if was_armed else "idle",
-                from_replay=diagnostic_replay,
-                latency_ms=latency_ms,
+            diagnostic_observation = (
+                self._diagnostic_tap.take_observation()
+                if self._diagnostic_tap is not None
+                else None
             )
+            if not cancelled.is_set():
+                self._offer_diagnostic(
+                    utterance.pcm,
+                    outcome,
+                    observation=diagnostic_observation,
+                    captured_epoch=diagnostic_epoch,
+                    phase_before="armed" if was_armed else "idle",
+                    from_replay=diagnostic_replay,
+                    latency_ms=latency_ms,
+                )
             if outcome.response_code is not None:
                 self._processed_count += 1
             state = (

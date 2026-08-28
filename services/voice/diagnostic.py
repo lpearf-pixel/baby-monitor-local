@@ -2,17 +2,21 @@
 
 from __future__ import annotations
 
+import ctypes
+import errno
 import json
 import math
 import os
+import platform
 import queue
 import re
+import secrets
 import stat
-import tempfile
 import threading
 import unicodedata
 import wave
-from collections.abc import Callable
+from collections.abc import Callable, Iterator
+from contextlib import contextmanager
 from dataclasses import dataclass, field, replace
 from pathlib import Path
 from typing import Literal
@@ -28,6 +32,13 @@ DIAGNOSTIC_SETTLEMENT_SECONDS = 5.0
 VOICE_DIAGNOSTIC_UNAVAILABLE = "voice_diagnostic_unavailable"
 _SESSION_ID = re.compile(r"^[0-9a-f]{32}$")
 _ARTIFACT_NAME = re.compile(r"^(?P<sequence>[0-9]{6})\.(?:wav|json)$")
+_TEMP_ARTIFACT_NAME = re.compile(
+    r"^\.(?P<sequence>[0-9]{6})\.[0-9a-f]{16}\.tmp$"
+)
+_QUARANTINE_ARTIFACT_NAME = re.compile(
+    r"^\.(?P<sequence>[0-9]{6})(?P<suffix>\.wav|\.json)\."
+    r"[0-9a-f]{16}\.quarantine$"
+)
 _MAX_METADATA_BYTES = 16_384
 _MAX_PCM_BYTES = 16_000 * 2 * 8
 _ACTION_CODES = frozenset(
@@ -71,6 +82,7 @@ class DiagnosticSession:
     complete_bytes: int
     next_sequence: int
     _session_root: Path = field(repr=False)
+    _project_root: Path = field(repr=False)
 
     def __post_init__(self) -> None:
         if (
@@ -86,12 +98,13 @@ class DiagnosticSession:
             or type(self.next_sequence) is not int
             or not 1 <= self.next_sequence <= DIAGNOSTIC_MAX_UTTERANCES + 1
             or not isinstance(self._session_root, Path)
+            or not isinstance(self._project_root, Path)
         ):
             raise ValueError(VOICE_DIAGNOSTIC_UNAVAILABLE)
 
     @property
     def remaining_utterances(self) -> int:
-        return DIAGNOSTIC_MAX_UTTERANCES - self.complete_count
+        return DIAGNOSTIC_MAX_UTTERANCES - (self.next_sequence - 1)
 
     @property
     def remaining_bytes(self) -> int:
@@ -114,6 +127,12 @@ class DiagnosticRecord:
     latency_ms: int
 
     def __post_init__(self) -> None:
+        if type(self.asr_text) is str:
+            object.__setattr__(self, "asr_text", _bounded_text(self.asr_text))
+        if type(self.normalized_text) is str:
+            object.__setattr__(
+                self, "normalized_text", _bounded_text(self.normalized_text)
+            )
         action_valid = (
             self.action_code is None
             and self.match_kind is None
@@ -160,6 +179,23 @@ class DiagnosticAsrObservation:
     normalized_text: str = field(repr=False)
 
 
+@dataclass(frozen=True, slots=True)
+class _PrivateTree:
+    root: int
+    runtime: int
+    private: int
+    diagnostics: int
+    sessions: int
+
+
+@dataclass(frozen=True, slots=True)
+class _TemporaryArtifact:
+    descriptor: int
+    name: str
+    device: int
+    inode: int
+
+
 class DiagnosticAsrTap:
     """Observe exactly one existing ASR call without changing its result."""
 
@@ -177,7 +213,11 @@ class DiagnosticAsrTap:
             if type(text) is not str:
                 raise ValueError("voice_model_unavailable")
             observation = DiagnosticAsrObservation(
-                "available", text, unicodedata.normalize("NFKC", text).strip()
+                "available",
+                text[:DIAGNOSTIC_MAX_TRANSCRIPT_CODEPOINTS],
+                unicodedata.normalize("NFKC", text).strip()[
+                    :DIAGNOSTIC_MAX_TRANSCRIPT_CODEPOINTS
+                ],
             )
         except BaseException:
             with self._lock:
@@ -212,13 +252,20 @@ class VoiceDiagnosticWriter:
         ):
             raise ValueError(VOICE_DIAGNOSTIC_UNAVAILABLE)
         self._session = session
-        self._publisher = publisher or publish_diagnostic_record
         self._queue: queue.Queue[DiagnosticRecord] = queue.Queue(
             maxsize=DIAGNOSTIC_QUEUE_CAPACITY
         )
         self._slots = threading.BoundedSemaphore(DIAGNOSTIC_QUEUE_CAPACITY)
         self._lock = threading.Lock()
         self._closing = threading.Event()
+        self._abandon = threading.Event()
+        self._publisher = publisher or (
+            lambda current_session, record: publish_diagnostic_record(
+                current_session,
+                record,
+                cancelled=self._abandon.is_set,
+            )
+        )
         self._closed = False
         self._failed = False
         self._outstanding = 0
@@ -280,6 +327,9 @@ class VoiceDiagnosticWriter:
             self._closed = True
         self._closing.set()
         self._thread.join(DIAGNOSTIC_SETTLEMENT_SECONDS)
+        if self._thread.is_alive():
+            self._abandon.set()
+            self._discard_queued()
 
     def _run(self) -> None:
         while True:
@@ -294,12 +344,15 @@ class VoiceDiagnosticWriter:
                 if type(published_bytes) is not int or published_bytes <= 0:
                     raise ValueError
                 with self._lock:
-                    self._session = replace(
-                        self._session,
-                        complete_count=self._session.complete_count + 1,
-                        complete_bytes=self._session.complete_bytes + published_bytes,
-                        next_sequence=self._session.next_sequence + 1,
-                    )
+                    if not self._abandon.is_set():
+                        self._session = replace(
+                            self._session,
+                            complete_count=self._session.complete_count + 1,
+                            complete_bytes=(
+                                self._session.complete_bytes + published_bytes
+                            ),
+                            next_sequence=self._session.next_sequence + 1,
+                        )
             except Exception:
                 with self._lock:
                     self._failed = True
@@ -309,6 +362,9 @@ class VoiceDiagnosticWriter:
                     self._outstanding -= 1
                 self._slots.release()
                 self._queue.task_done()
+            if self._abandon.is_set():
+                self._discard_queued()
+                return
             if self._failed:
                 self._discard_queued()
 
@@ -339,7 +395,7 @@ def load_active_session(
         ):
             return None
         if (
-            session.complete_count >= DIAGNOSTIC_MAX_UTTERANCES
+            session.remaining_utterances <= 0
             or session.complete_bytes >= DIAGNOSTIC_MAX_BYTES
         ):
             return None
@@ -353,39 +409,60 @@ def load_marker_session(project_root: Path) -> DiagnosticSession | None:
 
     try:
         root = Path(project_root).resolve(strict=True)
-        diagnostics = root / "runtime" / "private" / "voice-diagnostics"
-        sessions = diagnostics / "sessions"
-        _require_owned_directory(root / "runtime")
-        for directory in (root / "runtime" / "private", diagnostics, sessions):
-            _require_private_directory(directory)
-        marker = _read_private_json(diagnostics / "active.json")
-        session_id, created, expires = _validate_session_payload(marker)
-        session_root = sessions / session_id
-        audio_root = session_root / "audio"
-        events_root = session_root / "events"
-        for directory in (session_root, audio_root, events_root):
-            _require_private_directory(directory)
-        manifest = _read_private_json(session_root / "session.json")
-        if _validate_session_payload(manifest) != (session_id, created, expires):
-            return None
-        complete_count, complete_bytes, next_sequence = _artifact_usage(
-            audio_root, events_root
-        )
-        return DiagnosticSession(
-            session_id=session_id,
-            created_epoch=created,
-            expires_epoch=expires,
-            complete_count=complete_count,
-            complete_bytes=complete_bytes,
-            next_sequence=next_sequence,
-            _session_root=session_root,
-        )
+        with _open_private_tree(root) as tree:
+            marker = _read_private_json_at(tree.diagnostics, "active.json")
+            session_id, created, expires = _validate_session_payload(marker)
+            session_fd = _open_directory_at(
+                tree.sessions, session_id, private=True
+            )
+            try:
+                audio_fd = _open_directory_at(session_fd, "audio", private=True)
+                try:
+                    events_fd = _open_directory_at(
+                        session_fd, "events", private=True
+                    )
+                    try:
+                        manifest = _read_private_json_at(
+                            session_fd, "session.json"
+                        )
+                        if _validate_session_payload(manifest) != (
+                            session_id,
+                            created,
+                            expires,
+                        ):
+                            return None
+                        complete_count, complete_bytes, next_sequence = (
+                            _artifact_usage_at(audio_fd, events_fd)
+                        )
+                        return DiagnosticSession(
+                            session_id=session_id,
+                            created_epoch=created,
+                            expires_epoch=expires,
+                            complete_count=complete_count,
+                            complete_bytes=complete_bytes,
+                            next_sequence=next_sequence,
+                            _session_root=(
+                                root
+                                / "runtime/private/voice-diagnostics/sessions"
+                                / session_id
+                            ),
+                            _project_root=root,
+                        )
+                    finally:
+                        os.close(events_fd)
+                finally:
+                    os.close(audio_fd)
+            finally:
+                os.close(session_fd)
     except (OSError, ValueError, TypeError, json.JSONDecodeError):
         return None
 
 
 def publish_diagnostic_record(
-    session: DiagnosticSession, record: DiagnosticRecord
+    session: DiagnosticSession,
+    record: DiagnosticRecord,
+    *,
+    cancelled: Callable[[], bool] | None = None,
 ) -> int:
     """Publish one no-replace WAV/event pair and return its complete byte count."""
 
@@ -396,44 +473,91 @@ def publish_diagnostic_record(
             or record.session_id != session.session_id
             or not session.created_epoch <= record.captured_epoch < session.expires_epoch
             or session.remaining_utterances <= 0
+            or cancelled is not None
+            and cancelled()
         ):
             raise ValueError
-        session_root = session._session_root
-        audio_root = session_root / "audio"
-        events_root = session_root / "events"
-        for directory in (session_root, audio_root, events_root):
-            _require_private_directory(directory)
-        sequence = session.next_sequence
-        basename = f"{sequence:06d}"
-        wav_final = audio_root / f"{basename}.wav"
-        event_final = events_root / f"{basename}.json"
-        if wav_final.exists() or event_final.exists():
-            raise ValueError
+        is_cancelled = cancelled or (lambda: False)
+        with _open_session_tree(session) as opened:
+            tree, session_fd, audio_fd, events_fd = opened
+            _require_session_authority(tree.diagnostics, session_fd, session)
+            sequence = session.next_sequence
+            basename = f"{sequence:06d}"
+            wav_final = f"{basename}.wav"
+            event_final = f"{basename}.json"
+            if _entry_exists(audio_fd, wav_final) or _entry_exists(
+                events_fd, event_final
+            ):
+                raise ValueError
 
-        wav_temp = _write_wave_temp(audio_root, basename, record.pcm)
-        try:
-            wav_size = wav_temp.stat().st_size
-            event = _event_payload(record, sequence)
-            event_bytes = json.dumps(
-                event,
-                ensure_ascii=False,
-                separators=(",", ":"),
-                sort_keys=True,
-            ).encode("utf-8")
-            event_temp = _write_bytes_temp(events_root, basename, event_bytes)
+            wav_temp = _write_wave_temp(
+                session._session_root / "audio",
+                basename,
+                record.pcm,
+                directory_fd=audio_fd,
+            )
             try:
-                total = wav_size + len(event_bytes)
-                if total > session.remaining_bytes:
+                if is_cancelled():
                     raise ValueError
-                _publish_no_replace(wav_temp, wav_final)
-                wav_temp = None
-                _publish_no_replace(event_temp, event_final)
-                event_temp = None
-                return total
+                wav_size = os.fstat(wav_temp.descriptor).st_size
+                event = _event_payload(record, sequence)
+                event_bytes = json.dumps(
+                    event,
+                    ensure_ascii=False,
+                    separators=(",", ":"),
+                    sort_keys=True,
+                ).encode("utf-8")
+                event_temp = _write_bytes_temp_at(
+                    events_fd, basename, event_bytes
+                )
+                try:
+                    if is_cancelled():
+                        raise ValueError
+                    total = wav_size + len(event_bytes)
+                    if total > session.remaining_bytes:
+                        raise ValueError
+                    _require_tree_bindings(
+                        tree,
+                        session_fd,
+                        audio_fd,
+                        events_fd,
+                        session.session_id,
+                    )
+                    _require_session_authority(
+                        tree.diagnostics, session_fd, session
+                    )
+                    if is_cancelled():
+                        raise ValueError
+                    _publish_no_replace_at(
+                        audio_fd,
+                        wav_temp,
+                        wav_final,
+                        cancelled=is_cancelled,
+                    )
+                    published_wav = wav_temp
+                    wav_temp = None
+                    _close_descriptor_once(published_wav.descriptor)
+                    if is_cancelled():
+                        raise ValueError
+                    _require_session_authority(
+                        tree.diagnostics, session_fd, session
+                    )
+                    if is_cancelled():
+                        raise ValueError
+                    _publish_no_replace_at(
+                        events_fd,
+                        event_temp,
+                        event_final,
+                        cancelled=is_cancelled,
+                    )
+                    published_event = event_temp
+                    event_temp = None
+                    _close_descriptor_once(published_event.descriptor)
+                    return total
+                finally:
+                    _unlink_owned_at(events_fd, event_temp)
             finally:
-                _unlink_owned(event_temp)
-        finally:
-            _unlink_owned(wav_temp)
+                _unlink_owned_at(audio_fd, wav_temp)
     except (OSError, ValueError, TypeError, wave.Error):
         raise ValueError(VOICE_DIAGNOSTIC_UNAVAILABLE) from None
 
@@ -444,14 +568,14 @@ def snapshot_session_artifacts(session: DiagnosticSession) -> DiagnosticSnapshot
     try:
         if type(session) is not DiagnosticSession:
             raise ValueError
-        audio_root = session._session_root / "audio"
-        events_root = session._session_root / "events"
-        for directory in (session._session_root, audio_root, events_root):
-            _require_private_directory(directory)
-        audio = _private_artifacts(audio_root, ".wav")
-        events = _private_artifacts(events_root, ".json")
+        with _open_session_tree(session) as opened:
+            _tree, _session_fd, audio_fd, events_fd = opened
+            audio, audio_pending = _private_artifacts_at(audio_fd, ".wav")
+            events, event_pending = _private_artifacts_at(events_fd, ".json")
         complete = set(audio) & set(events)
-        incomplete = set(audio) ^ set(events)
+        incomplete = (
+            set(audio) ^ set(events)
+        ) | audio_pending | event_pending
         complete_bytes = sum(audio[number] + events[number] for number in complete)
         if (
             len(complete) > DIAGNOSTIC_MAX_UTTERANCES
@@ -527,12 +651,12 @@ def _validate_session_payload(
     return session_id, float(created), float(expires)
 
 
-def _artifact_usage(audio_root: Path, events_root: Path) -> tuple[int, int, int]:
-    audio = _private_artifacts(audio_root, ".wav")
-    events = _private_artifacts(events_root, ".json")
+def _artifact_usage_at(audio_fd: int, events_fd: int) -> tuple[int, int, int]:
+    audio, audio_pending = _private_artifacts_at(audio_fd, ".wav")
+    events, event_pending = _private_artifacts_at(events_fd, ".json")
     complete = set(audio) & set(events)
     complete_bytes = sum(audio[number] + events[number] for number in complete)
-    all_sequences = set(audio) | set(events)
+    all_sequences = set(audio) | set(events) | audio_pending | event_pending
     next_sequence = max(all_sequences, default=0) + 1
     if (
         len(complete) > DIAGNOSTIC_MAX_UTTERANCES
@@ -543,47 +667,51 @@ def _artifact_usage(audio_root: Path, events_root: Path) -> tuple[int, int, int]
     return len(complete), complete_bytes, next_sequence
 
 
-def _private_artifacts(root: Path, suffix: str) -> dict[int, int]:
+def _private_artifacts_at(
+    directory_fd: int, suffix: str
+) -> tuple[dict[int, int], set[int]]:
     result: dict[int, int] = {}
-    for child in root.iterdir():
-        match = _ARTIFACT_NAME.fullmatch(child.name)
-        if match is None or child.suffix != suffix:
+    pending: set[int] = set()
+    names = os.listdir(directory_fd)
+    if len(names) > DIAGNOSTIC_MAX_UTTERANCES:
+        raise ValueError
+    for name in names:
+        match = _ARTIFACT_NAME.fullmatch(name)
+        committed = match is not None and name.endswith(suffix)
+        if not committed:
+            match = _TEMP_ARTIFACT_NAME.fullmatch(name)
+        if match is None:
+            match = _QUARANTINE_ARTIFACT_NAME.fullmatch(name)
+            if match is not None and match.group("suffix") != suffix:
+                raise ValueError
+        if match is None:
             raise ValueError
-        info = child.lstat()
+        info = os.stat(name, dir_fd=directory_fd, follow_symlinks=False)
         if (
             not stat.S_ISREG(info.st_mode)
             or info.st_uid != os.getuid()
             or stat.S_IMODE(info.st_mode) != 0o600
             or info.st_nlink != 1
+            or info.st_size > DIAGNOSTIC_MAX_BYTES
         ):
             raise ValueError
-        result[int(match.group("sequence"))] = info.st_size
-    return result
-
-
-def _require_private_directory(path: Path) -> None:
-    info = path.lstat()
-    if (
-        not stat.S_ISDIR(info.st_mode)
-        or info.st_uid != os.getuid()
-        or stat.S_IMODE(info.st_mode) != 0o700
-    ):
+        sequence = int(match.group("sequence"))
+        if not 1 <= sequence <= DIAGNOSTIC_MAX_UTTERANCES:
+            raise ValueError
+        if committed:
+            result[sequence] = info.st_size
+        else:
+            if sequence in pending:
+                raise ValueError
+            pending.add(sequence)
+    if set(result) & pending:
         raise ValueError
+    return result, pending
 
 
-def _require_owned_directory(path: Path) -> None:
-    info = path.lstat()
-    if (
-        not stat.S_ISDIR(info.st_mode)
-        or info.st_uid != os.getuid()
-        or stat.S_IMODE(info.st_mode) & 0o022
-    ):
-        raise ValueError
-
-
-def _read_private_json(path: Path) -> object:
+def _read_private_json_at(directory_fd: int, name: str) -> object:
     flags = os.O_RDONLY | getattr(os, "O_NOFOLLOW", 0)
-    descriptor = os.open(path, flags)
+    descriptor = os.open(name, flags, dir_fd=directory_fd)
     try:
         info = os.fstat(descriptor)
         if (
@@ -603,66 +731,338 @@ def _read_private_json(path: Path) -> object:
         os.close(descriptor)
 
 
-def _write_wave_temp(root: Path, basename: str, pcm: bytes) -> Path:
-    descriptor, name = tempfile.mkstemp(prefix=f".{basename}.", suffix=".tmp", dir=root)
-    os.close(descriptor)
-    path = Path(name)
-    os.chmod(path, 0o600)
+@contextmanager
+def _open_private_tree(root: Path) -> Iterator[_PrivateTree]:
+    opened: list[int] = []
     try:
-        with wave.open(str(path), "wb") as output:
-            output.setnchannels(1)
-            output.setsampwidth(2)
-            output.setframerate(16_000)
-            output.writeframes(pcm)
-        descriptor = os.open(path, os.O_RDONLY | getattr(os, "O_NOFOLLOW", 0))
-        try:
-            os.fsync(descriptor)
-        finally:
+        flags = os.O_RDONLY | getattr(os, "O_DIRECTORY", 0) | getattr(
+            os, "O_NOFOLLOW", 0
+        )
+        root_fd = os.open(root, flags)
+        opened.append(root_fd)
+        runtime_fd = _open_directory_at(root_fd, "runtime", owned=True)
+        opened.append(runtime_fd)
+        private_fd = _open_directory_at(runtime_fd, "private", private=True)
+        opened.append(private_fd)
+        diagnostics_fd = _open_directory_at(
+            private_fd, "voice-diagnostics", private=True
+        )
+        opened.append(diagnostics_fd)
+        sessions_fd = _open_directory_at(
+            diagnostics_fd, "sessions", private=True
+        )
+        opened.append(sessions_fd)
+        yield _PrivateTree(
+            root_fd, runtime_fd, private_fd, diagnostics_fd, sessions_fd
+        )
+    finally:
+        for descriptor in reversed(opened):
             os.close(descriptor)
-        return path
+
+
+@contextmanager
+def _open_session_tree(
+    session: DiagnosticSession,
+) -> Iterator[tuple[_PrivateTree, int, int, int]]:
+    with _open_private_tree(session._project_root) as tree:
+        session_fd = _open_directory_at(
+            tree.sessions, session.session_id, private=True
+        )
+        try:
+            audio_fd = _open_directory_at(session_fd, "audio", private=True)
+            try:
+                events_fd = _open_directory_at(
+                    session_fd, "events", private=True
+                )
+                try:
+                    _require_tree_bindings(
+                        tree, session_fd, audio_fd, events_fd, session.session_id
+                    )
+                    yield tree, session_fd, audio_fd, events_fd
+                finally:
+                    os.close(events_fd)
+            finally:
+                os.close(audio_fd)
+        finally:
+            os.close(session_fd)
+
+
+def _open_directory_at(
+    parent_fd: int, name: str, *, private: bool = False, owned: bool = False
+) -> int:
+    flags = os.O_RDONLY | getattr(os, "O_DIRECTORY", 0) | getattr(
+        os, "O_NOFOLLOW", 0
+    )
+    descriptor = os.open(name, flags, dir_fd=parent_fd)
+    try:
+        info = os.fstat(descriptor)
+        if (
+            not stat.S_ISDIR(info.st_mode)
+            or info.st_uid != os.getuid()
+            or private
+            and stat.S_IMODE(info.st_mode) != 0o700
+            or owned
+            and stat.S_IMODE(info.st_mode) & 0o022
+        ):
+            raise ValueError
+        return descriptor
     except Exception:
-        _unlink_owned(path)
+        os.close(descriptor)
         raise
 
 
-def _write_bytes_temp(root: Path, basename: str, data: bytes) -> Path:
-    descriptor, name = tempfile.mkstemp(prefix=f".{basename}.", suffix=".tmp", dir=root)
-    path = Path(name)
+def _require_tree_bindings(
+    tree: _PrivateTree,
+    session_fd: int,
+    audio_fd: int,
+    events_fd: int,
+    session_id: str,
+) -> None:
+    for parent, name, child, private in (
+        (tree.root, "runtime", tree.runtime, False),
+        (tree.runtime, "private", tree.private, True),
+        (tree.private, "voice-diagnostics", tree.diagnostics, True),
+        (tree.diagnostics, "sessions", tree.sessions, True),
+        (tree.sessions, session_id, session_fd, True),
+        (session_fd, "audio", audio_fd, True),
+        (session_fd, "events", events_fd, True),
+    ):
+        entry = os.stat(name, dir_fd=parent, follow_symlinks=False)
+        opened = os.fstat(child)
+        for info in (entry, opened):
+            mode = stat.S_IMODE(info.st_mode)
+            if (
+                not stat.S_ISDIR(info.st_mode)
+                or info.st_uid != os.getuid()
+                or private
+                and mode != 0o700
+                or not private
+                and mode & 0o022
+            ):
+                raise ValueError
+        if (entry.st_dev, entry.st_ino) != (opened.st_dev, opened.st_ino):
+            raise ValueError
+
+
+def _require_session_authority(
+    diagnostics_fd: int, session_fd: int, session: DiagnosticSession
+) -> None:
+    marker = _validate_session_payload(
+        _read_private_json_at(diagnostics_fd, "active.json")
+    )
+    manifest = _validate_session_payload(
+        _read_private_json_at(session_fd, "session.json")
+    )
+    expected = (session.session_id, session.created_epoch, session.expires_epoch)
+    if marker != expected or manifest != expected:
+        raise ValueError
+
+
+def _new_temp_file(directory_fd: int, basename: str) -> tuple[int, str]:
+    flags = os.O_RDWR | os.O_CREAT | os.O_EXCL | getattr(os, "O_NOFOLLOW", 0)
+    for _attempt in range(8):
+        name = f".{basename}.{secrets.token_hex(8)}.tmp"
+        try:
+            descriptor = os.open(name, flags, 0o600, dir_fd=directory_fd)
+        except FileExistsError:
+            continue
+        try:
+            os.fchmod(descriptor, 0o600)
+            os.fstat(descriptor)
+            return descriptor, name
+        except Exception:
+            _close_descriptor_once(descriptor)
+            raise
+    raise ValueError
+
+
+def _write_wave_temp(
+    root: Path,
+    basename: str,
+    pcm: bytes,
+    *,
+    directory_fd: int,
+) -> _TemporaryArtifact:
+    del root
+    descriptor, name = _new_temp_file(directory_fd, basename)
     try:
-        os.fchmod(descriptor, 0o600)
+        with os.fdopen(os.dup(descriptor), "w+b") as target:
+            with wave.open(target, "wb") as output:
+                output.setnchannels(1)
+                output.setsampwidth(2)
+                output.setframerate(16_000)
+                output.writeframes(pcm)
+        os.fsync(descriptor)
+        info = os.fstat(descriptor)
+        return _TemporaryArtifact(
+            descriptor=descriptor,
+            name=name,
+            device=info.st_dev,
+            inode=info.st_ino,
+        )
+    except Exception:
+        _close_descriptor_once(descriptor)
+        raise
+
+
+def _write_bytes_temp_at(
+    directory_fd: int, basename: str, data: bytes
+) -> _TemporaryArtifact:
+    descriptor, name = _new_temp_file(directory_fd, basename)
+    try:
         written = 0
         while written < len(data):
-            written += os.write(descriptor, data[written:])
+            count = os.write(descriptor, data[written:])
+            if count <= 0:
+                raise OSError
+            written += count
         os.fsync(descriptor)
-        return path
+        info = os.fstat(descriptor)
+        return _TemporaryArtifact(
+            descriptor=descriptor,
+            name=name,
+            device=info.st_dev,
+            inode=info.st_ino,
+        )
     except Exception:
-        _unlink_owned(path)
+        _close_descriptor_once(descriptor)
         raise
-    finally:
-        os.close(descriptor)
 
 
-def _publish_no_replace(temporary: Path, final: Path) -> None:
-    os.link(temporary, final, follow_symlinks=False)
-    temporary.unlink()
-    _fsync_directory(final.parent)
-
-
-def _fsync_directory(path: Path) -> None:
-    descriptor = os.open(path, os.O_RDONLY)
+def _publish_no_replace_at(
+    directory_fd: int,
+    temporary: _TemporaryArtifact,
+    final: str,
+    *,
+    cancelled: Callable[[], bool] | None = None,
+) -> None:
+    is_cancelled = cancelled or (lambda: False)
+    _require_temporary_identity(directory_fd, temporary)
+    if is_cancelled():
+        raise ValueError
+    _rename_no_replace_at(directory_fd, temporary.name, final)
     try:
-        os.fsync(descriptor)
-    finally:
-        os.close(descriptor)
+        if is_cancelled():
+            raise ValueError
+        final_info = os.stat(
+            final, dir_fd=directory_fd, follow_symlinks=False
+        )
+        if (
+            not stat.S_ISREG(final_info.st_mode)
+            or final_info.st_uid != os.getuid()
+            or stat.S_IMODE(final_info.st_mode) != 0o600
+            or final_info.st_nlink != 1
+            or (final_info.st_dev, final_info.st_ino)
+            != (temporary.device, temporary.inode)
+        ):
+            raise ValueError
+        if is_cancelled():
+            raise ValueError
+        os.fsync(directory_fd)
+        if is_cancelled():
+            raise ValueError
+    except Exception:
+        os.fchmod(temporary.descriptor, 0o600)
+        os.fsync(temporary.descriptor)
+        _rollback_final_at(directory_fd, temporary, final)
+        os.fsync(directory_fd)
+        raise
 
 
-def _unlink_owned(path: Path | None) -> None:
-    if path is None:
+def _rename_no_replace_at(
+    directory_fd: int, source: str, destination: str
+) -> None:
+    library = ctypes.CDLL(None, use_errno=True)
+    system = platform.system()
+    if system == "Darwin":
+        function = library.renameatx_np
+        flag = 4
+    elif system == "Linux":
+        function = library.renameat2
+        flag = 1
+    else:
+        raise OSError
+    function.argtypes = (
+        ctypes.c_int,
+        ctypes.c_char_p,
+        ctypes.c_int,
+        ctypes.c_char_p,
+        ctypes.c_uint,
+    )
+    function.restype = ctypes.c_int
+    result = function(
+        directory_fd,
+        os.fsencode(source),
+        directory_fd,
+        os.fsencode(destination),
+        flag,
+    )
+    if result != 0:
+        error = ctypes.get_errno()
+        if error == errno.EEXIST:
+            raise FileExistsError(error, VOICE_DIAGNOSTIC_UNAVAILABLE)
+        raise OSError(error, VOICE_DIAGNOSTIC_UNAVAILABLE)
+
+
+def _rollback_final_at(
+    directory_fd: int,
+    temporary: _TemporaryArtifact,
+    final: str,
+) -> str:
+    candidates = [temporary.name]
+    candidates.extend(
+        f".{final}.{secrets.token_hex(8)}.quarantine" for _ in range(8)
+    )
+    for candidate in candidates:
+        try:
+            _rename_no_replace_at(directory_fd, final, candidate)
+            return candidate
+        except FileExistsError:
+            continue
+    raise ValueError
+
+
+def _require_temporary_identity(
+    directory_fd: int, temporary: _TemporaryArtifact
+) -> None:
+    descriptor_info = os.fstat(temporary.descriptor)
+    entry_info = os.stat(
+        temporary.name, dir_fd=directory_fd, follow_symlinks=False
+    )
+    expected = (temporary.device, temporary.inode)
+    for info in (descriptor_info, entry_info):
+        if (
+            not stat.S_ISREG(info.st_mode)
+            or info.st_uid != os.getuid()
+            or stat.S_IMODE(info.st_mode) != 0o600
+            or info.st_nlink != 1
+            or (info.st_dev, info.st_ino) != expected
+        ):
+            raise ValueError
+
+
+def _unlink_owned_at(
+    directory_fd: int, temporary: _TemporaryArtifact | None
+) -> None:
+    del directory_fd
+    if temporary is None:
         return
+    _close_descriptor_once(temporary.descriptor)
+
+
+def _close_descriptor_once(descriptor: int) -> None:
     try:
-        path.unlink()
-    except FileNotFoundError:
+        os.close(descriptor)
+    except OSError:
         pass
+
+
+def _entry_exists(directory_fd: int, name: str) -> bool:
+    try:
+        os.stat(name, dir_fd=directory_fd, follow_symlinks=False)
+        return True
+    except FileNotFoundError:
+        return False
 
 
 def _finite_number(value: object) -> bool:
