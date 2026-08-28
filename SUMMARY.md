@@ -606,10 +606,13 @@ legacy branch into this line without a separate integration decision.
 
 ## Next Priorities
 
-Immediate next slice: diagnose the existing i9 CoreAudio output failure through the
-bounded macOS runbook, then repeat one supervised standalone-wake plus follow-up check.
-Do not widen ASR correction from the retained household evidence, enable Camera Reply,
-delete the private bundle, or expose its transcript content.
+The bounded CoreAudio recovery is complete: the system Ping returned in 2.551 seconds
+after daemon replacement. A supervised two-stage wake/follow-up still failed closed as
+one `near_start` rejection, while the single-sentence path produced one audible reply
+and incremented `listen_only_feeding_exact` to 1. The current reliable operator path is
+the approved single sentence. Next request the separate multi-action Task 8 adult gate
+before testing diaper change or burping; do not widen ASR correction from household
+evidence, enable Camera Reply, delete the private bundle or expose transcript content.
 
 1. Full-care Voice ASR/VAD passes 6/6. The local enrollment boundary now opens and
    warms the Xiaomi source, drains it throughout the 15-second countdown, and then

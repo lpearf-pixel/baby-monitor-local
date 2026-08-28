@@ -41,8 +41,21 @@ No household transcript, audio, session identifier, private path or free-form ru
 error is recorded here. The private bundle remains ignored and retained. Deleting it
 requires separate explicit approval.
 
+## Post-session output recovery
+
+The existing bounded macOS runbook isolated a live output-session failure. A default
+output device and `coreaudiod` were present, but system Ping returned
+`AudioQueueStart (35)`. After daemon-only replacement, Ping passed in 2.551 seconds.
+
+One supervised two-stage interaction then heard the wake reply but rejected its
+follow-up as fixed `near_start` evidence. One subsequent single-sentence interaction
+produced exactly one audible acknowledgement and incremented the fixed exact Feeding
+counter to one. Voice stayed healthy, source stayed PASS and diagnostics stayed
+inactive throughout this follow-up.
+
 ## Next slice
 
-Use the existing bounded macOS audio runbook to diagnose i9 CoreAudio output, then run
-one supervised standalone-wake plus follow-up check with Camera Reply still false. Do
-not derive a new correction rule from household evidence or relax the closed classifier.
+The current reliable operator path is the approved single-sentence interaction. The
+next Voice device slice is the separately approved multi-action Task 8 for Feeding,
+diaper change and burping. Do not derive a new correction rule from household evidence,
+relax the closed classifier, enable Camera Reply or delete the private bundle.

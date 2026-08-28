@@ -230,10 +230,13 @@ One supervised session retained 17/17 valid private WAV/event pairs and proved b
 exact standalone wake and one exact Feeding action. Separate follow-up attempts remained
 ignored because the standalone wake could not acknowledge or arm while i9 CoreAudio
 reported `voice_output_unavailable`. After diagnostic stop, Voice processed two more
-utterances in memory while the retained artifact count remained 17/17. The exact next
-Voice slice is bounded CoreAudio output diagnosis followed by one supervised wake plus
-follow-up check; do not lower recognition rules, enable Camera Reply or delete the
-retained bundle without separate approval.
+utterances in memory while the retained artifact count remained 17/17. CoreAudio was
+then recovered through the existing daemon-only runbook and the system Ping passed in
+2.551 seconds. A two-stage follow-up was captured but rejected as `near_start`; the
+approved single-sentence path produced one audible acknowledgement and incremented
+`listen_only_feeding_exact` to 1. The next Voice device slice is the separately approved
+multi-action Task 8 for Feeding, diaper change and burping. Do not lower recognition
+rules, enable Camera Reply or delete the retained bundle without separate approval.
 
 ## P4 — Authenticated private remote access
 

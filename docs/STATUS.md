@@ -718,3 +718,11 @@
   the retained bundle stayed 17/17, proving restoration to ordinary memory-only mode.
   Camera Reply stayed false, go2rtc was not restarted and bundle deletion remains a
   separate human decision.
+- Post-diagnostic CoreAudio recovery followed the existing daemon-only runbook. Before
+  recovery, a default output device and `coreaudiod` existed but system Ping failed at
+  `AudioQueueStart (35)`; after daemon replacement Ping passed in 2.551 seconds. The
+  next supervised two-stage interaction heard the wake reply but rejected its follow-up
+  with fixed counters `ignored_followups=1`, `ignored_near_start=1` and
+  `listen_only_action_rejected=1`. A subsequent approved single-sentence interaction
+  produced one audible acknowledgement and `listen_only_feeding_exact=1` with source
+  PASS. No new diagnostic session or persistence was enabled.

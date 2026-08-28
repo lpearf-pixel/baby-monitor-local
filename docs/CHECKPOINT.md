@@ -1405,3 +1405,11 @@ session ID 或私有路径。
 保持 17 events / 17 audio，证明恢复为持续监听但不持久化。最终 Voice healthy、source PASS、
 diagnostic inactive、Camera Reply false；私有 bundle 未删除，等待单独删除批准。下一步只诊断
 i9 CoreAudio 输出，再做一次短监督 wake/follow-up，不放宽 ASR 规则。
+
+随后按既有 runbook 执行 CoreAudio 只重建。重建前默认输出设备和 `coreaudiod` 均存在，系统
+Ping 仍以 `AudioQueueStart (35)` 失败；重建后新 daemon 运行，Ping 2.551 秒 PASS。Voice 与
+source 同时保持 healthy / PASS，未重启 go2rtc。成人两阶段复验听到唤醒回复，但 follow-up
+没有确认；固定计数为 `ignored_followups=1`、`ignored_near_start=1`、
+`listen_only_action_rejected=1`，证明拾音/VAD/ASR 已到分类层但继续安全拒绝近似 start。
+随后单句闭合路径听到一次确认，机器计数 `listen_only_feeding_exact=1`、processed_count=3；
+source 仍为 `cs2+udp` / H265 / 2560x1440 PASS，diagnostic 保持 inactive，未新增持久化记录。
