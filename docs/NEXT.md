@@ -406,10 +406,13 @@ Xiaomi source stayed PASS.
 
 **Next:** diagnose the combined wake/action entrance and the armed burping-complete
 `far` rejection from synthetic/public failing regressions and aggregate-only evidence.
-Do not repeat the same household matrix until an evidence-backed change exists. Any
-short private diagnostic, model change or new correction mapping needs separate scope;
-do not infer the missing transcript. Medication still requires a separate high-risk
-design. Baby Care writes and Camera Reply V3E remain independent and disabled.
+The combined entrance now has an evidence-backed bounded software fix: four approved
+Gate B commands were added to the punctuation-free wake allowlist, with 161/161 affected
+and 605/605 complete Voice tests green. Next perform only a short supervised installed
+recheck of those four combined commands. Keep burping-complete diagnosis separate; any
+private diagnostic, model change or new correction mapping needs separate scope and may
+not infer the missing transcript. Medication still requires a separate high-risk design.
+Baby Care writes and Camera Reply V3E remain independent and disabled.
 
 ## P5 — Final 72-hour release gate
 

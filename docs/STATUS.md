@@ -737,6 +737,9 @@
   movement was observed. Voice ended healthy/idle, the Xiaomi source remained PASS over
   the observed `cs2+udp` transport, Camera Reply stayed false and diagnostics remained
   inactive with zero records/bytes. This proves the closed safety boundary but not
-  acceptable household recall. The next Voice slice is synthetic/public-first diagnosis
-  of combined wake/action misses and the armed burping-complete `far` result; it may not
-  infer or retain household transcript content.
+  acceptable household recall. The combined wake/action miss was then reproduced as a
+  deterministic punctuation-free wake allowlist omission and fixed only for the four
+  approved Gate B commands. New positive and unsafe/unknown negative regressions pass,
+  as do the affected Voice set 161/161 and complete Voice gate 605/605. The installed i9
+  has not yet revalidated this change; the armed burping-complete `far` result remains a
+  separate unresolved recall item and may not be guessed from household speech.

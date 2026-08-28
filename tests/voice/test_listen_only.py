@@ -366,10 +366,22 @@ def test_armed_medication_is_silent_high_risk_candidate(command: str) -> None:
     assert synth.codes == ["listen_only_ready"]
 
 
-def test_exact_low_risk_action_with_wake_acknowledges_without_arming() -> None:
+@pytest.mark.parametrize(
+    ("command", "action_code"),
+    [
+        ("开始换尿布", "diaper_change_start"),
+        ("换好尿布了", "diaper_change_complete"),
+        ("开始拍嗝", "burping_start"),
+        ("拍嗝结束", "burping_complete"),
+    ],
+)
+def test_punctuation_free_low_risk_action_with_wake_acknowledges_once(
+    command: str,
+    action_code: str,
+) -> None:
     synth = Synth()
     controller = ListenOnlyController(
-        asr=Asr(["小小，开始换尿布"]),
+        asr=Asr([f"小小{command}"]),
         synthesizer=synth,
         monotonic_ns=Clock([1_000_000_000]),
     )
@@ -381,7 +393,39 @@ def test_exact_low_risk_action_with_wake_acknowledges_without_arming() -> None:
         "listen_only_received",
         "idle",
     )
+    assert (result.action_code, result.match_kind) == (action_code, "exact")
     assert synth.codes == ["listen_only_received"]
+
+
+@pytest.mark.parametrize(
+    "text",
+    [
+        "小小不要开始换尿布",
+        "小小开始换尿布吗",
+        "小小开始换尿布然后开始拍嗝",
+        "小小拍嗝结束以后提醒我",
+    ],
+)
+def test_punctuation_free_gate_b_unsafe_or_unknown_commands_remain_silent(
+    text: str,
+) -> None:
+    synth = Synth()
+    controller = ListenOnlyController(
+        asr=Asr([text]),
+        synthesizer=synth,
+        monotonic_ns=Clock([1_000_000_000]),
+    )
+
+    result = controller.handle(PCM, threading.Event())
+
+    assert (result.reason, result.response_code, result.phase) == (
+        "listen_only_ignored",
+        None,
+        "idle",
+    )
+    assert result.action_code is None
+    assert result.match_kind is None
+    assert synth.codes == []
 
 
 def test_unwoken_action_and_unsafe_near_start_remain_silent() -> None:

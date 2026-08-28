@@ -35,6 +35,22 @@ def test_fixed_care_vocabulary_proves_a_punctuation_free_boundary(text: str) -> 
 @pytest.mark.parametrize(
     "text",
     [
+        "小小开始换尿布",
+        "小小换好尿布了",
+        "小小开始拍嗝",
+        "小小拍嗝结束",
+    ],
+)
+def test_gate_b_actions_prove_a_punctuation_free_boundary(text: str) -> None:
+    result = validate_wake_prefix(text)
+
+    assert result.accepted is True
+    assert result.command == text.removeprefix("小小")
+
+
+@pytest.mark.parametrize(
+    "text",
+    [
         "你好，小小，我是爸爸",
         "晓晓，我是爸爸",
         "我叫小小",

@@ -613,10 +613,14 @@ single-sentence path and 2/2 on the two-stage path. Burping start passed once on
 two-stage path, while burping complete was safely rejected twice as `far`. There were
 zero observed false accepts, cross-action increments, new output failures or camera
 movements, but recall is insufficient; Task 8 is not accepted and Camera Reply remains
-false. The exact next Voice slice is a synthetic/public-first recall diagnosis for the
-combined wake/action entrance and burping-complete follow-up. Do not widen ASR correction
-from household evidence, enable Camera Reply, delete the private bundle or expose
-transcript content.
+false. The combined wake/action miss has since been reproduced in software as four
+approved Gate B commands missing from the punctuation-free wake allowlist. The bounded
+fix adds only those four exact prefixes; its new positive and fail-closed regressions,
+the affected Voice set (161/161) and the complete Voice gate (605/605) pass. This is not
+installed-device proof. The exact next Voice slice is a short supervised recheck of the
+four combined commands, followed separately by evidence collection for the unresolved
+burping-complete follow-up. Do not widen ASR correction from household evidence, enable
+Camera Reply, delete the private bundle or expose transcript content.
 
 1. Full-care Voice ASR/VAD passes 6/6. The local enrollment boundary now opens and
    warms the Xiaomi source, drains it throughout the 15-second countdown, and then

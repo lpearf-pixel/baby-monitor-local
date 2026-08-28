@@ -139,3 +139,14 @@ Camera Reply V3E 和 full-care identity 继续保持独立。
 
 验收开始时本地分支 HEAD 为 `bb4f737`，相对远端 ahead 13，tracked worktree clean。
 本 resolution 只记录 Task 8 聚合证据；push、PR、merge、stable/main 修改和 release 均未授权。
+
+## 9. 组合 wake/action 软件 follow-up
+
+后续 synthetic 重现确认，四个尿布/拍嗝单句组合的确定性失败位于 wake 边界，而不是动作
+分类器：四个已批准 Gate B 命令缺少 punctuation-free allowlist 入口。最小修复只增加这四个
+精确前缀；否定、疑问、多动作和未知后缀仍 fail closed。TDD 证据为 RED 8 failed / 4 passed，
+修复后新门 12/12、affected Voice 161/161、完整 Voice 605/605 PASS。
+
+同时重新运行 current Paraformer generated benchmark：低风险 18/18、负例 48/48、false
+accept 0，故没有证据支持此时替换模型或为拍嗝 complete 猜测纠错。该软件 follow-up 尚未
+部署并通过实机复验，原 Task 8 recall FAIL 结论保持不变。

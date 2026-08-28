@@ -678,6 +678,13 @@ input while burping complete was rejected 0/2 as far. No false accept or cross-a
 increment was observed. The low-risk real-device gate therefore remains failed closed.
 Medication was not run because its separate high-risk design is still missing.
 
+**Recall follow-up software status:** the single-sentence diaper/burping miss was
+reproduced as an exact wake-boundary omission: the four already approved Gate B commands
+were absent from the punctuation-free command allowlist. A bounded TDD fix now admits
+only those four exact prefixes while negation, questions, multiple actions and unknown
+suffixes remain silent. Focused Voice evidence is green; installed-device revalidation
+is still pending, so Task 8 remains unaccepted.
+
 **Acceptance:** Feeding, diaper, burping and medication-candidate behavior each have
 independent aggregate evidence, zero observed false accepts and an auditable resolution.
 This still does not prove unattended care, medication correctness, child speech,
@@ -688,8 +695,9 @@ night/far-field accuracy or Baby Care writes.
 ## Execution Handoff
 
 Tasks 1–7 are complete and the approved low-risk subset of Task 8 has been executed.
-Continue from the recall follow-up recorded in the resolution; do not repeat the same
-household matrix without a new evidence-producing change. Use TDD and update the review
-log after every slice. Stop for human authority before any model installation, private
+The bounded combined wake/action software fix is complete; next run only its short
+adult-supervised device recheck plus the still-unresolved burping-complete follow-up.
+Use TDD and update the review log after every slice. Stop for human authority before any
+model installation, private
 diagnostic persistence, Camera Reply enablement, PR, protected-branch change or Baby
 Care contract expansion.

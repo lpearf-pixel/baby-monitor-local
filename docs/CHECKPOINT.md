@@ -1435,3 +1435,15 @@ Feeding 运行 11 个批准正例，8 次获得一次 i9 固定确认；20 个�
 动作入口与拍嗝 complete follow-up，不得根据家庭听感猜测转写或放宽通用 edit distance。
 详细结果见
 `docs/reviews/2026-08-27-voice-care-multi-intent-asr-optimization-resolution.md`。
+
+## 2026-08-28 Voice Task 8 组合唤醒入口软件修复
+
+使用 source-controlled synthetic 输入复现了四个 Gate B 单句组合均被
+`validate_wake_prefix` 拒绝，而对应带逗号和两阶段路径可达。根因是已批准的
+`开始换尿布`、`换好尿布了`、`开始拍嗝`、`拍嗝结束` 未进入 punctuation-free wake
+allowlist，不是模型整体失效。先观察到新增正例 8 failed、四类负例 4 passed；仅补齐这四个
+精确前缀后，新门 12/12、affected Voice 161/161、完整 Voice 605/605 PASS。
+
+否定、疑问、多动作和未知后缀继续静默；未增加通用 edit distance、模型、Baby Care 写入、
+Camera Reply 或运行配置。该证据只关闭软件入口缺口，不证明 installed i9 实机召回；拍嗝
+complete 的真实 `far` 仍需独立证据，下一步是四命令短监督复验。

@@ -443,3 +443,16 @@ resolution 必须包含：
 - evidence does not prove：稳定家庭召回、儿童/远场/夜间、拍嗝complete、Camera Reply或护理写入
 - decision：keep fail-closed implementation；Task 8 recall FAIL；Camera Reply V3E不恢复
 - next single action：synthetic/public-first诊断组合wake/action入口与armed burping-complete far；不先放宽规则
+
+### R10 — Task 8 组合 wake/action 入口软件修复
+
+- 日期：2026-08-28
+- authority：已批准的 bounded software fix；不含部署、实机播放、私有诊断、push或merge
+- hypothesis：尿布/拍嗝单句组合漏识别来自 punctuation-free wake allowlist 缺项
+- RED：新增四个组合正例在 wake/controller 层共 8 failed；否定、疑问、多动作和未知后缀 4 passed
+- GREEN：只增加四个已批准 Gate B 精确前缀；新门 12/12、affected Voice 161/161、完整 Voice 605/605
+- generated benchmark：current Paraformer 低风险 18/18、负例 48/48、false accepts 0；模型不变
+- privacy/scope：仅 synthetic 字符串；无家庭音频/转写、Baby Care、Camera Reply、go2rtc或运行配置改动
+- evidence proves：组合 wake/action 的确定性软件入口缺口已关闭且反例继续 fail closed
+- evidence does not prove：installed i9 实机召回或 armed burping-complete `far` 已解决
+- next single action：短监督复验四个组合命令；拍嗝 complete 保持独立诊断
