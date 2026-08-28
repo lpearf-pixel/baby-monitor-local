@@ -590,19 +590,26 @@ legacy branch into this line without a separate integration decision.
   disabled. Fresh software evidence is Voice 267/267 and full Python 1,319/1,319.
 - Remote private viewing, fixed Xiaomi camera-speaker replies and the 72-hour release
   gate remain unfinished.
-- Private Voice diagnostic software Task 6 is complete at `fb7b17b`. The supervised
-  diagnostic can retain bounded `0600` WAV/text artifacts only under the ignored
-  `0700` private session; ordinary listening remains memory-only. Fresh gates are
-  focused 194/194, Voice 587/587 and full Python 1892/1892, with independent review
-  clean of Critical/Important findings. No household capture or camera playback was
-  run. Task 7 supervised local diagnostic is the exact next slice.
+- Private Voice diagnostic Task 7 is complete on installed head `528b31a`. The SSH
+  lifecycle correction binds readiness to the replacement worker PID, a pre-signal
+  epoch, `listen_only` mode and `healthy` state; affected tests pass 61/61 and Voice
+  passes 594/594, with independent review clean of Critical/Important findings. One
+  adult-supervised session retained 17 complete private WAV/event pairs (1,211,164
+  bytes), all valid 16 kHz mono 16-bit WAV and all ASR-available. Aggregate evidence
+  included one exact standalone wake and one exact Feeding action; separate follow-up
+  attempts were ignored, and acknowledgement remained unavailable because i9 audio
+  output returned `voice_output_unavailable`. After stop, two further utterances raised
+  only memory counters while the retained bundle stayed 17/17. Camera Reply remained
+  false, go2rtc was not restarted, and the private bundle remains ignored and retained
+  pending separate deletion approval.
 - This system does not detect breathing, heart rate, suffocation or medical emergencies.
 
 ## Next Priorities
 
-Immediate approved next slice: run Voice diagnostic Task 7 only while an adult is
-present, after fixed preflight/status checks; explicitly stop the session afterward.
-Do not enable Camera Reply or inspect/paste private transcript content during that gate.
+Immediate next slice: diagnose the existing i9 CoreAudio output failure through the
+bounded macOS runbook, then repeat one supervised standalone-wake plus follow-up check.
+Do not widen ASR correction from the retained household evidence, enable Camera Reply,
+delete the private bundle, or expose its transcript content.
 
 1. Full-care Voice ASR/VAD passes 6/6. The local enrollment boundary now opens and
    warms the Xiaomi source, drains it throughout the 15-second countdown, and then

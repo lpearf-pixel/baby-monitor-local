@@ -1383,3 +1383,25 @@ false accepts=0；medication start 3/3，但 medication complete 0/3 并安全�
 Camera Reply 或护理写入。Camera Reply 保持 false，未采集或持久化家庭音频/转写，未安装
 模型。下一步须等成人返回并另行批准 Task 8 的低风险监督门；medication 先进入独立高风险
 设计，不能靠放宽纠错进入实机验收。
+
+## 2026-08-28 私有 Voice 诊断 Task 7 实机门
+
+安装 detached checkout 前进到 `528b31a`，保留未跟踪 `Interactive` 与 `test.sh`。SSH 下
+launchd 生命周期修复以 replacement PID、SIGTERM 前 epoch、`listen_only` 与 `healthy` 四项
+联合证明新 worker readiness；受影响测试 61/61、完整 Voice 594/594、compile 与 diff PASS，
+独立复审 0 Critical / 0 Important。一次需要密码的用户级 LaunchAgent bootstrap/kickstart 后，
+Voice 以新 PID 运行；未重启 go2rtc。
+
+成人监督会话在 Camera Reply=false 下启动。沙箱内 source 检查曾因 loopback 隔离返回离线，
+同一正式 gate 在本机边界外 PASS：`cs2+udp`、H265、2560x1440 / 1280x720、received bytes
+为正；Xiaomi media diagnostic 同时证明单 producer、视频/摄像头音频增长且无 replacement。
+会话最终保留 17 组完整 WAV/event、0 incomplete、1,211,164 bytes；全部 WAV 为 16 kHz、
+mono、16-bit，最大 8 秒，17/17 ASR available。固定聚合分类包含一次 exact standalone wake
+和一次 exact Feeding action。独立 follow-up 未被接受；wake acknowledgement 因 i9 输出
+`voice_output_unavailable` 未进入 armed。未在 Git、普通日志或回复中输出家庭转写、音频、
+session ID 或私有路径。
+
+停止命令 PASS 并保留 bundle。停止后成人再说话，Voice utterance 计数继续增长而 bundle
+保持 17 events / 17 audio，证明恢复为持续监听但不持久化。最终 Voice healthy、source PASS、
+diagnostic inactive、Camera Reply false；私有 bundle 未删除，等待单独删除批准。下一步只诊断
+i9 CoreAudio 输出，再做一次短监督 wake/follow-up，不放宽 ASR 规则。

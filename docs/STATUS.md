@@ -706,3 +706,15 @@
   V3 failed closed and remains disabled; the accepted i9 speaker remains production
   output. `docs/NEXT.md` owns the detailed prerequisites, Codex/human boundary,
   acceptance and handoff for each stage.
+- 2026-08-28 supervised private Voice diagnostic Task 7 passed its local persistence
+  and restoration gate on installed head `528b31a`. Preflight proved Camera Reply false,
+  healthy listen-only Voice, one launchd-owned go2rtc, Xiaomi media readiness and source
+  PASS over observed `cs2+udp`. The retained ignored bundle has 17 complete pairs,
+  0 incomplete pairs, 1,211,164 bytes, valid 16 kHz mono 16-bit WAV throughout and
+  ASR available for 17/17 records. Fixed aggregate classification observed one exact
+  standalone wake and one exact Feeding action; no transcript, audio, session ID or
+  private path entered tracked output. The i9 acknowledgement path remained unavailable
+  with `voice_output_unavailable`. After stop, Voice utterance counters increased while
+  the retained bundle stayed 17/17, proving restoration to ordinary memory-only mode.
+  Camera Reply stayed false, go2rtc was not restarted and bundle deletion remains a
+  separate human decision.

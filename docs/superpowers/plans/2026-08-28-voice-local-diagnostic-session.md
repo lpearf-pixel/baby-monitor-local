@@ -500,17 +500,17 @@ used by this software gate.
 - Modify after execution: `SUMMARY.md`, `docs/STATUS.md`, `docs/CHECKPOINT.md`,
   `docs/NEXT.md`, this plan and a new resolution document.
 
-- [ ] **Step 1: Install exact clean candidate**
+- [x] **Step 1: Install exact clean candidate**
 
   Preserve unrelated untracked files. Advance the installed detached checkout to the
   exact reviewed business head and run Voice-only stop/start. Do not restart go2rtc.
 
-- [ ] **Step 2: Prove preflight**
+- [x] **Step 2: Prove preflight**
 
   Require Camera Reply false, Voice healthy/idle, macOS media preflight PASS, source
   PASS, one launchd-owned go2rtc and no current diagnostic session.
 
-- [ ] **Step 3: Start one diagnostic session**
+- [x] **Step 3: Start one diagnostic session**
 
   ```bash
   make alpha-voice-diagnostic-start
@@ -521,13 +521,13 @@ used by this software gate.
   agreed bounded low-risk test phrases. CoreAudio output may remain unavailable; it is
   not an ASR diagnostic blocker.
 
-- [ ] **Step 4: Inspect private evidence locally**
+- [x] **Step 4: Inspect private evidence locally**
 
   Verify complete WAV/event pairs, valid WAV format, bounded text and expected aggregate
   pipeline classifications. Do not print or paste transcript/path content. Diagnose the
   first fixed mismatch without relaxing classifier rules.
 
-- [ ] **Step 5: Stop and prove memory-only restoration**
+- [x] **Step 5: Stop and prove memory-only restoration**
 
   ```bash
   make alpha-voice-diagnostic-stop
@@ -537,14 +537,14 @@ used by this software gate.
   Require inactive status, retained complete bundle, healthy Voice and source PASS.
   With explicit adult speech after stop, prove complete artifact count no longer grows.
 
-- [ ] **Step 6: Write resolution and handoff state**
+- [x] **Step 6: Write resolution and handoff state**
 
   Create
   `docs/reviews/2026-08-28-voice-local-diagnostic-session-resolution.md`. Record only
   aggregate counts, fixed mismatch classes, CoreAudio state, private retention warning,
   tests, commits and remaining deletion decision.
 
-- [ ] **Step 7: Run final bounded verification and commit**
+- [x] **Step 7: Run final bounded verification and commit**
 
   Run focused diagnostic/Voice tests, compile, diff/privacy scan and Git status. Commit
   only tracked documentation; retain the ignored private diagnostic bundle until the
@@ -553,6 +553,16 @@ used by this software gate.
 **Acceptance:** one supervised session proves the local diagnostic chain and a later
 post-stop utterance proves production memory-only restoration. The retained private
 bundle is reported but neither committed nor deleted.
+
+**Task 7 runtime evidence (2026-08-28):** installed head `528b31a`; Camera Reply false;
+Voice healthy; Xiaomi source PASS with one `transport=auto` producer and observed
+`cs2+udp`; no go2rtc restart. The retained ignored session contains 17/17 complete
+WAV/event pairs, 0 incomplete pairs and 1,211,164 bytes. All WAV files satisfy 16 kHz,
+mono, 16-bit and the fixed 8-second maximum; ASR was available for 17/17. Aggregate
+classification proved one exact standalone wake and one exact Feeding action. i9 audio
+acknowledgement remained unavailable. After stop, two additional utterances changed
+only memory counters and the private bundle stayed 17/17. No private content was copied
+into tracked files or command output; bundle deletion remains separately gated.
 
 ---
 

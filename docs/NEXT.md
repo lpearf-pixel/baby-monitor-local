@@ -225,6 +225,16 @@ LaunchAgent reported Keychain, fixed Paraformer and fixed Silero artifacts avail
 The later clean rerecord passed ASR/VAD 6/6; Voice remains disabled because enrollment
 and replay/overlap acceptance are still open.
 
+The bounded private Voice diagnostic Task 7 is complete on installed head `528b31a`.
+One supervised session retained 17/17 valid private WAV/event pairs and proved both an
+exact standalone wake and one exact Feeding action. Separate follow-up attempts remained
+ignored because the standalone wake could not acknowledge or arm while i9 CoreAudio
+reported `voice_output_unavailable`. After diagnostic stop, Voice processed two more
+utterances in memory while the retained artifact count remained 17/17. The exact next
+Voice slice is bounded CoreAudio output diagnosis followed by one supervised wake plus
+follow-up check; do not lower recognition rules, enable Camera Reply or delete the
+retained bundle without separate approval.
+
 ## P4 — Authenticated private remote access
 
 **Status:** Software complete. Installed i9 and two-iPhone acceptance are explicitly
