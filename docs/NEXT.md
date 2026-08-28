@@ -414,9 +414,13 @@ or duplicate reply. A bounded private session has now localized the earlier two-
 burping-complete path to current-model recognition after exact wake. Generated
 current-Paraformer stays 3/3 and local Whisper base/small artifacts fail validation, so
 there is no safe in-place correction or model shortcut. The next optional Voice slice
-is a separately approved contextual/hotword model migration design; otherwise use the
-accepted combined single-sentence form. Medication still requires a separate high-risk
-design. Baby Care writes and Camera Reply V3E remain independent and disabled.
+was the separately approved contextual/hotword isolated A/B. It is now complete and
+rejected: both engines reached 21/24 positives and 48/48 negative rejects with zero
+false accepts; the candidate missed the same three medication-complete positives and
+the private gate was not opened. Production remains on the current Paraformer. Use the
+accepted combined single-sentence form; any different model or hotword policy requires
+a new design. Medication still requires a separate high-risk design. Baby Care writes
+and Camera Reply V3E remain independent and disabled.
 
 ## P5 — Final 72-hour release gate
 

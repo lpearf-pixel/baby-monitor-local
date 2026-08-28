@@ -137,11 +137,20 @@ invalid/incomplete private state fails closed.
 - Create: `docs/reviews/2026-08-28-voice-contextual-hotword-ab-result.md`
 - Modify: this plan
 
-- [ ] Run the isolated installer/check and record exact package/model digests.
-- [ ] Run generated/public A/B; require 24/24 positives, 48/48 negatives, zero false
+- [x] Run the isolated installer/check and record exact package/model digests.
+- [x] Run generated/public A/B; require 24/24 positives, 48/48 negatives, zero false
       accepts, p95 <= 3,000 ms and RSS <= 2 GiB.
-- [ ] Only if public passes, run the private-local aggregate gate.
-- [ ] Record keep/reject with exact aggregate evidence; do not switch production.
+- [x] Only if public passes, run the private-local aggregate gate. Public failed, so
+      the private gate was correctly skipped without opening retained household data.
+- [x] Record keep/reject with exact aggregate evidence; do not switch production.
+
+Task 6 evidence: install/check returned ready. The final identical-corpus run evaluated
+72/72 on both engines. Baseline and candidate each achieved 21/24 positives, 48/48
+negative rejects and zero false accepts. Candidate p95 was 294 ms and peak RSS was
+1,666,121,728 bytes. Both missed all three medication-complete positives, so the
+mandatory public gate failed and the candidate was rejected. Production remained on
+the current Paraformer; the private-local gate was not opened. Exact aggregate evidence
+is recorded in `docs/reviews/2026-08-28-voice-contextual-hotword-ab-result.md`.
 
 **Acceptance:** the report makes no production claim. A failed gate leaves the current
 model unchanged; a passed gate authorizes only Task 7 planning.
@@ -166,11 +175,16 @@ model unchanged; a passed gate authorizes only Task 7 planning.
 - Modify: `docs/CHECKPOINT.md`
 - Modify: `docs/NEXT.md`
 
-- [ ] Run all affected focused tests and `make alpha-voice-test`.
-- [ ] Run changed Python compile, Make dry-runs, `git diff --check` and final credential,
+- [x] Run all affected focused tests and `make alpha-voice-test`.
+- [x] Run changed Python compile, Make dry-runs, `git diff --check` and final credential,
       media, transcript, path, private-network and generated-artifact scans.
-- [ ] Update authoritative docs with the exact A/B result and ordered next step.
-- [ ] Commit focused slices locally; do not push/merge/main.
+- [x] Update authoritative docs with the exact A/B result and ordered next step.
+- [x] Commit focused slices locally; do not push/merge/main.
+
+Task 8 evidence: affected focused tests passed 77/77 and the complete Voice gate passed
+624/624. Changed Python compilation, all four Contextual Make dry-runs,
+`git diff --check` and the final tracked privacy/scope scan passed. Runtime model and
+environment state remain ignored. Production Voice was neither switched nor restarted.
 
 **Acceptance:** documentation distinguishes software/public/private/device/deployment
 evidence, the tracked tree contains no runtime artifact and production remains unchanged.

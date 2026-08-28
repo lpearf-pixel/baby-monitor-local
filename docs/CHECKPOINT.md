@@ -1461,3 +1461,18 @@ exact +2，reject/far/output failure 均 +0。成人确认每句均听到一次 
 无Camera Reply或Baby Care调用。generated current-Paraformer 对该动作仍为3/3；本机
 Whisper base/small immutable artifacts校验失败，未绕过加载。两个新retained session分别
 含12和2个完整pair，保持ignored/private，删除仍需单独明确授权。
+
+## 2026-08-28 Voice Contextual/Hotword 隔离 A/B
+
+在 Intel i9 的独立 ignored venv 和 digest-addressed bundle 中完成固定
+ContextualParaformer 候选安装与校验；未修改或重启 production Voice、launchd、go2rtc 或
+Xiaomi producer。实际执行先复现两项软件缺口：macOS generated `say` 无超时，以及固定
+FunASR 0.4.2 返回 text/token tuple 而适配器只接受 bare string。两项均先观察 RED，再以
+15 秒单条合成上限和严格二元组解析修复；affected focused 77/77 PASS。
+
+最终 generated/public A/B 对两引擎使用相同 24 正例和 48 负例。baseline 与 candidate 均
+为 21/24 正例、48/48 负例拒绝、0 false accept；两者都漏掉3条 medication-complete。
+candidate p50/p95 为164/294 ms，peak RSS 1,666,121,728 bytes。因为未达到强制 24/24，
+public gate FAIL；没有读取 retained private 样本，也没有进入部署。当前 production 继续使用
+原 sherpa Paraformer。完整聚合结果见
+`docs/reviews/2026-08-28-voice-contextual-hotword-ab-result.md`。

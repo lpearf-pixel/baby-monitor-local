@@ -750,3 +750,12 @@
   derived from household data. Local Whisper base/small artifacts fail immutable
   validation and were not loaded. Diagnostics are inactive; two new private sessions
   with 12 and 2 complete pairs remain retained pending explicit deletion authority.
+- 2026-08-28 Contextual/hotword isolated A/B is implemented and complete. The exact
+  model/runtime/bundle install and check passed in an ignored Intel-only environment.
+  The final identical generated/public corpus evaluated 72/72 on both engines. Current
+  Paraformer and ContextualParaformer each achieved 21/24 positives, 48/48 negative
+  rejects and zero false accepts; both rejected all three medication-complete
+  positives. Candidate p95 was 294 ms and peak RSS was 1,666,121,728 bytes. The public
+  gate therefore failed, the retained private-local gate was not opened, and no
+  production model/configuration/service was changed or restarted. The candidate is
+  not approved for deployment.
