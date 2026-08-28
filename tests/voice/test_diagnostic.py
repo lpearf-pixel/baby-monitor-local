@@ -58,7 +58,9 @@ def _valid_tree(project_root: Path) -> Path:
     session = sessions / SESSION_ID
     audio = session / "audio"
     events = session / "events"
-    for path in (runtime, private, diagnostics, sessions, session, audio, events):
+    runtime.mkdir()
+    runtime.chmod(0o755)
+    for path in (private, diagnostics, sessions, session, audio, events):
         _private_dir(path)
     _private_json(diagnostics / "active.json", _session_payload())
     _private_json(session / "session.json", _session_payload())

@@ -336,12 +336,8 @@ def load_active_session(
         root = Path(project_root).resolve(strict=True)
         diagnostics = root / "runtime" / "private" / "voice-diagnostics"
         sessions = diagnostics / "sessions"
-        for directory in (
-            root / "runtime",
-            root / "runtime" / "private",
-            diagnostics,
-            sessions,
-        ):
+        _require_owned_directory(root / "runtime")
+        for directory in (root / "runtime" / "private", diagnostics, sessions):
             _require_private_directory(directory)
         marker = _read_private_json(diagnostics / "active.json")
         session_id, created, expires = _validate_session_payload(marker)
@@ -529,6 +525,16 @@ def _require_private_directory(path: Path) -> None:
         not stat.S_ISDIR(info.st_mode)
         or info.st_uid != os.getuid()
         or stat.S_IMODE(info.st_mode) != 0o700
+    ):
+        raise ValueError
+
+
+def _require_owned_directory(path: Path) -> None:
+    info = path.lstat()
+    if (
+        not stat.S_ISDIR(info.st_mode)
+        or info.st_uid != os.getuid()
+        or stat.S_IMODE(info.st_mode) & 0o022
     ):
         raise ValueError
 
