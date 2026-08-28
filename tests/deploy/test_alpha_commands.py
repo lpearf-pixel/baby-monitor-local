@@ -1143,6 +1143,18 @@ def test_makefile_exposes_isolated_visual_corpus_workflow() -> None:
         for token in ("launchctl", "go2rtc", "camera", "voice", "guardian-start")
     )
 
+    codec = subprocess.run(
+        ["make", "-n", "alpha-visual-corpus-codec-gate"],
+        cwd=ROOT,
+        capture_output=True,
+        text=True,
+        check=False,
+    )
+    assert codec.returncode == 0
+    assert codec.stdout.strip() == (
+        "./.venv-alpha/bin/python tools/visual_corpus_codec_gate.py"
+    )
+
 
 def test_installer_ensures_patched_build_instead_of_downloading_release() -> None:
     content = (ROOT / "tools/install_alpha_macos.sh").read_text(encoding="utf-8")

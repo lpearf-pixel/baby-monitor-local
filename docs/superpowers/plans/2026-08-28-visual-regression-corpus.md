@@ -672,21 +672,21 @@ Commit: `feat: expose visual regression workflow`
 - Produces: `make alpha-visual-corpus-codec-gate` and the final operator/recovery workflow.
 - Consumes: prepared `xiaomi_source_hd` HEVC clip; never consumes camera credentials or production go2rtc config.
 
-- [ ] **Step 1: Write isolated codec-gate RED tests**
+- [x] **Step 1: Write isolated codec-gate RED tests**
 
 Assert generated config binds loopback ephemeral ports, contains only a local prepared
 file source, starts the pinned local go2rtc binary with a bounded timeout, verifies frame
 decode, and tears down only its owned process/temp directory. Reject a running process
 identity mismatch and any camera/Xiaomi expression.
 
-- [ ] **Step 2: Run RED and implement the optional gate**
+- [x] **Step 2: Run RED and implement the optional gate**
 
 Run: `python -m pytest -q tests/tools/test_visual_corpus_codec_gate.py`
 
 When the local binary, HEVC encoder or loopback bind is unavailable, emit a precise
 `SKIP`; never restart installed go2rtc. A PASS proves local HEVC ingest/decode only.
 
-- [ ] **Step 3: Run the complete first-stage corpus regression**
+- [x] **Step 3: Run the complete first-stage corpus regression**
 
 Run all available 10-to-20 clips through `analysis_realtime`, compare with baseline and
 record:
@@ -705,7 +705,7 @@ dropped/backlog counts
 If the real-wide source gate is incomplete, report the corpus gate as FAIL/SKIP rather
 than relabeling synthetic clips.
 
-- [ ] **Step 4: Run bounded 30-minute replay only after short corpus is green**
+- [x] **Step 4: Run bounded 30-minute replay only after short corpus is green**
 
 Repeat the prepared corpus until 30 minutes while sampling process RSS, queue/backlog,
 decoder failures, duplicate events and event storms. Do not run one hour, 8 hours or 24

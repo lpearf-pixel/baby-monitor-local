@@ -4,7 +4,7 @@ PYTHON311 ?= /usr/local/bin/python3.11
 BASH ?= /bin/bash
 .DEFAULT_GOAL := help
 
-.PHONY: help alpha-update alpha-install alpha-start alpha-stop alpha-restart alpha-go2rtc-restart alpha-status alpha-guardian-start alpha-guardian-test alpha-guardian-test-live alpha-guardian-scene-test alpha-audio-status alpha-audio-test alpha-remote-preflight alpha-remote-status alpha-remote-configure alpha-remote-test alpha-voice-status alpha-voice-test alpha-voice-start alpha-voice-stop alpha-voice-listen-start alpha-voice-listen-status alpha-voice-listen-stop alpha-voice-diagnostic-start alpha-voice-diagnostic-status alpha-voice-diagnostic-stop alpha-voice-camera-test alpha-voice-camera-status alpha-voice-camera-probe alpha-voice-preflight alpha-voice-v0-test alpha-voice-v0-probe alpha-voice-v0-stability alpha-voice-keychain-helper-build alpha-voice-keychain-migrate alpha-voice-keychain-check alpha-voice-converter-install alpha-voice-speaker-install alpha-voice-speaker-check alpha-voice-asr-install alpha-voice-contextual-install alpha-voice-contextual-check alpha-voice-contextual-ab alpha-voice-contextual-ab-private alpha-voice-ecapa-source alpha-voice-ecapa-install alpha-voice-ecapa-probe alpha-voice-paraformer-install alpha-voice-enroll-dad alpha-voice-enroll-mom alpha-voice-asr-capture alpha-voice-asr-capture-fixed alpha-voice-asr-capture-fixed-all alpha-voice-asr-capture-all alpha-voice-asr-evaluate alpha-voice-asr-bakeoff alpha-voice-asr-paraformer alpha-voice-asr-recover alpha-voice-vad-diagnostic alpha-voice-models-install alpha-voice-model-benchmark alpha-visual-status alpha-visual-performance alpha-visual-diagnostic alpha-visual-launchd-update alpha-visual-corpus-validate alpha-visual-corpus-prepare alpha-visual-regression alpha-visual-regression-compare alpha-visual-regression-promote alpha-visual-regression-long alpha-logs alpha-quality-hd alpha-quality-info alpha-quality-rollback alpha-source-check alpha-subtype-probe alpha-subtype-apply alpha-go2rtc-info alpha-go2rtc-rebuild alpha-go2rtc-rollback alpha-go2rtc-protocol-test alpha-xiaomi-media-preflight alpha-xiaomi-media-diagnostic alpha-realtime-models-check alpha-realtime-models-install alpha-ws2021-collect-calibrated alpha-ws2021-collect-model alpha-ws2021-model-train-bootstrap alpha-ws2021-model-train alpha-ws2021-model-export alpha-ws2021-model-check
+.PHONY: help alpha-update alpha-install alpha-start alpha-stop alpha-restart alpha-go2rtc-restart alpha-status alpha-guardian-start alpha-guardian-test alpha-guardian-test-live alpha-guardian-scene-test alpha-audio-status alpha-audio-test alpha-remote-preflight alpha-remote-status alpha-remote-configure alpha-remote-test alpha-voice-status alpha-voice-test alpha-voice-start alpha-voice-stop alpha-voice-listen-start alpha-voice-listen-status alpha-voice-listen-stop alpha-voice-diagnostic-start alpha-voice-diagnostic-status alpha-voice-diagnostic-stop alpha-voice-camera-test alpha-voice-camera-status alpha-voice-camera-probe alpha-voice-preflight alpha-voice-v0-test alpha-voice-v0-probe alpha-voice-v0-stability alpha-voice-keychain-helper-build alpha-voice-keychain-migrate alpha-voice-keychain-check alpha-voice-converter-install alpha-voice-speaker-install alpha-voice-speaker-check alpha-voice-asr-install alpha-voice-contextual-install alpha-voice-contextual-check alpha-voice-contextual-ab alpha-voice-contextual-ab-private alpha-voice-ecapa-source alpha-voice-ecapa-install alpha-voice-ecapa-probe alpha-voice-paraformer-install alpha-voice-enroll-dad alpha-voice-enroll-mom alpha-voice-asr-capture alpha-voice-asr-capture-fixed alpha-voice-asr-capture-fixed-all alpha-voice-asr-capture-all alpha-voice-asr-evaluate alpha-voice-asr-bakeoff alpha-voice-asr-paraformer alpha-voice-asr-recover alpha-voice-vad-diagnostic alpha-voice-models-install alpha-voice-model-benchmark alpha-visual-status alpha-visual-performance alpha-visual-diagnostic alpha-visual-launchd-update alpha-visual-corpus-validate alpha-visual-corpus-prepare alpha-visual-corpus-codec-gate alpha-visual-regression alpha-visual-regression-compare alpha-visual-regression-promote alpha-visual-regression-long alpha-logs alpha-quality-hd alpha-quality-info alpha-quality-rollback alpha-source-check alpha-subtype-probe alpha-subtype-apply alpha-go2rtc-info alpha-go2rtc-rebuild alpha-go2rtc-rollback alpha-go2rtc-protocol-test alpha-xiaomi-media-preflight alpha-xiaomi-media-diagnostic alpha-realtime-models-check alpha-realtime-models-install alpha-ws2021-collect-calibrated alpha-ws2021-collect-model alpha-ws2021-model-train-bootstrap alpha-ws2021-model-train alpha-ws2021-model-export alpha-ws2021-model-check
 
 help:
 	@echo "Baby Monitor Local Alpha commands:"
@@ -75,8 +75,9 @@ help:
 	@echo "  make alpha-visual-diagnostic Measure redacted realtime stage timings"
 	@echo "  make alpha-visual-launchd-update Safely apply interactive visual scheduling"
 	@echo "  make alpha-visual-corpus-validate Validate the fixed public visual corpus manifest"
-	@echo "  make alpha-visual-corpus-prepare Prepare the fixed three-clip public smoke set"
-	@echo "  make alpha-visual-regression Replay the fixed public smoke set offline"
+	@echo "  make alpha-visual-corpus-prepare Prepare all admitted public corpus clips"
+	@echo "  make alpha-visual-corpus-codec-gate Test one prepared HEVC file in isolated go2rtc"
+	@echo "  make alpha-visual-regression Replay all admitted public corpus clips offline"
 	@echo "  make alpha-visual-regression-compare Compare the private candidate to baseline"
 	@echo "  make alpha-visual-regression-promote Explicitly promote a complete candidate"
 	@echo "  make alpha-visual-regression-long Run the deferred 30-minute replay entry"
@@ -564,6 +565,9 @@ alpha-visual-corpus-validate:
 
 alpha-visual-corpus-prepare:
 	@$(PYTHON) tools/visual_corpus.py prepare --first-stage
+
+alpha-visual-corpus-codec-gate:
+	@$(PYTHON) tools/visual_corpus_codec_gate.py
 
 alpha-visual-regression:
 	@$(PYTHON) tools/visual_corpus.py replay --first-stage

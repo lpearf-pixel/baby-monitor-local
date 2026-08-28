@@ -6,6 +6,8 @@ import json
 import logging
 import math
 import os
+import platform
+import resource
 import stat
 import subprocess
 import sys
@@ -49,12 +51,28 @@ COMPARISON_PATH = (
     REPOSITORY_ROOT
     / "runtime/test-corpus/visual/results/visual-comparison.json"
 )
+LONG_RESULT_PATH = (
+    REPOSITORY_ROOT
+    / "runtime/test-corpus/visual/results/visual-long.json"
+)
 BASELINE_PATH = (
     REPOSITORY_ROOT
     / "tests/fixtures/visual_corpus/baselines/visual-baseline.v1.json"
 )
 MODEL_ROOT = REPOSITORY_ROOT / "runtime/models/openvino-2025.4.1"
-FIRST_STAGE_CLIP_IDS = ("DAY-03", "WIDE-01", "WIDE-03")
+FIRST_STAGE_CLIP_IDS = (
+    "DAY-01",
+    "DAY-02",
+    "DAY-03",
+    "WIDE-01",
+    "WIDE-03",
+    "NIGHT-01",
+    "NIGHT-02",
+    "NIGHT-03",
+    "OCC-01",
+    "OCC-02",
+    "NEG-03",
+)
 PREPARE_PROFILE_IDS = ("analysis_realtime", "xiaomi_source_hd")
 SAFE_REASONS = frozenset(
     {
@@ -135,12 +153,7 @@ def run_command(arguments: argparse.Namespace) -> int:
     if arguments.command == "promote":
         return _promote_command(arguments.expected_digest)
     if arguments.command == "long":
-        _emit(
-            result="SKIP",
-            reason="visual_corpus_long_deferred",
-            minutes=arguments.minutes,
-        )
-        return 0
+        return _long_command(arguments.minutes)
     raise RuntimeError("visual_corpus_command_failed")
 
 
@@ -272,6 +285,103 @@ def _promote_command(expected_digest: str) -> int:
     return 0
 
 
+def _long_command(minutes: int) -> int:
+    manifest, prepared = _prepare_fixed()
+    prepared_by_clip = {
+        item.clip_id: {
+            artifact.profile_id: artifact for artifact in item.artifacts
+        }
+        for item in prepared
+    }
+    backend = _build_model_backend_quietly()
+    if backend is None:
+        _emit(result="SKIP", reason="visual_corpus_model_unavailable")
+        return 0
+    profile = ReplayProfile(
+        profile_id="analysis_slow",
+        fps=1,
+        model_backend=backend,
+        require_model=True,
+    )
+    replay = VisualCorpusReplay(
+        prepared_resolver=lambda clip, _selected: prepared_by_clip[clip.clip_id][
+            "analysis_realtime"
+        ].path
+    )
+    clips = _selected_clips(manifest)
+    target_seconds = minutes * 60
+    media_seconds = 0.0
+    repetitions = 0
+    clip_runs = 0
+    frames_total = 0
+    decode_errors = 0
+    worker_errors = 0
+    candidate_transitions = 0
+    queue_backlog_max = 0
+    first_cycle_rss_mb: float | None = None
+    peak_rss_mb = _rss_mb()
+    failed = False
+    while media_seconds < target_seconds and not failed:
+        repetitions += 1
+        for clip in clips:
+            result = replay.run_clip(clip, profile=profile)
+            clip_runs += 1
+            duration = (clip.end_ms - clip.start_ms) / 1000
+            media_seconds += duration
+            frames_total += result.frames_total
+            decode_errors += result.decode_errors
+            worker_errors += result.worker_errors
+            candidate_transitions += sum(result.candidate_counts.values())
+            queue_backlog_max = max(queue_backlog_max, result.queue_backlog_max)
+            peak_rss_mb = max(peak_rss_mb, _rss_mb())
+            if result.status != "PASS":
+                failed = True
+                break
+            if media_seconds >= target_seconds:
+                break
+        if repetitions == 1:
+            first_cycle_rss_mb = peak_rss_mb
+    first_cycle_rss_mb = first_cycle_rss_mb or peak_rss_mb
+    rss_growth_mb = max(0.0, peak_rss_mb - first_cycle_rss_mb)
+    if rss_growth_mb > 256:
+        failed = True
+    payload = {
+        "schema_version": 1,
+        "status": "FAIL" if failed else "PASS",
+        "reason": (
+            "visual_corpus_long_replay_failed" if failed else "ok"
+        ),
+        "profile": "analysis_slow",
+        "target_minutes": minutes,
+        "media_seconds": round(media_seconds, 3),
+        "repetitions": repetitions,
+        "clip_runs": clip_runs,
+        "frames_total": frames_total,
+        "decode_errors": decode_errors,
+        "worker_errors": worker_errors,
+        "queue_backlog_max": queue_backlog_max,
+        "candidate_transitions": candidate_transitions,
+        "guardian_event_count": 0,
+        "duplicate_event_count": 0,
+        "first_cycle_rss_mb": round(first_cycle_rss_mb, 3),
+        "peak_rss_mb": round(peak_rss_mb, 3),
+        "rss_growth_mb": round(rss_growth_mb, 3),
+        "frame_observations_persisted": False,
+    }
+    write_private_json(LONG_RESULT_PATH, payload)
+    _emit(
+        result=payload["status"],
+        reason=payload["reason"],
+        media_seconds=payload["media_seconds"],
+        clip_runs=clip_runs,
+        frames_total=frames_total,
+        decode_errors=decode_errors,
+        worker_errors=worker_errors,
+        rss_growth_mb=payload["rss_growth_mb"],
+    )
+    return 2 if failed else 0
+
+
 def _prepare_fixed():
     manifest = load_manifest(MANIFEST_PATH)
     layout = CorpusLayout.for_repository(REPOSITORY_ROOT)
@@ -396,6 +506,12 @@ def _git_sha() -> str:
 
 def _model_manifest_digest() -> str:
     return _combined_digest(tuple(asset.sha256 for asset in REALTIME_MODEL_ASSETS))
+
+
+def _rss_mb() -> float:
+    raw = float(resource.getrusage(resource.RUSAGE_SELF).ru_maxrss)
+    divisor = 1024 * 1024 if platform.system() == "Darwin" else 1024
+    return raw / divisor
 
 
 def _build_model_backend_quietly():
