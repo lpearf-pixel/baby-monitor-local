@@ -1,5 +1,419 @@
 {
-  "clips": [],
+  "clips": [
+    {
+      "clip_id": "DAY-01",
+      "end_ms": 13000,
+      "label_confidence": 0.95,
+      "label_provenance": "frame_review",
+      "labels": {
+        "adult_visibility": "absent",
+        "baby_visibility": "full",
+        "camera_angle": "overhead",
+        "environment": "bed",
+        "framing": "medium",
+        "lighting": "day",
+        "motion": "active",
+        "object_state": "blanket",
+        "subject_frame_area_ratio": 0.35,
+        "subject_scale": "medium",
+        "wide_content_role": "none"
+      },
+      "recipe": {"kind": "SOURCE_SEGMENT"},
+      "review_state": "reviewed",
+      "scenario_ids": ["DAY-01"],
+      "source_id": "cdc-two-month-movement",
+      "source_type": "PUBLIC_DATASET",
+      "start_ms": 0,
+      "temporal_labels": []
+    },
+    {
+      "clip_id": "DAY-02",
+      "end_ms": 15000,
+      "label_confidence": 0.9,
+      "label_provenance": "frame_review",
+      "labels": {
+        "adult_visibility": "absent",
+        "baby_visibility": "full",
+        "camera_angle": "eye_level",
+        "environment": "bed",
+        "framing": "medium",
+        "lighting": "day",
+        "motion": "still",
+        "object_state": "blanket",
+        "subject_frame_area_ratio": 0.35,
+        "subject_scale": "medium",
+        "wide_content_role": "none"
+      },
+      "recipe": {"kind": "SOURCE_SEGMENT"},
+      "review_state": "reviewed",
+      "scenario_ids": ["DAY-02"],
+      "source_id": "cdc-safe-sleep-babies",
+      "source_type": "PUBLIC_DATASET",
+      "start_ms": 5000,
+      "temporal_labels": []
+    },
+    {
+      "clip_id": "DAY-03",
+      "end_ms": 32000,
+      "label_confidence": 0.95,
+      "label_provenance": "frame_review",
+      "labels": {
+        "adult_visibility": "absent",
+        "baby_visibility": "full",
+        "camera_angle": "high_oblique",
+        "environment": "other",
+        "framing": "close_up",
+        "lighting": "day",
+        "motion": "active",
+        "object_state": "blanket",
+        "subject_frame_area_ratio": 0.6,
+        "subject_scale": "large",
+        "wide_content_role": "none"
+      },
+      "recipe": {"kind": "SOURCE_SEGMENT"},
+      "review_state": "reviewed",
+      "scenario_ids": ["DAY-03"],
+      "source_id": "wikimedia-infant-active-sleep",
+      "source_type": "PUBLIC_DATASET",
+      "start_ms": 12000,
+      "temporal_labels": []
+    },
+    {
+      "clip_id": "WIDE-01",
+      "end_ms": 49000,
+      "label_confidence": 0.75,
+      "label_provenance": "frame_review",
+      "labels": {
+        "adult_visibility": "present",
+        "baby_visibility": "full",
+        "camera_angle": "high_oblique",
+        "environment": "crib",
+        "framing": "crib_wide",
+        "lighting": "day",
+        "motion": "mild",
+        "object_state": "mixed",
+        "subject_frame_area_ratio": 0.12,
+        "subject_scale": "small",
+        "wide_content_role": "infant_small"
+      },
+      "recipe": {"kind": "SOURCE_SEGMENT"},
+      "review_state": "reviewed",
+      "scenario_ids": ["WIDE-01"],
+      "source_id": "cdc-safe-sleep-babies",
+      "source_type": "PUBLIC_DATASET",
+      "start_ms": 39000,
+      "temporal_labels": [
+        {
+          "end_ms": 8000,
+          "labels": {
+            "adult_visibility": "present",
+            "baby_visibility": "full",
+            "camera_angle": "high_oblique",
+            "environment": "crib",
+            "framing": "crib_wide",
+            "lighting": "day",
+            "motion": "mild",
+            "object_state": "mixed",
+            "subject_frame_area_ratio": 0.12,
+            "subject_scale": "small",
+            "wide_content_role": "infant_small"
+          },
+          "start_ms": 0
+        },
+        {
+          "end_ms": 10000,
+          "labels": {
+            "adult_visibility": "absent",
+            "baby_visibility": "full",
+            "camera_angle": "overhead",
+            "environment": "bed",
+            "framing": "medium",
+            "lighting": "day",
+            "motion": "still",
+            "object_state": "blanket",
+            "subject_frame_area_ratio": 0.4,
+            "subject_scale": "medium",
+            "wide_content_role": "none"
+          },
+          "start_ms": 8000
+        }
+      ]
+    },
+    {
+      "clip_id": "WIDE-03",
+      "end_ms": 62000,
+      "label_confidence": 0.7,
+      "label_provenance": "frame_review",
+      "labels": {
+        "adult_visibility": "present",
+        "baby_visibility": "full",
+        "camera_angle": "high_oblique",
+        "environment": "room",
+        "framing": "room_wide",
+        "lighting": "day",
+        "motion": "adult_entering",
+        "object_state": "mixed",
+        "subject_frame_area_ratio": 0.1,
+        "subject_scale": "small",
+        "wide_content_role": "adult_present_or_entering"
+      },
+      "recipe": {"kind": "SOURCE_SEGMENT"},
+      "review_state": "reviewed",
+      "scenario_ids": ["WIDE-03"],
+      "source_id": "cdc-safe-sleep-babies",
+      "source_type": "PUBLIC_DATASET",
+      "start_ms": 52000,
+      "temporal_labels": [
+        {
+          "end_ms": 2000,
+          "labels": {
+            "adult_visibility": "absent",
+            "baby_visibility": "full",
+            "camera_angle": "overhead",
+            "environment": "bed",
+            "framing": "medium",
+            "lighting": "day",
+            "motion": "still",
+            "object_state": "blanket",
+            "subject_frame_area_ratio": 0.4,
+            "subject_scale": "medium",
+            "wide_content_role": "none"
+          },
+          "start_ms": 0
+        },
+        {
+          "end_ms": 8000,
+          "labels": {
+            "adult_visibility": "present",
+            "baby_visibility": "full",
+            "camera_angle": "high_oblique",
+            "environment": "room",
+            "framing": "room_wide",
+            "lighting": "day",
+            "motion": "adult_entering",
+            "object_state": "mixed",
+            "subject_frame_area_ratio": 0.1,
+            "subject_scale": "small",
+            "wide_content_role": "adult_present_or_entering"
+          },
+          "start_ms": 2000
+        },
+        {
+          "end_ms": 10000,
+          "labels": {
+            "adult_visibility": "absent",
+            "baby_visibility": "not_visible",
+            "camera_angle": "unknown",
+            "environment": "other",
+            "framing": "medium",
+            "lighting": "day",
+            "motion": "still",
+            "object_state": "empty",
+            "subject_frame_area_ratio": 0.0,
+            "subject_scale": "unknown",
+            "wide_content_role": "none"
+          },
+          "start_ms": 8000
+        }
+      ]
+    },
+    {
+      "clip_id": "NIGHT-01",
+      "end_ms": 13000,
+      "label_confidence": 1.0,
+      "label_provenance": "deterministic_recipe",
+      "labels": {
+        "adult_visibility": "absent",
+        "baby_visibility": "full",
+        "camera_angle": "overhead",
+        "environment": "bed",
+        "framing": "medium",
+        "lighting": "simulated_ir",
+        "motion": "active",
+        "object_state": "blanket",
+        "subject_frame_area_ratio": 0.35,
+        "subject_scale": "medium",
+        "wide_content_role": "none"
+      },
+      "parent_clip_id": "DAY-01",
+      "recipe": {"kind": "SIMULATED_IR"},
+      "review_state": "reviewed",
+      "scenario_ids": ["NIGHT-01"],
+      "source_id": "cdc-two-month-movement",
+      "source_type": "SYNTHETIC",
+      "start_ms": 0,
+      "temporal_labels": []
+    },
+    {
+      "clip_id": "NIGHT-02",
+      "end_ms": 32000,
+      "label_confidence": 1.0,
+      "label_provenance": "deterministic_recipe",
+      "labels": {
+        "adult_visibility": "absent",
+        "baby_visibility": "full",
+        "camera_angle": "high_oblique",
+        "environment": "other",
+        "framing": "close_up",
+        "lighting": "simulated_ir",
+        "motion": "active",
+        "object_state": "blanket",
+        "subject_frame_area_ratio": 0.6,
+        "subject_scale": "large",
+        "wide_content_role": "none"
+      },
+      "parent_clip_id": "DAY-03",
+      "recipe": {"kind": "SIMULATED_IR"},
+      "review_state": "reviewed",
+      "scenario_ids": ["NIGHT-02"],
+      "source_id": "wikimedia-infant-active-sleep",
+      "source_type": "SYNTHETIC",
+      "start_ms": 12000,
+      "temporal_labels": []
+    },
+    {
+      "clip_id": "NIGHT-03",
+      "end_ms": 15000,
+      "label_confidence": 1.0,
+      "label_provenance": "deterministic_recipe",
+      "labels": {
+        "adult_visibility": "absent",
+        "baby_visibility": "full",
+        "camera_angle": "eye_level",
+        "environment": "bed",
+        "framing": "medium",
+        "lighting": "low_light",
+        "motion": "still",
+        "object_state": "blanket",
+        "subject_frame_area_ratio": 0.35,
+        "subject_scale": "medium",
+        "wide_content_role": "none"
+      },
+      "parent_clip_id": "DAY-02",
+      "recipe": {"kind": "LOW_CONTRAST"},
+      "review_state": "reviewed",
+      "scenario_ids": ["NIGHT-03"],
+      "source_id": "cdc-safe-sleep-babies",
+      "source_type": "SYNTHETIC",
+      "start_ms": 5000,
+      "temporal_labels": []
+    },
+    {
+      "clip_id": "OCC-01",
+      "end_ms": 13000,
+      "label_confidence": 0.9,
+      "label_provenance": "deterministic_recipe",
+      "labels": {
+        "adult_visibility": "absent",
+        "baby_visibility": "partial",
+        "camera_angle": "overhead",
+        "environment": "bed",
+        "framing": "medium",
+        "lighting": "day",
+        "motion": "active",
+        "object_state": "mixed",
+        "subject_frame_area_ratio": 0.35,
+        "subject_scale": "medium",
+        "wide_content_role": "none"
+      },
+      "parent_clip_id": "DAY-01",
+      "recipe": {"kind": "BOUNDED_OCCLUSION"},
+      "review_state": "reviewed",
+      "scenario_ids": ["OCC-01"],
+      "source_id": "cdc-two-month-movement",
+      "source_type": "SYNTHETIC",
+      "start_ms": 0,
+      "temporal_labels": []
+    },
+    {
+      "clip_id": "OCC-02",
+      "end_ms": 15000,
+      "label_confidence": 0.9,
+      "label_provenance": "deterministic_recipe",
+      "labels": {
+        "adult_visibility": "absent",
+        "baby_visibility": "face_occluded",
+        "camera_angle": "eye_level",
+        "environment": "bed",
+        "framing": "medium",
+        "lighting": "day",
+        "motion": "still",
+        "object_state": "mixed",
+        "subject_frame_area_ratio": 0.35,
+        "subject_scale": "medium",
+        "wide_content_role": "none"
+      },
+      "parent_clip_id": "DAY-02",
+      "recipe": {"kind": "BOUNDED_OCCLUSION"},
+      "review_state": "reviewed",
+      "scenario_ids": ["OCC-02"],
+      "source_id": "cdc-safe-sleep-babies",
+      "source_type": "SYNTHETIC",
+      "start_ms": 5000,
+      "temporal_labels": []
+    },
+    {
+      "clip_id": "NEG-03",
+      "end_ms": 29000,
+      "label_confidence": 0.8,
+      "label_provenance": "frame_review",
+      "labels": {
+        "adult_visibility": "present",
+        "baby_visibility": "partial",
+        "camera_angle": "eye_level",
+        "environment": "room",
+        "framing": "medium",
+        "lighting": "day",
+        "motion": "adult_entering",
+        "object_state": "mixed",
+        "subject_frame_area_ratio": null,
+        "subject_scale": "unknown",
+        "wide_content_role": "none"
+      },
+      "recipe": {"kind": "SOURCE_SEGMENT"},
+      "review_state": "reviewed",
+      "scenario_ids": ["NEG-03"],
+      "source_id": "cdc-safe-sleep-babies",
+      "source_type": "PUBLIC_DATASET",
+      "start_ms": 19000,
+      "temporal_labels": [
+        {
+          "end_ms": 6000,
+          "labels": {
+            "adult_visibility": "present",
+            "baby_visibility": "not_visible",
+            "camera_angle": "eye_level",
+            "environment": "room",
+            "framing": "medium",
+            "lighting": "day",
+            "motion": "adult_entering",
+            "object_state": "mixed",
+            "subject_frame_area_ratio": 0.0,
+            "subject_scale": "unknown",
+            "wide_content_role": "none"
+          },
+          "start_ms": 0
+        },
+        {
+          "end_ms": 10000,
+          "labels": {
+            "adult_visibility": "absent",
+            "baby_visibility": "full",
+            "camera_angle": "overhead",
+            "environment": "bed",
+            "framing": "medium",
+            "lighting": "day",
+            "motion": "still",
+            "object_state": "blanket",
+            "subject_frame_area_ratio": 0.4,
+            "subject_scale": "medium",
+            "wide_content_role": "none"
+          },
+          "start_ms": 6000
+        }
+      ]
+    }
+  ],
   "corpus_id": "visual-first-stage-v1",
   "profiles": [
     {
@@ -31,7 +445,57 @@
       "width": 960
     }
   ],
-  "readiness": "DESIGN_ONLY",
+  "readiness": "PARTIAL",
   "schema_version": 1,
-  "sources": []
+  "sources": [
+    {
+      "commercial_use": "ALLOWED",
+      "download_method": "DIRECT_HTTPS",
+      "expected_bytes": 17240568,
+      "expected_sha256": "1f7b7e2d189b21c78cf8b46ff44c463bcd1aa87c01b3f0d10e5a20568877f147",
+      "github_allowed": false,
+      "license": "CC0 1.0 Universal",
+      "local_only": true,
+      "name": "Infant active sleep",
+      "privacy_notes": "Publicly released infant footage; source media remains local-only despite CC0.",
+      "project_or_paper": "Wikimedia Commons",
+      "redistribution_allowed": true,
+      "research_use_allowed": true,
+      "source_id": "wikimedia-infant-active-sleep",
+      "source_url": "https://upload.wikimedia.org/wikipedia/commons/4/43/Infantactivesleep.webm"
+    },
+    {
+      "commercial_use": "ALLOWED",
+      "download_method": "DIRECT_HTTPS",
+      "expected_bytes": 3146442,
+      "expected_sha256": "6c29ba167260c2d038f39458af1a017c7c1d24cfba637a9d45be2014a857d754",
+      "github_allowed": false,
+      "license": "United States federal government public domain",
+      "local_only": true,
+      "name": "CDC two-month movement milestone",
+      "privacy_notes": "CDC educational infant footage; source media remains local-only.",
+      "project_or_paper": "CDC Learn the Signs. Act Early.",
+      "redistribution_allowed": true,
+      "research_use_allowed": true,
+      "source_id": "cdc-two-month-movement",
+      "source_page_sha1": "598783a6d3db09604284382798ee9b805205bca7",
+      "source_url": "https://upload.wikimedia.org/wikipedia/commons/a/af/2_Month_Milestone-_Makes_smoother_movements_with_arms_and_legs.webm"
+    },
+    {
+      "commercial_use": "ALLOWED",
+      "download_method": "DIRECT_HTTPS",
+      "expected_bytes": 5577029,
+      "expected_sha256": "997a3ba95cf51e918178bb58dde2b34e1397f31e98f1e69c18dacd4f07c1d85d",
+      "github_allowed": false,
+      "license": "United States federal government public domain",
+      "local_only": true,
+      "name": "CDC Safe Sleep for Babies",
+      "privacy_notes": "CDC educational footage; source media remains local-only.",
+      "project_or_paper": "CDC Vital Signs",
+      "redistribution_allowed": true,
+      "research_use_allowed": true,
+      "source_id": "cdc-safe-sleep-babies",
+      "source_url": "https://upload.wikimedia.org/wikipedia/commons/d/d7/Safe_Sleep_for_Babies.webm"
+    }
+  ]
 }

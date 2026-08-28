@@ -1,4 +1,21 @@
 {
   "schema_version": 1,
-  "sources": []
+  "sources": [
+    {
+      "bytes": 17240568,
+      "sha256": "1f7b7e2d189b21c78cf8b46ff44c463bcd1aa87c01b3f0d10e5a20568877f147",
+      "source_id": "wikimedia-infant-active-sleep"
+    },
+    {
+      "bytes": 3146442,
+      "sha256": "6c29ba167260c2d038f39458af1a017c7c1d24cfba637a9d45be2014a857d754",
+      "source_id": "cdc-two-month-movement",
+      "source_page_sha1": "598783a6d3db09604284382798ee9b805205bca7"
+    },
+    {
+      "bytes": 5577029,
+      "sha256": "997a3ba95cf51e918178bb58dde2b34e1397f31e98f1e69c18dacd4f07c1d85d",
+      "source_id": "cdc-safe-sleep-babies"
+    }
+  ]
 }

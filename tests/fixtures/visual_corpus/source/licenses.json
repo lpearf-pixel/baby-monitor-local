@@ -2,48 +2,43 @@
   "schema_version": 1,
   "sources": [
     {
-      "commercial_use": "UNKNOWN",
+      "commercial_use": "ALLOWED",
       "github_allowed": false,
-      "license": "dataset grant unclear; repository code is non-commercial",
+      "license": "CC0 1.0 Universal",
+      "license_url": "https://creativecommons.org/publicdomain/zero/1.0/",
       "local_only": true,
-      "name": "NNS Detection and Segmentation",
-      "privacy_notes": "private clinical recordings are excluded",
-      "redistribution_allowed": false,
+      "name": "Infant active sleep",
+      "privacy_notes": "Publicly released infant footage; source media remains local-only.",
+      "redistribution_allowed": true,
       "research_use_allowed": true,
-      "source_url": "https://github.com/ostadabbas/NNS-Detection-and-Segmentation"
-    },
-    {
-      "commercial_use": "UNKNOWN",
-      "github_allowed": false,
-      "license": "separate dataset redistribution grant not confirmed",
-      "local_only": true,
-      "name": "CribNet and CribHD",
-      "privacy_notes": "image reference only; not a first-stage video source",
-      "redistribution_allowed": false,
-      "research_use_allowed": true,
-      "source_url": "https://github.com/ostadabbas/CribNet"
-    },
-    {
-      "commercial_use": "UNKNOWN",
-      "github_allowed": false,
-      "license": "raw videos unavailable",
-      "local_only": true,
-      "name": "SmallSleeps",
-      "privacy_notes": "raw overnight video withheld for privacy",
-      "redistribution_allowed": false,
-      "research_use_allowed": false,
-      "source_url": "https://shaydamoezzi.github.io/InfantSleepWakeClassification/"
+      "source_id": "wikimedia-infant-active-sleep",
+      "source_page": "https://commons.wikimedia.org/wiki/File:Infantactivesleep.webm"
     },
     {
       "commercial_use": "ALLOWED",
       "github_allowed": false,
-      "license": "CC BY 4.0",
+      "license": "United States federal government public domain",
+      "license_url": "https://commons.wikimedia.org/wiki/Template:PD-USGov-HHS-CDC",
       "local_only": true,
-      "name": "babyPose",
-      "privacy_notes": "depth-frame pose reference; approximately 3 GB",
+      "name": "CDC two-month movement milestone",
+      "privacy_notes": "CDC educational infant footage; source media remains local-only.",
       "redistribution_allowed": true,
       "research_use_allowed": true,
-      "source_url": "https://zenodo.org/records/3891404"
+      "source_id": "cdc-two-month-movement",
+      "source_page": "https://commons.wikimedia.org/wiki/File:2_Month_Milestone-_Makes_smoother_movements_with_arms_and_legs.webm"
+    },
+    {
+      "commercial_use": "ALLOWED",
+      "github_allowed": false,
+      "license": "United States federal government public domain",
+      "license_url": "https://commons.wikimedia.org/wiki/Template:PD-USGov-HHS-CDC",
+      "local_only": true,
+      "name": "CDC Safe Sleep for Babies",
+      "privacy_notes": "CDC educational footage; source media remains local-only.",
+      "redistribution_allowed": true,
+      "research_use_allowed": true,
+      "source_id": "cdc-safe-sleep-babies",
+      "source_page": "https://commons.wikimedia.org/wiki/File:Safe_Sleep_for_Babies.webm"
     }
   ]
 }

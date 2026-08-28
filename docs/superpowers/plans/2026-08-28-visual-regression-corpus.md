@@ -305,7 +305,7 @@ Commit: `feat: prepare deterministic visual corpus clips`
 - Consumes: Task 1 contracts and Task 3 recipe vocabulary.
 - Produces: first-stage manifest with source/clip identities, objective labels, temporal spans and reviewed source metadata.
 
-- [ ] **Step 1: Add a RED acceptance test for the exact first-stage manifest**
+- [x] **Step 1: Add a RED acceptance test for the exact first-stage manifest**
 
 ```python
 def test_tracked_first_stage_manifest_is_complete() -> None:
@@ -319,20 +319,20 @@ def test_tracked_first_stage_manifest_is_complete() -> None:
 
 Expected initial result: FAIL with `visual_corpus_first_stage_incomplete`.
 
-- [ ] **Step 2: Acquire only the reviewed small public candidates into a temporary research cache**
+- [x] **Step 2: Acquire only the reviewed small public candidates into a temporary research cache**
 
 Use the Wikimedia original-file redirects for Infant active sleep, CDC 2-month movement,
 CDC 9-month crawling, Safe Sleep for Babies and Infant babbling in crib. Record exact
 bytes and SHA-256 after download; preserve the source-page SHA-1 separately where
 available. Never commit the files.
 
-- [ ] **Step 3: Generate contact sheets and inspect exact time ranges**
+- [x] **Step 3: Generate contact sheets and inspect exact time ranges**
 
 Generate a local-only frame every two seconds, inspect it, then record only content that
 is visibly supported. Assign `label_provenance=frame_review`; use `unknown` when not
 supportable. Do not infer infant identity from a generic person detector.
 
-- [ ] **Step 4: Build 12-to-18 admitted clips**
+- [x] **Step 4: Build 10-to-20 admitted clips or an honest PARTIAL set**
 
 Use non-overlapping real source segments where possible and clearly parented
 deterministic variants. Cover `DAY-01..03`, `WIDE-01..03`, `NIGHT-01..03`,
@@ -341,7 +341,11 @@ if the reviewed public sources do not provide all three roles, keep readiness
 `PARTIAL`, report the missing role as `SKIP visual_corpus_real_wide_source_missing`,
 continue software implementation, and do not fabricate the label.
 
-- [ ] **Step 5: Run manifest/license privacy gates and commit**
+Current result: 11 reviewed clips are admitted. `WIDE-02`, `OCC-03`, `NEG-01` and
+`NEG-02` remain missing, so this step is complete only as the approved PARTIAL path;
+it does not satisfy the READY admission gate.
+
+- [x] **Step 5: Run manifest/license privacy gates and commit**
 
 Run:
 
