@@ -1,0 +1,49 @@
+{
+  "schema_version": 1,
+  "sources": [
+    {
+      "commercial_use": "UNKNOWN",
+      "github_allowed": false,
+      "license": "dataset grant unclear; repository code is non-commercial",
+      "local_only": true,
+      "name": "NNS Detection and Segmentation",
+      "privacy_notes": "private clinical recordings are excluded",
+      "redistribution_allowed": false,
+      "research_use_allowed": true,
+      "source_url": "https://github.com/ostadabbas/NNS-Detection-and-Segmentation"
+    },
+    {
+      "commercial_use": "UNKNOWN",
+      "github_allowed": false,
+      "license": "separate dataset redistribution grant not confirmed",
+      "local_only": true,
+      "name": "CribNet and CribHD",
+      "privacy_notes": "image reference only; not a first-stage video source",
+      "redistribution_allowed": false,
+      "research_use_allowed": true,
+      "source_url": "https://github.com/ostadabbas/CribNet"
+    },
+    {
+      "commercial_use": "UNKNOWN",
+      "github_allowed": false,
+      "license": "raw videos unavailable",
+      "local_only": true,
+      "name": "SmallSleeps",
+      "privacy_notes": "raw overnight video withheld for privacy",
+      "redistribution_allowed": false,
+      "research_use_allowed": false,
+      "source_url": "https://shaydamoezzi.github.io/InfantSleepWakeClassification/"
+    },
+    {
+      "commercial_use": "ALLOWED",
+      "github_allowed": false,
+      "license": "CC BY 4.0",
+      "local_only": true,
+      "name": "babyPose",
+      "privacy_notes": "depth-frame pose reference; approximately 3 GB",
+      "redistribution_allowed": true,
+      "research_use_allowed": true,
+      "source_url": "https://zenodo.org/records/3891404"
+    }
+  ]
+}

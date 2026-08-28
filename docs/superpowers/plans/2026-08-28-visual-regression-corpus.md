@@ -61,7 +61,7 @@
 - Produces: `load_manifest(path: Path) -> VisualCorpusManifest`, `canonical_manifest_digest(manifest: VisualCorpusManifest) -> str`, `validate_first_stage(manifest: VisualCorpusManifest) -> None`.
 - Consumes: `NormalizedPolygon` from `packages.contracts.vision` for clip-specific public-test crop/mask geometry.
 
-- [ ] **Step 1: Write manifest RED tests**
+- [x] **Step 1: Write manifest RED tests**
 
 Create tests that construct a 12-clip fixture and assert strict rejection of extra keys, duplicate source/clip IDs, unknown labels, temporal spans outside the clip, non-HTTPS URLs, invalid SHA-256, unclear-license sources marked Git-allowed, derived clips without a parent/recipe, and inference labels placed in `objective_labels`.
 
@@ -87,13 +87,13 @@ def test_synthetic_scale_never_satisfies_real_wide_gate() -> None:
         validate_first_stage(manifest)
 ```
 
-- [ ] **Step 2: Run the contract tests and record RED**
+- [x] **Step 2: Run the contract tests and record RED**
 
 Run: `python -m pytest -q tests/contracts/test_visual_corpus.py`
 
 Expected: collection fails because `packages.contracts.visual_corpus` does not exist.
 
-- [ ] **Step 3: Implement frozen Pydantic contracts and canonical loader**
+- [x] **Step 3: Implement frozen Pydantic contracts and canonical loader**
 
 Use `ConfigDict(extra="forbid", frozen=True)` throughout. Define controlled `StrEnum`
 types for source type, framing, scale, camera angle, environment, lighting, visibility,
@@ -124,7 +124,7 @@ def canonical_manifest_digest(manifest: VisualCorpusManifest) -> str:
 scenario families, three real-wide clips and the three wide content roles. Count unique
 prepared clip IDs, never derivative aliases.
 
-- [ ] **Step 4: Add the tracked media-free skeleton**
+- [x] **Step 4: Add the tracked media-free skeleton**
 
 The initial manifest uses `schema_version=1`, an empty `clips` list and
 `readiness="DESIGN_ONLY"`; `validate_first_stage` must reject it until Task 4 admits the
@@ -133,7 +133,7 @@ license/checksum records are authoritative. License records include NNS, CribHD,
 SmallSleeps and babyPose as excluded/deferred research entries plus reviewed Wikimedia
 candidate entries.
 
-- [ ] **Step 5: Run focused GREEN and commit**
+- [x] **Step 5: Run focused GREEN and commit**
 
 Run:
 

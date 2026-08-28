@@ -1,0 +1,37 @@
+{
+  "clips": [],
+  "corpus_id": "visual-first-stage-v1",
+  "profiles": [
+    {
+      "codec": "hevc",
+      "fps": 10,
+      "height": 1440,
+      "profile_id": "xiaomi_source_hd",
+      "width": 2560
+    },
+    {
+      "codec": "h264",
+      "fps": 10,
+      "height": 720,
+      "profile_id": "xiaomi_live",
+      "width": 1280
+    },
+    {
+      "codec": "mjpeg",
+      "fps": 5,
+      "height": 540,
+      "profile_id": "analysis_realtime",
+      "width": 960
+    },
+    {
+      "codec": "mjpeg",
+      "fps": 1,
+      "height": 540,
+      "profile_id": "analysis_slow",
+      "width": 960
+    }
+  ],
+  "readiness": "DESIGN_ONLY",
+  "schema_version": 1,
+  "sources": []
+}
