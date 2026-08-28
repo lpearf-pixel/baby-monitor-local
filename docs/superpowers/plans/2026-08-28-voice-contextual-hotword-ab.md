@@ -24,12 +24,18 @@ ONNX Runtime CPU, ModelScope ContextualParaformer at fixed revision, pytest and 
 - Create: `services/voice/contextual_artifacts.py`
 - Create: `tests/voice/test_contextual_artifacts.py`
 
-- [ ] Write RED tests for exact candidate/runtime revisions, required files, sizes,
+- [x] Write RED tests for exact candidate/runtime revisions, required files, sizes,
       digests, license labels, unsafe paths, symlinks, hardlinks, owner/mode and extras.
-- [ ] Implement immutable dataclasses and validation with stable errors.
-- [ ] Pin the isolated dependency closure after an Intel install probe; no floating
+- [x] Implement immutable dataclasses and validation with stable errors.
+- [x] Pin the isolated dependency closure after an Intel install probe; no floating
       requirements and no edits to the production ASR environment.
-- [ ] Run focused tests and `git diff --check`.
+- [x] Run focused tests and `git diff --check`.
+
+Task 1 evidence: the missing-module RED was observed; the final focused gate is 9/9.
+An Intel Python 3.11 probe reproduced the unsafe floating resolution to source-built
+`llvmlite 0.49`, then passed with the fixed wheel-compatible closure (`pip check` and
+`ContextualParaformer` import). The requirements file pins all 38 packages and the exact
+downloaded Intel/Python 3.11 artifact hashes.
 
 **Acceptance:** only the approved source/runtime/model identity can pass; no artifact is
 downloaded or installed by importing the module.
