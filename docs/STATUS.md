@@ -741,5 +741,8 @@
   deterministic punctuation-free wake allowlist omission and fixed only for the four
   approved Gate B commands. New positive and unsafe/unknown negative regressions pass,
   as do the affected Voice set 161/161 and complete Voice gate 605/605. The installed i9
-  has not yet revalidated this change; the armed burping-complete `far` result remains a
-  separate unresolved recall item and may not be guessed from household speech.
+  then revalidated candidate `44bd855`: all four combined commands passed 4/4, with
+  diaper exact +2, burping exact +2, no reject/far/output-failure increment, one audible
+  i9 reply per command and no observed camera movement or duplicate reply. The earlier
+  armed two-stage burping-complete `far` remains a separate unresolved recall item and
+  may not be guessed from household speech.

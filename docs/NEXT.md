@@ -408,11 +408,12 @@ Xiaomi source stayed PASS.
 `far` rejection from synthetic/public failing regressions and aggregate-only evidence.
 The combined entrance now has an evidence-backed bounded software fix: four approved
 Gate B commands were added to the punctuation-free wake allowlist, with 161/161 affected
-and 605/605 complete Voice tests green. Next perform only a short supervised installed
-recheck of those four combined commands. Keep burping-complete diagnosis separate; any
-private diagnostic, model change or new correction mapping needs separate scope and may
-not infer the missing transcript. Medication still requires a separate high-risk design.
-Baby Care writes and Camera Reply V3E remain independent and disabled.
+and 605/605 complete Voice tests green. Installed candidate `44bd855` then passed the
+four-command supervised recheck 4/4 with no reject, far, output failure, camera movement
+or duplicate reply. Next diagnose only the earlier two-stage burping-complete `far`
+path. Any private diagnostic, model change or new correction mapping needs separate
+scope and may not infer the missing transcript. Medication still requires a separate
+high-risk design. Baby Care writes and Camera Reply V3E remain independent and disabled.
 
 ## P5 — Final 72-hour release gate
 

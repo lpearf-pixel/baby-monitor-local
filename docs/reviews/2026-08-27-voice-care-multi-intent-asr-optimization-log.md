@@ -456,3 +456,16 @@ resolution 必须包含：
 - evidence proves：组合 wake/action 的确定性软件入口缺口已关闭且反例继续 fail closed
 - evidence does not prove：installed i9 实机召回或 armed burping-complete `far` 已解决
 - next single action：短监督复验四个组合命令；拍嗝 complete 保持独立诊断
+
+### R11 — Installed combined-command supervised recheck
+
+- 日期：2026-08-28
+- installed candidate：`44bd855`
+- deployment：detached HEAD 前移后仅 Voice stop/start；go2rtc、Dashboard和其他worker未重启
+- preflight/tail：Voice healthy/listen-only；source PASS；configured transport=auto，observed cs2+udp
+- positives/accepted：四个组合命令 4/4；diaper exact +2、burping exact +2、processed +4
+- rejects/failures：action rejected +0、ignored far +0、output failures +0
+- human observation：每句一次 i9 回复；无摄像头转动、无重复回复
+- privacy：仅固定聚合计数；未读取或保存家庭音频/转写
+- decision：combined single-sentence gate PASS；two-stage burping-complete far 仍未解决
+- next single action：仅诊断两阶段 burping-complete follow-up；不启用 Camera Reply

@@ -149,4 +149,16 @@ Camera Reply V3E 和 full-care identity 继续保持独立。
 
 同时重新运行 current Paraformer generated benchmark：低风险 18/18、负例 48/48、false
 accept 0，故没有证据支持此时替换模型或为拍嗝 complete 猜测纠错。该软件 follow-up 尚未
-部署并通过实机复验，原 Task 8 recall FAIL 结论保持不变。
+部署时不能改变原 Task 8 recall FAIL 结论；下一节记录随后完成的受监督实机复验。
+
+## 10. Installed combined-command revalidation
+
+Installed candidate `44bd855` 通过 Voice-only restart 部署，没有重启 go2rtc、Dashboard 或
+其他 worker。Voice 从零计数开始，四个组合命令依次产生 diaper exact +2、burping exact
++2，processed +4；reject、far 和 output failure 均无增量。成人确认四句均听到一次 i9
+固定回复，摄像头无转动、无重复回复。尾部 Voice healthy，Xiaomi source PASS，配置仍为
+`transport=auto`，实际协商为 `cs2+udp`。
+
+因此组合单句入口从 recall FAIL 转为 4/4 supervised PASS。两阶段 `小小` 后再说拍嗝完成
+的历史 `far` 路径没有在本轮重测，继续作为独立 recall follow-up；medication、Camera
+Reply 与 Baby Care 写入状态不变。

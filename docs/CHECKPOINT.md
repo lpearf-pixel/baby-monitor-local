@@ -1447,3 +1447,10 @@ allowlist，不是模型整体失效。先观察到新增正例 8 failed、四�
 否定、疑问、多动作和未知后缀继续静默；未增加通用 edit distance、模型、Baby Care 写入、
 Camera Reply 或运行配置。该证据只关闭软件入口缺口，不证明 installed i9 实机召回；拍嗝
 complete 的真实 `far` 仍需独立证据，下一步是四命令短监督复验。
+
+同日将 installed detached HEAD 从 `528b31a` 前移到 `44bd855`，保留未跟踪用户文件和
+ignored runtime，只停止/启动 Voice listen-only；go2rtc、Dashboard 与其他 worker 未重启。
+Voice 从零计数启动后，四个连续命令全部通过：processed +4、diaper exact +2、burping
+exact +2，reject/far/output failure 均 +0。成人确认每句均听到一次 i9 回复，摄像头未转动，
+没有重复回复。尾部 Voice healthy、source PASS，配置保持 `transport=auto`，实机协商仍为
+`cs2+udp`。这接受组合单句入口，不替代此前两阶段拍嗝 complete 的 `far` 失败。

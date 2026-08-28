@@ -617,10 +617,13 @@ false. The combined wake/action miss has since been reproduced in software as fo
 approved Gate B commands missing from the punctuation-free wake allowlist. The bounded
 fix adds only those four exact prefixes; its new positive and fail-closed regressions,
 the affected Voice set (161/161) and the complete Voice gate (605/605) pass. This is not
-installed-device proof. The exact next Voice slice is a short supervised recheck of the
-four combined commands, followed separately by evidence collection for the unresolved
-burping-complete follow-up. Do not widen ASR correction from household evidence, enable
-Camera Reply, delete the private bundle or expose transcript content.
+installed-device proof by itself. Installed candidate `44bd855` was subsequently
+restarted Voice-only and accepted the four combined commands 4/4: diaper exact +2,
+burping exact +2, zero reject/far/output-failure increments, one audible i9 reply per
+command and no observed camera movement or duplicate reply. The exact next Voice slice
+is evidence collection for the still-unresolved two-stage burping-complete follow-up.
+Do not widen ASR correction from household evidence, enable Camera Reply, delete the
+private bundle or expose transcript content.
 
 1. Full-care Voice ASR/VAD passes 6/6. The local enrollment boundary now opens and
    warms the Xiaomi source, drains it throughout the 15-second countdown, and then
