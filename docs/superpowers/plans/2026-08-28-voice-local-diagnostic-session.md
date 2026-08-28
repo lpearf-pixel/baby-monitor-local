@@ -23,8 +23,8 @@ descriptors and permissions, macOS launchd/Make, pytest.
 `docs/superpowers/specs/2026-08-28-voice-local-diagnostic-session-design.md`
 
 **Status:** Approved specification translated into an inline execution plan on
-2026-08-28. Tasks 1–4 private artifacts, writer, worker integration and fixed lifecycle
-commands are complete; Task 5 documentation/privacy governance is next.
+2026-08-28. Tasks 1–5 private artifacts, writer, worker integration, fixed lifecycle
+commands and privacy governance are complete; Task 6 full software/review gate is next.
 
 ## Global Constraints
 
@@ -384,13 +384,13 @@ session without exposing private content or touching independent services.
   active, supervised, bounded, ignored local diagnostic session.
 - No diagnostic boolean/path is added to tracked settings.
 
-- [ ] **Step 1: Write privacy RED tests**
+- [x] **Step 1: Write privacy RED tests**
 
   Prove default settings and absent marker persist nothing; normal status/log writers
   reject transcript/audio/path fields; `.gitignore` covers the private root; tracked
   examples cannot enable diagnostics; CLI output cannot echo event content.
 
-- [ ] **Step 2: Update durable rules and runbook**
+- [x] **Step 2: Update durable rules and runbook**
 
   Document exact start/status/stop sequence, limits, permissions, artifact sensitivity,
   explicit retained-data deletion boundary and the independent CoreAudio recovery:
@@ -402,7 +402,7 @@ session without exposing private content or touching independent services.
 
   Explicitly prohibit SIP changes and `launchctl kickstart` for protected CoreAudio.
 
-- [ ] **Step 3: Run privacy/document gates**
+- [x] **Step 3: Run privacy/document gates**
 
   ```bash
   .venv-alpha/bin/python -m pytest -q \
@@ -416,7 +416,7 @@ session without exposing private content or touching independent services.
   literals, runtime paths, databases and generated settings. Synthetic fixed strings are
   allowed only in tests.
 
-- [ ] **Step 4: Commit**
+- [x] **Step 4: Commit**
 
   ```bash
   git add AGENTS.md docs/runbooks/VOICE_LISTEN_ONLY.md \

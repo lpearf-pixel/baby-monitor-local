@@ -84,6 +84,43 @@ def test_camera_reply_example_is_disabled() -> None:
     assert payload["voice_care"]["camera_reply_enabled"] is False
 
 
+def test_diagnostic_persistence_has_no_tracked_settings_switch() -> None:
+    payload = yaml.safe_load(Path("config/settings.example.yaml").read_text())
+
+    assert not any("diagnostic" in key for key in VoiceCareSettings.model_fields)
+    assert not any("diagnostic" in key for key in payload["voice_care"])
+    with pytest.raises(ValueError, match="extra_forbidden"):
+        VoiceCareSettings.model_validate({"diagnostic_enabled": True})
+
+
+def test_private_voice_diagnostic_exception_is_explicitly_governed() -> None:
+    agents = Path("AGENTS.md").read_text(encoding="utf-8")
+    runbook = Path("docs/runbooks/VOICE_LISTEN_ONLY.md").read_text(encoding="utf-8")
+    ignore = Path(".gitignore").read_text(encoding="ascii")
+    normalized_agents = " ".join(agents.split())
+    normalized_runbook = " ".join(runbook.split())
+
+    assert (
+        "explicitly active, supervised, bounded local diagnostic session"
+        in normalized_agents
+    )
+    for command in (
+        "make alpha-voice-diagnostic-start",
+        "make alpha-voice-diagnostic-status",
+        "make alpha-voice-diagnostic-stop",
+    ):
+        assert command in runbook
+    for boundary in (
+        "30 minutes",
+        "50 utterances",
+        "16 MiB",
+        "Camera Reply must remain disabled",
+        "never be committed or uploaded",
+    ):
+        assert boundary in normalized_runbook
+    assert "runtime/" in ignore.splitlines()
+
+
 @pytest.mark.parametrize(
     ("enabled", "listen_only_enabled"), [(False, False), (True, False)]
 )

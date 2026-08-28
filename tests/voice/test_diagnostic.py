@@ -103,6 +103,14 @@ def test_fixed_limits_bound_the_real_session_behavior(tmp_path: Path) -> None:
     assert str(tmp_path) not in repr(session)
 
 
+def test_absent_marker_keeps_default_path_memory_only(tmp_path: Path) -> None:
+    runtime = tmp_path / "runtime"
+    runtime.mkdir(mode=0o755)
+
+    assert load_active_session(tmp_path, now_epoch=1_200.0) is None
+    assert list(runtime.iterdir()) == []
+
+
 @pytest.mark.parametrize("now_epoch", [999.0, 2_800.0, 2_900.0])
 def test_marker_outside_its_current_window_is_disabled(
     tmp_path: Path, now_epoch: float

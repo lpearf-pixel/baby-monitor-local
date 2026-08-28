@@ -35,6 +35,37 @@ Before a supervised speech trial, run `make alpha-voice-listen-start` even if a 
 status file says healthy. The start command requires a status timestamp from the new
 launch; `status` alone can describe a stopped job's stale file.
 
+## Private diagnostic session
+
+Ordinary listen-only operation stays memory-only. When aggregate counters are not
+enough to diagnose a recognition miss, an adult may explicitly start the approved
+private diagnostic session:
+
+```bash
+make alpha-voice-diagnostic-start
+make alpha-voice-diagnostic-status
+make alpha-voice-diagnostic-stop
+```
+
+The fixed session admits data for at most 30 minutes, 50 utterances and 16 MiB of
+complete WAV/event pairs. It uses the existing single Xiaomi producer, VAD and
+Paraformer call; it does not create another capture or transcription path. Camera Reply
+must remain disabled, full-care Voice must remain disabled and listen-only Voice must
+remain enabled before `start` can write anything.
+
+Artifacts stay in ignored, owner-private runtime storage with `0700` directories and
+`0600` files. The paired private event may contain the local ASR text, but normal Voice
+logs, status commands, Dashboard, Git and chat remain transcript-free. Status prints
+only counts, bytes, drops, failures and remaining time; it never prints a session ID,
+path, filename, audio or transcript.
+
+`stop` disables admission, restarts only Voice/ASR and retains the completed private
+session for local diagnosis. Retained audio and text are sensitive household data, not
+training data, and must never be committed or uploaded. There is intentionally no purge
+command in this slice: deleting a retained session requires a separate explicit
+approval. A normal Voice start neither creates nor renews diagnostics. Without a valid
+current private marker, the worker retains no household PCM or transcript.
+
 If an accepted phrase reports `voice_output_unavailable`, first test the macOS built-in
 sound. When the built-in sound also blocks, restart only CoreAudio and retry:
 

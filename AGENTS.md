@@ -51,6 +51,12 @@
   Never place a credential in source, Git history, a command argument, an example, a
   test fixture or `SUMMARY.md`. Revoke any credential exposed in chat or logs.
 - Tests use generated, synthetic or explicitly public media only.
+- Household Voice PCM and transcripts remain memory-only except during an explicitly
+  active, supervised, bounded local diagnostic session approved by the current Voice
+  specification. That exception writes only to ignored owner-private runtime storage;
+  it never permits transcripts or audio in normal logs, status, Git, chat or uploads.
+  Retained diagnostic sessions are private household data, not training data, and
+  require separate deletion authority.
 - Apply bed-zone cropping and privacy masking before model transmission, persistence
   or evidence export. Raw continuous camera video and audio remain local by default.
 - Notifications are text-only unless a separately approved authenticated design says
@@ -116,7 +122,9 @@
 - Run real Xiaomi/i9 audio acceptance in the actual logged-in user context. A Codex
   sandbox PTY can reject the fixed loopback RTSP decoder with `operation_not_permitted`;
   sandbox results are software diagnostics only and must not be reported as household
-  microphone evidence. Keep diagnostics aggregate-only and never print recognized text.
+  microphone evidence. Keep normal diagnostics aggregate-only and never print
+  recognized text; inspect any approved private diagnostic transcript only through the
+  local ignored workflow without copying it into chat or tracked documents.
 - Full-care Voice enrollment must use the ASR candidate selected by the current formal
   gate (currently the pinned Paraformer), never a historical Whisper fallback. Before
   touching Voice capture/enrollment, read the current Voice spec, plan and handoff state.
