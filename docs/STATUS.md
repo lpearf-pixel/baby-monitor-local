@@ -7,7 +7,8 @@
 - Visual regression corpus (2026-08-29): the isolated feature branch
   `codex/visual-regression-corpus` is published at `533399c` over implementation head
   `5143f69`, with no PR or merge. The current unpushed closure commits are
-  `fb3218d3ae8385a43f4e85167cba80c3d9aa54a1` and `165b0db5ced15f39160a602e423791dc69bcbb0a`;
+  `fb3218d3ae8385a43f4e85167cba80c3d9aa54a1`, `165b0db5ced15f39160a602e423791dc69bcbb0a`
+  and `d01c23d3df30434ead36cf289b7a783544b70cbe`;
   they keep the `533399c` baseline and
   track metadata/recipes only. Four downloaded public sources, 13 reviewed clips,
   contact sheets, 26 prepared files and result JSON remain ignored/private.
@@ -22,7 +23,12 @@
   incomplete. An additional bounded review rejected six complete Pexels downloads and
   two official NICHD videos: none supplied ten continuous seconds of a licensed real
   empty crib/room-wide view. The closest Coverr item was 9.6 seconds with a stale media
-  endpoint, while the Mixkit alternative had a personal-use-only license. This is
+  endpoint, while the Mixkit alternative had a personal-use-only license. A final CPSC
+  pass found official short/long safe-sleep pages and IDs, but no reproducible media
+  download: YouTube required interactive verification and the Vimeo mirror reset before
+  metadata. Two owner-private thumbnails were checksum-pinned for rejection evidence;
+  the previously reviewed CDC public-domain video was recognized as a duplicate source,
+  not a new candidate. This is
   regression behavior, not accuracy or real-device evidence.
 - Environment monitoring design and implementation plan: approved on 2026-08-05.
 - Stable Xiaomi Alpha commit: `0df20ae` on `stable/xiaomi-alpha`.

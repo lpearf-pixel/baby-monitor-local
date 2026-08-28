@@ -112,6 +112,27 @@ changed corpus because no corpus change was made. Fresh
 `result=PASS`, `readiness=PARTIAL`, `clip_count=13`, `missing_scenarios=2`; the three
 focused corpus contract/tool/baseline test files passed 42/42.
 
+#### Final government-source pass
+
+A final bounded pass checked the CPSC official short and long safe-sleep videos without
+using account cookies or bypassing public access controls. Official video IDs
+`VNekf5P9_Yg` and `UGFvlRQFY30` were discoverable, but both YouTube media paths required
+interactive verification. The independent Safe Sleep NC Vimeo mirror (`17528273`)
+reset its public connection before metadata or media could be obtained. Two public
+480x360 thumbnails were retained under ignored owner-private runtime only:
+
+- `VNekf5P9_Yg`: 13,222 bytes, SHA-256
+  `d9d252a18e21ec64ec1418bc0dae95cba88489178ea1d7ec085742f79c05ff95`;
+- `UGFvlRQFY30`: 13,175 bytes, SHA-256
+  `cb230e6bd5996501a973e48396b98b682c00b1d23081bd560887c29f85e793a6`.
+
+Both thumbnails show a close crib demonstration with an adult and baby, not proof of a
+ten-second empty-wide interval. The CDC low-resolution link still displayed by its
+official page returned 404; the matching Wikimedia Commons public-domain file was the
+same 108,588,489-byte source already reviewed and rejected above, so it was not counted
+again. No new clip, manifest entry, replay result or baseline was created. Readiness
+remains `PARTIAL`, with `WIDE-02` and `NEG-01` missing.
+
 Draft PR #4 已实现并自动化验证 H.265 原码优先、VideoToolbox 按需兼容流、
 profile 绑定票据、无黑屏播放器回退以及可审计 go2rtc 双补丁构建。
 

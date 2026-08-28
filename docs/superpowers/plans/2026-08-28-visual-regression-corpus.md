@@ -802,3 +802,11 @@ therefore remains `PARTIAL`; baseline generation, comparison and promotion remai
 Fresh validation returned `PASS`, `PARTIAL`, 13 clips and two missing scenarios; the
 focused corpus contract/tool/baseline tests passed 42/42. No replay was repeated because
 the manifest, prepared corpus and prior 13-clip performance evidence did not change.
+
+A final government-source pass also left Task 11 on the approved PARTIAL path. CPSC's
+official `VNekf5P9_Yg` and `UGFvlRQFY30` videos were discoverable, but the media path
+required interactive YouTube verification and the independent Vimeo mirror reset before
+metadata. Only two checksum-pinned 480x360 thumbnails were reproducible, and both show a
+close adult/baby crib demonstration rather than proving a ten-second empty-wide interval.
+The CDC file exposed through Wikimedia Commons was the same public-domain candidate
+already rejected above, not a new source. No manifest, replay or baseline command changed.

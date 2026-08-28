@@ -8,8 +8,9 @@ Updated: 2026-08-29
 - Visual regression corpus work is published on `codex/visual-regression-corpus` at
   documentation head `533399c` over implementation head `5143f69`; local and remote
   matched at publication, with no PR or merge. The current unpushed closure commits are
-  `fb3218d3ae8385a43f4e85167cba80c3d9aa54a1` and documentation checkpoint
-  `165b0db5ced15f39160a602e423791dc69bcbb0a`; they keep that exact baseline and admit
+  `fb3218d3ae8385a43f4e85167cba80c3d9aa54a1`, documentation checkpoint
+  `165b0db5ced15f39160a602e423791dc69bcbb0a` and bounded-source checkpoint
+  `d01c23d3df30434ead36cf289b7a783544b70cbe`; they keep that exact baseline and admit
   one additional checksum-pinned local-only public source. Four sources now yield 13
   reviewed clips and 26 private prepared artifacts.
   `NEG-02` is real object-only footage and `OCC-03` is a human-reviewed deterministic
@@ -26,7 +27,11 @@ Updated: 2026-08-29
   framing or shorter than ten seconds; frame review of the NICHD videos found no ten-second
   empty crib interval. Coverr's closest clip was 9.6 seconds and its media endpoint was
   stale; Mixkit's ten-second childcare-bed clip was restricted to personal use. No source
-  met the combined license, checksum, real-wide and duration gate. No baseline was generated,
+  met the combined license, checksum, real-wide and duration gate. A final government-source
+  pass found CPSC's official short/long safe-sleep videos, but YouTube required interactive
+  verification and the independent Vimeo mirror reset the connection before metadata could
+  be obtained; only two checksum-pinned public thumbnails were reproducible. The already
+  reviewed CDC public-domain file was not re-admitted under a duplicate URL. No baseline was generated,
   compared or promoted while the corpus is incomplete. These results
   prove deterministic public-file replay and regression instrumentation, not Guardian
   accuracy, native Xiaomi CS2 compatibility, real IR behavior or household safety.
