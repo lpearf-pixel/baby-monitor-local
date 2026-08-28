@@ -4,6 +4,20 @@
 
 - Repository: initialized and public.
 - Design: approved.
+- Visual regression corpus (2026-08-29): the isolated feature branch
+  `codex/visual-regression-corpus` is locally implemented through `5143f69`, with no
+  push or merge. It tracks metadata and deterministic recipes only; three downloaded
+  public sources, 11 reviewed clips, contact sheets, 22 prepared files and result JSON
+  remain ignored/private. Coverage includes close/medium infant views, crib-wide and
+  room-wide views with an adult, day, deterministic simulated IR, motion and partial/
+  face occlusion. The manifest is `PARTIAL` because `WIDE-02`, `OCC-03`, `NEG-01` and
+  `NEG-02` have no acceptable reviewed source. The 11-clip current-worker replay passed
+  695/695 frames with zero decode/worker/drop/backlog errors; worst per-clip processing
+  and pipeline p95 were 353.307/419.602 ms. The local-only HEVC/go2rtc gate decoded
+  2560x1440 without camera access, and the 30-minute aggregate replay passed 1,807 media
+  seconds/143 runs with zero decode, worker, duplicate-event or backlog errors and
+  48.105 MiB RSS growth. Baseline comparison reports missing and promotion fails closed
+  while incomplete. This is regression behavior, not accuracy or real-device evidence.
 - Environment monitoring design and implementation plan: approved on 2026-08-05.
 - Stable Xiaomi Alpha commit: `0df20ae` on `stable/xiaomi-alpha`.
 - Active local development branch: `codex/xiaomi-camera-reply-lifecycle-review`.

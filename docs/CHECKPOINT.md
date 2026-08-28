@@ -1,5 +1,36 @@
 # Hybrid HD Checkpoint
 
+## Visual regression corpus checkpoint — 2026-08-29
+
+On `codex/visual-regression-corpus`, implementation head `5143f69` establishes a
+checksum-pinned, privacy-bounded replay path through the existing frame policy,
+`VisualWorker`, realtime analyzer/candidate state and an isolated Guardian SQLite/query
+projection. Downloaded media, prepared files, contact sheets, model artifacts, results
+and temporary databases remain ignored and private; no household media or production
+Guardian store is read or written.
+
+Three reviewed public sources produced 11 clips and 22 deterministic artifacts. The
+scenario set includes day, deterministic simulated IR, movement, partial/face
+occlusion, adult presence, crib-wide and room-wide content. Four explicit gaps remain:
+`WIDE-02`, `OCC-03`, `NEG-01` and `NEG-02`, so readiness is `PARTIAL` and no baseline
+was promoted. The strict promotion attempt returned
+`visual_baseline_promotion_incomplete` as designed.
+
+Actual ignored-runtime evidence:
+
+- all 11 clips passed current-worker replay: 695/695 frames, zero decode, worker,
+  dropped-frame and queue-backlog errors; maximum per-clip processing p95 353.307 ms,
+  pipeline p95 419.602 ms;
+- the isolated loopback go2rtc gate decoded prepared HEVC at 2560x1440 and reported no
+  camera access or production-service mutation;
+- the bounded 30-minute gate processed 1,807 media seconds in 143 runs, with zero
+  decode/worker/duplicate-event/backlog errors and 48.105 MiB RSS growth.
+
+This checkpoint demonstrates repeatability, decoding, pipeline integration and bounded
+performance. It does not establish model accuracy, native CS2 transport behavior,
+physical IR equivalence, real-baby safety or household acceptance. The feature branch
+has not been pushed or merged.
+
 Draft PR #4 已实现并自动化验证 H.265 原码优先、VideoToolbox 按需兼容流、
 profile 绑定票据、无黑屏播放器回退以及可审计 go2rtc 双补丁构建。
 

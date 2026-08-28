@@ -711,7 +711,7 @@ Repeat the prepared corpus until 30 minutes while sampling process RSS, queue/ba
 decoder failures, duplicate events and event storms. Do not run one hour, 8 hours or 24
 hours in this milestone. Store only bounded aggregates in ignored results.
 
-- [ ] **Step 5: Run final software and privacy gates**
+- [x] **Step 5: Run final software and privacy gates**
 
 Run:
 
@@ -728,7 +728,7 @@ Also scan tracked changes for private IPs, credentials, keys/tokens, runtime pat
 SQLite/media/model artifacts and generated settings. Confirm `git status` contains only
 planned tracked files and deliberately preserved ignored runtime data.
 
-- [ ] **Step 6: Update factual documentation and commit**
+- [x] **Step 6: Update factual documentation and commit**
 
 Document separately what was software-tested, replayed with public media, codec-gated,
 skipped for license/source reasons and still requires MJSXJ17CM/native-IR/household
@@ -737,9 +737,17 @@ scenario coverage and observed performance without claiming algorithm accuracy.
 
 Commit: `docs: record visual regression corpus gate`
 
-- [ ] **Step 7: Final branch delivery**
+- [x] **Step 7: Final branch delivery**
 
 Review `git status`, `git diff --stat`, the full branch diff from the design checkpoint
 and recent commits. Do not merge. Push only `codex/visual-regression-corpus` if the
 current task authorization explicitly permits feature-branch push; otherwise report the
 exact local HEAD and leave remote unchanged.
+
+**Final evidence (2026-08-29):** focused corpus gate 103 passed / 1 expected incomplete-
+corpus skip; complete macOS Python gate 2,042 passed / 1 expected skip; frontend 73/73;
+compileall and all seven Make dry-runs passed. The tracked branch diff contains no media,
+runtime state, database or model artifacts; privacy scan found no household address,
+credential, token or private-key literal. Actual ignored-runtime evidence is 11/11 clips
+and 695/695 frames, isolated 2560x1440 HEVC decode, plus 1,807 media seconds/143 runs in
+the 30-minute aggregate gate. No baseline was promoted, and no push or merge was made.

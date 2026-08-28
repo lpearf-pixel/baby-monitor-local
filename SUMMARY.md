@@ -1,10 +1,26 @@
 # Baby Monitor Local Project Summary
 
-Updated: 2026-08-28
+Updated: 2026-08-29
 
 ## Snapshot
 
 - Repository: `lpearf-pixel/baby-monitor-local` (public).
+- Visual regression corpus work is implemented locally on
+  `codex/visual-regression-corpus` through implementation head `5143f69`; it has not
+  been pushed or merged. Three checksum-pinned public sources yield 11 reviewed clips
+  and 22 private prepared artifacts covering day, simulated night/IR, partial/face
+  occlusion, adult presence, crib-wide and room-wide views. The manifest remains
+  intentionally `PARTIAL`: `WIDE-02`, `OCC-03`, `NEG-01` and `NEG-02` lack acceptable
+  reviewed source material, including a real licensed empty/object-only wide view.
+  Full public replay passed 11/11 clips and 695/695 frames with zero decode, worker,
+  drop or backlog errors; worst per-clip processing p95 was 353.307 ms and pipeline
+  p95 was 419.602 ms. The isolated loopback go2rtc gate decoded the prepared HEVC
+  2560x1440 profile without camera access or production-service changes. A bounded
+  30-minute replay processed 1,807 media seconds across 143 clip runs with zero decode,
+  worker, duplicate-event or backlog errors and 48.105 MiB RSS growth. Baseline
+  promotion correctly remains blocked while the corpus is incomplete. These results
+  prove deterministic public-file replay and regression instrumentation, not Guardian
+  accuracy, native Xiaomi CS2 compatibility, real IR behavior or household safety.
 - Stable Xiaomi line: `stable/xiaomi-alpha` at `0df20ae`.
 - Active Camera Reply review line: `codex/xiaomi-camera-reply-lifecycle-review`, based
   on accepted Voice head `4d479b8`; its published Task 8 checkpoint is `a622a7a`.
@@ -678,6 +694,10 @@ expose transcript content.
    contract where Baby Care consumes Guardian's read-only feed and owns identity/write
    state; do not create a second identity model inside Guardian.
 9. Consider the FFmpeg ring-buffer upgrade after the functional and real-device gates.
+10. Extend the visual regression corpus only with reviewed, license-safe sources for
+    `WIDE-02`, `OCC-03`, `NEG-01` and `NEG-02`; then rerun the fixed corpus and explicitly
+    promote its first baseline. Do not treat model output as ground truth or let this
+    public-file gate replace native-IR and real-household acceptance.
 
 ## Operating Commands
 

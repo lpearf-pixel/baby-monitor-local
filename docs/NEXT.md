@@ -4,6 +4,15 @@ The repository baseline, environment software and functional Guardian loop are
 complete. Do not restart completed milestones. Execute the following stages in order;
 the detailed approved specs and plans remain authoritative for behavior.
 
+**Visual regression corpus follow-up (framework complete locally at `5143f69`):** keep
+the 11 reviewed public clips as the repeatable candidate set and acquire reviewed,
+license-safe coverage for `WIDE-02`, `OCC-03`, `NEG-01` and `NEG-02`, especially a real
+empty/object-only wide room or crib view. Until all four gaps close, manifest readiness
+stays `PARTIAL`, comparison may report no baseline, and promotion must fail closed.
+After closure, rerun short replay and the isolated HEVC gate, review objective labels,
+then explicitly promote the first baseline by exact candidate digest. Public replay is
+additional software evidence; it does not reorder or replace the real-device gates below.
+
 **Operational recovery gate (2026-08-20): PASS.** The i9 now has one launchd-owned
 go2rtc app with a stable macOS Local Network designated requirement. A fresh source
 check and a later unchanged app refresh plus single-component restart both returned

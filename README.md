@@ -105,6 +105,34 @@ make alpha-voice-camera-status
 Voice。要回滚则把该值恢复为 `false`，同样只重启 Voice；仅当 go2rtc 协议构建本身
 失败时，才使用独立的 `make alpha-go2rtc-rollback`。
 
+## 公开视觉回归语料
+
+视觉模型或 Guardian 视觉链路变更后，可用固定公开素材重复执行解码、抽帧、当前
+`VisualWorker`、候选状态和隔离 Guardian 投影。仓库只跟踪严格 manifest、许可记录、
+checksum、转换配方和工具；下载视频、准备文件、逐帧数据与结果都保存在被忽略的
+`runtime/test-corpus/visual`，不会提交到 Git。
+
+```bash
+make alpha-visual-corpus-validate
+make alpha-visual-corpus-prepare
+make alpha-visual-regression
+make alpha-visual-regression-compare
+make alpha-visual-corpus-codec-gate
+make alpha-visual-regression-long
+```
+
+当前第一批为 11 段、3 个公开来源，覆盖白天、模拟 IR、活动、遮挡、成人入画、
+婴儿床广角和房间广角。`WIDE-02`、`OCC-03`、`NEG-01`、`NEG-02` 尚缺合规素材，
+因此状态为 `PARTIAL`，baseline promotion 会安全拒绝。补齐后只能用候选输出给出的
+精确 digest 显式执行：
+
+```bash
+make BASELINE_SHA256=<candidate-sha256> alpha-visual-regression-promote
+```
+
+公开文件回放只用于可重复回归，不代表婴儿检测或风险判断准确，也不替代真实
+MJSXJ17CM、原生红外、家庭场景和人工安全验收。
+
 ## 项目目标
 
 - 256GB microSD 负责全天循环录像，写满后覆盖最早内容。

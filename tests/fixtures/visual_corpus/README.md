@@ -26,3 +26,22 @@ object-only crib, so the real-wide admission gate remains
 gate. The corpus becomes `READY` only after those exact scenarios are supported by
 reviewed public or generated-synthetic media, and the empty/object-only wide role is
 supported by real licensed video.
+
+Operator workflow:
+
+```text
+make alpha-visual-corpus-validate
+make alpha-visual-corpus-prepare
+make alpha-visual-regression
+make alpha-visual-regression-compare
+make alpha-visual-corpus-codec-gate
+make alpha-visual-regression-long
+```
+
+The 2026-08-29 candidate replay processed all 11 admitted clips and 695 frames with no
+decode, worker, dropped-frame or queue-backlog errors. The isolated loopback codec gate
+decoded the prepared 2560x1440 HEVC profile without camera access. The bounded long run
+processed 1,807 media seconds in 143 clip runs with no decode, worker, duplicate-event
+or backlog errors and 48.105 MiB RSS growth. These are observational regression and
+performance results, not accuracy labels. No baseline is tracked while the manifest is
+`PARTIAL`; promotion must continue to fail closed.
