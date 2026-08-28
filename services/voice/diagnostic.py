@@ -5,12 +5,15 @@ from __future__ import annotations
 import json
 import math
 import os
+import queue
 import re
 import stat
 import tempfile
+import threading
 import unicodedata
 import wave
-from dataclasses import dataclass, field
+from collections.abc import Callable
+from dataclasses import dataclass, field, replace
 from pathlib import Path
 from typing import Literal
 
@@ -144,6 +147,178 @@ class DiagnosticSnapshot:
     complete_count: int
     complete_bytes: int
     incomplete_count: int
+    queued_count: int = 0
+    drop_count: int = 0
+    failure_count: int = 0
+    closed: bool = False
+
+
+@dataclass(frozen=True, slots=True)
+class DiagnosticAsrObservation:
+    state: Literal["available", "unavailable"]
+    text: str = field(repr=False)
+    normalized_text: str = field(repr=False)
+
+
+class DiagnosticAsrTap:
+    """Observe exactly one existing ASR call without changing its result."""
+
+    def __init__(self, underlying: object) -> None:
+        if not callable(getattr(underlying, "transcribe", None)):
+            raise ValueError(VOICE_DIAGNOSTIC_UNAVAILABLE)
+        self._underlying = underlying
+        self._observation: DiagnosticAsrObservation | None = None
+        self._lock = threading.Lock()
+
+    def transcribe(self, pcm: bytes) -> object:
+        try:
+            result = self._underlying.transcribe(pcm)
+            text = getattr(result, "text")
+            if type(text) is not str:
+                raise ValueError("voice_model_unavailable")
+            observation = DiagnosticAsrObservation(
+                "available", text, unicodedata.normalize("NFKC", text).strip()
+            )
+        except BaseException:
+            with self._lock:
+                self._observation = DiagnosticAsrObservation(
+                    "unavailable", "", ""
+                )
+            raise
+        with self._lock:
+            self._observation = observation
+        return result
+
+    def take_observation(self) -> DiagnosticAsrObservation | None:
+        with self._lock:
+            observation, self._observation = self._observation, None
+        return observation
+
+
+Publisher = Callable[[DiagnosticSession, DiagnosticRecord], int]
+
+
+class VoiceDiagnosticWriter:
+    """Publish at most two retained diagnostic records without blocking Voice."""
+
+    def __init__(
+        self,
+        session: DiagnosticSession,
+        *,
+        publisher: Publisher | None = None,
+    ) -> None:
+        if type(session) is not DiagnosticSession or (
+            publisher is not None and not callable(publisher)
+        ):
+            raise ValueError(VOICE_DIAGNOSTIC_UNAVAILABLE)
+        self._session = session
+        self._publisher = publisher or publish_diagnostic_record
+        self._queue: queue.Queue[DiagnosticRecord] = queue.Queue(
+            maxsize=DIAGNOSTIC_QUEUE_CAPACITY
+        )
+        self._slots = threading.BoundedSemaphore(DIAGNOSTIC_QUEUE_CAPACITY)
+        self._lock = threading.Lock()
+        self._closing = threading.Event()
+        self._closed = False
+        self._failed = False
+        self._outstanding = 0
+        self._drops = 0
+        self._failures = 0
+        self._thread = threading.Thread(
+            target=self._run,
+            name="voice-diagnostic-writer",
+            daemon=True,
+        )
+        self._thread.start()
+
+    def offer(self, record: DiagnosticRecord) -> bool:
+        if type(record) is not DiagnosticRecord:
+            return False
+        with self._lock:
+            if (
+                self._closed
+                or self._failed
+                or record.session_id != self._session.session_id
+                or self._session.remaining_utterances <= self._outstanding
+            ):
+                self._drops += 1
+                return False
+            if not self._slots.acquire(blocking=False):
+                self._drops += 1
+                return False
+            self._outstanding += 1
+        try:
+            self._queue.put_nowait(record)
+            return True
+        except queue.Full:
+            with self._lock:
+                self._outstanding -= 1
+                self._drops += 1
+            self._slots.release()
+            return False
+
+    def snapshot(self) -> DiagnosticSnapshot:
+        with self._lock:
+            return DiagnosticSnapshot(
+                complete_count=self._session.complete_count,
+                complete_bytes=self._session.complete_bytes,
+                incomplete_count=self._failures,
+                queued_count=self._outstanding,
+                drop_count=self._drops,
+                failure_count=self._failures,
+                closed=self._closed,
+            )
+
+    def close(self) -> None:
+        with self._lock:
+            if self._closed:
+                return
+            self._closed = True
+        self._closing.set()
+        self._thread.join(DIAGNOSTIC_SETTLEMENT_SECONDS)
+
+    def _run(self) -> None:
+        while True:
+            try:
+                record = self._queue.get(timeout=0.05)
+            except queue.Empty:
+                if self._closing.is_set():
+                    return
+                continue
+            try:
+                published_bytes = self._publisher(self._session, record)
+                if type(published_bytes) is not int or published_bytes <= 0:
+                    raise ValueError
+                with self._lock:
+                    self._session = replace(
+                        self._session,
+                        complete_count=self._session.complete_count + 1,
+                        complete_bytes=self._session.complete_bytes + published_bytes,
+                        next_sequence=self._session.next_sequence + 1,
+                    )
+            except Exception:
+                with self._lock:
+                    self._failed = True
+                    self._failures += 1
+            finally:
+                with self._lock:
+                    self._outstanding -= 1
+                self._slots.release()
+                self._queue.task_done()
+            if self._failed:
+                self._discard_queued()
+
+    def _discard_queued(self) -> None:
+        while True:
+            try:
+                self._queue.get_nowait()
+            except queue.Empty:
+                return
+            with self._lock:
+                self._outstanding -= 1
+                self._drops += 1
+            self._slots.release()
+            self._queue.task_done()
 
 
 def load_active_session(
@@ -450,8 +625,11 @@ __all__ = [
     "DIAGNOSTIC_QUEUE_CAPACITY",
     "DIAGNOSTIC_SETTLEMENT_SECONDS",
     "DiagnosticRecord",
+    "DiagnosticAsrObservation",
+    "DiagnosticAsrTap",
     "DiagnosticSession",
     "DiagnosticSnapshot",
+    "VoiceDiagnosticWriter",
     "load_active_session",
     "publish_diagnostic_record",
 ]

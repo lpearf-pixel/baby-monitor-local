@@ -2,7 +2,9 @@ from __future__ import annotations
 
 import json
 import os
+import threading
 import wave
+from dataclasses import dataclass
 from pathlib import Path
 
 import pytest
@@ -14,7 +16,9 @@ from services.voice.diagnostic import (
     DIAGNOSTIC_MAX_UTTERANCES,
     DIAGNOSTIC_QUEUE_CAPACITY,
     DIAGNOSTIC_SETTLEMENT_SECONDS,
+    DiagnosticAsrTap,
     DiagnosticRecord,
+    VoiceDiagnosticWriter,
     load_active_session,
     publish_diagnostic_record,
 )
@@ -193,3 +197,128 @@ def test_hard_linked_marker_is_rejected(tmp_path: Path) -> None:
     os.link(marker, tmp_path / "marker-link.json")
 
     assert load_active_session(tmp_path, now_epoch=1_200.0) is None
+
+
+@dataclass(frozen=True)
+class _AsrResult:
+    text: str
+
+
+class _Asr:
+    def __init__(self, result: object) -> None:
+        self.result = result
+        self.calls = 0
+
+    def transcribe(self, _pcm: bytes) -> object:
+        self.calls += 1
+        if isinstance(self.result, Exception):
+            raise self.result
+        return self.result
+
+
+def test_asr_tap_observes_one_real_call_and_consumes_it_once() -> None:
+    underlying = _Asr(_AsrResult("  开始喂奶  "))
+    tap = DiagnosticAsrTap(underlying)
+
+    result = tap.transcribe(b"\x01\x00")
+
+    assert result is underlying.result
+    assert underlying.calls == 1
+    observation = tap.take_observation()
+    assert observation is not None
+    assert (observation.state, observation.text, observation.normalized_text) == (
+        "available",
+        "  开始喂奶  ",
+        "开始喂奶",
+    )
+    assert "开始喂奶" not in repr(observation)
+    assert tap.take_observation() is None
+
+
+def test_asr_tap_replaces_stale_text_with_unavailable_on_failure() -> None:
+    underlying = _Asr(_AsrResult("小小"))
+    tap = DiagnosticAsrTap(underlying)
+    tap.transcribe(b"\x01\x00")
+    underlying.result = ValueError("private-error")
+
+    with pytest.raises(ValueError, match="private-error"):
+        tap.transcribe(b"\x01\x00")
+
+    observation = tap.take_observation()
+    assert observation is not None
+    assert (observation.state, observation.text, observation.normalized_text) == (
+        "unavailable",
+        "",
+        "",
+    )
+    assert tap.take_observation() is None
+
+
+def test_writer_bounds_retained_records_while_publisher_is_blocked(
+    tmp_path: Path,
+) -> None:
+    _valid_tree(tmp_path)
+    session = load_active_session(tmp_path, now_epoch=1_200.0)
+    assert session is not None
+    entered = threading.Event()
+    release = threading.Event()
+
+    def blocked(_session, _record) -> int:
+        entered.set()
+        assert release.wait(2.0)
+        return 100
+
+    writer = VoiceDiagnosticWriter(session, publisher=blocked)
+    first = _record()
+    second = _record()
+    third = _record()
+    assert writer.offer(first) is True
+    assert entered.wait(1.0)
+    assert writer.offer(second) is True
+    assert writer.offer(third) is False
+    assert writer.snapshot().drop_count == 1
+
+    release.set()
+    writer.close()
+    snapshot = writer.snapshot()
+    assert snapshot.complete_count == 2
+    assert snapshot.complete_bytes == 200
+    assert snapshot.queued_count == 0
+    assert snapshot.closed is True
+
+
+def test_writer_closes_admission_after_publication_failure(tmp_path: Path) -> None:
+    _valid_tree(tmp_path)
+    session = load_active_session(tmp_path, now_epoch=1_200.0)
+    assert session is not None
+
+    def failed(_session, _record) -> int:
+        raise ValueError("private-error")
+
+    writer = VoiceDiagnosticWriter(session, publisher=failed)
+    assert writer.offer(_record()) is True
+    writer.close()
+    snapshot = writer.snapshot()
+    assert snapshot.failure_count == 1
+    assert snapshot.complete_count == 0
+    assert writer.offer(_record()) is False
+
+
+def test_writer_advances_sequence_for_real_publication(tmp_path: Path) -> None:
+    session_root = _valid_tree(tmp_path)
+    session = load_active_session(tmp_path, now_epoch=1_200.0)
+    assert session is not None
+    writer = VoiceDiagnosticWriter(session)
+
+    assert writer.offer(_record()) is True
+    assert writer.offer(_record()) is True
+    writer.close()
+
+    assert sorted(path.name for path in (session_root / "audio").iterdir()) == [
+        "000001.wav",
+        "000002.wav",
+    ]
+    assert sorted(path.name for path in (session_root / "events").iterdir()) == [
+        "000001.json",
+        "000002.json",
+    ]

@@ -23,7 +23,7 @@ descriptors and permissions, macOS launchd/Make, pytest.
 `docs/superpowers/specs/2026-08-28-voice-local-diagnostic-session-design.md`
 
 **Status:** Approved specification translated into an inline execution plan on
-2026-08-28. Task 1 private artifact contracts are complete; Task 2 is next.
+2026-08-28. Tasks 1–2 private artifacts and bounded writer are complete; Task 3 is next.
 
 ## Global Constraints
 
@@ -171,37 +171,37 @@ unsafe storage shape fails before publication and no existing final is overwritt
   `close(timeout_seconds=5.0)`.
 - `take_observation()` consumes at most one observation from the latest transcribe call.
 
-- [ ] **Step 1: Write ASR tap RED tests**
+- [x] **Step 1: Write ASR tap RED tests**
 
   Prove one underlying ASR call, exact synthetic text capture, unavailable/invalid result
   mapping, one-shot `take_observation()`, no transcript in `repr`, and no stale result
   after exceptions or the next call.
 
-- [ ] **Step 2: Write bounded queue RED tests**
+- [x] **Step 2: Write bounded queue RED tests**
 
   With a blocked fake publisher, require two accepted records, the third rejected in
   bounded time, fixed queue-drop count and immediate release of the rejected PCM.
 
-- [ ] **Step 3: Write settlement/failure RED tests**
+- [x] **Step 3: Write settlement/failure RED tests**
 
   Cover normal drain, expiry, capacity, writer exception, publication failure,
   cancellation and a publisher that ignores shutdown. `close(5.0)` returns in bound,
   publishes no fabricated complete count and discards remaining references.
 
-- [ ] **Step 4: Run RED**
+- [x] **Step 4: Run RED**
 
   ```bash
   .venv-alpha/bin/python -m pytest -q \
     tests/voice/test_diagnostic.py -k 'tap or queue or settle or writer'
   ```
 
-- [ ] **Step 5: Implement minimal tap and single writer thread**
+- [x] **Step 5: Implement minimal tap and single writer thread**
 
   Use `queue.Queue(maxsize=2)`, one daemon writer, immutable copied bytes and one lock for
   snapshot/close state. The worker thread is the only publisher. Store only fixed failure
   codes; never store an exception string.
 
-- [ ] **Step 6: Run GREEN and full diagnostic tests**
+- [x] **Step 6: Run GREEN and full diagnostic tests**
 
   ```bash
   .venv-alpha/bin/python -m pytest -q tests/voice/test_diagnostic.py
@@ -209,7 +209,7 @@ unsafe storage shape fails before publication and no existing final is overwritt
   git diff --check
   ```
 
-- [ ] **Step 7: Commit**
+- [x] **Step 7: Commit**
 
   ```bash
   git add services/voice/diagnostic.py tests/voice/test_diagnostic.py
