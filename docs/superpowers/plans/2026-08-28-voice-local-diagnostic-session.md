@@ -23,7 +23,7 @@ descriptors and permissions, macOS launchd/Make, pytest.
 `docs/superpowers/specs/2026-08-28-voice-local-diagnostic-session-design.md`
 
 **Status:** Approved specification translated into an inline execution plan on
-2026-08-28. Implementation has not started.
+2026-08-28. Task 1 private artifact contracts are complete; Task 2 is next.
 
 ## Global Constraints
 
@@ -79,7 +79,7 @@ descriptors and permissions, macOS launchd/Make, pytest.
 - Produces `publish_diagnostic_record(session, record) -> int` where the return value is
   the complete pair byte count.
 
-- [ ] **Step 1: Write constructor and limit RED tests**
+- [x] **Step 1: Write constructor and limit RED tests**
 
   Require exact constants and reject mutable/invalid fields:
 
@@ -95,7 +95,7 @@ descriptors and permissions, macOS launchd/Make, pytest.
   A session ID must match `[0-9a-f]{32}` and record fields must use existing closed
   phase, ASR state, action, match-kind and outcome allowlists.
 
-- [ ] **Step 2: Write marker/storage RED tests**
+- [x] **Step 2: Write marker/storage RED tests**
 
   Create synthetic private trees and require `None` before any artifact read for:
 
@@ -107,7 +107,7 @@ descriptors and permissions, macOS launchd/Make, pytest.
   Require a valid marker and matching manifest to return one immutable session without
   exposing its path in `repr` or errors.
 
-- [ ] **Step 3: Write WAV/event publication RED tests**
+- [x] **Step 3: Write WAV/event publication RED tests**
 
   Use generated 16 kHz mono signed 16-bit PCM. Require:
 
@@ -123,7 +123,7 @@ descriptors and permissions, macOS launchd/Make, pytest.
   text bound, exact `0600`, parent `0700`, no-replace behavior and event publication only
   after WAV publication.
 
-- [ ] **Step 4: Run valid RED**
+- [x] **Step 4: Run valid RED**
 
   ```bash
   .venv-alpha/bin/python -m pytest -q tests/voice/test_diagnostic.py
@@ -131,7 +131,7 @@ descriptors and permissions, macOS launchd/Make, pytest.
 
   Expected: collection error because `services.voice.diagnostic` does not exist.
 
-- [ ] **Step 5: Implement minimal immutable contracts and safe publisher**
+- [x] **Step 5: Implement minimal immutable contracts and safe publisher**
 
   Use frozen slotted dataclasses, `os.open` with no-follow/exclusive flags where
   available, descriptor-based validation, same-directory temporary publication and
@@ -139,7 +139,7 @@ descriptors and permissions, macOS launchd/Make, pytest.
   unlink the owned temporary name and `fsync` the directory. Do not accept caller paths
   or limits.
 
-- [ ] **Step 6: Run GREEN and static checks**
+- [x] **Step 6: Run GREEN and static checks**
 
   ```bash
   .venv-alpha/bin/python -m pytest -q tests/voice/test_diagnostic.py
@@ -147,7 +147,7 @@ descriptors and permissions, macOS launchd/Make, pytest.
   git diff --check
   ```
 
-- [ ] **Step 7: Commit**
+- [x] **Step 7: Commit**
 
   ```bash
   git add services/voice/diagnostic.py tests/voice/test_diagnostic.py
