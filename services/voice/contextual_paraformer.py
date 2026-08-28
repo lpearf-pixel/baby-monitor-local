@@ -104,6 +104,11 @@ class ContextualParaformerProcess:
     def closed(self) -> bool:
         return self._closed
 
+    @property
+    def pid(self) -> int | None:
+        process = self._process
+        return None if process is None or process.poll() is not None else process.pid
+
     def transcribe(self, pcm: bytes) -> AsrResult:
         if (
             type(pcm) is not bytes

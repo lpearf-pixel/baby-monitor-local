@@ -94,12 +94,17 @@ no timeout or malformed response leaves a child alive.
 - Create: `tests/tools/test_voice_contextual_ab.py`
 - Modify: `Makefile`
 
-- [ ] Write RED tests proving identical sample order/PCM, candidate isolation,
+- [x] Write RED tests proving identical sample order/PCM, candidate isolation,
       transcript disposal, aggregate-only JSON, 24/48 cardinality, zero false accepts,
       per-action coverage, latency/RSS bounds and independent failures.
-- [ ] Add closed candidate IDs and `alpha-voice-contextual-ab`; do not make engine,
+- [x] Add closed candidate IDs and `alpha-voice-contextual-ab`; do not make engine,
       hotwords, corpus or thresholds caller-configurable.
-- [ ] Preserve the current benchmark behavior and exact classifier.
+- [x] Preserve the current benchmark behavior and exact classifier.
+
+Task 4 evidence: the missing-A/B-module RED was observed. The combined affected gate is
+36/36; baseline and candidate receive byte-identical samples in the same order, failures
+remain independent, output is aggregate-only, and candidate p95/RSS/false-accept gates
+cannot be configured by the caller.
 
 **Acceptance:** generated/public A/B reports both engines independently and passes only
 when all candidate gates from the spec pass.

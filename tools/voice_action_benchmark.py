@@ -24,6 +24,7 @@ POSITIVE_TOTAL = 24
 NEGATIVE_TOTAL = 48
 MAX_LATENCY_MS = 3_000
 _CANDIDATE = "current-paraformer"
+_EVALUATION_CANDIDATES = frozenset({_CANDIDATE, "contextual-paraformer-hotword"})
 _FIXTURE_ID = re.compile(r"^[a-z0-9][a-z0-9_-]{0,63}$")
 _ACTION_CODE_ORDER: tuple[ActionCode, ...] = (
     "feeding_command",
@@ -171,7 +172,9 @@ def evaluate_action_candidate(
 ) -> ActionBenchmarkReport:
     """Return aggregate action metrics and immediately discard each ASR result."""
 
-    if candidate != _CANDIDATE or not isinstance(manifest, ActionBenchmarkManifest):
+    if candidate not in _EVALUATION_CANDIDATES or not isinstance(
+        manifest, ActionBenchmarkManifest
+    ):
         raise ValueError(ACTION_BENCHMARK_INVALID)
     positive_total = sum(
         sample.expected_action_code is not None for sample in manifest.samples
