@@ -161,7 +161,7 @@ Commit: `feat: define visual corpus contracts`
 - Produces: `sha256_file(path: Path, *, max_bytes: int) -> tuple[str, int]`.
 - Produces: `CorpusDownloader.fetch(source: VisualCorpusSource) -> DownloadedSource`.
 
-- [ ] **Step 1: Write path/publication RED tests**
+- [x] **Step 1: Write path/publication RED tests**
 
 Tests cover repository/runtime parent symlinks, leaf symlink/hardlink/FIFO/socket,
 wrong uid/mode, path traversal, final replacement, partial temp, checksum mismatch and
@@ -178,7 +178,7 @@ def test_layout_rejects_runtime_parent_symlink(tmp_path: Path) -> None:
         CorpusLayout.for_repository(repo)
 ```
 
-- [ ] **Step 2: Write downloader RED tests with a fake opener**
+- [x] **Step 2: Write downloader RED tests with a fake opener**
 
 Require HTTPS, manifest-owned URL, maximum 128 MiB per source, maximum 256 MiB per
 first-stage run, bounded redirects, fixed User-Agent, timeout, streaming hash, exact
@@ -192,13 +192,13 @@ def test_download_checksum_mismatch_never_publishes(tmp_path: Path) -> None:
     assert list(layout(tmp_path).downloads.iterdir()) == []
 ```
 
-- [ ] **Step 3: Run RED**
+- [x] **Step 3: Run RED**
 
 Run: `python -m pytest -q tests/vision/test_corpus_storage.py tests/vision/test_corpus_download.py`
 
 Expected: imports fail because the storage/downloader modules do not exist.
 
-- [ ] **Step 4: Implement safe storage and downloader**
+- [x] **Step 4: Implement safe storage and downloader**
 
 Open runtime directories without following symlinks, require the current uid, use 0700
 directories and 0600 files, stream to a randomized private temp, fsync file and parent,
@@ -206,7 +206,7 @@ verify size/digest, then publish with the repository's established atomic no-rep
 pattern. Redirects remain HTTPS and are allowed only to the manifest source host or an
 explicit tracked mirror host. Error surfaces use fixed `visual_corpus_*` codes.
 
-- [ ] **Step 5: Run GREEN and commit**
+- [x] **Step 5: Run GREEN and commit**
 
 Run:
 
