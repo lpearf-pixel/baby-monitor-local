@@ -23,8 +23,8 @@ descriptors and permissions, macOS launchd/Make, pytest.
 `docs/superpowers/specs/2026-08-28-voice-local-diagnostic-session-design.md`
 
 **Status:** Approved specification translated into an inline execution plan on
-2026-08-28. Tasks 1–3 private artifacts, writer and worker integration are complete;
-Task 4 is next.
+2026-08-28. Tasks 1–4 private artifacts, writer, worker integration and fixed lifecycle
+commands are complete; Task 5 documentation/privacy governance is next.
 
 ## Global Constraints
 
@@ -310,25 +310,25 @@ inactive or broken session leaves the memory-only production path unchanged.
 - Make targets: `alpha-voice-diagnostic-start`, `alpha-voice-diagnostic-status`,
   `alpha-voice-diagnostic-stop`.
 
-- [ ] **Step 1: Write CLI RED tests**
+- [x] **Step 1: Write CLI RED tests**
 
   Require closed args, no caller paths/limits, fixed stdout, no transcript/path/session
   ID, proper exit codes and failure before marker creation when mode/private-root checks
   fail.
 
-- [ ] **Step 2: Write lifecycle ownership RED tests**
+- [x] **Step 2: Write lifecycle ownership RED tests**
 
   Require start to create a secure random session/marker, reject an existing current
   session, perform Voice-only restart through a fixed adapter and invalidate its own
   marker if readiness fails. Require stop to prove marker identity, disable admission,
   settle via Voice-only restart and retain the session directory.
 
-- [ ] **Step 3: Write Make/deploy RED tests**
+- [x] **Step 3: Write Make/deploy RED tests**
 
   Require all targets to call the tracked tool with fixed operation only. Prohibit
   go2rtc/full-Alpha commands, shell interpolation and private values.
 
-- [ ] **Step 4: Run RED**
+- [x] **Step 4: Run RED**
 
   ```bash
   .venv-alpha/bin/python -m pytest -q \
@@ -337,13 +337,13 @@ inactive or broken session leaves the memory-only production path unchanged.
     tests/deploy/test_voice_worker_deploy.py
   ```
 
-- [ ] **Step 5: Implement the minimal CLI and Make entries**
+- [x] **Step 5: Implement the minimal CLI and Make entries**
 
   Use existing bounded subprocess/service patterns. `status` reads metadata and file
   counts without opening WAV payloads or transcript event contents. All output uses fixed
   codes and integers.
 
-- [ ] **Step 6: Run GREEN and command static gates**
+- [x] **Step 6: Run GREEN and command static gates**
 
   ```bash
   .venv-alpha/bin/python -m pytest -q \
@@ -357,7 +357,7 @@ inactive or broken session leaves the memory-only production path unchanged.
   git diff --check
   ```
 
-- [ ] **Step 7: Commit**
+- [x] **Step 7: Commit**
 
   ```bash
   git add Makefile tools/voice_diagnostic.py tests/tools/test_voice_diagnostic.py \

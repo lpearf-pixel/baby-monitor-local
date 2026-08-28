@@ -4,7 +4,7 @@ PYTHON311 ?= /usr/local/bin/python3.11
 BASH ?= /bin/bash
 .DEFAULT_GOAL := help
 
-.PHONY: help alpha-update alpha-install alpha-start alpha-stop alpha-restart alpha-go2rtc-restart alpha-status alpha-guardian-start alpha-guardian-test alpha-guardian-test-live alpha-guardian-scene-test alpha-audio-status alpha-audio-test alpha-remote-preflight alpha-remote-status alpha-remote-configure alpha-remote-test alpha-voice-status alpha-voice-test alpha-voice-start alpha-voice-stop alpha-voice-listen-start alpha-voice-listen-status alpha-voice-listen-stop alpha-voice-camera-test alpha-voice-camera-status alpha-voice-camera-probe alpha-voice-preflight alpha-voice-v0-test alpha-voice-v0-probe alpha-voice-v0-stability alpha-voice-keychain-helper-build alpha-voice-keychain-migrate alpha-voice-keychain-check alpha-voice-converter-install alpha-voice-speaker-install alpha-voice-speaker-check alpha-voice-asr-install alpha-voice-ecapa-source alpha-voice-ecapa-install alpha-voice-ecapa-probe alpha-voice-paraformer-install alpha-voice-enroll-dad alpha-voice-enroll-mom alpha-voice-asr-capture alpha-voice-asr-capture-fixed alpha-voice-asr-capture-fixed-all alpha-voice-asr-capture-all alpha-voice-asr-evaluate alpha-voice-asr-bakeoff alpha-voice-asr-paraformer alpha-voice-asr-recover alpha-voice-vad-diagnostic alpha-voice-models-install alpha-voice-model-benchmark alpha-visual-status alpha-visual-performance alpha-visual-diagnostic alpha-visual-launchd-update alpha-logs alpha-quality-hd alpha-quality-info alpha-quality-rollback alpha-source-check alpha-subtype-probe alpha-subtype-apply alpha-go2rtc-info alpha-go2rtc-rebuild alpha-go2rtc-rollback alpha-go2rtc-protocol-test alpha-xiaomi-media-preflight alpha-xiaomi-media-diagnostic alpha-realtime-models-check alpha-realtime-models-install alpha-ws2021-collect-calibrated alpha-ws2021-collect-model alpha-ws2021-model-train-bootstrap alpha-ws2021-model-train alpha-ws2021-model-export alpha-ws2021-model-check
+.PHONY: help alpha-update alpha-install alpha-start alpha-stop alpha-restart alpha-go2rtc-restart alpha-status alpha-guardian-start alpha-guardian-test alpha-guardian-test-live alpha-guardian-scene-test alpha-audio-status alpha-audio-test alpha-remote-preflight alpha-remote-status alpha-remote-configure alpha-remote-test alpha-voice-status alpha-voice-test alpha-voice-start alpha-voice-stop alpha-voice-listen-start alpha-voice-listen-status alpha-voice-listen-stop alpha-voice-diagnostic-start alpha-voice-diagnostic-status alpha-voice-diagnostic-stop alpha-voice-camera-test alpha-voice-camera-status alpha-voice-camera-probe alpha-voice-preflight alpha-voice-v0-test alpha-voice-v0-probe alpha-voice-v0-stability alpha-voice-keychain-helper-build alpha-voice-keychain-migrate alpha-voice-keychain-check alpha-voice-converter-install alpha-voice-speaker-install alpha-voice-speaker-check alpha-voice-asr-install alpha-voice-ecapa-source alpha-voice-ecapa-install alpha-voice-ecapa-probe alpha-voice-paraformer-install alpha-voice-enroll-dad alpha-voice-enroll-mom alpha-voice-asr-capture alpha-voice-asr-capture-fixed alpha-voice-asr-capture-fixed-all alpha-voice-asr-capture-all alpha-voice-asr-evaluate alpha-voice-asr-bakeoff alpha-voice-asr-paraformer alpha-voice-asr-recover alpha-voice-vad-diagnostic alpha-voice-models-install alpha-voice-model-benchmark alpha-visual-status alpha-visual-performance alpha-visual-diagnostic alpha-visual-launchd-update alpha-logs alpha-quality-hd alpha-quality-info alpha-quality-rollback alpha-source-check alpha-subtype-probe alpha-subtype-apply alpha-go2rtc-info alpha-go2rtc-rebuild alpha-go2rtc-rollback alpha-go2rtc-protocol-test alpha-xiaomi-media-preflight alpha-xiaomi-media-diagnostic alpha-realtime-models-check alpha-realtime-models-install alpha-ws2021-collect-calibrated alpha-ws2021-collect-model alpha-ws2021-model-train-bootstrap alpha-ws2021-model-train alpha-ws2021-model-export alpha-ws2021-model-check
 
 help:
 	@echo "Baby Monitor Local Alpha commands:"
@@ -32,6 +32,9 @@ help:
 	@echo "  make alpha-voice-listen-start Start the continuous listen-only Voice worker"
 	@echo "  make alpha-voice-listen-status Show listen-only Voice worker status"
 	@echo "  make alpha-voice-listen-stop Stop the continuous listen-only Voice worker"
+	@echo "  make alpha-voice-diagnostic-start Start a bounded private diagnostic session"
+	@echo "  make alpha-voice-diagnostic-status Show private diagnostic aggregate status"
+	@echo "  make alpha-voice-diagnostic-stop Stop diagnostics and retain private artifacts"
 	@echo "  make alpha-voice-camera-test Run side-effect-free camera reply software tests"
 	@echo "  make alpha-voice-camera-status Show bounded camera reply acceptance status"
 	@echo "  make alpha-voice-camera-probe Run the supervised generated camera tone gate"
@@ -190,7 +193,7 @@ alpha-voice-status:
 	@$(PYTHON) tools/voice_status.py runtime/status/voice.json
 
 alpha-voice-test:
-	@$(PYTHON) -m pytest -q tests/voice tests/contracts/test_voice_care.py tests/contracts/test_voice_settings.py tests/tools/test_voice_status.py tests/deploy/test_voice_worker_deploy.py tests/deploy/test_voice_listen_lifecycle.py
+	@$(PYTHON) -m pytest -q tests/voice tests/contracts/test_voice_care.py tests/contracts/test_voice_settings.py tests/tools/test_voice_diagnostic.py tests/tools/test_voice_status.py tests/deploy/test_voice_worker_deploy.py tests/deploy/test_voice_listen_lifecycle.py
 
 alpha-voice-start:
 	@$(BASH) tools/start_alpha.sh --voice-only
@@ -206,6 +209,15 @@ alpha-voice-listen-status:
 
 alpha-voice-listen-stop:
 	@$(BASH) tools/voice_listen_lifecycle.sh stop
+
+alpha-voice-diagnostic-start:
+	@$(PYTHON) tools/voice_diagnostic.py start
+
+alpha-voice-diagnostic-status:
+	@$(PYTHON) tools/voice_diagnostic.py status
+
+alpha-voice-diagnostic-stop:
+	@$(PYTHON) tools/voice_diagnostic.py stop
 
 alpha-voice-camera-test:
 	@$(PYTHON) -m pytest -q tests/voice/test_camera_reply.py tests/tools/test_voice_camera_reply.py

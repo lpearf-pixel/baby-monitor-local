@@ -333,6 +333,25 @@ def load_active_session(
     try:
         if not _finite_number(now_epoch):
             return None
+        session = load_marker_session(project_root)
+        if session is None or not (
+            session.created_epoch <= now_epoch < session.expires_epoch
+        ):
+            return None
+        if (
+            session.complete_count >= DIAGNOSTIC_MAX_UTTERANCES
+            or session.complete_bytes >= DIAGNOSTIC_MAX_BYTES
+        ):
+            return None
+        return session
+    except (OSError, ValueError, TypeError, json.JSONDecodeError):
+        return None
+
+
+def load_marker_session(project_root: Path) -> DiagnosticSession | None:
+    """Load a coherent retained marker session regardless of its clock state."""
+
+    try:
         root = Path(project_root).resolve(strict=True)
         diagnostics = root / "runtime" / "private" / "voice-diagnostics"
         sessions = diagnostics / "sessions"
@@ -341,8 +360,6 @@ def load_active_session(
             _require_private_directory(directory)
         marker = _read_private_json(diagnostics / "active.json")
         session_id, created, expires = _validate_session_payload(marker)
-        if not created <= now_epoch < expires:
-            return None
         session_root = sessions / session_id
         audio_root = session_root / "audio"
         events_root = session_root / "events"
@@ -354,11 +371,6 @@ def load_active_session(
         complete_count, complete_bytes, next_sequence = _artifact_usage(
             audio_root, events_root
         )
-        if (
-            complete_count >= DIAGNOSTIC_MAX_UTTERANCES
-            or complete_bytes >= DIAGNOSTIC_MAX_BYTES
-        ):
-            return None
         return DiagnosticSession(
             session_id=session_id,
             created_epoch=created,
@@ -423,6 +435,36 @@ def publish_diagnostic_record(
         finally:
             _unlink_owned(wav_temp)
     except (OSError, ValueError, TypeError, wave.Error):
+        raise ValueError(VOICE_DIAGNOSTIC_UNAVAILABLE) from None
+
+
+def snapshot_session_artifacts(session: DiagnosticSession) -> DiagnosticSnapshot:
+    """Return bounded artifact counts without opening audio or event payloads."""
+
+    try:
+        if type(session) is not DiagnosticSession:
+            raise ValueError
+        audio_root = session._session_root / "audio"
+        events_root = session._session_root / "events"
+        for directory in (session._session_root, audio_root, events_root):
+            _require_private_directory(directory)
+        audio = _private_artifacts(audio_root, ".wav")
+        events = _private_artifacts(events_root, ".json")
+        complete = set(audio) & set(events)
+        incomplete = set(audio) ^ set(events)
+        complete_bytes = sum(audio[number] + events[number] for number in complete)
+        if (
+            len(complete) > DIAGNOSTIC_MAX_UTTERANCES
+            or len(incomplete) > DIAGNOSTIC_MAX_UTTERANCES
+            or complete_bytes > DIAGNOSTIC_MAX_BYTES
+        ):
+            raise ValueError
+        return DiagnosticSnapshot(
+            complete_count=len(complete),
+            complete_bytes=complete_bytes,
+            incomplete_count=len(incomplete),
+        )
+    except (OSError, ValueError, TypeError):
         raise ValueError(VOICE_DIAGNOSTIC_UNAVAILABLE) from None
 
 
@@ -641,5 +683,7 @@ __all__ = [
     "DiagnosticSnapshot",
     "VoiceDiagnosticWriter",
     "load_active_session",
+    "load_marker_session",
     "publish_diagnostic_record",
+    "snapshot_session_artifacts",
 ]

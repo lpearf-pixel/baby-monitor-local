@@ -53,19 +53,22 @@ def test_status_cli_prints_fixed_transition_counts_without_text(
                     "ignored_far": 3,
                     "ignored_near_reply_echo": 4,
                     "ignored_near_start": 5,
-                    "listen_only_action_rejected": 6,
-                    "listen_only_burping_exact": 7,
-                    "listen_only_diaper_exact": 8,
-                    "listen_only_feeding_corrected": 9,
-                    "listen_only_feeding_exact": 10,
-                    "listen_only_medication_candidate": 11,
-                    "output_failures": 12,
-                    "replay_frames": 13,
-                    "replay_ignored": 14,
-                    "replay_utterances": 15,
-                    "reply_echo_ignored": 16,
-                    "utterances": 17,
-                    "vad_speech_frames": 18,
+                    "voice_diagnostic_drops": 6,
+                    "voice_diagnostic_failures": 7,
+                    "voice_diagnostic_records": 8,
+                    "listen_only_action_rejected": 9,
+                    "listen_only_burping_exact": 10,
+                    "listen_only_diaper_exact": 11,
+                    "listen_only_feeding_corrected": 12,
+                    "listen_only_feeding_exact": 13,
+                    "listen_only_medication_candidate": 14,
+                    "output_failures": 15,
+                    "replay_frames": 16,
+                    "replay_ignored": 17,
+                    "replay_utterances": 18,
+                    "reply_echo_ignored": 19,
+                    "utterances": 20,
+                    "vad_speech_frames": 21,
                 },
             }
         ),
@@ -76,12 +79,13 @@ def test_status_cli_prints_fixed_transition_counts_without_text(
     assert capsys.readouterr().out.endswith(
         "transition_counts=armed_timeouts:1,ignored_followups:2,"
         "ignored_far:3,ignored_near_reply_echo:4,ignored_near_start:5,"
-        "listen_only_action_rejected:6,listen_only_burping_exact:7,"
-        "listen_only_diaper_exact:8,listen_only_feeding_corrected:9,"
-        "listen_only_feeding_exact:10,listen_only_medication_candidate:11,"
-        "output_failures:12,replay_frames:13,replay_ignored:14,"
-        "replay_utterances:15,reply_echo_ignored:16,utterances:17,"
-        "vad_speech_frames:18\n"
+        "voice_diagnostic_drops:6,voice_diagnostic_failures:7,"
+        "voice_diagnostic_records:8,listen_only_action_rejected:9,"
+        "listen_only_burping_exact:10,listen_only_diaper_exact:11,"
+        "listen_only_feeding_corrected:12,listen_only_feeding_exact:13,"
+        "listen_only_medication_candidate:14,output_failures:15,"
+        "replay_frames:16,replay_ignored:17,replay_utterances:18,"
+        "reply_echo_ignored:19,utterances:20,vad_speech_frames:21\n"
     )
 
 

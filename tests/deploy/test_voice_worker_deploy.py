@@ -142,6 +142,7 @@ def test_voice_make_targets_are_bounded_and_separate() -> None:
         outputs[target] = completed.stdout
     assert "tools/voice_status.py" in outputs["alpha-voice-status"]
     assert "tests/voice" in outputs["alpha-voice-test"]
+    assert "tests/tools/test_voice_diagnostic.py" in outputs["alpha-voice-test"]
     assert "--voice-only" in outputs["alpha-voice-start"]
     assert "--voice-only" in outputs["alpha-voice-stop"]
     assert "tools.voice_asr_capture_macos preflight" in outputs["alpha-voice-preflight"]
@@ -150,6 +151,25 @@ def test_voice_make_targets_are_bounded_and_separate() -> None:
         assert "go2rtc" not in outputs[target]
     for sibling in ("alpha-restart", "go2rtc", "visual", "gauge", "watchdog", "audio"):
         assert sibling not in outputs["alpha-voice-preflight"].lower()
+
+
+def test_voice_diagnostic_make_targets_use_only_fixed_tool_operations() -> None:
+    for operation in ("start", "status", "stop"):
+        target = f"alpha-voice-diagnostic-{operation}"
+        completed = subprocess.run(
+            ["make", "-n", target],
+            cwd=ROOT,
+            capture_output=True,
+            text=True,
+            check=False,
+        )
+        assert completed.returncode == 0
+        assert completed.stdout.strip() == (
+            f"./.venv-alpha/bin/python tools/voice_diagnostic.py {operation}"
+        )
+        lowered = completed.stdout.lower()
+        for forbidden in ("go2rtc", "alpha-restart", "camera_reply", "transcript"):
+            assert forbidden not in lowered
 
 
 def test_listen_only_make_targets_use_one_bounded_voice_lifecycle_script() -> None:
