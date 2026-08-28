@@ -590,9 +590,19 @@ legacy branch into this line without a separate integration decision.
   disabled. Fresh software evidence is Voice 267/267 and full Python 1,319/1,319.
 - Remote private viewing, fixed Xiaomi camera-speaker replies and the 72-hour release
   gate remain unfinished.
+- Private Voice diagnostic software Task 6 is complete at `fb7b17b`. The supervised
+  diagnostic can retain bounded `0600` WAV/text artifacts only under the ignored
+  `0700` private session; ordinary listening remains memory-only. Fresh gates are
+  focused 194/194, Voice 587/587 and full Python 1892/1892, with independent review
+  clean of Critical/Important findings. No household capture or camera playback was
+  run. Task 7 supervised local diagnostic is the exact next slice.
 - This system does not detect breathing, heart rate, suffocation or medical emergencies.
 
 ## Next Priorities
+
+Immediate approved next slice: run Voice diagnostic Task 7 only while an adult is
+present, after fixed preflight/status checks; explicitly stop the session afterward.
+Do not enable Camera Reply or inspect/paste private transcript content during that gate.
 
 1. Full-care Voice ASR/VAD passes 6/6. The local enrollment boundary now opens and
    warms the Xiaomi source, drains it throughout the 15-second countdown, and then

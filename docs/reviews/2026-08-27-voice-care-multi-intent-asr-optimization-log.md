@@ -400,3 +400,26 @@ Feeding、尿布和拍嗝，Camera Reply保持 false。medication complete在gen
 - evidence does not prove：家庭声学、成人/儿童实机召回、夜间/远场、Camera Reply或护理写入
 - decision：keep低风险实现；defer medication complete；Task 8等待成人单独批准
 - next single action：成人返回后只运行Task 8低风险监督门；药物先做独立高风险设计
+
+### R8 — 私有 Voice 诊断软件门
+
+- 日期：2026-08-28
+- branch / exact HEAD：`codex/xiaomi-camera-reply-lifecycle-review` / `fb7b17bd7ccae49f3d1ca50104045d49f329925e`
+- dirty/unrelated state：业务提交后tracked worktree clean；随后仅本计划与本日志待文档检查点提交
+- authority：software-only；未授权本轮录音、摄像头播放、push、merge或家庭内容读取
+- hypothesis：H4；诊断旁路可在不改变识别结果和Camera Reply状态的条件下安全保留聚合证据
+- files changed：7个批准的Voice诊断业务/测试文件；无go2rtc、小米协议、Baby Care或模型改动
+- RED command/result：最终review wave明确观察15个边界回归失败，覆盖writer settlement、取消、父目录/临时文件竞态、rollback、FD所有权、lifecycle残留和重复pending容量
+- GREEN command/result：最终affected review set 88/88；独立复审0 Critical、0 Important
+- focused/full command/result：诊断focused 194/194、Voice 587/587、完整Python 1892/1892
+- corpus：仅source-controlled synthetic metadata与生成PCM；未访问家庭音频或私有diagnostic内容
+- positives/accepted/rejected：NOT_RUN（本轮是存储、生命周期和隐私软件门，不是识别准确率门）
+- negatives/false accepts：NOT_RUN（未进行家庭或generated ASR benchmark）
+- latency p50/p95/RSS：NOT_RUN（本轮不建立识别性能结论）
+- privacy scan：PASS；compileall、Make dry-run、diff-check、tracked-scope与敏感模式扫描通过；唯一模式命中为代码变量`token_bytes`，不是凭据
+- Camera Reply flag/lifecycle：未读取或修改运行时flag；未启用、播放、重启go2rtc或接触实机
+- Baby Care write/outbox/signing：not constructed / not called / unchanged
+- evidence proves：严格私有残留不会被误删、不会冒充complete、会占用序号，且status/stop/expired-start生命周期可恢复；未知或重复残留fail closed
+- evidence does not prove：家庭语音采集、真实转写质量、持续监听稳定性、摄像头扬声器可听性或护理记录写入
+- decision：keep Task 6软件实现；defer supervised local diagnostic to Task 7
+- next single action：成人在场时执行一次Task 7监督本地诊断；先检查模式和状态，再短时采集，完成后显式stop

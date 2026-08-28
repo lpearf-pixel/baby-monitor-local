@@ -23,8 +23,10 @@ descriptors and permissions, macOS launchd/Make, pytest.
 `docs/superpowers/specs/2026-08-28-voice-local-diagnostic-session-design.md`
 
 **Status:** Approved specification translated into an inline execution plan on
-2026-08-28. Tasks 1–5 private artifacts, writer, worker integration, fixed lifecycle
-commands and privacy governance are complete; Task 6 full software/review gate is next.
+2026-08-28. Tasks 1–6 private artifacts, writer, worker integration, fixed lifecycle,
+privacy governance and the full software/review gate are complete at business head
+`fb7b17bd7ccae49f3d1ca50104045d49f329925e`; Task 7 supervised local diagnostic is
+next and has not started.
 
 ## Global Constraints
 
@@ -136,9 +138,11 @@ commands and privacy governance are complete; Task 6 full software/review gate i
 
   Use frozen slotted dataclasses, `os.open` with no-follow/exclusive flags where
   available, descriptor-based validation, same-directory temporary publication and
-  `fsync`. Publish a final with `os.link(temp, final)` so an existing name fails, then
-  unlink the owned temporary name and `fsync` the directory. Do not accept caller paths
-  or limits.
+  `fsync`. Publish a final with native no-replace rename so an existing name fails.
+  After any ambiguous failure, retain the strict `0600` uncommitted temporary or
+  quarantine under the `0700` private session instead of using a racy name-based
+  unlink; report it as incomplete, consume its sequence and `fsync` the directory.
+  Do not accept caller paths or limits.
 
 - [x] **Step 6: Run GREEN and static checks**
 
@@ -435,7 +439,7 @@ ordinary production logging or continuous recording.
 **Files:**
 - Modify: this plan and the existing multi-intent review log with aggregate evidence.
 
-- [ ] **Step 1: Run diagnostic focused tests**
+- [x] **Step 1: Run diagnostic focused tests**
 
   ```bash
   .venv-alpha/bin/python -m pytest -q \
@@ -450,7 +454,7 @@ ordinary production logging or continuous recording.
     tests/deploy/test_voice_worker_deploy.py
   ```
 
-- [ ] **Step 2: Run authoritative gates**
+- [x] **Step 2: Run authoritative gates**
 
   ```bash
   make alpha-voice-test
@@ -459,13 +463,13 @@ ordinary production logging or continuous recording.
   git diff --check
   ```
 
-- [ ] **Step 3: Review final tracked scope**
+- [x] **Step 3: Review final tracked scope**
 
   Confirm no go2rtc/Xiaomi patch, Camera Reply enablement, Baby Care, signing, outbox,
   model, threshold or unrelated worker change. Confirm no real runtime artifact is
   tracked and no normal log/status output contains transcript/PCM/path.
 
-- [ ] **Step 4: Record actual counts and commit**
+- [x] **Step 4: Record actual counts and commit**
 
   Append only aggregate RED/GREEN counts, exact business head, privacy result and
   unverified device scope. Never paste diagnostic content.
@@ -478,6 +482,14 @@ ordinary production logging or continuous recording.
 
 **Acceptance:** focused, Voice, full repository, compile, diff and privacy gates pass;
 software evidence does not claim household diagnostic success.
+
+**Fresh Task 6 evidence (2026-08-28):** business head
+`fb7b17bd7ccae49f3d1ca50104045d49f329925e`; diagnostic focused
+194/194, Voice 587/587, full repository 1892/1892, affected review set 88/88;
+compileall, Make dry-runs, diff-check, tracked-scope and privacy scans passed. Independent
+review found 0 Critical and 0 Important after the final lifecycle probes. No microphone,
+camera playback, private runtime content, Baby Care write or Camera Reply enablement was
+used by this software gate.
 
 ---
 
