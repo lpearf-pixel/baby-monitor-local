@@ -48,6 +48,7 @@ def main(argv: list[str] | None = None) -> int:
     args = argv if argv is not None else sys.argv[1:]
     required_mode: str | None = None
     not_before_epoch_us: int | None = None
+    required_worker_pid: int | None = None
     if not args:
         path = Path("runtime/status/voice.json")
     elif len(args) == 1:
@@ -58,16 +59,42 @@ def main(argv: list[str] | None = None) -> int:
     elif (
         len(args) == 5
         and args[1] == "--require-mode"
-        and args[3] == "--not-before-epoch-us"
+        and args[3] in {"--not-before-epoch-us", "--require-worker-pid"}
     ):
         path = Path(args[0])
         required_mode = args[2]
         try:
-            not_before_epoch_us = int(args[4])
+            value = int(args[4])
         except ValueError:
             print("voice_status=unavailable")
             return 2
-        if not 0 <= not_before_epoch_us <= 4_102_444_800_000_000:
+        if args[3] == "--not-before-epoch-us":
+            not_before_epoch_us = value
+            valid = 0 <= value <= 4_102_444_800_000_000
+        else:
+            required_worker_pid = value
+            valid = 2 <= value <= 2_147_483_647
+        if not valid:
+            print("voice_status=unavailable")
+            return 2
+    elif (
+        len(args) == 7
+        and args[1] == "--require-mode"
+        and args[3] == "--require-worker-pid"
+        and args[5] == "--not-before-epoch-us"
+    ):
+        path = Path(args[0])
+        required_mode = args[2]
+        try:
+            required_worker_pid = int(args[4])
+            not_before_epoch_us = int(args[6])
+        except ValueError:
+            print("voice_status=unavailable")
+            return 2
+        if (
+            not 2 <= required_worker_pid <= 2_147_483_647
+            or not 0 <= not_before_epoch_us <= 4_102_444_800_000_000
+        ):
             print("voice_status=unavailable")
             return 2
     else:
@@ -84,7 +111,13 @@ def main(argv: list[str] | None = None) -> int:
             "processed_count",
             "last_latency_ms",
         }
-        if set(payload) not in (base_keys, base_keys | {"transition_counts"}):
+        allowed_key_sets = {
+            frozenset(base_keys),
+            frozenset(base_keys | {"transition_counts"}),
+            frozenset(base_keys | {"worker_pid"}),
+            frozenset(base_keys | {"transition_counts", "worker_pid"}),
+        }
+        if frozenset(payload) not in allowed_key_sets:
             raise ValueError
         state = payload["worker_state"]
         mode = payload["mode"]
@@ -92,6 +125,7 @@ def main(argv: list[str] | None = None) -> int:
         count = payload["processed_count"]
         latency = payload["last_latency_ms"]
         checked_at = payload["checked_at"]
+        worker_pid = payload.get("worker_pid")
         transition_counts = payload.get("transition_counts")
         if not_before_epoch_us is not None:
             if type(checked_at) is not str:
@@ -106,6 +140,17 @@ def main(argv: list[str] | None = None) -> int:
             or (required_mode is not None and mode != required_mode)
             or state not in {"disabled", "healthy", "degraded"}
             or reason not in _REASONS
+            or (
+                worker_pid is not None
+                and (
+                    type(worker_pid) is not int
+                    or not 2 <= worker_pid <= 2_147_483_647
+                )
+            )
+            or (
+                required_worker_pid is not None
+                and (worker_pid != required_worker_pid or state != "healthy")
+            )
             or type(count) is not int
             or not 0 <= count <= 9_007_199_254_740_991
             or (

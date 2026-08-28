@@ -115,8 +115,11 @@ def main(
         return 2
 
     stop_event = threading.Event()
+    restart_requested = threading.Event()
 
-    def stop(_signum: int, _frame: object) -> None:
+    def stop(signum: int, _frame: object) -> None:
+        if signum == signal.SIGTERM:
+            restart_requested.set()
         stop_event.set()
 
     signal.signal(signal.SIGTERM, stop)
@@ -125,7 +128,7 @@ def main(
         worker.run(stop_event)
     except Exception:
         return 2
-    return 0
+    return 75 if restart_requested.is_set() else 0
 
 
 def _load_voice_models(root: Path, supplied: Path | None) -> VoiceCareSettings:

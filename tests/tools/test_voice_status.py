@@ -134,6 +134,82 @@ def test_status_cli_can_require_listen_only_mode(tmp_path: Path, capsys) -> None
     assert "mode=listen_only" in capsys.readouterr().out
 
 
+def test_status_cli_can_require_matching_worker_pid_without_printing_it(
+    tmp_path: Path, capsys
+) -> None:
+    path = tmp_path / "voice.json"
+    payload = {
+        "schema_version": 2,
+        "checked_at": "2026-08-25T00:00:00+00:00",
+        "mode": "listen_only",
+        "worker_state": "healthy",
+        "reason": "listen_only_idle",
+        "processed_count": 0,
+        "last_latency_ms": None,
+        "worker_pid": 41002,
+    }
+    path.write_text(json.dumps(payload), encoding="ascii")
+
+    arguments = [
+        str(path),
+        "--require-mode",
+        "listen_only",
+        "--require-worker-pid",
+        "41002",
+    ]
+    assert main(arguments) == 0
+    output = capsys.readouterr().out
+    assert "worker_pid" not in output
+    assert "41002" not in output
+
+    arguments[-1] = "41003"
+    assert main(arguments) == 2
+    assert capsys.readouterr().out == "voice_status=unavailable\n"
+
+
+def test_status_cli_can_require_worker_pid_and_restart_epoch_together(
+    tmp_path: Path, capsys
+) -> None:
+    path = tmp_path / "voice.json"
+    payload = {
+        "schema_version": 2,
+        "checked_at": "2026-08-25T00:00:01.500001+00:00",
+        "mode": "listen_only",
+        "worker_state": "healthy",
+        "reason": "listen_only_idle",
+        "processed_count": 0,
+        "last_latency_ms": None,
+        "worker_pid": 41002,
+    }
+    path.write_text(json.dumps(payload), encoding="ascii")
+    not_before = str(
+        int(datetime(2026, 8, 25, 0, 0, 1, 500_000, tzinfo=UTC).timestamp() * 1_000_000)
+    )
+    arguments = [
+        str(path),
+        "--require-mode",
+        "listen_only",
+        "--require-worker-pid",
+        "41002",
+        "--not-before-epoch-us",
+        not_before,
+    ]
+
+    assert main(arguments) == 0
+    capsys.readouterr()
+
+    payload["checked_at"] = "2026-08-25T00:00:01.499999+00:00"
+    path.write_text(json.dumps(payload), encoding="ascii")
+    assert main(arguments) == 2
+    assert capsys.readouterr().out == "voice_status=unavailable\n"
+
+    payload["checked_at"] = "2026-08-25T00:00:01.500001+00:00"
+    payload["worker_state"] = "disabled"
+    path.write_text(json.dumps(payload), encoding="ascii")
+    assert main(arguments) == 2
+    assert capsys.readouterr().out == "voice_status=unavailable\n"
+
+
 def test_status_cli_rejects_readiness_written_before_this_start(
     tmp_path: Path, capsys,
 ) -> None:

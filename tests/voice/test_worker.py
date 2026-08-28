@@ -104,7 +104,9 @@ def worker(tmp_path: Path, *, processor_result=saved_response(), synth_result=Tr
     collector = Collector(UtteranceResult(b"u" * 32_000, "terminal_silence"))
     processor = Processor(processor_result)
     synth = Synth(synth_result)
-    status = VoiceStatusWriter(tmp_path / "voice.json", clock=lambda: observed)
+    status = VoiceStatusWriter(
+        tmp_path / "voice.json", clock=lambda: observed, pid_factory=lambda: 41002
+    )
     instance = VoiceWorker(
         decoder=decoder,
         vad=Vad(VadResult(True, 0.9)),
@@ -133,6 +135,7 @@ def test_worker_processes_one_memory_only_utterance_and_writes_bounded_status(tm
         "processed_count": 1,
         "reason": "saved",
         "schema_version": 2,
+        "worker_pid": 41002,
         "worker_state": "healthy",
     }
     serialized = status_path.read_bytes().lower()
@@ -276,6 +279,7 @@ def test_status_writer_rejects_unlisted_reason_instead_of_echoing_it(tmp_path: P
     writer = VoiceStatusWriter(
         tmp_path / "voice.json",
         clock=lambda: datetime(2026, 8, 24, 1, tzinfo=UTC),
+        pid_factory=lambda: 41002,
     )
     with pytest.raises(ValueError, match="^voice_worker_unavailable$"):
         writer.write(
@@ -292,6 +296,7 @@ def test_status_writer_emits_closed_schema_v2_listen_only_status(tmp_path: Path)
     writer = VoiceStatusWriter(
         tmp_path / "voice.json",
         clock=lambda: datetime(2026, 8, 24, 1, tzinfo=UTC),
+        pid_factory=lambda: 41002,
     )
 
     writer.write(
@@ -309,6 +314,7 @@ def test_status_writer_emits_closed_schema_v2_listen_only_status(tmp_path: Path)
         "processed_count": 3,
         "reason": "listen_only_idle",
         "schema_version": 2,
+        "worker_pid": 41002,
         "worker_state": "healthy",
     }
 

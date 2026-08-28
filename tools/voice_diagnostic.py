@@ -8,6 +8,8 @@ import math
 import os
 import platform
 import secrets
+import shlex
+import signal
 import stat
 import subprocess
 import sys
@@ -34,6 +36,9 @@ _PRIVATE_RELATIVE = Path("runtime/private/voice-diagnostics")
 _MAX_SETTINGS_BYTES = 65_536
 _MAX_STATUS_BYTES = 65_536
 _SESSION_ID_BYTES = 16
+_VOICE_LABEL = "com.babymonitor.voice"
+_VOICE_JOB_BYTES = 65_536
+_VOICE_RESTART_SECONDS = 45.0
 
 
 class RestartService(Protocol):
@@ -79,7 +84,9 @@ class VoiceService:
                     cwd=self._project_root,
                     stdin=subprocess.DEVNULL,
                     stdout=subprocess.DEVNULL,
-                    stderr=subprocess.DEVNULL,
+                    stderr=(
+                        subprocess.PIPE if index == 0 else subprocess.DEVNULL
+                    ),
                     check=False,
                     timeout=timeout,
                     env=environment,
@@ -89,10 +96,171 @@ class VoiceService:
                     self._stop_after_failed_start(environment)
                 return False
             if completed.returncode != 0:
+                if (
+                    index == 0
+                    and _permission_denied(completed.stderr)
+                    and self._restart_loaded_voice(environment)
+                ):
+                    return True
                 if index == 1:
                     self._stop_after_failed_start(environment)
                 return False
         return True
+
+    def _restart_loaded_voice(self, environment: dict[str, str]) -> bool:
+        if platform.system() != "Darwin":
+            return False
+        before = self._voice_job_pid(environment)
+        if before is None:
+            return False
+        not_before_epoch_us = time.time_ns() // 1_000
+        try:
+            os.kill(before, signal.SIGTERM)
+        except OSError:
+            return False
+        deadline = time.monotonic() + _VOICE_RESTART_SECONDS
+        while time.monotonic() < deadline:
+            after = self._voice_job_pid(environment)
+            if after is not None and after != before:
+                if self._voice_status_matches_worker(
+                    environment, after, not_before_epoch_us
+                ):
+                    return True
+            time.sleep(0.25)
+        return False
+
+    def _voice_job_pid(self, environment: dict[str, str]) -> int | None:
+        root = self._project_root.resolve(strict=True)
+        python = root / ".venv-alpha/bin/python"
+        worker = root / "tools/run_voice_worker.py"
+        settings = root / "runtime/settings.yaml"
+        models = root / "runtime/config/voice-care-models.json"
+        expected_command = (
+            str(python),
+            str(worker),
+            "--settings",
+            str(settings),
+            "--voice-models",
+            str(models),
+        )
+        if any("\n" in value or "\r" in value for value in expected_command):
+            return None
+        target = f"gui/{os.getuid()}/{_VOICE_LABEL}"
+        try:
+            completed = subprocess.run(
+                ("/bin/launchctl", "print", target),
+                cwd=root,
+                stdin=subprocess.DEVNULL,
+                stdout=subprocess.PIPE,
+                stderr=subprocess.DEVNULL,
+                check=False,
+                timeout=2.0,
+                env=environment,
+            )
+        except (OSError, subprocess.TimeoutExpired):
+            return None
+        payload = completed.stdout
+        if (
+            completed.returncode != 0
+            or type(payload) is not bytes
+            or not 0 < len(payload) <= _VOICE_JOB_BYTES
+        ):
+            return None
+        try:
+            text = payload.decode("utf-8")
+        except UnicodeError:
+            return None
+        required_lines = (
+            f"{target} = {{",
+            "\ttype = LaunchAgent",
+            "\tstate = running",
+            f"\tprogram = {python}",
+            f"\tworking directory = {root}",
+            f"\t\t{python}",
+            f"\t\t{worker}",
+            "\t\t--settings",
+            f"\t\t{settings}",
+            "\t\t--voice-models",
+            f"\t\t{models}",
+        )
+        lines = text.splitlines()
+        if any(lines.count(line) != 1 for line in required_lines):
+            return None
+        pid_lines = [line for line in lines if line.startswith("\tpid = ")]
+        if len(pid_lines) != 1 or not pid_lines[0][len("\tpid = ") :].isdigit():
+            return None
+        pid = int(pid_lines[0][len("\tpid = ") :])
+        if pid <= 1:
+            return None
+        try:
+            process = subprocess.run(
+                (
+                    "/bin/ps",
+                    "-ww",
+                    "-p",
+                    str(pid),
+                    "-o",
+                    "uid=",
+                    "-o",
+                    "command=",
+                ),
+                cwd=root,
+                stdin=subprocess.DEVNULL,
+                stdout=subprocess.PIPE,
+                stderr=subprocess.DEVNULL,
+                check=False,
+                timeout=2.0,
+                env=environment,
+            )
+        except (OSError, subprocess.TimeoutExpired):
+            return None
+        output = process.stdout
+        if (
+            process.returncode != 0
+            or type(output) is not bytes
+            or not 0 < len(output) <= _VOICE_JOB_BYTES
+        ):
+            return None
+        try:
+            uid_text, command_text = output.decode("utf-8").strip().split(None, 1)
+            command = tuple(shlex.split(command_text))
+        except (UnicodeError, ValueError):
+            return None
+        if uid_text != str(os.getuid()) or command != expected_command:
+            return None
+        return pid
+
+    def _voice_status_matches_worker(
+        self,
+        environment: dict[str, str],
+        worker_pid: int,
+        not_before_epoch_us: int,
+    ) -> bool:
+        root = self._project_root.resolve(strict=True)
+        try:
+            completed = subprocess.run(
+                (
+                    str(root / ".venv-alpha/bin/python"),
+                    str(root / "tools/voice_status.py"),
+                    str(root / "runtime/status/voice.json"),
+                    "--require-mode",
+                    "listen_only",
+                    "--require-worker-pid",
+                    str(worker_pid),
+                    "--not-before-epoch-us",
+                    str(not_before_epoch_us),
+                ),
+                cwd=root,
+                stdin=subprocess.DEVNULL,
+                stdout=subprocess.DEVNULL,
+                stderr=subprocess.DEVNULL,
+                check=False,
+                timeout=2.0,
+                env=environment,
+            )
+        except (OSError, subprocess.TimeoutExpired):
+            return False
+        return completed.returncode == 0
 
     def _stop_after_failed_start(self, environment: dict[str, str]) -> None:
         try:
@@ -108,6 +276,13 @@ class VoiceService:
             )
         except (OSError, subprocess.TimeoutExpired):
             pass
+
+
+def _permission_denied(stderr: object) -> bool:
+    return type(stderr) is bytes and stderr in {
+        b"Boot-out failed: 1: Operation not permitted",
+        b"Boot-out failed: 1: Operation not permitted\n",
+    }
 
 
 def main(

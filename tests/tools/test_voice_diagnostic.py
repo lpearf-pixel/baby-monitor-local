@@ -2,7 +2,9 @@ from __future__ import annotations
 
 import json
 import os
+import signal
 import stat
+import subprocess
 from pathlib import Path
 
 import pytest
@@ -19,6 +21,118 @@ class Service:
     def restart_voice(self) -> bool:
         self.calls.append("restart_voice")
         return self.result
+
+
+def test_voice_restart_falls_back_to_exact_launchd_owned_pid_on_ssh_permission_error(
+    tmp_path: Path, monkeypatch
+) -> None:
+    root = _project(tmp_path)
+    python = root / ".venv-alpha/bin/python"
+    worker = root / "tools/run_voice_worker.py"
+    settings = root / "runtime/settings.yaml"
+    models = root / "runtime/config/voice-care-models.json"
+    status = root / "runtime/status/voice.json"
+    for path in (python, worker, models, status):
+        path.parent.mkdir(parents=True, exist_ok=True)
+        path.touch()
+    old_pid = 41001
+    new_pid = 41002
+    current_pid = old_pid
+    signalled: list[tuple[int, int]] = []
+    signal_epoch_us = 200
+
+    def launchctl_payload(pid: int) -> str:
+        return f"""gui/501/com.babymonitor.voice = {{
+\ttype = LaunchAgent
+\tstate = running
+\tprogram = {python}
+\targuments = {{
+\t\t{python}
+\t\t{worker}
+\t\t--settings
+\t\t{settings}
+\t\t--voice-models
+\t\t{models}
+\t}}
+\tworking directory = {root}
+\tpid = {pid}
+}}
+"""
+
+    def fake_run(command, **_kwargs):
+        nonlocal current_pid
+        if command[:2] == ("bash", "tools/stop_alpha.sh"):
+            return subprocess.CompletedProcess(
+                command,
+                1,
+                b"",
+                b"Boot-out failed: 1: Operation not permitted\n",
+            )
+        if command[:2] == ("/bin/launchctl", "print"):
+            return subprocess.CompletedProcess(
+                command, 0, launchctl_payload(current_pid).encode(), b""
+            )
+        if command[:2] == ("/bin/ps", "-ww"):
+            output = (
+                f"501 {python} {worker} --settings {settings} "
+                f"--voice-models {models}\n"
+            )
+            return subprocess.CompletedProcess(command, 0, output.encode(), b"")
+        if command[0] == str(python) and command[1] == str(
+            root / "tools/voice_status.py"
+        ):
+            return subprocess.CompletedProcess(
+                command,
+                0
+                if command[-4:]
+                == (
+                    "--require-worker-pid",
+                    str(new_pid),
+                    "--not-before-epoch-us",
+                    str(signal_epoch_us),
+                )
+                else 1,
+                b"",
+                b"",
+            )
+        raise AssertionError(command)
+
+    def fake_kill(pid: int, signum: int) -> None:
+        nonlocal current_pid
+        signalled.append((pid, signum))
+        current_pid = new_pid
+
+    monkeypatch.setattr(voice_diagnostic_module.os, "getuid", lambda: 501)
+    monkeypatch.setattr(voice_diagnostic_module.os, "kill", fake_kill)
+    monkeypatch.setattr(voice_diagnostic_module.platform, "system", lambda: "Darwin")
+    monkeypatch.setattr(voice_diagnostic_module.subprocess, "run", fake_run)
+    monkeypatch.setattr(voice_diagnostic_module.time, "sleep", lambda _value: None)
+    monkeypatch.setattr(
+        voice_diagnostic_module.time,
+        "time_ns",
+        lambda: signal_epoch_us * 1_000,
+    )
+    monotonic = iter((0.0, 0.0, 100.0))
+    monkeypatch.setattr(
+        voice_diagnostic_module.time, "monotonic", lambda: next(monotonic)
+    )
+
+    assert voice_diagnostic_module.VoiceService(root).restart_voice() is True
+    assert signalled == [(old_pid, signal.SIGTERM)]
+
+
+@pytest.mark.parametrize(
+    ("stderr", "expected"),
+    (
+        (b"Boot-out failed: 1: Operation not permitted\n", True),
+        (b"synthetic Operation not permitted\n", False),
+        (b"Not privileged to signal service.\n", False),
+    ),
+)
+def test_voice_restart_permission_fallback_requires_exact_launchctl_error(
+    stderr: bytes, expected: bool
+) -> None:
+    assert voice_diagnostic_module._permission_denied(stderr) is expected
 
 
 def _project(tmp_path: Path, *, camera_reply: bool = False) -> Path:

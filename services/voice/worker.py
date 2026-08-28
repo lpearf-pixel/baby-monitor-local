@@ -337,9 +337,16 @@ class VoiceCommandProcessor:
 
 
 class VoiceStatusWriter:
-    def __init__(self, path: Path, *, clock: Callable[[], datetime] | None = None) -> None:
+    def __init__(
+        self,
+        path: Path,
+        *,
+        clock: Callable[[], datetime] | None = None,
+        pid_factory: Callable[[], int] = os.getpid,
+    ) -> None:
         self._path = Path(path)
         self._clock = clock or (lambda: datetime.now().astimezone())
+        self._pid_factory = pid_factory
 
     def write(
         self,
@@ -375,7 +382,13 @@ class VoiceStatusWriter:
         ):
             raise ValueError(VOICE_WORKER_UNAVAILABLE)
         checked_at = self._clock()
-        if checked_at.tzinfo is None or checked_at.utcoffset() is None:
+        worker_pid = self._pid_factory()
+        if (
+            checked_at.tzinfo is None
+            or checked_at.utcoffset() is None
+            or type(worker_pid) is not int
+            or not 2 <= worker_pid <= 2_147_483_647
+        ):
             raise ValueError(VOICE_WORKER_UNAVAILABLE)
         payload = {
             "schema_version": 2,
@@ -385,6 +398,7 @@ class VoiceStatusWriter:
             "reason": reason,
             "processed_count": processed_count,
             "last_latency_ms": last_latency_ms,
+            "worker_pid": worker_pid,
         }
         if transition_counts is not None:
             payload["transition_counts"] = {

@@ -398,6 +398,53 @@ def test_listen_only_runner_merges_fixed_model_manifest_and_builds_default_runti
     assert root == project
 
 
+def test_sigterm_requests_launchd_restart_after_graceful_worker_settlement(
+    tmp_path: Path, monkeypatch
+) -> None:
+    import signal
+
+    import yaml
+
+    from tools.run_voice_worker import main
+
+    project = tmp_path / "project"
+    runtime = project / "runtime"
+    models = runtime / "config/voice-care-models.json"
+    models.parent.mkdir(parents=True)
+    models.write_text(
+        json.dumps(
+            {
+                "enabled": False,
+                "silero_vad_manifest_sha256": "a" * 64,
+                "paraformer_zh_manifest_sha256": "b" * 64,
+            }
+        ),
+        encoding="ascii",
+    )
+    raw = yaml.safe_load((ROOT / "config/settings.example.yaml").read_text())
+    raw["voice_care"] = {"enabled": False, "listen_only_enabled": True}
+    settings_path = runtime / "settings.yaml"
+    settings_path.write_text(yaml.safe_dump(raw), encoding="utf-8")
+    handlers: dict[int, object] = {}
+
+    class Worker:
+        def run(self, stop_event) -> None:
+            handler = handlers[signal.SIGTERM]
+            assert callable(handler)
+            handler(signal.SIGTERM, None)
+            assert stop_event.is_set()
+
+    monkeypatch.setattr(
+        signal, "signal", lambda signum, handler: handlers.__setitem__(signum, handler)
+    )
+
+    assert main(
+        ["--settings", str(settings_path), "--voice-models", str(models)],
+        project_root=project,
+        runtime_builder=lambda _settings, _root: Worker(),
+    ) == 75
+
+
 def test_preflight_runner_is_aggregate_only_and_never_builds_worker(
     tmp_path: Path,
 ) -> None:
