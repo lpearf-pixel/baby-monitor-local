@@ -469,3 +469,18 @@ resolution 必须包含：
 - privacy：仅固定聚合计数；未读取或保存家庭音频/转写
 - decision：combined single-sentence gate PASS；two-stage burping-complete far 仍未解决
 - next single action：仅诊断两阶段 burping-complete follow-up；不启用 Camera Reply
+
+### R12 — Two-stage burping-complete bounded diagnosis
+
+- 日期：2026-08-28
+- installed candidate：`44bd855`
+- authority：已批准的bounded private diagnostic；不含模型安装、Camera Reply、push或删除
+- valid evidence：2个完整private pair；exact wake后固定`listen_only_followup_far`
+- discarded method run：聊天往返超过8秒armed窗口，不用于模型结论
+- generated comparison：current Paraformer burping complete 3/3；不能生成公开纠错映射
+- model A/B：Whisper运行包可导入；base/small immutable artifacts均validation FAIL，未加载
+- privacy：无家庭audio/transcript/私有字符内容/session ID/path进入Git、普通日志或聊天
+- retained state：两个新private session分别12和2个完整pair；inactive，未删除
+- tail：Voice healthy/memory-only；source PASS；Camera Reply和Baby Care均未调用
+- decision：combined single-sentence保持可用；two-stage继续fail closed
+- next single action：如需提升two-stage，先批准contextual/hotword模型迁移设计

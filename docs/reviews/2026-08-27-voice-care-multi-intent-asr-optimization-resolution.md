@@ -162,3 +162,17 @@ Installed candidate `44bd855` 通过 Voice-only restart 部署，没有重启 go
 因此组合单句入口从 recall FAIL 转为 4/4 supervised PASS。两阶段 `小小` 后再说拍嗝完成
 的历史 `far` 路径没有在本轮重测，继续作为独立 recall follow-up；medication、Camera
 Reply 与 Baby Care 写入状态不变。
+
+## 11. Two-stage burping-complete diagnosis
+
+使用已批准的本机私有诊断边界完成一次有效两阶段复现：exact wake 后 follow-up 固定为
+`listen_only_followup_far`。诊断随后停止，Voice恢复memory-only且保持healthy，source
+PASS。家庭音频、转写、私有字符内容、session ID和路径均未进入本报告、普通日志或Git。
+
+current Paraformer 的generated孤立动作仍为3/3，不能把家庭结果转写为source-controlled
+mapping。现有Whisper base/small运行包可导入，但两个immutable model artifact均校验失败，
+因此没有绕过加载或切换生产模型。当前可用路径为已通过4/4的组合单句；两阶段改善需另立
+ContextualParaformer、transducer hotword或有许可KWS的模型迁移设计与回滚门。
+
+本轮新增两个retained私有session，分别为12和2个完整pair；diagnostic现为inactive。这些
+内容不是训练数据，保持ignored/private，未经单独删除授权不得清理。

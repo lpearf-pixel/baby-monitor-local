@@ -744,5 +744,9 @@
   then revalidated candidate `44bd855`: all four combined commands passed 4/4, with
   diaper exact +2, burping exact +2, no reject/far/output-failure increment, one audible
   i9 reply per command and no observed camera movement or duplicate reply. The earlier
-  armed two-stage burping-complete `far` remains a separate unresolved recall item and
-  may not be guessed from household speech.
+  armed two-stage burping-complete `far` was then reproduced in a bounded private
+  session as exact wake followed by fixed `listen_only_followup_far`. Generated
+  current-Paraformer remains 3/3 for that action, so no source-controlled correction was
+  derived from household data. Local Whisper base/small artifacts fail immutable
+  validation and were not loaded. Diagnostics are inactive; two new private sessions
+  with 12 and 2 complete pairs remain retained pending explicit deletion authority.

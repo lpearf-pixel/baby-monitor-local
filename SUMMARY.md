@@ -621,9 +621,13 @@ installed-device proof by itself. Installed candidate `44bd855` was subsequently
 restarted Voice-only and accepted the four combined commands 4/4: diaper exact +2,
 burping exact +2, zero reject/far/output-failure increments, one audible i9 reply per
 command and no observed camera movement or duplicate reply. The exact next Voice slice
-is evidence collection for the still-unresolved two-stage burping-complete follow-up.
-Do not widen ASR correction from household evidence, enable Camera Reply, delete the
-private bundle or expose transcript content.
+has now localized the two-stage burping-complete failure: a bounded private session
+recorded exact wake followed by fixed `listen_only_followup_far`, while generated
+current-Paraformer remains 3/3 for that command. Whisper base/small could not be used as
+a shortcut because their immutable local artifacts fail validation. Keep the accepted
+combined single-sentence form. Any contextual/hotword model migration requires its own
+approved design; do not widen ASR correction from household evidence, enable Camera
+Reply, delete retained private sessions or expose transcript content.
 
 1. Full-care Voice ASR/VAD passes 6/6. The local enrollment boundary now opens and
    warms the Xiaomi source, drains it throughout the 15-second countdown, and then

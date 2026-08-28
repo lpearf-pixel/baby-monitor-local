@@ -688,6 +688,15 @@ rejections/output failures and no observed camera movement. This closes the comb
 single-sentence recall blocker; the earlier two-stage burping-complete `far` remains a
 separate unresolved path, and full Task 8 remains unaccepted while medication is blocked.
 
+**Two-stage burping-complete diagnosis:** a bounded private session reproduced an exact
+wake followed by fixed `listen_only_followup_far`; the retained record was complete and
+the Voice/source tail remained healthy. The generated current-Paraformer corpus still
+passes burping complete 3/3, so the private result cannot be copied into a source mapping.
+The locally registered Whisper base/small artifacts fail immutable artifact validation
+and were not loaded. Current production guidance is therefore the accepted combined
+single-sentence form; changing to a contextual/hotword model remains a separate model
+migration design, not an in-place Task 8 correction.
+
 **Acceptance:** Feeding, diaper, burping and medication-candidate behavior each have
 independent aggregate evidence, zero observed false accepts and an auditable resolution.
 This still does not prove unattended care, medication correctness, child speech,
@@ -699,7 +708,9 @@ night/far-field accuracy or Baby Care writes.
 
 Tasks 1–7 are complete and the approved low-risk subset of Task 8 has been executed.
 The bounded combined wake/action fix and its short adult-supervised device recheck are
-complete. Continue only with the still-unresolved two-stage burping-complete follow-up.
+complete. The two-stage burping-complete failure is now localized to current-model
+recognition and remains fail closed. Continue only through a separately approved
+contextual/hotword model migration; otherwise retain the combined single-sentence form.
 Use TDD and update the review log after every slice. Stop for human authority before any
 model installation, private diagnostic persistence, Camera Reply enablement, PR,
 protected-branch change or Baby Care contract expansion.

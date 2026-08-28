@@ -1454,3 +1454,10 @@ Voice 从零计数启动后，四个连续命令全部通过：processed +4、di
 exact +2，reject/far/output failure 均 +0。成人确认每句均听到一次 i9 回复，摄像头未转动，
 没有重复回复。尾部 Voice healthy、source PASS，配置保持 `transport=auto`，实机协商仍为
 `cs2+udp`。这接受组合单句入口，不替代此前两阶段拍嗝 complete 的 `far` 失败。
+
+随后以已批准的私有诊断流程重测两阶段拍嗝 complete。第一轮因聊天往返超过八秒，只能
+作为超时方法学反例；第二轮不经过聊天往返，产生2个完整私有pair：exact wake 后固定
+`listen_only_followup_far`。诊断随即stop并恢复memory-only；Voice healthy，source PASS，
+无Camera Reply或Baby Care调用。generated current-Paraformer 对该动作仍为3/3；本机
+Whisper base/small immutable artifacts校验失败，未绕过加载。两个新retained session分别
+含12和2个完整pair，保持ignored/private，删除仍需单独明确授权。

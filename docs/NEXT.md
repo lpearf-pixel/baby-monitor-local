@@ -410,10 +410,13 @@ The combined entrance now has an evidence-backed bounded software fix: four appr
 Gate B commands were added to the punctuation-free wake allowlist, with 161/161 affected
 and 605/605 complete Voice tests green. Installed candidate `44bd855` then passed the
 four-command supervised recheck 4/4 with no reject, far, output failure, camera movement
-or duplicate reply. Next diagnose only the earlier two-stage burping-complete `far`
-path. Any private diagnostic, model change or new correction mapping needs separate
-scope and may not infer the missing transcript. Medication still requires a separate
-high-risk design. Baby Care writes and Camera Reply V3E remain independent and disabled.
+or duplicate reply. A bounded private session has now localized the earlier two-stage
+burping-complete path to current-model recognition after exact wake. Generated
+current-Paraformer stays 3/3 and local Whisper base/small artifacts fail validation, so
+there is no safe in-place correction or model shortcut. The next optional Voice slice
+is a separately approved contextual/hotword model migration design; otherwise use the
+accepted combined single-sentence form. Medication still requires a separate high-risk
+design. Baby Care writes and Camera Reply V3E remain independent and disabled.
 
 ## P5 — Final 72-hour release gate
 
