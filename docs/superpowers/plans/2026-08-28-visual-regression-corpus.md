@@ -534,7 +534,7 @@ Run `git diff --check` and commit: `feat: project corpus replay into guardian ev
 - Produces: `compare_result_sets(baseline: ReplayResultSet, candidate: ReplayResultSet) -> BaselineComparison`.
 - Produces: `promote_baseline(candidate_path: Path, destination: Path, *, expected_digest: str) -> str`.
 
-- [ ] **Step 1: Write identity/comparison RED tests**
+- [x] **Step 1: Write identity/comparison RED tests**
 
 Reject manifest/profile/model/recipe mismatches, missing/duplicate clips, non-finite
 metrics, candidate errors and schema drift. Compare deterministic counts/codes exactly;
@@ -550,20 +550,20 @@ def test_comparison_refuses_different_manifest() -> None:
         )
 ```
 
-- [ ] **Step 2: Write promotion RED tests**
+- [x] **Step 2: Write promotion RED tests**
 
 Promotion requires exact candidate digest, all mandatory clips `PASS`, no missing wide
 group and no existing destination replacement. It writes canonical JSON atomically and
 never promotes a `SKIP`/`FAIL` result.
 
-- [ ] **Step 3: Run RED and implement minimal comparison**
+- [x] **Step 3: Run RED and implement minimal comparison**
 
 Run: `python -m pytest -q tests/vision/test_corpus_baseline.py`
 
 The comparison returns `PASS`, `REGRESSION`, `INCOMPARABLE` or `FAILED` plus bounded
 per-group deltas. A regression never edits the baseline.
 
-- [ ] **Step 4: Run GREEN and commit**
+- [x] **Step 4: Run GREEN and commit**
 
 Run:
 

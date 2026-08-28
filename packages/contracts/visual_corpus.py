@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+import math
+import re
 from enum import StrEnum
 from typing import Literal
 from urllib.parse import urlsplit
@@ -361,7 +363,7 @@ class GuardianReplayAggregate(VisualCorpusContract):
 
 class ReplayResult(VisualCorpusContract):
     schema_version: Literal[1] = 1
-    clip_id: str
+    clip_id: str = Field(pattern=r"^[A-Za-z0-9][A-Za-z0-9_.-]{0,79}$")
     status: ReplayStatus
     reason: str = Field(pattern=r"^[a-z0-9_]+$")
     frames_total: int = Field(ge=0)
@@ -381,6 +383,7 @@ class ReplayResult(VisualCorpusContract):
     dropped_frames: int = Field(ge=0)
     queue_backlog_max: int = Field(ge=0)
     frame_observations_persisted: Literal[False] = False
+    groups: tuple[str, ...] = Field(default=(), max_length=16)
     guardian: GuardianReplayAggregate | None = None
 
     @field_validator("observation_counts", "candidate_counts")
@@ -394,6 +397,16 @@ class ReplayResult(VisualCorpusContract):
     def require_frame_accounting(self) -> "ReplayResult":
         if self.frames_processed + self.frames_skipped != self.frames_total:
             raise ValueError("processed and skipped frames must equal total")
+        if len(set(self.groups)) != len(self.groups) or any(
+            len(group) > 160
+            or re.fullmatch(
+                r"[a-z0-9_]+:[a-z0-9_]+(?:\+[a-z0-9_]+:[a-z0-9_]+)?",
+                group,
+            )
+            is None
+            for group in self.groups
+        ):
+            raise ValueError("comparison groups are invalid")
         return self
 
 
@@ -401,10 +414,24 @@ class ReplayResultSet(VisualCorpusContract):
     schema_version: Literal[1] = 1
     manifest_digest: str = Field(pattern=r"^[0-9a-f]{64}$")
     recipe_digest: str = Field(pattern=r"^[0-9a-f]{64}$")
-    profile: str = Field(min_length=1, max_length=80)
+    profile: str = Field(pattern=r"^[a-z0-9][a-z0-9_.-]{0,79}$")
     git_sha: str = Field(pattern=r"^[0-9a-f]{40}$")
     model_artifacts: tuple[str, ...] = Field(default=(), max_length=16)
     results: tuple[ReplayResult, ...] = Field(min_length=1, max_length=20)
+
+    @model_validator(mode="after")
+    def require_unique_result_identity(self) -> "ReplayResultSet":
+        clip_ids = [result.clip_id for result in self.results]
+        if len(set(clip_ids)) != len(clip_ids):
+            raise ValueError("result clip identities must be unique")
+        if len(set(self.model_artifacts)) != len(self.model_artifacts):
+            raise ValueError("model artifact identities must be unique")
+        if any(
+            re.fullmatch(r"[a-z0-9_.-]{1,32}:[0-9a-f]{64}", artifact) is None
+            for artifact in self.model_artifacts
+        ):
+            raise ValueError("model artifact identities are invalid")
+        return self
 
 
 class BaselineComparison(VisualCorpusContract):
@@ -412,5 +439,17 @@ class BaselineComparison(VisualCorpusContract):
     status: ComparisonStatus
     reason: str = Field(pattern=r"^[a-z0-9_]+$")
     compared_clips: int = Field(ge=0, le=20)
-    regression_count: int = Field(ge=0)
+    regression_count: int = Field(ge=0, le=20)
     group_deltas: dict[str, float] = Field(default_factory=dict)
+
+    @field_validator("group_deltas")
+    @classmethod
+    def require_bounded_finite_deltas(
+        cls,
+        value: dict[str, float],
+    ) -> dict[str, float]:
+        if len(value) > 128 or any(
+            not math.isfinite(delta) or delta < 0 for delta in value.values()
+        ):
+            raise ValueError("group deltas are invalid")
+        return value

@@ -337,6 +337,7 @@ class VisualCorpusReplay:
                 status="SKIP",
                 reason="visual_corpus_model_unavailable",
                 model_state="unavailable",
+                groups=_comparison_groups(clip),
             )
         try:
             prepared_path = self._prepared_resolver(clip, profile)
@@ -349,6 +350,7 @@ class VisualCorpusReplay:
                 status="FAIL",
                 reason="visual_corpus_input_invalid",
                 model_state=_initial_model_state(profile),
+                groups=_comparison_groups(clip),
             )
 
         try:
@@ -381,6 +383,7 @@ class VisualCorpusReplay:
                 status="FAIL",
                 reason="visual_corpus_worker_unavailable",
                 model_state=_initial_model_state(profile),
+                groups=_comparison_groups(clip),
             )
 
         frames_total = 0
@@ -480,6 +483,7 @@ class VisualCorpusReplay:
             dropped_frames=max(0, expected_frames - frames_total),
             queue_backlog_max=0,
             frame_observations_persisted=False,
+            groups=_comparison_groups(clip),
         )
 
 
@@ -566,6 +570,7 @@ def _empty_result(
     status: Literal["PASS", "FAIL", "SKIP"],
     reason: str,
     model_state: Literal["available", "degraded", "disabled", "unavailable"],
+    groups: tuple[str, ...] = (),
 ) -> ReplayResult:
     return ReplayResult(
         clip_id=clip_id,
@@ -586,6 +591,25 @@ def _empty_result(
         dropped_frames=0,
         queue_backlog_max=0,
         frame_observations_persisted=False,
+        groups=groups,
+    )
+
+
+def _comparison_groups(clip: VisualCorpusClip) -> tuple[str, ...]:
+    labels = clip.labels
+    framing = f"framing:{labels.framing.value}"
+    scale = f"scale:{labels.subject_scale.value}"
+    lighting = f"lighting:{labels.lighting.value}"
+    visibility = f"visibility:{labels.baby_visibility.value}"
+    wide_role = f"wide_role:{labels.wide_content_role.value}"
+    return (
+        framing,
+        scale,
+        lighting,
+        visibility,
+        wide_role,
+        f"{framing}+{lighting}",
+        f"{scale}+{visibility}",
     )
 
 

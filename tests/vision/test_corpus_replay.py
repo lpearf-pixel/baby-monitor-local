@@ -183,6 +183,15 @@ def test_replay_uses_real_worker_and_returns_bounded_aggregates(
     assert result.frame_observations_persisted is False
     assert not hasattr(result, "frame_observations")
     assert sum(result.candidate_counts.values()) <= 60
+    assert {
+        "framing:medium",
+        "scale:medium",
+        "lighting:day",
+        "visibility:full",
+        "wide_role:none",
+        "framing:medium+lighting:day",
+        "scale:medium+visibility:full",
+    }.issubset(result.groups)
     assert isinstance(replay.last_recording_analyzer, module.RecordingRealtimeAnalyzer)
 
 
