@@ -4,7 +4,7 @@ PYTHON311 ?= /usr/local/bin/python3.11
 BASH ?= /bin/bash
 .DEFAULT_GOAL := help
 
-.PHONY: help alpha-update alpha-install alpha-start alpha-stop alpha-restart alpha-go2rtc-restart alpha-status alpha-guardian-start alpha-guardian-test alpha-guardian-test-live alpha-guardian-scene-test alpha-audio-status alpha-audio-test alpha-remote-preflight alpha-remote-status alpha-remote-configure alpha-remote-test alpha-voice-status alpha-voice-test alpha-voice-start alpha-voice-stop alpha-voice-listen-start alpha-voice-listen-status alpha-voice-listen-stop alpha-voice-diagnostic-start alpha-voice-diagnostic-status alpha-voice-diagnostic-stop alpha-voice-camera-test alpha-voice-camera-status alpha-voice-camera-probe alpha-voice-preflight alpha-voice-v0-test alpha-voice-v0-probe alpha-voice-v0-stability alpha-voice-keychain-helper-build alpha-voice-keychain-migrate alpha-voice-keychain-check alpha-voice-converter-install alpha-voice-speaker-install alpha-voice-speaker-check alpha-voice-asr-install alpha-voice-ecapa-source alpha-voice-ecapa-install alpha-voice-ecapa-probe alpha-voice-paraformer-install alpha-voice-enroll-dad alpha-voice-enroll-mom alpha-voice-asr-capture alpha-voice-asr-capture-fixed alpha-voice-asr-capture-fixed-all alpha-voice-asr-capture-all alpha-voice-asr-evaluate alpha-voice-asr-bakeoff alpha-voice-asr-paraformer alpha-voice-asr-recover alpha-voice-vad-diagnostic alpha-voice-models-install alpha-voice-model-benchmark alpha-visual-status alpha-visual-performance alpha-visual-diagnostic alpha-visual-launchd-update alpha-logs alpha-quality-hd alpha-quality-info alpha-quality-rollback alpha-source-check alpha-subtype-probe alpha-subtype-apply alpha-go2rtc-info alpha-go2rtc-rebuild alpha-go2rtc-rollback alpha-go2rtc-protocol-test alpha-xiaomi-media-preflight alpha-xiaomi-media-diagnostic alpha-realtime-models-check alpha-realtime-models-install alpha-ws2021-collect-calibrated alpha-ws2021-collect-model alpha-ws2021-model-train-bootstrap alpha-ws2021-model-train alpha-ws2021-model-export alpha-ws2021-model-check
+.PHONY: help alpha-update alpha-install alpha-start alpha-stop alpha-restart alpha-go2rtc-restart alpha-status alpha-guardian-start alpha-guardian-test alpha-guardian-test-live alpha-guardian-scene-test alpha-audio-status alpha-audio-test alpha-remote-preflight alpha-remote-status alpha-remote-configure alpha-remote-test alpha-voice-status alpha-voice-test alpha-voice-start alpha-voice-stop alpha-voice-listen-start alpha-voice-listen-status alpha-voice-listen-stop alpha-voice-diagnostic-start alpha-voice-diagnostic-status alpha-voice-diagnostic-stop alpha-voice-camera-test alpha-voice-camera-status alpha-voice-camera-probe alpha-voice-preflight alpha-voice-v0-test alpha-voice-v0-probe alpha-voice-v0-stability alpha-voice-keychain-helper-build alpha-voice-keychain-migrate alpha-voice-keychain-check alpha-voice-converter-install alpha-voice-speaker-install alpha-voice-speaker-check alpha-voice-asr-install alpha-voice-contextual-install alpha-voice-contextual-check alpha-voice-ecapa-source alpha-voice-ecapa-install alpha-voice-ecapa-probe alpha-voice-paraformer-install alpha-voice-enroll-dad alpha-voice-enroll-mom alpha-voice-asr-capture alpha-voice-asr-capture-fixed alpha-voice-asr-capture-fixed-all alpha-voice-asr-capture-all alpha-voice-asr-evaluate alpha-voice-asr-bakeoff alpha-voice-asr-paraformer alpha-voice-asr-recover alpha-voice-vad-diagnostic alpha-voice-models-install alpha-voice-model-benchmark alpha-visual-status alpha-visual-performance alpha-visual-diagnostic alpha-visual-launchd-update alpha-logs alpha-quality-hd alpha-quality-info alpha-quality-rollback alpha-source-check alpha-subtype-probe alpha-subtype-apply alpha-go2rtc-info alpha-go2rtc-rebuild alpha-go2rtc-rollback alpha-go2rtc-protocol-test alpha-xiaomi-media-preflight alpha-xiaomi-media-diagnostic alpha-realtime-models-check alpha-realtime-models-install alpha-ws2021-collect-calibrated alpha-ws2021-collect-model alpha-ws2021-model-train-bootstrap alpha-ws2021-model-train alpha-ws2021-model-export alpha-ws2021-model-check
 
 help:
 	@echo "Baby Monitor Local Alpha commands:"
@@ -62,6 +62,8 @@ help:
 	@echo "  make alpha-voice-asr-paraformer Evaluate the pinned Mandarin Paraformer candidate"
 	@echo "  make alpha-voice-asr-recover Safely recover a blocked headless ASR request"
 	@echo "  make alpha-voice-asr-install Install the isolated pinned Paraformer runtime"
+	@echo "  make alpha-voice-contextual-install Install the isolated contextual A/B candidate"
+	@echo "  make alpha-voice-contextual-check Verify the isolated contextual A/B candidate"
 	@echo "  make alpha-voice-paraformer-install Install the verified Paraformer model bundle"
 	@echo "  make alpha-voice-vad-diagnostic Run aggregate Silero signal diagnostics"
 	@echo "  make alpha-voice-models-install Install verified local Whisper base/small models"
@@ -302,6 +304,24 @@ alpha-voice-asr-install:
 	fi; \
 	"$(PYTHON311)" -m tools.voice_asr_install --project-root . --base-python "$(PYTHON311)" >/dev/null 2>&1 || { echo "voice_asr_install=failed"; exit 1; }; \
 	echo "voice_asr_install=ready"
+
+alpha-voice-contextual-install:
+	@set -eu; \
+	if [[ "$$(uname -s)" != "Darwin" || "$$(uname -m)" != "x86_64" || ! -x "$(PYTHON311)" ]]; then \
+		echo "voice_contextual_install=unavailable"; \
+		exit 1; \
+	fi; \
+	"$(PYTHON311)" -m tools.voice_contextual_install install --project-root . --base-python "$(PYTHON311)" >/dev/null 2>&1 || { echo "voice_contextual_install=failed"; exit 1; }; \
+	echo "voice_contextual_install=ready"
+
+alpha-voice-contextual-check:
+	@set -eu; \
+	if [[ "$$(uname -s)" != "Darwin" || "$$(uname -m)" != "x86_64" || ! -x "$(PYTHON311)" ]]; then \
+		echo "voice_contextual_check=unavailable"; \
+		exit 1; \
+	fi; \
+	"$(PYTHON311)" -m tools.voice_contextual_install check --project-root . >/dev/null 2>&1 || { echo "voice_contextual_check=unavailable"; exit 1; }; \
+	echo "voice_contextual_check=ready"
 
 alpha-voice-ecapa-source:
 	@set -eu; \

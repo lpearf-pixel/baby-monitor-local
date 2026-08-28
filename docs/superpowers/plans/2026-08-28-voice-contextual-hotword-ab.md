@@ -48,12 +48,18 @@ downloaded or installed by importing the module.
 - Create: `tests/tools/test_voice_contextual_install.py`
 - Modify: `.gitignore` only if the existing runtime rule is insufficient.
 
-- [ ] Write RED tests for pre-write path checks, fixed revision URLs, streaming
+- [x] Write RED tests for pre-write path checks, fixed revision URLs, streaming
       size/digest checks, staging publication, interrupted retention, isolated venv,
       offline import check and redacted errors.
-- [ ] Implement `alpha-voice-contextual-install` and
+- [x] Implement `alpha-voice-contextual-install` and
       `alpha-voice-contextual-check`; caller-supplied URL/model/path is forbidden.
-- [ ] Verify Make dry-runs, changed Python compile and privacy checks.
+- [x] Verify Make dry-runs, changed Python compile and privacy checks.
+
+Task 2 evidence: the missing-environment-module RED was observed. The focused Task 1/2
+gate is 14/14; changed modules compile, both Make targets dry-run and diff-check passes.
+The installer uses immutable revision URLs, direct no-proxy streaming, bounded socket and
+subprocess waits, private retained staging, fixed hashes and no production settings or
+service operation.
 
 **Acceptance:** a complete validated candidate can be installed beneath ignored runtime
 state without touching production settings, venvs, plists or services.

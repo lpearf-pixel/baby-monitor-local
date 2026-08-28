@@ -177,28 +177,7 @@ def validate_contextual_bundle(
         relative = _RUNTIME_PREFIX / spec.artifact_id / digest
         _reject_symlink_components(root, relative)
         bundle = root / relative
-        bundle_info = bundle.lstat()
-        if (
-            not stat.S_ISDIR(bundle_info.st_mode)
-            or stat.S_IMODE(bundle_info.st_mode) != 0o700
-            or bundle_info.st_uid != os.getuid()
-        ):
-            raise ValueError(INVALID)
-        expected_names = {item.path for item in spec.files} | {
-            CONTEXTUAL_MANIFEST_NAME
-        }
-        with os.scandir(bundle) as entries:
-            actual_names = {entry.name for entry in entries}
-        if actual_names != expected_names:
-            raise ValueError(INVALID)
-        _validate_file(bundle / CONTEXTUAL_MANIFEST_NAME, manifest)
-        for item in spec.files:
-            _validate_file(
-                bundle / item.path,
-                None,
-                expected_size=item.size,
-                expected_sha256=item.sha256,
-            )
+        _validate_bundle_at(bundle, spec, manifest)
         final = bundle.resolve(strict=True)
         if not final.is_relative_to(root):
             raise ValueError(INVALID)
@@ -207,6 +186,62 @@ def validate_contextual_bundle(
         if str(exc) == INVALID:
             raise
         raise ValueError(INVALID) from None
+
+
+def validate_contextual_bundle_candidate(
+    project_root: Path,
+    candidate: Path,
+    *,
+    spec: ContextualArtifact = CONTEXTUAL_ARTIFACT,
+) -> Path:
+    """Validate one unpublished private staging directory below the fixed parent."""
+
+    try:
+        root = Path(project_root).resolve(strict=True)
+        parent = (
+            root / _RUNTIME_PREFIX / spec.artifact_id
+        ).resolve(strict=True)
+        candidate = Path(candidate)
+        if (
+            candidate.parent.resolve(strict=True) != parent
+            or not candidate.name.startswith(".staging-")
+            or candidate.is_symlink()
+        ):
+            raise ValueError(INVALID)
+        manifest = build_contextual_manifest(spec)
+        _validate_bundle_at(candidate, spec, manifest)
+        return candidate.resolve(strict=True)
+    except (OSError, TypeError, ValueError) as exc:
+        if str(exc) == INVALID:
+            raise
+        raise ValueError(INVALID) from None
+
+
+def _validate_bundle_at(
+    bundle: Path, spec: ContextualArtifact, manifest: bytes
+) -> None:
+    bundle_info = bundle.lstat()
+    if (
+        not stat.S_ISDIR(bundle_info.st_mode)
+        or stat.S_IMODE(bundle_info.st_mode) != 0o700
+        or bundle_info.st_uid != os.getuid()
+    ):
+        raise ValueError(INVALID)
+    expected_names = {item.path for item in spec.files} | {
+        CONTEXTUAL_MANIFEST_NAME
+    }
+    with os.scandir(bundle) as entries:
+        actual_names = {entry.name for entry in entries}
+    if actual_names != expected_names:
+        raise ValueError(INVALID)
+    _validate_file(bundle / CONTEXTUAL_MANIFEST_NAME, manifest)
+    for item in spec.files:
+        _validate_file(
+            bundle / item.path,
+            None,
+            expected_size=item.size,
+            expected_sha256=item.sha256,
+        )
 
 
 def _validate_file(
