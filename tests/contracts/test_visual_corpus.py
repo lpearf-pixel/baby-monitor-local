@@ -319,3 +319,26 @@ def test_replay_contract_does_not_expose_frame_observations() -> None:
 
     assert result.frames_processed + result.frames_skipped == result.frames_total
     assert "frame_observations" not in result.model_dump()
+
+
+def test_guardian_replay_contract_contains_aggregates_only() -> None:
+    module = contracts()
+    aggregate = module.GuardianReplayAggregate(
+        status="PASS",
+        reason="ok",
+        semantic_profile="synthetic_test",
+        transition_counts={"alert_opened.face_not_visible": 1},
+        event_counts={"face_not_visible.open": 1},
+        dashboard_event_count=1,
+        dashboard_open_event_count=1,
+        production_state_touched=False,
+        notification_dispatch_attempted=False,
+        evidence_persisted=False,
+    )
+
+    payload = aggregate.model_dump(mode="json")
+    assert payload["event_counts"] == {"face_not_visible.open": 1}
+    assert not any(
+        key in str(payload).lower()
+        for key in ("review", "frame", "path", "notification_payload")
+    )

@@ -481,7 +481,7 @@ Commit: `feat: replay corpus through visual worker`
 - Consumes: existing `VisualReviewRuntime`, `VisualRiskStateMachine`, `VisualRiskEventPipeline`, `VisualRiskEventStore`, `GuardianEventQueryService`.
 - Extends: `ReplayResult.guardian` with semantic profile, transition/event counts and Dashboard projection counts.
 
-- [ ] **Step 1: Write isolated-store RED tests**
+- [x] **Step 1: Write isolated-store RED tests**
 
 Inject a fixed synthetic `VisualReview` sequence through the existing risk runtime and
 pipeline, using `tmp_path / "events.sqlite3"`. Assert current Guardian confirmation,
@@ -499,14 +499,14 @@ def test_guardian_projection_uses_only_ephemeral_store(tmp_path: Path) -> None:
     assert result.production_state_touched is False
 ```
 
-- [ ] **Step 2: Write optional semantic-profile RED tests**
+- [x] **Step 2: Write optional semantic-profile RED tests**
 
 `realtime_only` never invents Guardian events. `semantic_existing` uses only the current
 bounded reviewer and reports `SKIP semantic_reviewer_unavailable` when unavailable.
 Synthetic fixed reviews are allowed only in software tests and must report
 `semantic_profile="synthetic_test"`.
 
-- [ ] **Step 3: Run RED, implement wiring, then run GREEN**
+- [x] **Step 3: Run RED, implement wiring, then run GREEN**
 
 Run:
 
@@ -517,7 +517,7 @@ python -m pytest -q tests/vision/test_corpus_guardian_projection.py tests/vision
 Implement callback wiring without changing the existing state machines. Close the
 scheduler/executor/store on every outcome and serialize only aggregate query fields.
 
-- [ ] **Step 4: Commit**
+- [x] **Step 4: Commit**
 
 Run `git diff --check` and commit: `feat: project corpus replay into guardian events`
 

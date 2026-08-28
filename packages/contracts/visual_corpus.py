@@ -331,6 +331,34 @@ class VisualCorpusManifest(VisualCorpusContract):
         return self
 
 
+class GuardianReplayAggregate(VisualCorpusContract):
+    schema_version: Literal[1] = 1
+    status: ReplayStatus
+    reason: str = Field(pattern=r"^[a-z0-9_]+$")
+    semantic_profile: Literal[
+        "realtime_only",
+        "semantic_existing",
+        "synthetic_test",
+    ]
+    transition_counts: dict[str, int] = Field(default_factory=dict)
+    event_counts: dict[str, int] = Field(default_factory=dict)
+    dashboard_event_count: int = Field(ge=0, le=20)
+    dashboard_open_event_count: int = Field(ge=0, le=20)
+    production_state_touched: Literal[False] = False
+    notification_dispatch_attempted: Literal[False] = False
+    evidence_persisted: Literal[False] = False
+
+    @field_validator("transition_counts", "event_counts")
+    @classmethod
+    def require_bounded_nonnegative_counts(
+        cls,
+        value: dict[str, int],
+    ) -> dict[str, int]:
+        if len(value) > 32 or any(count < 0 for count in value.values()):
+            raise ValueError("guardian aggregate counts are invalid")
+        return value
+
+
 class ReplayResult(VisualCorpusContract):
     schema_version: Literal[1] = 1
     clip_id: str
@@ -353,6 +381,7 @@ class ReplayResult(VisualCorpusContract):
     dropped_frames: int = Field(ge=0)
     queue_backlog_max: int = Field(ge=0)
     frame_observations_persisted: Literal[False] = False
+    guardian: GuardianReplayAggregate | None = None
 
     @field_validator("observation_counts", "candidate_counts")
     @classmethod

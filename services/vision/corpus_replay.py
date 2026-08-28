@@ -3,9 +3,10 @@ from __future__ import annotations
 import math
 import time
 from collections import Counter
-from collections.abc import Callable, Iterator
+from collections.abc import Callable, Iterator, Sequence
 from dataclasses import dataclass, field
 from datetime import UTC, datetime
+from io import StringIO
 from pathlib import Path
 from typing import Literal, Protocol
 
@@ -13,8 +14,16 @@ from packages.contracts.vision import (
     NormalizedPolygon,
     RealtimeCandidateTransition,
     RealtimeObservation,
+    RiskTransition,
+    VisualReview,
 )
-from packages.contracts.visual_corpus import ReplayResult, VisualCorpusClip
+from packages.contracts.visual_corpus import (
+    GuardianReplayAggregate,
+    ReplayResult,
+    VisualCorpusClip,
+)
+from services.events.guardian_query import GuardianEventQueryService
+from services.storage.visual_risk import VisualRiskEventStore
 from services.stream.file_frame_source import (
     FileFrameSourceUnavailable,
     FfmpegFileFrameSource,
@@ -27,6 +36,10 @@ from services.vision.realtime_analyzer import RealtimeVisualAnalyzer
 from services.vision.realtime_candidates import RealtimeCandidateStateMachine
 from services.vision.realtime_load import RealtimeLoadController
 from services.vision.realtime_models import RealtimeModelBackend
+from services.vision.review_runtime import ReviewRuntimeCode, VisualReviewRuntime
+from services.vision.review_scheduler import ReviewCompletion, ReviewCompletionCode
+from services.vision.risk_event_pipeline import VisualRiskEventPipeline
+from services.vision.risk_state import VisualRiskStateMachine
 from services.vision.worker import VisualWorker
 
 
@@ -42,6 +55,183 @@ class ReplayFrameSource(Protocol):
         started_at: datetime,
         pace: bool = False,
     ) -> Iterator[CapturedFrame]: ...
+
+
+@dataclass(frozen=True)
+class GuardianReplayReview:
+    observed_at: datetime
+    review: VisualReview
+
+    def __post_init__(self) -> None:
+        if self.observed_at.tzinfo is None or self.observed_at.utcoffset() is None:
+            raise ValueError("guardian_review_time_invalid")
+
+
+class GuardianSemanticProvider(Protocol):
+    def collect(self) -> Sequence[GuardianReplayReview]: ...
+
+    def close(self) -> None: ...
+
+
+GuardianSemanticProfile = Literal[
+    "realtime_only",
+    "semantic_existing",
+    "synthetic_test",
+]
+
+
+class GuardianReplayProjector:
+    """Runs current Guardian rules against an isolated, new event store."""
+
+    def __init__(
+        self,
+        *,
+        database_path: Path,
+        semantic_provider: GuardianSemanticProvider | None = None,
+    ) -> None:
+        self._database_path = Path(database_path)
+        self._semantic_provider = semantic_provider
+
+    def run(
+        self,
+        *,
+        semantic_profile: GuardianSemanticProfile,
+        reviews: Sequence[GuardianReplayReview] = (),
+    ) -> GuardianReplayAggregate:
+        if semantic_profile == "realtime_only":
+            return _empty_guardian_result(
+                semantic_profile=semantic_profile,
+                status="PASS",
+                reason="ok",
+            )
+
+        selected_reviews: Sequence[GuardianReplayReview]
+        if semantic_profile == "semantic_existing":
+            if self._semantic_provider is None:
+                return _empty_guardian_result(
+                    semantic_profile=semantic_profile,
+                    status="SKIP",
+                    reason="semantic_reviewer_unavailable",
+                )
+            try:
+                selected_reviews = tuple(self._semantic_provider.collect())
+            except Exception:
+                return _empty_guardian_result(
+                    semantic_profile=semantic_profile,
+                    status="FAIL",
+                    reason="semantic_review_failed",
+                )
+            finally:
+                try:
+                    self._semantic_provider.close()
+                except Exception:
+                    pass
+            if not selected_reviews:
+                return _empty_guardian_result(
+                    semantic_profile=semantic_profile,
+                    status="SKIP",
+                    reason="semantic_reviewer_unavailable",
+                )
+        else:
+            selected_reviews = tuple(reviews)
+
+        if not _guardian_sequence_is_valid(selected_reviews):
+            return _empty_guardian_result(
+                semantic_profile=semantic_profile,
+                status="FAIL",
+                reason="guardian_review_sequence_invalid",
+            )
+        if self._database_path.exists() or self._database_path.is_symlink():
+            return _empty_guardian_result(
+                semantic_profile=semantic_profile,
+                status="FAIL",
+                reason="guardian_store_not_empty",
+            )
+        if _path_has_symlink(self._database_path.parent):
+            return _empty_guardian_result(
+                semantic_profile=semantic_profile,
+                status="FAIL",
+                reason="guardian_store_unsafe",
+            )
+
+        transition_counts: Counter[str] = Counter()
+        log = StringIO()
+        try:
+            store = VisualRiskEventStore(self._database_path)
+            store.migrate()
+            event_sequence = iter(
+                f"corpus-event-{index:04d}" for index in range(1, 33)
+            )
+            pipeline = VisualRiskEventPipeline(
+                store=store,
+                stream=log,
+                event_id_factory=lambda: next(event_sequence),
+            )
+            current_time = [selected_reviews[0].observed_at]
+            current_tick = [0.0]
+
+            def handle_transition(transition: RiskTransition) -> None:
+                risk = (
+                    transition.risk_kind.value
+                    if transition.risk_kind is not None
+                    else "none"
+                )
+                key = f"{transition.transition_kind.value}.{risk}"
+                if key not in transition_counts and len(transition_counts) >= 32:
+                    raise ValueError("guardian_transition_overflow")
+                transition_counts[key] += 1
+                pipeline.handle(transition)
+
+            runtime = VisualReviewRuntime(
+                risk_machine=VisualRiskStateMachine(),
+                now=lambda: current_time[0],
+                monotonic=lambda: current_tick[0],
+                on_risk_transition=handle_transition,
+            )
+            first_at = selected_reviews[0].observed_at
+            for item in selected_reviews:
+                current_time[0] = item.observed_at
+                current_tick[0] = (item.observed_at - first_at).total_seconds()
+                update = runtime.handle(
+                    ReviewCompletion(
+                        code=ReviewCompletionCode.OK,
+                        review=item.review,
+                    )
+                )
+                if update.code is not ReviewRuntimeCode.OK:
+                    raise RuntimeError("guardian_runtime_failed")
+            if "guardian.persistence_failed" in log.getvalue() or (
+                "guardian.notification_queue_failed" in log.getvalue()
+            ):
+                raise RuntimeError("guardian_persistence_failed")
+            if store.integrity_check() != "ok":
+                raise RuntimeError("guardian_integrity_failed")
+            events = store.list_events()
+            dashboard = GuardianEventQueryService(self._database_path).recent_events()
+        except Exception:
+            return _empty_guardian_result(
+                semantic_profile=semantic_profile,
+                status="FAIL",
+                reason="guardian_projection_failed",
+            )
+
+        event_counts = Counter(
+            f"{event.risk_kind.value}.{event.state}" for event in events
+        )
+        return GuardianReplayAggregate(
+            status="PASS",
+            reason="ok",
+            semantic_profile=semantic_profile,
+            transition_counts=dict(sorted(transition_counts.items())),
+            event_counts=dict(sorted(event_counts.items())),
+            dashboard_event_count=len(dashboard.events),
+            dashboard_open_event_count=sum(
+                event.state == "open" for event in dashboard.events
+            ),
+            production_state_touched=False,
+            notification_dispatch_attempted=False,
+            evidence_persisted=False,
+        )
 
 
 @dataclass(frozen=True)
@@ -396,4 +586,44 @@ def _empty_result(
         dropped_frames=0,
         queue_backlog_max=0,
         frame_observations_persisted=False,
+    )
+
+
+def _guardian_sequence_is_valid(
+    reviews: Sequence[GuardianReplayReview],
+) -> bool:
+    if not reviews or len(reviews) > MAX_REPLAY_FRAMES:
+        return False
+    previous: datetime | None = None
+    for item in reviews:
+        if not isinstance(item, GuardianReplayReview):
+            return False
+        if previous is not None and item.observed_at < previous:
+            return False
+        previous = item.observed_at
+    return True
+
+
+def _path_has_symlink(path: Path) -> bool:
+    absolute = path.absolute()
+    return any(candidate.is_symlink() for candidate in (absolute, *absolute.parents))
+
+
+def _empty_guardian_result(
+    *,
+    semantic_profile: GuardianSemanticProfile,
+    status: Literal["PASS", "FAIL", "SKIP"],
+    reason: str,
+) -> GuardianReplayAggregate:
+    return GuardianReplayAggregate(
+        status=status,
+        reason=reason,
+        semantic_profile=semantic_profile,
+        transition_counts={},
+        event_counts={},
+        dashboard_event_count=0,
+        dashboard_open_event_count=0,
+        production_state_touched=False,
+        notification_dispatch_attempted=False,
+        evidence_persisted=False,
     )
