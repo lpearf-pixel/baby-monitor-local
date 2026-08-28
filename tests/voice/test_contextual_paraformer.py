@@ -193,6 +193,34 @@ def test_runner_uses_private_quantized_embedding_alias_and_fixed_hotwords(
     assert observed["hotwords"] == CONTEXTUAL_HOTWORDS
 
 
+def test_runner_accepts_the_pinned_funasr_text_and_tokens_result(
+    tmp_path: Path,
+) -> None:
+    bundle = tmp_path / "bundle"
+    bundle.mkdir()
+    for name in (
+        "am.mvn",
+        "config.yaml",
+        "model_eb.onnx",
+        "model_quant.onnx",
+        "seg_dict",
+        "tokens.json",
+    ):
+        (bundle / name).write_bytes(b"fixture")
+
+    class FakeModel:
+        def __init__(self, _model_dir: str, **_options: object) -> None:
+            return None
+
+        def __call__(self, _samples: np.ndarray, *, hotwords: str):
+            assert hotwords == CONTEXTUAL_HOTWORDS
+            return [{"preds": ("开始喂奶", ["开", "始", "喂", "奶"])}]
+
+    recognize = _load_contextual_recognizer(bundle, model_class=FakeModel)
+
+    assert recognize(PCM) == "开始喂奶"
+
+
 def test_runner_protocol_is_canonical_and_does_not_persist_pcm(tmp_path: Path) -> None:
     input_path = tmp_path / "input.bin"
     output_path = tmp_path / "output.bin"

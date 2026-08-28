@@ -104,6 +104,28 @@ class _Engine:
         self.closed = True
 
 
+def test_generated_speech_synthesis_is_bounded(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    calls: list[dict[str, object]] = []
+
+    def run(_command: tuple[str, ...], **options: object) -> None:
+        calls.append(options)
+
+    monkeypatch.setattr(benchmark.subprocess, "run", run)
+
+    benchmark._synthesize("开始喂奶", 170, tmp_path / "sample.wav")
+
+    assert calls == [
+        {
+            "check": True,
+            "stdout": benchmark.subprocess.DEVNULL,
+            "stderr": benchmark.subprocess.DEVNULL,
+            "timeout": 15,
+        }
+    ]
+
+
 def test_generated_manifest_loads_only_fixed_action_expectations(
     tmp_path: Path,
 ) -> None:

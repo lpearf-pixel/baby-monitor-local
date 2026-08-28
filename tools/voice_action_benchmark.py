@@ -513,6 +513,7 @@ def _synthesize(text: str, rate: int, destination: Path) -> None:
         check=True,
         stdout=subprocess.DEVNULL,
         stderr=subprocess.DEVNULL,
+        timeout=15,
     )
 
 

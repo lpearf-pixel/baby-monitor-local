@@ -109,10 +109,20 @@ def _load_contextual_recognizer(
             not isinstance(result, list)
             or len(result) != 1
             or not isinstance(result[0], dict)
-            or type(result[0].get("preds")) is not str
         ):
             raise ValueError("VOICE_CONTEXTUAL_PROTOCOL_INVALID")
-        return result[0]["preds"]
+        prediction = result[0].get("preds")
+        if type(prediction) is str:
+            return prediction
+        if (
+            type(prediction) is tuple
+            and len(prediction) == 2
+            and type(prediction[0]) is str
+            and type(prediction[1]) is list
+            and all(type(token) is str for token in prediction[1])
+        ):
+            return prediction[0]
+        raise ValueError("VOICE_CONTEXTUAL_PROTOCOL_INVALID")
 
     return recognize
 
