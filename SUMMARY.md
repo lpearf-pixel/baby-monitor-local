@@ -637,9 +637,12 @@ expose transcript content.
 1. Full-care Voice ASR/VAD passes 6/6. The local enrollment boundary now opens and
    warms the Xiaomi source, drains it throughout the 15-second countdown, and then
    returns one Silero-bounded utterance from at most 12 seconds of memory-only PCM.
-   Focused enrollment is 14/14 and Voice is 406/406; no Dad profile exists yet because
-   this revised path has not received its logged-in-i9 human run. Next complete Dad,
-   Mom and the supervised replay/overlap slice. Voice remains disabled until they pass.
+   Focused enrollment is 14/14 and Voice is 406/406. The logged-in-i9 Dad run has now
+   passed three fresh one-time phrases, created one encrypted local Dad profile and
+   persisted no raw audio. Post-run checks show Dad present, Mom absent, Voice healthy
+   in listen-only mode and Xiaomi source PASS. Mom enrollment and the supervised
+   replay/overlap slice are explicitly deferred by the user; Nanny/Nancy has no approved
+   enrollment role. Full-care Voice remains disabled until the remaining gates pass.
 2. Continue the approved audio/cry plan at Stage A8; a production model and
    license are still required before enablement; household audio remains
    memory-only.
@@ -649,8 +652,9 @@ expose transcript content.
    PASS. Supervised evidence passed at least 5 standalone wakes, 3 two-stage dialogues,
    3 silent timeouts, 5 non-wake controls and no self-trigger; both fixed replies were
    heard. The final software gate is 325/325 and no recent raw audio file was created.
-   Full-care Voice remains disabled; its private-corpus accuracy and Dad/Mom enrollment
-   gates are not claimed complete by listen-only mode.
+   Full-care Voice remains disabled; listen-only mode does not complete the deferred Mom
+   enrollment, two-profile isolation or private-corpus accuracy gates. The separately
+   supervised Dad enrollment is recorded above.
    The bounded command-compatibility fix at `e786d2e` now accepts only the exact
    `小小`/`嘿，小小` entries and exact `我要喂奶了` alias; focused 72/72 and Voice
    418/418 pass. The real installed-i9 gold phrase produced exactly one audible

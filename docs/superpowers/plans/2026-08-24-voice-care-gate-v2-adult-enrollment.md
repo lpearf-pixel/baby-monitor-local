@@ -882,10 +882,9 @@ edge, then uses the already-approved Streaming Silero/utterance collector for at
 12 seconds to return one complete memory-only utterance. Source, VAD, timeout, malformed
 frame and no-speech cases remain fail closed; the random challenge TTL and exact match
 are unchanged. Focused enrollment tests pass 14/14 and the Voice suite passes 406/406.
-This software evidence does not complete Step 2: one fresh logged-in-i9 Dad run is still
-required.
+The later logged-in-i9 result below supersedes this pre-device state.
 
-- [ ] **Step 2: Enroll Dad privately**
+- [x] **Step 2: Enroll Dad privately**
 
 Run:
 
@@ -895,6 +894,14 @@ make alpha-voice-enroll-dad
 
 Human action: Dad alone reads the three displayed one-time phrases at normal volume.
 Do not paste audio, transcript, profile ID or local path into chat or Git.
+
+Fresh installed evidence on 2026-08-28: source PASS, isolated speaker environment ready
+and generated ECAPA 5/5 with 192 dimensions and p95 668 ms. Full-care remained disabled
+and neither role existed before the run. Earlier attempts failed closed at capture or
+challenge without creating a profile or persisting raw audio. The final logged-in-i9
+run passed all three new one-time phrases and returned `profile_state=created` with
+`raw_audio_persisted=false`. A descriptor-bound aggregate check then proved Dad present
+and Mom absent; Voice remained healthy/listen-only and the Xiaomi source remained PASS.
 
 - [ ] **Step 3: Enroll Mom privately**
 
@@ -906,6 +913,10 @@ make alpha-voice-enroll-mom
 
 Human action: Mom alone reads the three newly displayed one-time phrases. Reuse of any
 Dad or previous challenge must fail closed.
+
+**Deferred by the user on 2026-08-28.** Mom enrollment and all later Mom-dependent
+isolation gates remain pending. Nanny/Nancy is not an allowed role in this Dad/Mom plan
+and requires a separate approved identity/enrollment contract before any collection.
 
 - [ ] **Step 4: Run post-enrollment isolation gates**
 
@@ -922,6 +933,9 @@ git diff --check
 Record only aggregate counts and stable states. Software and two successful enrollments
 still do not prove false-accept/false-reject, arbitrary replay resistance, Baby Care
 pairing or production feeding writes.
+
+Step 4 remains blocked on the explicitly deferred Mom enrollment; Dad-only evidence is
+not substituted for the required two-profile isolation gate.
 
 - [ ] **Step 5: Update status, commit and publish**
 

@@ -381,7 +381,7 @@
   Paraformer passed 6/6 exact and 6/6 wake at p50 587 ms / p95 661 ms, while Silero
   passed all six prompts with exactly one span each. Installed source/speaker/ECAPA
   preconditions also pass; the generated ECAPA gate is 5/5, 192 dimensions, p95 433 ms.
-  Dad enrollment is not yet accepted because the PTY/chat workflow started five-second
+  Dad enrollment was not yet accepted at this checkpoint because the PTY/chat workflow started five-second
   captures before the remote operator could reliably see and speak the challenge. A
   transcript-free real diagnostic reported edit distance 17, length delta +6 and no
   wake/challenge/digit match, proving the wrong time window rather than a near miss.
@@ -391,8 +391,9 @@
   retained the fragile fixed five-second block. The software path now opens/warms the
   source first, drains audio throughout the local countdown and uses fixed Silero to
   return one complete utterance within a 12-second in-memory limit. Focused enrollment
-  tests pass 14/14 and Voice passes 406/406. Voice remains disabled, no profile was
-  created and the revised path still requires one real Dad run before acceptance.
+  tests pass 14/14 and Voice passes 406/406. At this checkpoint Voice remained disabled,
+  no profile had been created and the revised path still required one real Dad run;
+  the later 2026-08-28 Dad enrollment entry below supersedes that pending state.
 - The separately approved continuous listen-only mode is accepted locally through
   `4590489`. It composes the fixed Xiaomi audio alias, bounded in-memory PCM pump,
   stateful Silero VAD, local Paraformer, exact `小小` wake controller, an eight-second
@@ -759,3 +760,11 @@
   gate therefore failed, the retained private-local gate was not opened, and no
   production model/configuration/service was changed or restarted. The candidate is
   not approved for deployment.
+- 2026-08-28 Voice Gate V2 Dad enrollment passed on the logged-in Intel i9. Preconditions
+  were Xiaomi source PASS, speaker environment ready, generated ECAPA 5/5 at 192
+  dimensions and p95 668 ms, full-care disabled and no existing Dad/Mom bindings. The
+  successful run passed three fresh one-time phrases, created one encrypted opaque Dad
+  profile and reported `raw_audio_persisted=false`. Post-run checks prove Dad present,
+  Mom absent, Voice healthy/listen-only and source PASS. Mom enrollment and all
+  two-profile isolation gates are deferred by the user. Nanny/Nancy is not an approved
+  enrollment role and no such collection was started.

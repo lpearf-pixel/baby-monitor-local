@@ -214,10 +214,13 @@ explicitly public media. Software tests do not prove household accuracy.
 **Next:** Voice listen-only is complete and the full-care ASR/VAD corpus passes 6/6.
 The revised enrollment boundary is software-complete: it warms/drains the Xiaomi audio
 during the local 15-second countdown and then captures one Silero-bounded utterance in
-memory instead of opening a fragile five-second decoder window. Next run one logged-in-
-i9 Dad enrollment, then Mom enrollment and the separately supervised replay/overlap
-slice. Baby Care binding remains behind those gates. P4 authenticated private remote
-access is explicitly deferred to the final optional stage.
+memory instead of opening a fragile five-second decoder window. The logged-in-i9 Dad
+enrollment now passes 3/3 fresh one-time phrases, with an encrypted local profile and no
+raw-audio persistence. Mom enrollment and the separately supervised replay/overlap
+slice are deferred by the user; Nanny/Nancy collection is outside the approved Dad/Mom
+contract and must not start without a separate design. Baby Care binding remains behind
+those gates. P4 authenticated private remote access is explicitly deferred to the final
+optional stage.
 
 Installed non-interactive Voice preflight is complete at `41da786`: after the explicitly
 approved removal of one stale legacy pending request through `aacefd9`, the login

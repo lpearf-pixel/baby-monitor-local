@@ -1476,3 +1476,17 @@ candidate p50/p95 为164/294 ms，peak RSS 1,666,121,728 bytes。因为未达到
 public gate FAIL；没有读取 retained private 样本，也没有进入部署。当前 production 继续使用
 原 sherpa Paraformer。完整聚合结果见
 `docs/reviews/2026-08-28-voice-contextual-hotword-ab-result.md`。
+
+## 2026-08-28 Voice Gate V2 Dad 私有注册
+
+在持有固定 ECAPA 私有资产的 `voice-care-v1-gate-v1` worktree 执行登录用户实机门。
+前置为 source PASS、speaker environment ready、generated ECAPA 5/5、192 dimensions、
+p95 668 ms、full-care false、Dad/Mom 均不存在。若干早期尝试分别在 capture/challenge
+阶段 fail closed，均未创建 profile 或保存原始音频；关联私有诊断只保留本地受限证据，
+随后已停止。
+
+最终 Dad 对三条全新一次性口令均通过，命令返回 `result=PASS`、`sample_count=3`、
+`profile_state=created`、`raw_audio_persisted=false`。descriptor-bound 聚合复核为 Dad
+present / Mom absent；Voice 仍为 healthy/listen-only，Xiaomi source 仍 PASS，未重启
+go2rtc、未启用 full-care、未调用 Baby Care。用户将 Mom 与 Nanny/Nancy 采集延期；Mom
+之后的双 profile 隔离门因此仍 pending，Nanny/Nancy 尚无批准的注册合同。
