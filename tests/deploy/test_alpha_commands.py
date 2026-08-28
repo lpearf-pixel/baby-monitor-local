@@ -1123,6 +1123,27 @@ def test_makefile_exposes_read_only_xiaomi_media_diagnostic() -> None:
     assert "camera_reply" not in lowered
 
 
+def test_makefile_exposes_isolated_visual_corpus_workflow() -> None:
+    content = (ROOT / "Makefile").read_text(encoding="ascii")
+    commands = (
+        "tools/visual_corpus.py validate",
+        "tools/visual_corpus.py prepare --first-stage",
+        "tools/visual_corpus.py replay --first-stage",
+        "tools/visual_corpus.py compare",
+        'tools/visual_corpus.py promote --expected-digest "$(BASELINE_SHA256)"',
+        "tools/visual_corpus.py long --minutes 30",
+    )
+
+    assert all(command in content for command in commands)
+    corpus_lines = [
+        line for line in content.splitlines() if "tools/visual_corpus.py" in line
+    ]
+    assert not any(
+        token in "\n".join(corpus_lines).lower()
+        for token in ("launchctl", "go2rtc", "camera", "voice", "guardian-start")
+    )
+
+
 def test_installer_ensures_patched_build_instead_of_downloading_release() -> None:
     content = (ROOT / "tools/install_alpha_macos.sh").read_text(encoding="utf-8")
 

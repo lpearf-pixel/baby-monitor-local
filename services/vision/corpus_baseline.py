@@ -145,7 +145,7 @@ def compare_result_sets(
 
 def result_set_digest(value: ReplayResultSet) -> str:
     validated = _validated_result_set(value)
-    return hashlib.sha256(_canonical_result_bytes(validated)).hexdigest()
+    return hashlib.sha256(canonical_result_set_bytes(validated)).hexdigest()
 
 
 def promote_baseline(
@@ -154,7 +154,7 @@ def promote_baseline(
     *,
     expected_digest: str,
 ) -> str:
-    candidate = _load_candidate(candidate_path)
+    candidate = load_result_set(candidate_path)
     digest = result_set_digest(candidate)
     if digest != expected_digest:
         raise BaselineError("visual_baseline_digest_mismatch")
@@ -174,7 +174,7 @@ def promote_baseline(
     if _path_has_symlink(destination.parent):
         raise BaselineError("visual_baseline_destination_unsafe")
 
-    payload = _canonical_result_bytes(candidate)
+    payload = canonical_result_set_bytes(candidate)
     temporary: Path | None = None
     try:
         descriptor, temporary_name = tempfile.mkstemp(
@@ -279,7 +279,8 @@ def _compare_clip(
     return regression, delta
 
 
-def _canonical_result_bytes(value: ReplayResultSet) -> bytes:
+def canonical_result_set_bytes(value: ReplayResultSet) -> bytes:
+    value = _validated_result_set(value)
     payload = json.dumps(
         value.model_dump(mode="json"),
         ensure_ascii=True,
@@ -290,7 +291,7 @@ def _canonical_result_bytes(value: ReplayResultSet) -> bytes:
     return (payload + "\n").encode("ascii")
 
 
-def _load_candidate(path: Path) -> ReplayResultSet:
+def load_result_set(path: Path) -> ReplayResultSet:
     path = Path(path)
     try:
         metadata = path.lstat()

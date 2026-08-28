@@ -120,6 +120,9 @@ class FfmpegCommandRunner:
         except subprocess.TimeoutExpired as exc:
             _terminate_process_group(child)
             raise CorpusPrepareError("visual_corpus_prepare_timeout") from exc
+        except KeyboardInterrupt as exc:
+            _terminate_process_group(child)
+            raise CorpusPrepareError("visual_corpus_prepare_interrupted") from exc
         if returncode != 0:
             raise CorpusPrepareError("visual_corpus_prepare_failed")
 

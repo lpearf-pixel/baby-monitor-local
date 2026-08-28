@@ -4,6 +4,7 @@ import hashlib
 import importlib
 import json
 import os
+import signal
 from pathlib import Path
 
 import pytest
@@ -237,6 +238,47 @@ def test_prepare_hevc_uses_fixed_profile_and_publishes_verified_artifact(
     assert "fps=10" in rendered_argv
     assert "scale=2560:1440:force_original_aspect_ratio=decrease" in rendered_argv
     assert timeout == 90.0
+
+
+def test_ffmpeg_keyboard_interrupt_terminates_owned_process_group(
+    tmp_path: Path,
+    monkeypatch,
+) -> None:
+    module = prepare_module()
+    waits = iter((KeyboardInterrupt(), 0))
+    signals: list[tuple[int, int]] = []
+
+    class Child:
+        pid = 4321
+
+        def wait(self, *, timeout: float):
+            outcome = next(waits)
+            if isinstance(outcome, BaseException):
+                raise outcome
+            return outcome
+
+    monkeypatch.setattr(module.subprocess, "Popen", lambda *_args, **_kwargs: Child())
+    monkeypatch.setattr(
+        module.os,
+        "killpg",
+        lambda pid, sent_signal: signals.append((pid, sent_signal)),
+    )
+    destination = tmp_path / "output.mkv"
+    descriptor = os.open(destination, os.O_WRONLY | os.O_CREAT, 0o600)
+    try:
+        with pytest.raises(
+            module.CorpusPrepareError,
+            match="^visual_corpus_prepare_interrupted$",
+        ):
+            module.FfmpegCommandRunner().run_to_fd(
+                ("ffmpeg",),
+                output_fd=descriptor,
+                timeout_seconds=90,
+            )
+    finally:
+        os.close(descriptor)
+
+    assert signals == [(4321, signal.SIGTERM)]
 
 
 @pytest.mark.parametrize(

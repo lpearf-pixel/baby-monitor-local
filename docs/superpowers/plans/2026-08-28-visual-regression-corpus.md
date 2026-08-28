@@ -586,7 +586,7 @@ Commit: `feat: compare visual corpus baselines`
 **Interfaces:**
 - Produces: `make alpha-visual-corpus-validate`, `alpha-visual-corpus-prepare`, `alpha-visual-regression`, `alpha-visual-regression-compare`, `alpha-visual-regression-promote`, `alpha-visual-regression-long`.
 
-- [ ] **Step 1: Write CLI/Make RED tests**
+- [x] **Step 1: Write CLI/Make RED tests**
 
 Assert fixed manifest/runtime locations, first-stage selection by default, no URL/path
 override, explicit baseline digest for promotion, canonical JSON result file with 0600,
@@ -607,7 +607,7 @@ def test_make_replay_is_a_thin_fixed_entry() -> None:
     )
 ```
 
-- [ ] **Step 2: Run RED and implement thin CLI**
+- [x] **Step 2: Run RED and implement thin CLI**
 
 Run: `python -m pytest -q tests/tools/test_visual_corpus.py tests/deploy/test_alpha_commands.py`
 
@@ -615,7 +615,7 @@ Subcommands call service functions only. Output is fixed `key=value`; result det
 to canonical ignored JSON. Ctrl-C stops children, retains private partial state and exits
 nonzero.
 
-- [ ] **Step 3: Prepare and replay one to three actual public clips**
+- [x] **Step 3: Prepare and replay one to three actual public clips**
 
 Run:
 
@@ -629,13 +629,19 @@ Record each clip as PASS/FAIL/SKIP. First run at least one close/medium and one 
 clip through `analysis_realtime`; run `xiaomi_source_hd` preparation for at least one
 clip. Do not claim CS2/MISS validation.
 
-- [ ] **Step 4: Generate observational candidate, compare and explicitly promote v1**
+- [x] **Step 4: Generate observational candidate, compare and explicitly promote v1**
 
 Run the comparison before promotion. Review the candidate's aggregate result and exact
 identity, then run promotion with its printed SHA-256. Commit only the bounded baseline
 JSON, never the ignored result/media cache.
 
-- [ ] **Step 5: Run GREEN and commit**
+Current result: the three-clip candidate was generated and reviewed. Comparison returned
+`SKIP visual_baseline_missing`; exact-digest promotion returned
+`FAIL visual_baseline_promotion_incomplete` because the approved manifest remains
+`PARTIAL`. No baseline file was created. This is the required fail-closed partial path,
+not a promoted v1 baseline.
+
+- [x] **Step 5: Run GREEN and commit**
 
 Run:
 
