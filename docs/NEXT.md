@@ -396,12 +396,20 @@ Voice 524/524 and repository 1829/1829. The generated benchmark passed low-risk 
 18/18 and negatives 48/48 with zero false accepts; medication start passed 3/3 while
 medication complete was rejected 3/3, so medication cannot enter supervised acceptance.
 
-**Next:** wait for the adult to return. With separate approval, run Task 8 only for the
-already software-qualified Feeding, diaper-change and burping actions from fresh fixed
-counters while Camera Reply remains false. Do not run household capture unattended.
-Medication requires a separate high-risk design before its Task 8 gate; do not install
-a model, relax correction or infer a care record. Camera Reply V3E remains an independent
-later gate.
+**Task 8 low-risk device result:** executed under adult supervision on 2026-08-28 and
+failed closed on recall. Feeding accepted 8/11 positives while 20/20 shared negative
+controls remained silent. Diaper change accepted 0/2 single-sentence and 2/2 two-stage
+positives. Burping start accepted 1/1 two-stage; burping complete was rejected 0/2 as
+`far`. No false accept, cross-action increment, new output failure or camera movement
+was observed. Camera Reply remained false, Voice diagnostic remained inactive and the
+Xiaomi source stayed PASS.
+
+**Next:** diagnose the combined wake/action entrance and the armed burping-complete
+`far` rejection from synthetic/public failing regressions and aggregate-only evidence.
+Do not repeat the same household matrix until an evidence-backed change exists. Any
+short private diagnostic, model change or new correction mapping needs separate scope;
+do not infer the missing transcript. Medication still requires a separate high-risk
+design. Baby Care writes and Camera Reply V3E remain independent and disabled.
 
 ## P5 — Final 72-hour release gate
 

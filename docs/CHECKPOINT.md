@@ -1413,3 +1413,25 @@ source 同时保持 healthy / PASS，未重启 go2rtc。成人两阶段复验听
 `listen_only_action_rejected=1`，证明拾音/VAD/ASR 已到分类层但继续安全拒绝近似 start。
 随后单句闭合路径听到一次确认，机器计数 `listen_only_feeding_exact=1`、processed_count=3；
 source 仍为 `cs2+udp` / H265 / 2560x1440 PASS，diagnostic 保持 inactive，未新增持久化记录。
+
+## 2026-08-28 Voice Care 多护理动作 Task 8 低风险实机门
+
+成人明确批准后，从 installed candidate `528b31a` 和固定计数基线执行 Feeding、换尿布与
+拍嗝监督验收。前置与尾部均为 Voice healthy/listen-only、Camera Reply=false、diagnostic
+inactive；Xiaomi source 尾部 PASS，实际协商 `cs2+udp`、H265、2560x1440 / 1280x720。
+有界 media diagnostic 同时返回 `configured_transport=auto`、`producer_count=1`、
+`producer_replaced=false`，视频与摄像头音频字节均增长。
+未修改 transport、go2rtc、模型或运行配置，未调用 Baby Care，未保存家庭音频或转写。
+
+Feeding 运行 11 个批准正例，8 次获得一次 i9 固定确认；20 个覆盖无 wake、否定、停止、
+取消、疑问、相邻语义、普通陈述和跨动作的负例全部静默。换尿布的单句组合路径 0/2，
+两阶段路径 2/2。拍嗝单句组合 0/2；两阶段 start 1/1；两阶段 complete 0/2，两次均在
+成功 wake 后安全进入 `far` 拒绝。固定计数从 Feeding/diaper/burping exact 1/0/0 变为
+9/2/1，action rejected 从1变3，ignored far 从0变2；corrected Feeding、medication candidate
+和 output failures 均无增量。没有观察到 false accept、动作串类、重复回复或摄像头转动。
+
+结论为 safety boundary PASS、recall FAIL，Task 8 不接受。Camera Reply V3E 不恢复，药物
+仍被独立高风险设计阻塞。下一步先以 synthetic/public RED 和固定聚合证据诊断组合 wake/
+动作入口与拍嗝 complete follow-up，不得根据家庭听感猜测转写或放宽通用 edit distance。
+详细结果见
+`docs/reviews/2026-08-27-voice-care-multi-intent-asr-optimization-resolution.md`。

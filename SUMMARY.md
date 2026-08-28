@@ -606,13 +606,17 @@ legacy branch into this line without a separate integration decision.
 
 ## Next Priorities
 
-The bounded CoreAudio recovery is complete: the system Ping returned in 2.551 seconds
-after daemon replacement. A supervised two-stage wake/follow-up still failed closed as
-one `near_start` rejection, while the single-sentence path produced one audible reply
-and incremented `listen_only_feeding_exact` to 1. The current reliable operator path is
-the approved single sentence. Next request the separate multi-action Task 8 adult gate
-before testing diaper change or burping; do not widen ASR correction from household
-evidence, enable Camera Reply, delete the private bundle or expose transcript content.
+The bounded CoreAudio recovery is complete. The separately approved multi-action Task 8
+low-risk device gate has now been executed. Feeding produced 8 accepted actions from 11
+positive attempts while 20/20 negatives remained silent. Diaper change was 0/2 on the
+single-sentence path and 2/2 on the two-stage path. Burping start passed once on the
+two-stage path, while burping complete was safely rejected twice as `far`. There were
+zero observed false accepts, cross-action increments, new output failures or camera
+movements, but recall is insufficient; Task 8 is not accepted and Camera Reply remains
+false. The exact next Voice slice is a synthetic/public-first recall diagnosis for the
+combined wake/action entrance and burping-complete follow-up. Do not widen ASR correction
+from household evidence, enable Camera Reply, delete the private bundle or expose
+transcript content.
 
 1. Full-care Voice ASR/VAD passes 6/6. The local enrollment boundary now opens and
    warms the Xiaomi source, drains it throughout the 15-second countdown, and then

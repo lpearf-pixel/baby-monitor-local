@@ -374,8 +374,9 @@ resolution 必须包含：
 
 ## 9. 当前唯一下一步
 
-软件 Tasks 1–7 已完成。等待成人返回并另行批准 Task 8；只可先验收已通过软件门的
-Feeding、尿布和拍嗝，Camera Reply保持 false。medication complete在generated gate为0/3，
+软件 Tasks 1–7 已完成，获批的 Task 8 低风险实机门也已执行，但因召回不足而未接受。
+当前唯一下一步是 synthetic/public-first 诊断组合 wake/action 入口和 armed 拍嗝 complete
+的 `far` 拒绝。Camera Reply 保持 false；medication complete 在 generated gate 为 0/3，
 必须先有独立高风险设计，不得放宽纠错、安装未批准模型或无人值守采集家庭音频。
 
 ### R7 — 完整软件与文档门
@@ -423,3 +424,22 @@ Feeding、尿布和拍嗝，Camera Reply保持 false。medication complete在gen
 - evidence does not prove：家庭语音采集、真实转写质量、持续监听稳定性、摄像头扬声器可听性或护理记录写入
 - decision：keep Task 6软件实现；defer supervised local diagnostic to Task 7
 - next single action：成人在场时执行一次Task 7监督本地诊断；先检查模式和状态，再短时采集，完成后显式stop
+
+### R9 — Task 8 低风险成人监督实机门
+
+- 日期：2026-08-28
+- branch / exact pre-doc HEAD：`codex/xiaomi-camera-reply-lifecycle-review` / `bb4f737`
+- installed candidate：`528b31a`
+- authority：成人监督 Feeding、尿布和拍嗝；不含药物、Camera Reply、Baby Care 写入或私有诊断
+- preflight：Voice healthy/listen-only；Camera Reply=false；source PASS；diagnostic inactive；transport=auto、producer_count=1、producer_replaced=false
+- positives/accepted：Feeding 8/11；diaper single-sentence 0/2、two-stage 2/2；burping single-sentence 0/2、two-stage start 1/1、complete 0/2
+- negatives/false accepts：共享20/20静默；动作相关负例静默；false accepts=0
+- fixed deltas：feeding exact +8、diaper exact +2、burping exact +1、action rejected +2、ignored far +2、output failures +0
+- latency p50/p95/RSS：NOT_RUN；普通 memory-only 状态不保存逐 utterance latency，禁止复用 generated 数字
+- privacy：diagnostic前后inactive/0 records/0 bytes；未保存或记录家庭音频、转写、session ID或私有路径
+- Camera Reply / movement：false；未播放摄像头扬声器；成人未观察到转动
+- Baby Care：write/outbox/signing均未构造或调用
+- evidence proves：closed safety boundary、零观察误接受、两阶段尿布与拍嗝start分类可达
+- evidence does not prove：稳定家庭召回、儿童/远场/夜间、拍嗝complete、Camera Reply或护理写入
+- decision：keep fail-closed implementation；Task 8 recall FAIL；Camera Reply V3E不恢复
+- next single action：synthetic/public-first诊断组合wake/action入口与armed burping-complete far；不先放宽规则

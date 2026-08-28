@@ -643,7 +643,8 @@
   medication start 3/3 and negatives 48/48 with zero false accepts, but medication
   complete 0/3; it remains fail closed and blocks medication device acceptance. No
   household audio, transcript, Camera Reply, Baby Care write or model install was used.
-  Task 8 requires separate adult-supervised authority; Camera Reply remains false.
+  The separately approved low-risk Task 8 device gate has since executed and failed
+  closed on recall; Camera Reply remains false.
 - Installed-i9 audio-source discovery now verifies that the Xiaomi source exposes HEVC
   video plus Opus audio and that the fixed loopback `audio_analysis` alias exposes only
   Opus. The real input is supported 48 kHz stereo Opus; the fixed FFmpeg boundary
@@ -726,3 +727,16 @@
   `listen_only_action_rejected=1`. A subsequent approved single-sentence interaction
   produced one audible acknowledgement and `listen_only_feeding_exact=1` with source
   PASS. No new diagnostic session or persistence was enabled.
+- The separately approved 2026-08-28 Task 8 low-risk device gate is complete but not
+  accepted. From a fixed baseline, Feeding accepted 8/11 approved positives and kept
+  20/20 negatives silent. Diaper change accepted 0/2 single-sentence positives and 2/2
+  two-stage positives. Burping start accepted 1/1 two-stage, while burping complete was
+  rejected 0/2 as `far`. Final action deltas were Feeding exact +8, diaper exact +2,
+  burping exact +1 and action rejected +2; corrected Feeding, medication candidate and
+  output failure deltas were zero. No false accept, cross-action increment or camera
+  movement was observed. Voice ended healthy/idle, the Xiaomi source remained PASS over
+  the observed `cs2+udp` transport, Camera Reply stayed false and diagnostics remained
+  inactive with zero records/bytes. This proves the closed safety boundary but not
+  acceptable household recall. The next Voice slice is synthetic/public-first diagnosis
+  of combined wake/action misses and the armed burping-complete `far` result; it may not
+  infer or retain household transcript content.

@@ -5,11 +5,12 @@
 > `superpowers:executing-plans` to implement this plan task-by-task. Steps use checkbox
 > (`- [ ]`) syntax for tracking.
 >
-> **Status:** Software Tasks 1–7 are complete on 2026-08-28. The generated gate kept
-> Feeding, diaper change and burping, but exact medication-complete recognition remains
-> fail closed. Task 8 household/device acceptance is not authorized. Model installation,
-> household audio, Camera Reply activation, Baby Care writes, PRs and protected-branch
-> changes remain unauthorized.
+> **Status:** Software Tasks 1–7 are complete. The separately approved 2026-08-28
+> Task 8 low-risk device gate has been executed for Feeding, diaper change and burping.
+> It observed zero false accepts but insufficient recall, so Task 8 is not accepted and
+> Camera Reply V3E does not resume. Medication remains blocked behind a separate
+> high-risk design. Model installation, Camera Reply activation, Baby Care writes, PRs
+> and protected-branch changes remain unauthorized.
 
 **Goal:** Make the existing armed listen-only Voice flow safely recognize a closed set
 of feeding, diaper-change and burping commands, classify medication utterances only as
@@ -629,37 +630,37 @@ authority; the current Tasks 1–7 publication has that authority.
 - Produces: aggregate adult-supervised recognition evidence and final keep/rollback
   decision; no raw audio/transcript and no Baby Care write.
 
-- [ ] **Step 1: Establish the human/device preflight**
+- [x] **Step 1: Establish the human/device preflight**
 
   Require logged-in interactive i9 context, explicit visible/audible readiness,
   `camera_reply_enabled=false`, healthy Voice idle, healthy single Xiaomi producer,
   no baby required and no care write. Record only fixed preflight results.
 
-- [ ] **Step 2: Run Feeding isolation**
+- [x] **Step 2: Run Feeding isolation (executed; recall failed)**
 
   From fresh counters, run at least 10 approved positive follow-ups and 20 negative
   controls spanning no wake, negation, cancellation, question, semantic neighbor and
   cross-action. Any false accept stops the gate and rolls back correction.
 
-- [ ] **Step 3: Run diaper and burping independently**
+- [x] **Step 3: Run diaper and burping independently (executed; recall failed)**
 
   Clear/record counter baselines between action families. Validate each exact approved
   phrase and its negative/cross-action controls. Do not infer diaper contents or burp
   success from command recognition.
 
-- [ ] **Step 4: Run medication candidate isolation**
+- [ ] **Step 4: Run medication candidate isolation (blocked by separate high-risk design)**
 
   Validate only exact high-risk candidate counters. Require no spoken save confirmation,
   no external intent, no outbox and no Baby Care data. Do not speak or record a real
   household medication name or dose for this gate.
 
-- [ ] **Step 5: Decide whether Camera Reply V3E may resume**
+- [x] **Step 5: Decide whether Camera Reply V3E may resume — NO**
 
   Only if every ASR action gate is clean may a separately approved Camera Reply V3E
   matrix resume. Its movement, truncation, duplicate, lifecycle, producer, timeout and
   EOF rules remain independent and cannot be marked passed by ASR results.
 
-- [ ] **Step 6: Write the resolution**
+- [x] **Step 6: Write the resolution**
 
   Compare baseline and final recall, false accepts, p50/p95/RSS, action coverage,
   software/device evidence, privacy, model decisions, rollback and remaining Baby Care
@@ -671,6 +672,12 @@ authority; the current Tasks 1–7 publication has that authority.
   Report local branch/head, commits and dirty state. Push, PR, merge, stable integration
   and release remain separate user decisions.
 
+**Observed result:** Feeding was 8/11 with 20/20 negatives silent; diaper was 0/2 on
+single-sentence input and 2/2 on two-stage input; burping start was 1/1 on two-stage
+input while burping complete was rejected 0/2 as far. No false accept or cross-action
+increment was observed. The low-risk real-device gate therefore remains failed closed.
+Medication was not run because its separate high-risk design is still missing.
+
 **Acceptance:** Feeding, diaper, burping and medication-candidate behavior each have
 independent aggregate evidence, zero observed false accepts and an auditable resolution.
 This still does not prove unattended care, medication correctness, child speech,
@@ -680,8 +687,9 @@ night/far-field accuracy or Baby Care writes.
 
 ## Execution Handoff
 
-Tasks 1–7 are complete. Continue only from Task 8 after separate adult-supervised
-authority. Use TDD and update the review log after every slice. Do not dispatch
-overlapping workers to the same files. Stop for human authority before any model
-installation, household capture/playback, Camera Reply enablement, PR,
-protected-branch change or Baby Care contract expansion.
+Tasks 1–7 are complete and the approved low-risk subset of Task 8 has been executed.
+Continue from the recall follow-up recorded in the resolution; do not repeat the same
+household matrix without a new evidence-producing change. Use TDD and update the review
+log after every slice. Stop for human authority before any model installation, private
+diagnostic persistence, Camera Reply enablement, PR, protected-branch change or Baby
+Care contract expansion.
