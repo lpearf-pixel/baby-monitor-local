@@ -173,6 +173,35 @@ class DiagnosticSnapshot:
 
 
 @dataclass(frozen=True, slots=True)
+class RetainedDiagnosticSample:
+    pcm: bytes = field(repr=False)
+    sequence: int
+    phase_before: Literal["idle", "armed"]
+    outcome_reason: str
+    action_code: str | None
+    match_kind: str | None
+
+    def __post_init__(self) -> None:
+        if (
+            type(self.pcm) is not bytes
+            or not self.pcm
+            or len(self.pcm) % 2
+            or len(self.pcm) > _MAX_PCM_BYTES
+            or type(self.sequence) is not int
+            or not 1 <= self.sequence <= DIAGNOSTIC_MAX_UTTERANCES
+            or self.phase_before not in {"idle", "armed"}
+            or self.outcome_reason not in _OUTCOME_REASONS
+            or not (
+                self.action_code is None
+                and self.match_kind is None
+                or self.action_code in _ACTION_CODES
+                and self.match_kind in _MATCH_KINDS
+            )
+        ):
+            raise ValueError(VOICE_DIAGNOSTIC_UNAVAILABLE)
+
+
+@dataclass(frozen=True, slots=True)
 class DiagnosticAsrObservation:
     state: Literal["available", "unavailable"]
     text: str = field(repr=False)
@@ -456,6 +485,189 @@ def load_marker_session(project_root: Path) -> DiagnosticSession | None:
                 os.close(session_fd)
     except (OSError, ValueError, TypeError, json.JSONDecodeError):
         return None
+
+
+def load_latest_retained_session(project_root: Path) -> DiagnosticSession | None:
+    """Select the newest coherent retained session without requiring an active marker."""
+
+    try:
+        root = Path(project_root).resolve(strict=True)
+        candidates: list[DiagnosticSession] = []
+        with _open_private_tree(root) as tree:
+            names = os.listdir(tree.sessions)
+            if not 1 <= len(names) <= 128:
+                raise ValueError
+            for session_id in names:
+                if _SESSION_ID.fullmatch(session_id) is None:
+                    raise ValueError
+                session_fd = _open_directory_at(
+                    tree.sessions, session_id, private=True
+                )
+                try:
+                    manifest = _read_private_json_at(session_fd, "session.json")
+                    checked_id, created, expires = _validate_session_payload(manifest)
+                    if checked_id != session_id:
+                        raise ValueError
+                    audio_fd = _open_directory_at(session_fd, "audio", private=True)
+                    try:
+                        events_fd = _open_directory_at(
+                            session_fd, "events", private=True
+                        )
+                        try:
+                            _require_tree_bindings(
+                                tree,
+                                session_fd,
+                                audio_fd,
+                                events_fd,
+                                session_id,
+                            )
+                            complete_count, complete_bytes, next_sequence = (
+                                _artifact_usage_at(audio_fd, events_fd)
+                            )
+                        finally:
+                            os.close(events_fd)
+                    finally:
+                        os.close(audio_fd)
+                    candidates.append(
+                        DiagnosticSession(
+                            session_id=session_id,
+                            created_epoch=created,
+                            expires_epoch=expires,
+                            complete_count=complete_count,
+                            complete_bytes=complete_bytes,
+                            next_sequence=next_sequence,
+                            _session_root=(
+                                root
+                                / "runtime/private/voice-diagnostics/sessions"
+                                / session_id
+                            ),
+                            _project_root=root,
+                        )
+                    )
+                finally:
+                    os.close(session_fd)
+        latest_epoch = max(item.created_epoch for item in candidates)
+        latest = [item for item in candidates if item.created_epoch == latest_epoch]
+        if len(latest) != 1:
+            raise ValueError
+        return latest[0]
+    except (OSError, ValueError, TypeError, json.JSONDecodeError):
+        return None
+
+
+def read_retained_diagnostic_sample(
+    session: DiagnosticSession, sequence: int
+) -> RetainedDiagnosticSample:
+    """Read one complete retained pair and discard its private transcript metadata."""
+
+    try:
+        if (
+            type(session) is not DiagnosticSession
+            or type(sequence) is not int
+            or not 1 <= sequence <= DIAGNOSTIC_MAX_UTTERANCES
+        ):
+            raise ValueError
+        with _open_session_tree(session) as opened:
+            _tree, _session_fd, audio_fd, events_fd = opened
+            audio, audio_pending = _private_artifacts_at(audio_fd, ".wav")
+            events, event_pending = _private_artifacts_at(events_fd, ".json")
+            if (
+                sequence not in audio
+                or sequence not in events
+                or sequence in audio_pending
+                or sequence in event_pending
+            ):
+                raise ValueError
+            basename = f"{sequence:06d}"
+            pcm = _read_private_wave_at(audio_fd, f"{basename}.wav")
+            payload = _read_private_json_at(events_fd, f"{basename}.json")
+        expected_keys = {
+            "action_code",
+            "asr_state",
+            "asr_text",
+            "audio_file",
+            "captured_epoch",
+            "duration_ms",
+            "from_replay",
+            "latency_ms",
+            "match_kind",
+            "normalized_text",
+            "outcome_reason",
+            "pcm_bytes",
+            "phase_before",
+            "schema_version",
+            "sequence",
+            "session_id",
+        }
+        if not isinstance(payload, dict) or set(payload) != expected_keys:
+            raise ValueError
+        record = DiagnosticRecord(
+            session_id=payload["session_id"],
+            captured_epoch=payload["captured_epoch"],
+            pcm=pcm,
+            from_replay=payload["from_replay"],
+            phase_before=payload["phase_before"],
+            asr_state=payload["asr_state"],
+            asr_text=payload["asr_text"],
+            normalized_text=payload["normalized_text"],
+            action_code=payload["action_code"],
+            match_kind=payload["match_kind"],
+            outcome_reason=payload["outcome_reason"],
+            latency_ms=payload["latency_ms"],
+        )
+        if (
+            payload["schema_version"] != 1
+            or payload["session_id"] != session.session_id
+            or payload["sequence"] != sequence
+            or payload["audio_file"] != f"audio/{sequence:06d}.wav"
+            or payload["pcm_bytes"] != len(pcm)
+            or payload["duration_ms"] != len(pcm) * 1_000 // (16_000 * 2)
+        ):
+            raise ValueError
+        return RetainedDiagnosticSample(
+            pcm=pcm,
+            sequence=sequence,
+            phase_before=record.phase_before,
+            outcome_reason=record.outcome_reason,
+            action_code=record.action_code,
+            match_kind=record.match_kind,
+        )
+    except (OSError, TypeError, ValueError, wave.Error):
+        raise ValueError(VOICE_DIAGNOSTIC_UNAVAILABLE) from None
+
+
+def _read_private_wave_at(directory_fd: int, name: str) -> bytes:
+    descriptor = os.open(
+        name,
+        os.O_RDONLY | getattr(os, "O_NOFOLLOW", 0),
+        dir_fd=directory_fd,
+    )
+    try:
+        info = os.fstat(descriptor)
+        if (
+            not stat.S_ISREG(info.st_mode)
+            or info.st_uid != os.getuid()
+            or stat.S_IMODE(info.st_mode) != 0o600
+            or info.st_nlink != 1
+            or not 44 < info.st_size <= DIAGNOSTIC_MAX_BYTES
+        ):
+            raise ValueError
+        with os.fdopen(os.dup(descriptor), "rb") as source:
+            with wave.open(source, "rb") as wav:
+                if (
+                    wav.getnchannels() != 1
+                    or wav.getsampwidth() != 2
+                    or wav.getframerate() != 16_000
+                    or wav.getcomptype() != "NONE"
+                    or not 1 <= wav.getnframes() <= 16_000 * 8
+                ):
+                    raise ValueError
+                pcm = wav.readframes(wav.getnframes())
+        if not pcm or len(pcm) > _MAX_PCM_BYTES:
+            raise ValueError
+        return pcm
+    finally:
+        os.close(descriptor)
 
 
 def publish_diagnostic_record(
@@ -1081,9 +1293,12 @@ __all__ = [
     "DiagnosticAsrTap",
     "DiagnosticSession",
     "DiagnosticSnapshot",
+    "RetainedDiagnosticSample",
     "VoiceDiagnosticWriter",
     "load_active_session",
     "load_marker_session",
+    "load_latest_retained_session",
     "publish_diagnostic_record",
+    "read_retained_diagnostic_sample",
     "snapshot_session_artifacts",
 ]

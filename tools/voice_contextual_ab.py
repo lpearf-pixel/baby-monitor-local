@@ -11,6 +11,13 @@ from typing import Protocol
 
 from services.voice.asr import AsrResult
 from services.voice.contextual_paraformer import ContextualParaformerProcess
+from services.voice.care_action import classify_exact_action
+from services.voice.diagnostic import (
+    RetainedDiagnosticSample,
+    load_latest_retained_session,
+    read_retained_diagnostic_sample,
+    snapshot_session_artifacts,
+)
 from tools.voice_action_benchmark import (
     ActionBenchmarkManifest,
     ActionBenchmarkReport,
@@ -42,6 +49,17 @@ class ContextualAbReport:
             "candidate": asdict(self.candidate),
             "gate_passed": self.gate_passed,
         }
+
+
+@dataclass(frozen=True, slots=True)
+class PrivateContextualReport:
+    sample_count: int
+    baseline_exact: int
+    candidate_exact: int
+    gate_passed: bool
+
+    def to_dict(self) -> dict[str, object]:
+        return {"schema_version": 1, **asdict(self)}
 
 
 def evaluate_contextual_ab(
@@ -85,6 +103,56 @@ def evaluate_contextual_ab(
     )
 
 
+def evaluate_retained_contextual(
+    samples: tuple[RetainedDiagnosticSample, ...],
+    baseline: _Engine,
+    candidate: _Engine,
+    *,
+    public_gate_passed: bool,
+) -> PrivateContextualReport:
+    if public_gate_passed is not True:
+        return PrivateContextualReport(0, 0, 0, False)
+    expected_shape = (
+        (1, "idle", "listen_only_armed"),
+        (2, "armed", "listen_only_followup_far"),
+    )
+    if (
+        type(samples) is not tuple
+        or len(samples) != 2
+        or tuple(
+            (sample.sequence, sample.phase_before, sample.outcome_reason)
+            for sample in samples
+        )
+        != expected_shape
+        or any(sample.action_code is not None or sample.match_kind is not None for sample in samples)
+    ):
+        return PrivateContextualReport(0, 0, 0, False)
+    try:
+        pcm = samples[1].pcm
+        baseline_result = baseline.transcribe(pcm)
+        baseline_match = classify_exact_action(baseline_result.text)
+        baseline_exact = int(
+            baseline_match is not None
+            and baseline_match.action_code == "burping_complete"
+        )
+        del baseline_result
+        candidate_result = candidate.transcribe(pcm)
+        candidate_match = classify_exact_action(candidate_result.text)
+        candidate_exact = int(
+            candidate_match is not None
+            and candidate_match.action_code == "burping_complete"
+        )
+        del candidate_result
+        return PrivateContextualReport(
+            sample_count=1,
+            baseline_exact=baseline_exact,
+            candidate_exact=candidate_exact,
+            gate_passed=baseline_exact == 0 and candidate_exact == 1,
+        )
+    except Exception:
+        return PrivateContextualReport(0, 0, 0, False)
+
+
 class _MeasuredCandidate:
     def __init__(self, process: ContextualParaformerProcess) -> None:
         self._process = process
@@ -124,6 +192,7 @@ def _rss_bytes(pid: int) -> int | None:
 def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(description="Run fixed contextual ASR A/B")
     parser.add_argument("--project-root", type=Path, default=Path.cwd())
+    parser.add_argument("--private", action="store_true")
     arguments = parser.parse_args(argv)
     baseline_process = None
     candidate_process = None
@@ -151,8 +220,40 @@ def main(argv: list[str] | None = None) -> int:
                     None if measured is None else lambda: measured.rss_peak_bytes
                 ),
             )
-        print(json.dumps(report.to_dict(), separators=(",", ":"), sort_keys=True))
-        return 0 if report.gate_passed else 1
+            if arguments.private:
+                retained = (
+                    load_latest_retained_session(root)
+                    if report.gate_passed
+                    else None
+                )
+                private_report = PrivateContextualReport(0, 0, 0, False)
+                if retained is not None:
+                    snapshot = snapshot_session_artifacts(retained)
+                    if (
+                        snapshot.complete_count == 2
+                        and snapshot.incomplete_count == 0
+                    ):
+                        private_report = evaluate_retained_contextual(
+                            (
+                                read_retained_diagnostic_sample(retained, 1),
+                                read_retained_diagnostic_sample(retained, 2),
+                            ),
+                            baseline,
+                            candidate,
+                            public_gate_passed=report.gate_passed,
+                        )
+                output = {
+                    "schema_version": 1,
+                    "public_gate_passed": report.gate_passed,
+                    "private": private_report.to_dict(),
+                    "gate_passed": private_report.gate_passed,
+                }
+                result = private_report.gate_passed
+            else:
+                output = report.to_dict()
+                result = report.gate_passed
+        print(json.dumps(output, separators=(",", ":"), sort_keys=True))
+        return 0 if result else 1
     except Exception:
         print(
             json.dumps(

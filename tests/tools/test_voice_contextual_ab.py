@@ -4,8 +4,13 @@ import json
 from dataclasses import dataclass
 
 from services.voice.asr import AsrResult
+from services.voice.diagnostic import RetainedDiagnosticSample
 from tools.voice_action_benchmark import ActionBenchmarkManifest, ActionBenchmarkSample
-from tools.voice_contextual_ab import MAX_CONTEXTUAL_RSS_BYTES, evaluate_contextual_ab
+from tools.voice_contextual_ab import (
+    MAX_CONTEXTUAL_RSS_BYTES,
+    evaluate_contextual_ab,
+    evaluate_retained_contextual,
+)
 
 
 def _manifest() -> ActionBenchmarkManifest:
@@ -101,3 +106,49 @@ def test_ab_fails_closed_for_rss_or_candidate_error_without_hiding_baseline() ->
     assert failed.candidate.evaluated == 0
     assert failed.gate_passed is False
     assert "private" not in json.dumps(failed.to_dict())
+
+
+def test_private_gate_requires_public_pass_and_known_two_stage_shape() -> None:
+    samples = (
+        RetainedDiagnosticSample(
+            pcm=b"\x01\x00",
+            sequence=1,
+            phase_before="idle",
+            outcome_reason="listen_only_armed",
+            action_code=None,
+            match_kind=None,
+        ),
+        RetainedDiagnosticSample(
+            pcm=b"\x02\x00",
+            sequence=2,
+            phase_before="armed",
+            outcome_reason="listen_only_followup_far",
+            action_code=None,
+            match_kind=None,
+        ),
+    )
+    baseline = RecordingEngine("")
+    candidate = RecordingEngine("拍嗝结束")
+
+    report = evaluate_retained_contextual(
+        samples,
+        baseline,
+        candidate,
+        public_gate_passed=True,
+    )
+
+    assert report.sample_count == 1
+    assert report.baseline_exact == 0
+    assert report.candidate_exact == 1
+    assert report.gate_passed is True
+    assert baseline.pcm == candidate.pcm == [b"\x02\x00"]
+    assert "拍嗝" not in json.dumps(report.to_dict(), ensure_ascii=False)
+
+    blocked = evaluate_retained_contextual(
+        samples,
+        RecordingEngine(""),
+        RecordingEngine("拍嗝结束"),
+        public_gate_passed=False,
+    )
+    assert blocked.sample_count == 0
+    assert blocked.gate_passed is False

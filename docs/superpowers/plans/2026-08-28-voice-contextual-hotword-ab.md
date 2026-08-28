@@ -116,11 +116,17 @@ when all candidate gates from the spec pass.
 - Modify: `tests/tools/test_voice_contextual_ab.py`
 - Modify: `Makefile`
 
-- [ ] Write RED tests for inventory identity/mode/session bounds, no transcript/path in
+- [x] Write RED tests for inventory identity/mode/session bounds, no transcript/path in
       output, candidate-after-public-gate ordering and memory disposal.
-- [ ] Reuse the existing retained diagnostic inventory read-only; do not copy, rename,
+- [x] Reuse the existing retained diagnostic inventory read-only; do not copy, rename,
       delete or rewrite private artifacts.
-- [ ] Emit only fixed aggregate classifications and timing.
+- [x] Emit only fixed aggregate classifications and timing.
+
+Task 5 evidence: missing retained-reader/private-evaluator imports produced the expected
+RED. The affected Task 1-5 gate is 75/75. The newest coherent retained session is opened
+through descriptor-bound private directories; WAV/event pairs are validated, transcript
+fields are discarded before return, and private inference is unreachable until the
+generated/public gate passes.
 
 **Acceptance:** the known local sample can be compared without exposing or mutating it;
 invalid/incomplete private state fails closed.

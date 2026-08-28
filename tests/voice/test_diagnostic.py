@@ -22,8 +22,10 @@ from services.voice.diagnostic import (
     DiagnosticRecord,
     VoiceDiagnosticWriter,
     load_active_session,
+    load_latest_retained_session,
     load_marker_session,
     publish_diagnostic_record,
+    read_retained_diagnostic_sample,
     snapshot_session_artifacts,
 )
 
@@ -187,6 +189,63 @@ def test_record_publication_creates_one_private_correlated_pair(
         "sequence": 1,
         "session_id": SESSION_ID,
     }
+
+
+def test_latest_retained_session_is_read_only_and_discards_private_text(
+    tmp_path: Path,
+) -> None:
+    session_root = _valid_tree(tmp_path)
+    session = load_active_session(tmp_path, now_epoch=1_200.0)
+    assert session is not None
+    wake = DiagnosticRecord(
+        session_id=SESSION_ID,
+        captured_epoch=1_100.0,
+        pcm=b"\x01\x00" * 1_600,
+        from_replay=False,
+        phase_before="idle",
+        asr_state="available",
+        asr_text="synthetic wake",
+        normalized_text="synthetic wake",
+        action_code=None,
+        match_kind=None,
+        outcome_reason="listen_only_armed",
+        latency_ms=10,
+    )
+    publish_diagnostic_record(session, wake)
+    session = load_marker_session(tmp_path)
+    assert session is not None
+    followup = DiagnosticRecord(
+        session_id=SESSION_ID,
+        captured_epoch=1_101.0,
+        pcm=b"\x02\x00" * 1_600,
+        from_replay=False,
+        phase_before="armed",
+        asr_state="available",
+        asr_text="private mismatch",
+        normalized_text="private mismatch",
+        action_code=None,
+        match_kind=None,
+        outcome_reason="listen_only_followup_far",
+        latency_ms=12,
+    )
+    publish_diagnostic_record(session, followup)
+    (session_root.parents[1] / "active.json").unlink()
+
+    retained = load_latest_retained_session(tmp_path)
+    assert retained is not None
+    assert retained.complete_count == 2
+    sample = read_retained_diagnostic_sample(retained, 2)
+
+    assert sample.sequence == 2
+    assert sample.pcm == b"\x02\x00" * 1_600
+    assert sample.phase_before == "armed"
+    assert sample.outcome_reason == "listen_only_followup_far"
+    assert "private" not in repr(sample)
+    assert not hasattr(sample, "asr_text")
+    assert sorted(path.name for path in (session_root / "audio").iterdir()) == [
+        "000001.wav",
+        "000002.wav",
+    ]
 
 
 def test_publication_sanitizes_bounded_text_without_overwriting(
