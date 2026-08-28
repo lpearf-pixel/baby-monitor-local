@@ -16,6 +16,11 @@
       "bytes": 5577029,
       "sha256": "997a3ba95cf51e918178bb58dde2b34e1397f31e98f1e69c18dacd4f07c1d85d",
       "source_id": "cdc-safe-sleep-babies"
+    },
+    {
+      "bytes": 3032624,
+      "sha256": "80abffd9eaa45f541855040cc5a1047c85870f43a495217ab6ad71cc87503a8d",
+      "source_id": "pixabay-nursery-toys-567"
     }
   ]
 }

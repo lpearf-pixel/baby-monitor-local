@@ -107,6 +107,9 @@ candidates are:
 - [Safe Sleep for Babies](https://commons.wikimedia.org/wiki/File:Safe_Sleep_for_Babies.webm),
   United States government public domain, as a candidate source for crib, room-wide,
   adult-entry and negative segments.
+- [Nursery toys and crib mobile](https://pixabay.com/videos/nursery-toys-baby-mobile-child-567/),
+  Pixabay Content License, for an object-only negative. Standalone redistribution is
+  prohibited, so the exact source remains local-only and is never committed.
 
 No scenario label is assigned until a human reviews the exact downloaded revision and
 time range. A source page's license metadata is recorded with the checksum. If a future
@@ -230,6 +233,13 @@ A repository entry point performs these bounded stages:
    grayscale/IR-like output, bounded overlay obstruction and empty/object controls;
 7. probe each artifact and publish its digest and media metadata atomically;
 8. refuse partial, unknown, mismatched or oversized artifacts.
+
+Bounded overlay obstruction has two fixed manifest-controlled extents: the legacy
+standard rectangle for partial/face obstruction and a larger `majority` rectangle for
+the mostly-not-visible synthetic control. The larger extent is valid only with the
+`BOUNDED_OCCLUSION` recipe; it cannot be attached to source or lighting recipes, and it
+does not turn model output into an objective label. Prepared frames still require
+human review before admission.
 
 The tool supports dry-run, source-only, one-clip and first-stage modes. It emits fixed
 reason codes and bounded aggregate output, never raw media, local absolute paths or

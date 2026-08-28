@@ -24,6 +24,7 @@ def clip(
     *,
     clip_id: str = "DAY-01",
     recipe: str = "SOURCE_SEGMENT",
+    occlusion_extent: str | None = None,
     parent_clip_id: str | None = None,
     end_ms: int = 12_000,
 ) -> VisualCorpusClip:
@@ -53,6 +54,11 @@ def clip(
         "label_confidence": 0.9,
         "review_state": "reviewed",
     }
+    if occlusion_extent is not None:
+        payload["recipe"] = {
+            "kind": recipe,
+            "occlusion_extent": occlusion_extent,
+        }
     if parent_clip_id is not None:
         payload["parent_clip_id"] = parent_clip_id
     return VisualCorpusClip.model_validate(payload)
@@ -321,6 +327,35 @@ def test_only_fixed_derivative_recipes_are_rendered(
     assert filter_fragment in " ".join(argv)
     if extra_argument is not None:
         assert extra_argument in argv
+
+
+def test_majority_occlusion_uses_a_fixed_larger_bounded_overlay(
+    tmp_path: Path,
+) -> None:
+    module = prepare_module()
+    corpus_layout = layout(tmp_path)
+    source = source_file(corpus_layout)
+    runner = RecordingRunner(
+        valid_probe(codec="mjpeg", width=960, height=540, fps="5/1")
+    )
+
+    module.CorpusPreparer(
+        layout=corpus_layout,
+        profiles=(profile("analysis_realtime"),),
+        source_resolver=lambda _source_id: source,
+        runner=runner,
+    ).prepare_clip(
+        clip(
+            clip_id="OCC-03",
+            recipe="BOUNDED_OCCLUSION",
+            occlusion_extent="majority",
+            parent_clip_id="DAY-01",
+        )
+    )
+
+    assert "drawbox=x=iw*0.18:y=ih*0.10:w=iw*0.64:h=ih*0.72" in " ".join(
+        runner.output_calls[0][0]
+    )
 
 
 def test_missing_hevc_encoder_fails_without_output(tmp_path: Path) -> None:

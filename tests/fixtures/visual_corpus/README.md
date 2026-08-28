@@ -8,9 +8,10 @@ Use the repository corpus tool to place private local artifacts under the ignore
 `runtime/test-corpus/visual` directory. A public URL is not permission to commit a file:
 the manifest's redistribution and Git decisions remain authoritative.
 
-`manifest.json` currently records 11 reviewed clips in `PARTIAL` state. The admitted
-sources are one CC0 file and two United States federal-government public-domain files;
-all source media remains local-only even when redistribution would legally be allowed.
+`manifest.json` currently records 13 reviewed clips in `PARTIAL` state. The admitted
+sources are one CC0 file, two United States federal-government public-domain files and
+one Pixabay Content License file; all source media remains local-only. The Pixabay
+source may not be redistributed as a standalone file.
 The tracked source ledger records the reviewed pages, exact byte counts and SHA-256
 digests. Contact sheets and downloaded files stay under ignored runtime storage.
 
@@ -19,9 +20,10 @@ angle, environment, lighting, baby visibility, motion, adult visibility, object 
 and wide-content role. Mixed clips also carry relative temporal spans so a wide room
 shot is not collapsed into the close-up or title frames that follow it.
 
-Known first-stage gaps are `WIDE-02`, `OCC-03`, `NEG-01` and `NEG-02`. In particular,
-the reviewed public video does not contain ten continuous seconds of an empty or
-object-only crib, so the real-wide admission gate remains
+Known first-stage gaps are `WIDE-02` and `NEG-01`. `NEG-02` is backed by reviewed
+object-only public stock footage, while `OCC-03` is a human-reviewed deterministic
+majority-obstruction derivative. The reviewed real videos still do not contain ten
+continuous seconds of an empty crib/room wide view, so the real-wide admission gate remains
 `SKIP visual_corpus_real_wide_source_missing`. Synthetic scaling cannot close that
 gate. The corpus becomes `READY` only after those exact scenarios are supported by
 reviewed public or generated-synthetic media, and the empty/object-only wide role is
@@ -38,10 +40,12 @@ make alpha-visual-corpus-codec-gate
 make alpha-visual-regression-long
 ```
 
-The 2026-08-29 candidate replay processed all 11 admitted clips and 695 frames with no
-decode, worker, dropped-frame or queue-backlog errors. The isolated loopback codec gate
-decoded the prepared 2560x1440 HEVC profile without camera access. The bounded long run
-processed 1,807 media seconds in 143 clip runs with no decode, worker, duplicate-event
-or backlog errors and 48.105 MiB RSS growth. These are observational regression and
-performance results, not accuracy labels. No baseline is tracked while the manifest is
-`PARTIAL`; promotion must continue to fail closed.
+The 2026-08-29 closure replay processed all 13 admitted clips and 825 frames with no
+decode, worker, dropped-frame or queue-backlog errors. Worst per-clip processing p95 was
+636.517 ms and pipeline p95 was 771.144 ms. The isolated loopback codec gate decoded the
+prepared 2560x1440 HEVC profile without camera access or production-service changes.
+The earlier 11-clip bounded long run processed 1,807 media seconds in 143 clip runs with
+no decode, worker, duplicate-event or backlog errors and 48.105 MiB RSS growth; it was
+not rerun or relabelled as 13-clip sustained evidence. These are observational
+regression and performance results, not accuracy labels. No baseline is tracked while
+the manifest is `PARTIAL`; promotion must continue to fail closed.

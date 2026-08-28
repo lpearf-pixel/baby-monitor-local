@@ -21,14 +21,14 @@ def test_tracked_first_stage_manifest_is_complete() -> None:
         }
         assert set(ScenarioId) - observed == {
             ScenarioId.WIDE_02,
-            ScenarioId.OCC_03,
             ScenarioId.NEG_01,
-            ScenarioId.NEG_02,
         }
+        assert {ScenarioId.OCC_03, ScenarioId.NEG_02}.issubset(observed)
         assert {
             clip.labels.wide_content_role
             for clip in manifest.clips
             if clip.labels.framing in {"crib_wide", "room_wide"}
+            and clip.source_type in {"REAL", "PUBLIC_DATASET"}
         } == {"infant_small", "adult_present_or_entering"}
         pytest.skip("visual_corpus_first_stage_incomplete")
 

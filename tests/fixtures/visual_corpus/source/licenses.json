@@ -39,6 +39,19 @@
       "research_use_allowed": true,
       "source_id": "cdc-safe-sleep-babies",
       "source_page": "https://commons.wikimedia.org/wiki/File:Safe_Sleep_for_Babies.webm"
+    },
+    {
+      "commercial_use": "ALLOWED",
+      "github_allowed": false,
+      "license": "Pixabay Content License",
+      "license_url": "https://pixabay.com/service/license-summary/",
+      "local_only": true,
+      "name": "Nursery toys and crib mobile",
+      "privacy_notes": "Public stock footage without visible people; standalone redistribution is prohibited, so source media remains local-only.",
+      "redistribution_allowed": false,
+      "research_use_allowed": true,
+      "source_id": "pixabay-nursery-toys-567",
+      "source_page": "https://pixabay.com/videos/nursery-toys-baby-mobile-child-567/"
     }
   ]
 }

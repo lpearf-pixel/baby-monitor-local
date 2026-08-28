@@ -13,6 +13,8 @@ from typing import Callable, Protocol
 
 from packages.contracts.visual_corpus import (
     NormalizationProfile,
+    OcclusionExtent,
+    PreparationRecipe,
     RecipeKind,
     VisualCorpusClip,
 )
@@ -384,7 +386,7 @@ def _build_ffmpeg_argv(
     input_args: tuple[str, ...] = ()
     if clip.recipe.kind is RecipeKind.LOOP_TO_MINIMUM:
         input_args = ("-stream_loop", "-1")
-    filters = _filters_for(clip.recipe.kind, profile)
+    filters = _filters_for(clip.recipe, profile)
     return (
         "ffmpeg",
         "-nostdin",
@@ -418,29 +420,37 @@ def _build_ffmpeg_argv(
 
 
 def _filters_for(
-    recipe: RecipeKind,
+    recipe: PreparationRecipe,
     profile: NormalizationProfile,
 ) -> tuple[str, ...]:
     recipe_filters: dict[RecipeKind, tuple[str, ...]] = {
         RecipeKind.SOURCE_SEGMENT: (),
         RecipeKind.SIMULATED_IR: ("format=gray", "eq=contrast=1.2:brightness=-0.05"),
         RecipeKind.LOW_CONTRAST: ("eq=contrast=0.5:brightness=-0.05",),
-        RecipeKind.BOUNDED_OCCLUSION: (
-            "drawbox=x=iw*0.35:y=ih*0.20:w=iw*0.30:h=ih*0.30:color=black@0.85:t=fill",
-        ),
         RecipeKind.SYNTHETIC_SCALE: (
             "scale=iw*0.35:ih*0.35",
             "pad=iw/0.35:ih/0.35:(ow-iw)/2:(oh-ih)/2:black",
         ),
         RecipeKind.LOOP_TO_MINIMUM: (),
     }
+    if recipe.kind is RecipeKind.BOUNDED_OCCLUSION:
+        if recipe.occlusion_extent is OcclusionExtent.MAJORITY:
+            selected = (
+                "drawbox=x=iw*0.18:y=ih*0.10:w=iw*0.64:h=ih*0.72:color=black@0.85:t=fill",
+            )
+        else:
+            selected = (
+                "drawbox=x=iw*0.35:y=ih*0.20:w=iw*0.30:h=ih*0.30:color=black@0.85:t=fill",
+            )
+    else:
+        selected = recipe_filters[recipe.kind]
     normalize = (
         f"scale={profile.width}:{profile.height}:force_original_aspect_ratio=decrease",
         f"pad={profile.width}:{profile.height}:(ow-iw)/2:(oh-ih)/2:black",
         f"fps={profile.fps}",
         "setsar=1",
     )
-    return (*recipe_filters[recipe], *normalize)
+    return (*selected, *normalize)
 
 
 def _encoder_for(profile: NormalizationProfile) -> str:

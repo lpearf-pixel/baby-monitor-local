@@ -195,7 +195,7 @@ def _prepared_hevc_clip() -> Path:
             ).glob("wide-01.xiaomi_source_hd.*.mkv")
         )
     )
-    return candidates[0] if len(candidates) == 1 else Path("missing")
+    return candidates[-1] if candidates else Path("missing")
 
 
 def _deployment_root() -> Path:

@@ -353,6 +353,62 @@
       "temporal_labels": []
     },
     {
+      "clip_id": "OCC-03",
+      "end_ms": 13000,
+      "label_confidence": 0.85,
+      "label_provenance": "deterministic_recipe",
+      "labels": {
+        "adult_visibility": "absent",
+        "baby_visibility": "mostly_not_visible",
+        "camera_angle": "overhead",
+        "environment": "bed",
+        "framing": "medium",
+        "lighting": "day",
+        "motion": "active",
+        "object_state": "mixed",
+        "subject_frame_area_ratio": 0.35,
+        "subject_scale": "medium",
+        "wide_content_role": "none"
+      },
+      "parent_clip_id": "DAY-01",
+      "recipe": {
+        "kind": "BOUNDED_OCCLUSION",
+        "occlusion_extent": "majority"
+      },
+      "review_state": "reviewed",
+      "scenario_ids": ["OCC-03"],
+      "source_id": "cdc-two-month-movement",
+      "source_type": "SYNTHETIC",
+      "start_ms": 0,
+      "temporal_labels": []
+    },
+    {
+      "clip_id": "NEG-02",
+      "end_ms": 13000,
+      "label_confidence": 0.9,
+      "label_provenance": "frame_review",
+      "labels": {
+        "adult_visibility": "absent",
+        "baby_visibility": "not_visible",
+        "camera_angle": "high_oblique",
+        "environment": "crib",
+        "framing": "medium",
+        "lighting": "day",
+        "motion": "mild",
+        "object_state": "toy",
+        "subject_frame_area_ratio": 0.0,
+        "subject_scale": "unknown",
+        "wide_content_role": "none"
+      },
+      "recipe": {"kind": "SOURCE_SEGMENT"},
+      "review_state": "reviewed",
+      "scenario_ids": ["NEG-02"],
+      "source_id": "pixabay-nursery-toys-567",
+      "source_type": "PUBLIC_DATASET",
+      "start_ms": 0,
+      "temporal_labels": []
+    },
+    {
       "clip_id": "NEG-03",
       "end_ms": 29000,
       "label_confidence": 0.8,
@@ -496,6 +552,22 @@
       "research_use_allowed": true,
       "source_id": "cdc-safe-sleep-babies",
       "source_url": "https://upload.wikimedia.org/wikipedia/commons/d/d7/Safe_Sleep_for_Babies.webm"
+    },
+    {
+      "commercial_use": "ALLOWED",
+      "download_method": "DIRECT_HTTPS",
+      "expected_bytes": 3032624,
+      "expected_sha256": "80abffd9eaa45f541855040cc5a1047c85870f43a495217ab6ad71cc87503a8d",
+      "github_allowed": false,
+      "license": "Pixabay Content License",
+      "local_only": true,
+      "name": "Nursery toys and crib mobile",
+      "privacy_notes": "Public stock footage without visible people; standalone redistribution is prohibited, so source media remains local-only.",
+      "project_or_paper": "Pixabay",
+      "redistribution_allowed": false,
+      "research_use_allowed": true,
+      "source_id": "pixabay-nursery-toys-567",
+      "source_url": "https://cdn.pixabay.com/video/2015/08/24/567-137189521_medium.mp4"
     }
   ]
 }

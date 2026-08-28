@@ -341,9 +341,10 @@ if the reviewed public sources do not provide all three roles, keep readiness
 `PARTIAL`, report the missing role as `SKIP visual_corpus_real_wide_source_missing`,
 continue software implementation, and do not fabricate the label.
 
-Current result: 11 reviewed clips are admitted. `WIDE-02`, `OCC-03`, `NEG-01` and
-`NEG-02` remain missing, so this step is complete only as the approved PARTIAL path;
-it does not satisfy the READY admission gate.
+Initial Task 1-5 result: 11 reviewed clips were admitted. `WIDE-02`, `OCC-03`,
+`NEG-01` and `NEG-02` remained missing, so that step completed only as the approved
+PARTIAL path. Task 11 below records the later closure follow-up without rewriting this
+historical evidence.
 
 - [x] **Step 5: Run manifest/license privacy gates and commit**
 
@@ -751,3 +752,41 @@ runtime state, database or model artifacts; privacy scan found no household addr
 credential, token or private-key literal. Actual ignored-runtime evidence is 11/11 clips
 and 695/695 frames, isolated 2560x1440 HEVC decode, plus 1,807 media seconds/143 runs in
 the 30-minute aggregate gate. No baseline was promoted, and no push or merge was made.
+The completed branch was subsequently pushed without PR or merge at exact local/remote
+head `533399ce8a28d96daff2bc18eafae56d61f358d0`.
+
+### Task 11: First-stage corpus closure follow-up
+
+- [x] Correct the historical publication state without changing protected branches.
+- [x] Observe the existing incomplete-corpus test path before changing the manifest.
+- [x] Review exact licenses, bytes, checksums and contact sheets for closure candidates.
+- [x] Admit `NEG-02` from the Pixabay object-only clip and add a schema-bounded,
+  human-reviewed majority-obstruction derivative for `OCC-03`.
+- [x] Keep `WIDE-02` and `NEG-01` missing because no reviewed candidate supplies ten
+  continuous seconds of a real licensed empty crib/room wide view.
+- [x] Rerun the 13-clip replay, codec gate and focused/full software/privacy gates.
+- [x] Update CHECKPOINT/STATUS/NEXT with actual counts and performance; do not create,
+  compare or promote a baseline while readiness remains `PARTIAL`.
+
+Closure research retained only under ignored runtime:
+
+- CDC SIDS Safe Sleep, 108,588,489 bytes, public domain, SHA-256
+  `38f0061f4aee91bf3dd883fcc40c396fbeb936a090c9e60bfe8d5e8cb8a228aa`:
+  two presenters and a demonstration nursery, not a qualifying empty-wide segment;
+- CDC Beyond the Data: Safe Sleep for Infants, 27,173,124 bytes, public domain,
+  SHA-256 `c83881d107ed1de1ef8636170bd431647e4fe019f40aac0342272c7e1d174292`:
+  studio interview, not a nursery-wide source;
+- CDC Zika summary, 29,794,015 bytes, public domain, SHA-256
+  `554c2a1a2906f405d9d389c0baa61a2d486b60c6ff962dfa7ddfecb72fd6c7b2`:
+  graphics/general household shots, not a qualifying crib-wide source;
+- Pixabay Nursery toys and crib mobile, 3,032,624 bytes, Pixabay Content License,
+  SHA-256 `80abffd9eaa45f541855040cc5a1047c85870f43a495217ab6ad71cc87503a8d`:
+  admitted only as `NEG-02`; its medium framing cannot satisfy `WIDE-02`.
+
+Closure verification: manifest validation returned `PARTIAL`, 13 clips and two missing
+scenarios; preparation returned 26/26 private artifact reuses. Replay passed 13/13 clips
+and 825/825 frames with zero decode/worker/drop/backlog errors. The isolated HEVC gate
+decoded 2560x1440 without camera or production-service access. Focused Python passed
+107 with one expected incomplete-corpus skip; full Python passed 2,046 with the same
+skip; frontend passed 73/73. Compile, JSON, seven Make dry-runs, diff, privacy and
+tracked-media checks passed. No baseline command was run.

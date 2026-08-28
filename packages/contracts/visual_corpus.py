@@ -136,6 +136,11 @@ class RecipeKind(StrEnum):
     LOOP_TO_MINIMUM = "LOOP_TO_MINIMUM"
 
 
+class OcclusionExtent(StrEnum):
+    STANDARD = "standard"
+    MAJORITY = "majority"
+
+
 class ScenarioId(StrEnum):
     DAY_01 = "DAY-01"
     DAY_02 = "DAY-02"
@@ -261,6 +266,18 @@ class TemporalLabelSpan(VisualCorpusContract):
 
 class PreparationRecipe(VisualCorpusContract):
     kind: RecipeKind
+    occlusion_extent: OcclusionExtent | None = None
+
+    @model_validator(mode="after")
+    def require_occlusion_extent_only_for_occlusion(self) -> "PreparationRecipe":
+        if (
+            self.occlusion_extent is not None
+            and self.kind is not RecipeKind.BOUNDED_OCCLUSION
+        ):
+            raise ValueError(
+                "occlusion_extent is only valid for bounded occlusion"
+            )
+        return self
 
 
 class VisualCorpusClip(VisualCorpusContract):

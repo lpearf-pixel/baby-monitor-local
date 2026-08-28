@@ -71,6 +71,8 @@ FIRST_STAGE_CLIP_IDS = (
     "NIGHT-03",
     "OCC-01",
     "OCC-02",
+    "OCC-03",
+    "NEG-02",
     "NEG-03",
 )
 PREPARE_PROFILE_IDS = ("analysis_realtime", "xiaomi_source_hd")

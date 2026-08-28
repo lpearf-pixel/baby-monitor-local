@@ -150,6 +150,19 @@ def test_missing_binary_or_media_is_precise_skip(tmp_path: Path) -> None:
     )
 
 
+def test_retained_prior_artifact_does_not_block_codec_selection(
+    tmp_path: Path,
+    monkeypatch,
+) -> None:
+    prepared = tmp_path / "runtime/test-corpus/visual/prepared"
+    older = media(prepared / "wide-01.xiaomi_source_hd.0123456789abcdef.mkv")
+    current = media(prepared / "wide-01.xiaomi_source_hd.fedcba9876543210.mkv")
+    monkeypatch.setattr(module(), "REPOSITORY_ROOT", tmp_path)
+
+    assert module()._prepared_hevc_clip() == current
+    assert older.is_file()
+
+
 def test_decode_timeout_tears_down_only_owned_process(tmp_path: Path) -> None:
     process = Process()
 

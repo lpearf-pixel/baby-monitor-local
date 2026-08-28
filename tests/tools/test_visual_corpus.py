@@ -35,6 +35,14 @@ def test_fixed_repository_paths_are_not_environment_replaceable(
     )
 
 
+def test_first_stage_selection_matches_the_tracked_manifest() -> None:
+    manifest = module().load_manifest(module().MANIFEST_PATH)
+
+    assert module().FIRST_STAGE_CLIP_IDS == tuple(
+        clip.clip_id for clip in manifest.clips
+    )
+
+
 def test_private_result_writer_is_canonical_0600_and_replaces_only_regular_owned(
     tmp_path: Path,
 ) -> None:

@@ -292,6 +292,21 @@ def test_synthetic_scale_never_satisfies_real_wide_gate() -> None:
         loader.validate_first_stage(parsed)
 
 
+def test_occlusion_extent_is_rejected_for_other_recipes() -> None:
+    module = contracts()
+    payload = clip("DAY-01", scenario_id="DAY-01")
+    payload["recipe"] = {
+        "kind": "SOURCE_SEGMENT",
+        "occlusion_extent": "majority",
+    }
+
+    with pytest.raises(
+        ValidationError,
+        match="occlusion_extent is only valid for bounded occlusion",
+    ):
+        module.VisualCorpusClip.model_validate(payload)
+
+
 def test_replay_contract_does_not_expose_frame_observations() -> None:
     module = contracts()
     result = module.ReplayResult(
