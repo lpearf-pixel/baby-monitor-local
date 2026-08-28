@@ -790,3 +790,15 @@ decoded 2560x1440 without camera or production-service access. Focused Python pa
 107 with one expected incomplete-corpus skip; full Python passed 2,046 with the same
 skip; frontend passed 73/73. Compile, JSON, seven Make dry-runs, diff, privacy and
 tracked-media checks passed. No baseline command was run.
+
+Additional bounded source review on 2026-08-29 did not change the manifest. Six complete
+Pexels downloads were rejected for adult/baby presence, medium/close framing or duration
+below ten seconds. Two official NICHD Safe to Sleep videos were checksum-pinned and
+reviewed locally; the longer video contains a real crib demonstration, but its adult
+clears the crib and immediately places the baby, so no ten-second empty interval exists.
+The closest Coverr item was 9.6 seconds with a stale media endpoint, and the Mixkit
+alternative was personal-use-only. All media/contact sheets remain ignored. Readiness
+therefore remains `PARTIAL`; baseline generation, comparison and promotion remain gated.
+Fresh validation returned `PASS`, `PARTIAL`, 13 clips and two missing scenarios; the
+focused corpus contract/tool/baseline tests passed 42/42. No replay was repeated because
+the manifest, prepared corpus and prior 13-clip performance evidence did not change.

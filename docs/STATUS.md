@@ -6,9 +6,10 @@
 - Design: approved.
 - Visual regression corpus (2026-08-29): the isolated feature branch
   `codex/visual-regression-corpus` is published at `533399c` over implementation head
-  `5143f69`, with no PR or merge. The current unpushed closure implementation is
-  `fb3218d3ae8385a43f4e85167cba80c3d9aa54a1`; it keeps the `533399c` baseline and
-  tracks metadata/recipes only. Four downloaded public sources, 13 reviewed clips,
+  `5143f69`, with no PR or merge. The current unpushed closure commits are
+  `fb3218d3ae8385a43f4e85167cba80c3d9aa54a1` and `165b0db5ced15f39160a602e423791dc69bcbb0a`;
+  they keep the `533399c` baseline and
+  track metadata/recipes only. Four downloaded public sources, 13 reviewed clips,
   contact sheets, 26 prepared files and result JSON remain ignored/private.
   `NEG-02` adds real object-only coverage and `OCC-03` adds a reviewed deterministic
   majority obstruction. The manifest remains `PARTIAL` because `WIDE-02` and `NEG-01`
@@ -18,7 +19,11 @@
   HEVC/go2rtc gate decoded 2560x1440 without camera access. The prior 30-minute result
   (1,807 media seconds/143 runs, 48.105 MiB RSS growth) applies only to the earlier
   11-clip set and was not rerun. No baseline was generated, compared or promoted while
-  incomplete. This is regression behavior, not accuracy or real-device evidence.
+  incomplete. An additional bounded review rejected six complete Pexels downloads and
+  two official NICHD videos: none supplied ten continuous seconds of a licensed real
+  empty crib/room-wide view. The closest Coverr item was 9.6 seconds with a stale media
+  endpoint, while the Mixkit alternative had a personal-use-only license. This is
+  regression behavior, not accuracy or real-device evidence.
 - Environment monitoring design and implementation plan: approved on 2026-08-05.
 - Stable Xiaomi Alpha commit: `0df20ae` on `stable/xiaomi-alpha`.
 - Active local development branch: `codex/xiaomi-camera-reply-lifecycle-review`.

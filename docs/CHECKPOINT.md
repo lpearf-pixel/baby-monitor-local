@@ -72,6 +72,46 @@ set and was not rerun for this closure. Native MJSXJ17CM/CS2 input, physical IR,
 household scene accuracy and sustained 13-clip performance remain unverified. This
 follow-up is local and unpushed at this checkpoint; no PR or merge was made.
 
+#### Additional empty-wide source review
+
+A second bounded search kept every downloaded source and contact sheet in ignored,
+owner-private runtime storage. It did not change the manifest because none of these
+complete downloads passed the approved ten-continuous-second empty crib/room-wide gate:
+
+- Pexels `7509178` (20,798,235 bytes, SHA-256
+  `17e1e61c43a91a4734778b20cf2f15168077db32d1b6017e8a9504d2ec01d2b1`),
+  `7508454` (27,480,548 bytes,
+  `30d6064829e6948c556472c68c7c0d14a689bc4f459223d5762b2a1f3fb5dd18`),
+  `7509174` (34,678,438 bytes,
+  `88fad372b77d194a71d5c43c11415fc3a5e768e27d5360649a641095d1655d71`)
+  and `7509180` (33,016,975 bytes,
+  `2e18eb162c00c8b97cf10761490bb5a0055000d121c391fa4c1eed353a512d3d`)
+  contain an adult and/or baby throughout the usable interval;
+- Pexels/Pixabay CC0 `854376` (3,126,703 bytes,
+  `7a3111d118a33bfaea65e5510005c7e707f916dab8cdf29f10a25e4dd86c0ca3`)
+  is 13.313 seconds but is a crib/toy close-up, while Pexels `3676819`
+  (11,558,825 bytes,
+  `d3fa0d807cf33d09a6055bb84262bd0dd8374713c8c9f859f6eb6fe265d3ef9f`)
+  is only 3.88 seconds and is also not room-wide;
+- NICHD Safe to Sleep `O2cHch-uKZQ` (119 seconds, 2,760,676 bytes,
+  `693d6009592d5049d67e08eab443bd5beb509c93f9281e083fdcf1a23781b009`)
+  is interview/baby-close footage. `29sLucYtvpA` (596.221 seconds,
+  9,097,356 bytes,
+  `5d6ceca18ffb19915b6c972d79c1953a342e78a046b7e85740b6c7b1666059ed`)
+  includes a real crib demonstration, but 0.5-second contact-sheet review shows an
+  adult clearing it and immediately placing the baby; there is no qualifying empty
+  interval.
+
+Coverr's closest indexed empty nursery clip was 9.6 seconds and its current media API
+returned 404, so it had neither sufficient duration nor a reproducible checksum.
+Mixkit's ten-second childcare-bed candidate was marked personal-use-only; research use
+was not clear enough for admission. The corpus therefore remains `PARTIAL` at 13 clips,
+with `WIDE-02` and `NEG-01` missing. No replay, compare or promotion was run against a
+changed corpus because no corpus change was made. Fresh
+`make PYTHON=../../.venv-alpha/bin/python alpha-visual-corpus-validate` returned
+`result=PASS`, `readiness=PARTIAL`, `clip_count=13`, `missing_scenarios=2`; the three
+focused corpus contract/tool/baseline test files passed 42/42.
+
 Draft PR #4 已实现并自动化验证 H.265 原码优先、VideoToolbox 按需兼容流、
 profile 绑定票据、无黑屏播放器回退以及可审计 go2rtc 双补丁构建。
 

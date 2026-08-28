@@ -7,8 +7,9 @@ Updated: 2026-08-29
 - Repository: `lpearf-pixel/baby-monitor-local` (public).
 - Visual regression corpus work is published on `codex/visual-regression-corpus` at
   documentation head `533399c` over implementation head `5143f69`; local and remote
-  matched at publication, with no PR or merge. The current unpushed closure implementation
-  is `fb3218d3ae8385a43f4e85167cba80c3d9aa54a1`; it keeps that exact baseline and admits
+  matched at publication, with no PR or merge. The current unpushed closure commits are
+  `fb3218d3ae8385a43f4e85167cba80c3d9aa54a1` and documentation checkpoint
+  `165b0db5ced15f39160a602e423791dc69bcbb0a`; they keep that exact baseline and admit
   one additional checksum-pinned local-only public source. Four sources now yield 13
   reviewed clips and 26 private prepared artifacts.
   `NEG-02` is real object-only footage and `OCC-03` is a human-reviewed deterministic
@@ -20,7 +21,13 @@ Updated: 2026-08-29
   the prepared HEVC 2560x1440 profile without camera access or production-service
   changes. The prior bounded 30-minute evidence remains 1,807 media seconds/143 runs
   over the earlier 11-clip set; it was not rerun or relabelled as 13-clip evidence.
-  No baseline was generated, compared or promoted while the corpus is incomplete. These results
+  A second bounded search reviewed six more complete Pexels candidates and two official
+  NICHD Safe to Sleep videos. The stock candidates were adult/baby-present, medium/close
+  framing or shorter than ten seconds; frame review of the NICHD videos found no ten-second
+  empty crib interval. Coverr's closest clip was 9.6 seconds and its media endpoint was
+  stale; Mixkit's ten-second childcare-bed clip was restricted to personal use. No source
+  met the combined license, checksum, real-wide and duration gate. No baseline was generated,
+  compared or promoted while the corpus is incomplete. These results
   prove deterministic public-file replay and regression instrumentation, not Guardian
   accuracy, native Xiaomi CS2 compatibility, real IR behavior or household safety.
 - Stable Xiaomi line: `stable/xiaomi-alpha` at `0df20ae`.
@@ -696,10 +703,11 @@ expose transcript content.
    contract where Baby Care consumes Guardian's read-only feed and owns identity/write
    state; do not create a second identity model inside Guardian.
 9. Consider the FFmpeg ring-buffer upgrade after the functional and real-device gates.
-10. Extend the visual regression corpus only with reviewed, license-safe sources for
-    `WIDE-02`, `OCC-03`, `NEG-01` and `NEG-02`; then rerun the fixed corpus and explicitly
-    promote its first baseline. Do not treat model output as ground truth or let this
-    public-file gate replace native-IR and real-household acceptance.
+10. Extend the visual regression corpus only with a reviewed, license-safe source that
+    provides ten continuous seconds for both `WIDE-02` and `NEG-01`; `OCC-03` and
+    `NEG-02` are already covered. Then rerun the fixed corpus and explicitly promote its
+    first baseline. Do not treat model output as ground truth or let this public-file gate
+    replace native-IR and real-household acceptance.
 
 ## Operating Commands
 

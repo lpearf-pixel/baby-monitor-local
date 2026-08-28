@@ -4,10 +4,12 @@ The repository baseline, environment software and functional Guardian loop are
 complete. Do not restart completed milestones. Execute the following stages in order;
 the detailed approved specs and plans remain authoritative for behavior.
 
-**Visual regression corpus follow-up (published baseline `533399c`, closure implementation
-`fb3218d` unpushed):** retain the 13 reviewed clips as the repeatable candidate set.
+**Visual regression corpus follow-up (published baseline `533399c`, closure commits
+`fb3218d`/`165b0db` unpushed):** retain the 13 reviewed clips as the repeatable candidate set.
 `NEG-02` and synthetic `OCC-03` are now covered; acquire a licensed, checksum-pinned
 real empty crib/room wide clip that can honestly close both `WIDE-02` and `NEG-01`.
+Do not retry the already rejected Pexels `7509178`, `7508454`, `7509174`, `7509180`,
+`854376` or `3676819`, nor the reviewed NICHD `O2cHch-uKZQ`/`29sLucYtvpA` videos.
 Until those two gaps close, readiness stays `PARTIAL` and no baseline may be generated,
 compared or promoted. After closure, rerun short replay and the isolated HEVC gate,
 review objective labels, then explicitly promote the first baseline by exact candidate
