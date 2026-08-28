@@ -1,0 +1,399 @@
+from __future__ import annotations
+
+import math
+import time
+from collections import Counter
+from collections.abc import Callable, Iterator
+from dataclasses import dataclass, field
+from datetime import UTC, datetime
+from pathlib import Path
+from typing import Literal, Protocol
+
+from packages.contracts.vision import (
+    NormalizedPolygon,
+    RealtimeCandidateTransition,
+    RealtimeObservation,
+)
+from packages.contracts.visual_corpus import ReplayResult, VisualCorpusClip
+from services.stream.file_frame_source import (
+    FileFrameSourceUnavailable,
+    FfmpegFileFrameSource,
+)
+from services.stream.frame_source import CapturedFrame
+from services.vision.frame_health import VisualFrameHealthMonitor
+from services.vision.frame_policy import VisionFramePolicy
+from services.vision.frame_ring import AnalysisFrameRing
+from services.vision.realtime_analyzer import RealtimeVisualAnalyzer
+from services.vision.realtime_candidates import RealtimeCandidateStateMachine
+from services.vision.realtime_load import RealtimeLoadController
+from services.vision.realtime_models import RealtimeModelBackend
+from services.vision.worker import VisualWorker
+
+
+REPLAY_STARTED_AT = datetime(2000, 1, 1, tzinfo=UTC)
+MAX_REPLAY_FRAMES = 600
+MAX_AGGREGATE_KEYS = 128
+
+
+class ReplayFrameSource(Protocol):
+    def iter_frames(
+        self,
+        *,
+        started_at: datetime,
+        pace: bool = False,
+    ) -> Iterator[CapturedFrame]: ...
+
+
+@dataclass(frozen=True)
+class ReplayProfile:
+    profile_id: Literal["analysis_realtime", "analysis_slow"]
+    fps: Literal[1, 5]
+    model_backend: RealtimeModelBackend | None = field(default=None, repr=False)
+    require_model: bool = True
+
+    def __post_init__(self) -> None:
+        expected_fps = 5 if self.profile_id == "analysis_realtime" else 1
+        if self.fps != expected_fps:
+            raise ValueError("visual_corpus_profile_invalid")
+
+
+class RecordingRealtimeAnalyzer:
+    """Delegates to the production analyzer and retains aggregates only."""
+
+    def __init__(self, delegate: object) -> None:
+        self._delegate = delegate
+        self.observation_counts: Counter[str] = Counter()
+        self.processing_ms: list[float] = []
+
+    @property
+    def model_state(self) -> str:
+        return str(getattr(self._delegate, "model_state", "degraded"))
+
+    def pop_health_transition(self) -> str | None:
+        method = getattr(self._delegate, "pop_health_transition")
+        result = method()
+        return result if isinstance(result, str) else None
+
+    def analyze(
+        self,
+        frame: object,
+        *,
+        monotonic_now: float,
+    ) -> RealtimeObservation:
+        method = getattr(self._delegate, "analyze")
+        observation = method(frame, monotonic_now=monotonic_now)
+        if not isinstance(observation, RealtimeObservation):
+            raise ValueError("visual_corpus_observation_invalid")
+        self._record(observation)
+        return observation
+
+    def _record(self, observation: RealtimeObservation) -> None:
+        values = {
+            f"scene_quality.{observation.scene_quality.value}",
+            f"pose_count.{_count_bucket(observation.pose_count)}",
+            f"face_count.{_count_bucket(observation.face_count)}",
+            f"bed_subject_track.{observation.bed_subject_track.value}",
+            f"adult_track.{observation.adult_track.value}",
+            f"head_face_state.{observation.head_face_state.value}",
+        }
+        if len(self.observation_counts.keys() | values) > MAX_AGGREGATE_KEYS:
+            raise ValueError("visual_corpus_aggregate_overflow")
+        self.observation_counts.update(values)
+        if len(self.processing_ms) >= MAX_REPLAY_FRAMES:
+            raise ValueError("visual_corpus_result_overflow")
+        self.processing_ms.append(observation.processing_ms)
+
+
+class _NullReviewScheduler:
+    def poll(self) -> None:
+        return None
+
+    def try_submit(self, *args: object, **kwargs: object) -> None:
+        return None
+
+    def close(self) -> None:
+        return None
+
+
+PreparedResolver = Callable[[VisualCorpusClip, ReplayProfile], Path]
+SourceFactory = Callable[[Path, Literal[1, 5]], ReplayFrameSource]
+AnalyzerFactory = Callable[[ReplayProfile], object]
+
+
+class VisualCorpusReplay:
+    def __init__(
+        self,
+        *,
+        prepared_resolver: PreparedResolver,
+        source_factory: SourceFactory | None = None,
+        analyzer_factory: AnalyzerFactory | None = None,
+        perf_counter: Callable[[], float] = time.perf_counter,
+    ) -> None:
+        self._prepared_resolver = prepared_resolver
+        self._source_factory = source_factory or _default_source_factory
+        self._analyzer_factory = analyzer_factory or _default_analyzer_factory
+        self._perf_counter = perf_counter
+        self.last_recording_analyzer: RecordingRealtimeAnalyzer | None = None
+
+    def run_clip(
+        self,
+        clip: VisualCorpusClip,
+        *,
+        profile: ReplayProfile,
+    ) -> ReplayResult:
+        if profile.require_model and profile.model_backend is None:
+            return _empty_result(
+                clip.clip_id,
+                status="SKIP",
+                reason="visual_corpus_model_unavailable",
+                model_state="unavailable",
+            )
+        try:
+            prepared_path = self._prepared_resolver(clip, profile)
+            if not isinstance(prepared_path, Path):
+                raise ValueError
+            source = self._source_factory(prepared_path, profile.fps)
+        except Exception:
+            return _empty_result(
+                clip.clip_id,
+                status="FAIL",
+                reason="visual_corpus_input_invalid",
+                model_state=_initial_model_state(profile),
+            )
+
+        try:
+            delegate = self._analyzer_factory(profile)
+            analyzer = RecordingRealtimeAnalyzer(delegate)
+            self.last_recording_analyzer = analyzer
+            candidates = RealtimeCandidateStateMachine()
+            load = RealtimeLoadController()
+            candidate_counts: Counter[str] = Counter()
+            worker = VisualWorker(
+                stream_factory=lambda: iter(()),
+                frame_policy=VisionFramePolicy(
+                    bed_zone=clip.analysis_region or _full_frame_polygon(),
+                    privacy_masks=clip.privacy_masks,
+                ),
+                frame_ring=AnalysisFrameRing(),
+                frame_health=VisualFrameHealthMonitor(),
+                review_scheduler=_NullReviewScheduler(),
+                realtime_analyzer=analyzer,
+                candidate_machine=candidates,
+                load_controller=load,
+                on_realtime_candidate=lambda transition: _record_candidate(
+                    candidate_counts,
+                    transition,
+                ),
+            )
+        except Exception:
+            return _empty_result(
+                clip.clip_id,
+                status="FAIL",
+                reason="visual_corpus_worker_unavailable",
+                model_state=_initial_model_state(profile),
+            )
+
+        frames_total = 0
+        frames_processed = 0
+        frames_skipped = 0
+        decode_errors = 0
+        worker_errors = 0
+        pipeline_ms: list[float] = []
+        status: Literal["PASS", "FAIL", "SKIP"] = "PASS"
+        reason = "ok"
+        iterator: Iterator[CapturedFrame] | None = None
+        try:
+            iterator = source.iter_frames(started_at=REPLAY_STARTED_AT, pace=False)
+            for frame in iterator:
+                frames_total += 1
+                if frames_total > MAX_REPLAY_FRAMES:
+                    status = "FAIL"
+                    reason = "visual_corpus_result_overflow"
+                    frames_skipped += 1
+                    worker_errors += 1
+                    break
+                monotonic_now = (
+                    frame.captured_at - REPLAY_STARTED_AT
+                ).total_seconds()
+                started = self._perf_counter()
+                try:
+                    prepared = worker.run_frame(
+                        frame,
+                        monotonic_now=monotonic_now,
+                    )
+                except Exception:
+                    pipeline_ms.append(
+                        max(0.0, (self._perf_counter() - started) * 1000)
+                    )
+                    frames_skipped += 1
+                    worker_errors += 1
+                    status = "FAIL"
+                    reason = "visual_corpus_worker_failed"
+                    break
+                pipeline_ms.append(
+                    max(0.0, (self._perf_counter() - started) * 1000)
+                )
+                if prepared is None:
+                    frames_skipped += 1
+                else:
+                    frames_processed += 1
+                health = worker.health()
+                if health.code == "frame_policy_failed":
+                    worker_errors += 1
+                    status = "FAIL"
+                    reason = "visual_corpus_worker_failed"
+                    break
+                if health.code == "realtime_analysis_failed":
+                    worker_errors += 1
+                    status = "FAIL"
+                    reason = "visual_corpus_analysis_failed"
+                    break
+                if profile.require_model and analyzer.model_state != "available":
+                    worker_errors += 1
+                    status = "FAIL"
+                    reason = "visual_corpus_model_degraded"
+                    break
+        except FileFrameSourceUnavailable:
+            decode_errors += 1
+            status = "FAIL"
+            reason = "visual_corpus_decode_failed"
+        except Exception:
+            worker_errors += 1
+            status = "FAIL"
+            reason = "visual_corpus_worker_failed"
+        finally:
+            close = getattr(iterator, "close", None)
+            if callable(close):
+                close()
+
+        processed_distribution = _distribution(analyzer.processing_ms)
+        pipeline_distribution = _distribution(pipeline_ms)
+        expected_frames = round((clip.end_ms - clip.start_ms) * profile.fps / 1000)
+        return ReplayResult(
+            clip_id=clip.clip_id,
+            status=status,
+            reason=reason,
+            frames_total=frames_total,
+            frames_processed=frames_processed,
+            frames_skipped=frames_skipped,
+            decode_errors=decode_errors,
+            worker_errors=worker_errors,
+            model_state=_normalized_model_state(analyzer.model_state),
+            observation_counts=dict(analyzer.observation_counts),
+            candidate_counts=dict(candidate_counts),
+            processing_p50_ms=processed_distribution[0],
+            processing_p95_ms=processed_distribution[1],
+            processing_max_ms=processed_distribution[2],
+            pipeline_p50_ms=pipeline_distribution[0],
+            pipeline_p95_ms=pipeline_distribution[1],
+            pipeline_max_ms=pipeline_distribution[2],
+            dropped_frames=max(0, expected_frames - frames_total),
+            queue_backlog_max=0,
+            frame_observations_persisted=False,
+        )
+
+
+def _default_source_factory(
+    path: Path,
+    fps: Literal[1, 5],
+) -> ReplayFrameSource:
+    return FfmpegFileFrameSource(path, fps=fps)
+
+
+def _default_analyzer_factory(profile: ReplayProfile) -> object:
+    return RealtimeVisualAnalyzer(model_backend=profile.model_backend)
+
+
+def _full_frame_polygon() -> NormalizedPolygon:
+    return NormalizedPolygon.model_validate(
+        {
+            "points": [
+                {"x": 0.0, "y": 0.0},
+                {"x": 1.0, "y": 0.0},
+                {"x": 1.0, "y": 1.0},
+                {"x": 0.0, "y": 1.0},
+            ]
+        }
+    )
+
+
+def _record_candidate(
+    counts: Counter[str],
+    transition: RealtimeCandidateTransition,
+) -> None:
+    key = (
+        f"{transition.transition_kind.value}."
+        f"{transition.candidate_kind.value}"
+    )
+    if key not in counts and len(counts) >= MAX_AGGREGATE_KEYS:
+        raise ValueError("visual_corpus_aggregate_overflow")
+    counts[key] += 1
+
+
+def _count_bucket(value: int | None) -> str:
+    if value is None:
+        return "unknown"
+    if value <= 1:
+        return str(value)
+    return "2plus"
+
+
+def _distribution(values: list[float]) -> tuple[float, float, float]:
+    if not values:
+        return (0.0, 0.0, 0.0)
+    if any(not math.isfinite(value) or value < 0 for value in values):
+        raise ValueError("visual_corpus_metric_invalid")
+    ordered = sorted(values)
+    return (
+        round(_nearest_rank(ordered, 0.50), 3),
+        round(_nearest_rank(ordered, 0.95), 3),
+        round(ordered[-1], 3),
+    )
+
+
+def _nearest_rank(values: list[float], quantile: float) -> float:
+    index = max(0, math.ceil(quantile * len(values)) - 1)
+    return values[index]
+
+
+def _initial_model_state(
+    profile: ReplayProfile,
+) -> Literal["available", "degraded", "disabled", "unavailable"]:
+    return "available" if profile.model_backend is not None else "unavailable"
+
+
+def _normalized_model_state(
+    value: str,
+) -> Literal["available", "degraded", "disabled", "unavailable"]:
+    if value in {"available", "degraded", "disabled", "unavailable"}:
+        return value  # type: ignore[return-value]
+    return "degraded"
+
+
+def _empty_result(
+    clip_id: str,
+    *,
+    status: Literal["PASS", "FAIL", "SKIP"],
+    reason: str,
+    model_state: Literal["available", "degraded", "disabled", "unavailable"],
+) -> ReplayResult:
+    return ReplayResult(
+        clip_id=clip_id,
+        status=status,
+        reason=reason,
+        frames_total=0,
+        frames_processed=0,
+        frames_skipped=0,
+        decode_errors=0,
+        worker_errors=0,
+        model_state=model_state,
+        processing_p50_ms=0,
+        processing_p95_ms=0,
+        processing_max_ms=0,
+        pipeline_p50_ms=0,
+        pipeline_p95_ms=0,
+        pipeline_max_ms=0,
+        dropped_frames=0,
+        queue_backlog_max=0,
+        frame_observations_persisted=False,
+    )

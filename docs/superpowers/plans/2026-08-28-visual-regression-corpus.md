@@ -424,7 +424,7 @@ Commit: `feat: replay files through captured frame source`
 - Produces: `VisualCorpusReplay.run_clip(clip: VisualCorpusClip, profile: ReplayProfile) -> ReplayResult`.
 - Produces: `RecordingRealtimeAnalyzer` that delegates to the current analyzer while collecting bounded aggregate observations.
 
-- [ ] **Step 1: Write worker-integration RED tests**
+- [x] **Step 1: Write worker-integration RED tests**
 
 Drive synthetic JPEG frames through the real `VisionFramePolicy` and `VisualWorker` with
 the current analyzer/candidate/load components. Assert total/processed/skipped counts,
@@ -440,17 +440,17 @@ def test_replay_uses_real_worker_and_returns_bounded_aggregates(tmp_path: Path) 
     assert result.frame_observations_persisted is False
 ```
 
-- [ ] **Step 2: Add fail-closed RED tests**
+- [x] **Step 2: Add fail-closed RED tests**
 
 Test unavailable model, analyzer exception, decode error, worker exception, invalid clip
 identity and result overflow. The result is `FAIL` or `SKIP` with one stable reason;
 never fabricate zero-risk success.
 
-- [ ] **Step 3: Run RED**
+- [x] **Step 3: Run RED**
 
 Run: `python -m pytest -q tests/vision/test_corpus_replay.py`
 
-- [ ] **Step 4: Implement deterministic replay orchestration**
+- [x] **Step 4: Implement deterministic replay orchestration**
 
 Use a full-frame public-test polygon unless the manifest supplies a reviewed clip ROI.
 The normal public corpus has no household privacy mask, but still passes through
@@ -458,7 +458,7 @@ The normal public corpus has no household privacy mask, but still passes through
 load or candidate state leaks between clips. Use media timestamps as worker monotonic
 time and a separate performance counter for wall latency.
 
-- [ ] **Step 5: Run GREEN and commit**
+- [x] **Step 5: Run GREEN and commit**
 
 Run:
 
