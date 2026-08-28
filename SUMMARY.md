@@ -5,20 +5,22 @@ Updated: 2026-08-29
 ## Snapshot
 
 - Repository: `lpearf-pixel/baby-monitor-local` (public).
-- Visual regression corpus work is implemented locally on
-  `codex/visual-regression-corpus` through implementation head `5143f69`; it has not
-  been pushed or merged. Three checksum-pinned public sources yield 11 reviewed clips
-  and 22 private prepared artifacts covering day, simulated night/IR, partial/face
-  occlusion, adult presence, crib-wide and room-wide views. The manifest remains
-  intentionally `PARTIAL`: `WIDE-02`, `OCC-03`, `NEG-01` and `NEG-02` lack acceptable
-  reviewed source material, including a real licensed empty/object-only wide view.
-  Full public replay passed 11/11 clips and 695/695 frames with zero decode, worker,
-  drop or backlog errors; worst per-clip processing p95 was 353.307 ms and pipeline
-  p95 was 419.602 ms. The isolated loopback go2rtc gate decoded the prepared HEVC
-  2560x1440 profile without camera access or production-service changes. A bounded
-  30-minute replay processed 1,807 media seconds across 143 clip runs with zero decode,
-  worker, duplicate-event or backlog errors and 48.105 MiB RSS growth. Baseline
-  promotion correctly remains blocked while the corpus is incomplete. These results
+- Visual regression corpus work is published on `codex/visual-regression-corpus` at
+  documentation head `533399c` over implementation head `5143f69`; local and remote
+  matched at publication, with no PR or merge. The current unpushed closure implementation
+  is `fb3218d3ae8385a43f4e85167cba80c3d9aa54a1`; it keeps that exact baseline and admits
+  one additional checksum-pinned local-only public source. Four sources now yield 13
+  reviewed clips and 26 private prepared artifacts.
+  `NEG-02` is real object-only footage and `OCC-03` is a human-reviewed deterministic
+  majority-obstruction derivative. The manifest remains intentionally `PARTIAL`:
+  `WIDE-02` and `NEG-01` still lack ten continuous seconds of a licensed real empty
+  crib/room wide view. Full public replay passed 13/13 clips and 825/825 frames with
+  zero decode, worker, drop or backlog errors; worst per-clip processing p95 was
+  636.517 ms and pipeline p95 was 771.144 ms. The isolated loopback go2rtc gate decoded
+  the prepared HEVC 2560x1440 profile without camera access or production-service
+  changes. The prior bounded 30-minute evidence remains 1,807 media seconds/143 runs
+  over the earlier 11-clip set; it was not rerun or relabelled as 13-clip evidence.
+  No baseline was generated, compared or promoted while the corpus is incomplete. These results
   prove deterministic public-file replay and regression instrumentation, not Guardian
   accuracy, native Xiaomi CS2 compatibility, real IR behavior or household safety.
 - Stable Xiaomi line: `stable/xiaomi-alpha` at `0df20ae`.

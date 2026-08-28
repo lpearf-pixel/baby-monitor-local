@@ -5,19 +5,20 @@
 - Repository: initialized and public.
 - Design: approved.
 - Visual regression corpus (2026-08-29): the isolated feature branch
-  `codex/visual-regression-corpus` is locally implemented through `5143f69`, with no
-  push or merge. It tracks metadata and deterministic recipes only; three downloaded
-  public sources, 11 reviewed clips, contact sheets, 22 prepared files and result JSON
-  remain ignored/private. Coverage includes close/medium infant views, crib-wide and
-  room-wide views with an adult, day, deterministic simulated IR, motion and partial/
-  face occlusion. The manifest is `PARTIAL` because `WIDE-02`, `OCC-03`, `NEG-01` and
-  `NEG-02` have no acceptable reviewed source. The 11-clip current-worker replay passed
-  695/695 frames with zero decode/worker/drop/backlog errors; worst per-clip processing
-  and pipeline p95 were 353.307/419.602 ms. The local-only HEVC/go2rtc gate decoded
-  2560x1440 without camera access, and the 30-minute aggregate replay passed 1,807 media
-  seconds/143 runs with zero decode, worker, duplicate-event or backlog errors and
-  48.105 MiB RSS growth. Baseline comparison reports missing and promotion fails closed
-  while incomplete. This is regression behavior, not accuracy or real-device evidence.
+  `codex/visual-regression-corpus` is published at `533399c` over implementation head
+  `5143f69`, with no PR or merge. The current unpushed closure implementation is
+  `fb3218d3ae8385a43f4e85167cba80c3d9aa54a1`; it keeps the `533399c` baseline and
+  tracks metadata/recipes only. Four downloaded public sources, 13 reviewed clips,
+  contact sheets, 26 prepared files and result JSON remain ignored/private.
+  `NEG-02` adds real object-only coverage and `OCC-03` adds a reviewed deterministic
+  majority obstruction. The manifest remains `PARTIAL` because `WIDE-02` and `NEG-01`
+  still lack a licensed real empty crib/room wide segment. The 13-clip current-worker
+  replay passed 825/825 frames with zero decode/worker/drop/backlog errors; worst
+  per-clip processing and pipeline p95 were 636.517/771.144 ms. The local-only
+  HEVC/go2rtc gate decoded 2560x1440 without camera access. The prior 30-minute result
+  (1,807 media seconds/143 runs, 48.105 MiB RSS growth) applies only to the earlier
+  11-clip set and was not rerun. No baseline was generated, compared or promoted while
+  incomplete. This is regression behavior, not accuracy or real-device evidence.
 - Environment monitoring design and implementation plan: approved on 2026-08-05.
 - Stable Xiaomi Alpha commit: `0df20ae` on `stable/xiaomi-alpha`.
 - Active local development branch: `codex/xiaomi-camera-reply-lifecycle-review`.

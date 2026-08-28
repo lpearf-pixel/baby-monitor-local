@@ -29,7 +29,48 @@ Actual ignored-runtime evidence:
 This checkpoint demonstrates repeatability, decoding, pipeline integration and bounded
 performance. It does not establish model accuracy, native CS2 transport behavior,
 physical IR equivalence, real-baby safety or household acceptance. The feature branch
-has not been pushed or merged.
+was subsequently pushed at `533399c`; local and remote matched, with no PR or merge.
+
+### Visual corpus closure follow-up — 2026-08-29
+
+The closure follow-up starts from exact local/remote baseline
+`533399ce8a28d96daff2bc18eafae56d61f358d0`. The existing incomplete-corpus gate first
+reported 11 clips and the four missing scenarios `WIDE-02`, `OCC-03`, `NEG-01` and
+`NEG-02`. License, checksum and frame review then admitted a local-only Pixabay
+object-only clip as `NEG-02` and a deterministic, human-reviewed majority-obstruction
+derivative as `OCC-03`. Three additional public-domain candidates were retained only in
+ignored research storage and rejected because they did not provide ten continuous
+seconds of a real empty crib/room wide view. `WIDE-02` and `NEG-01` therefore remain
+missing and readiness remains honestly `PARTIAL`.
+
+The scoped closure implementation is committed locally at
+`fb3218d3ae8385a43f4e85167cba80c3d9aa54a1`; it is not pushed at this checkpoint.
+
+Actual ignored-runtime closure evidence:
+
+- deterministic preparation reports 13 clips, 26 artifacts and 26 safe reuses; no raw
+  or prepared media is tracked;
+- current-worker replay passed all 13 clips and 825/825 frames with zero decode, worker,
+  dropped-frame or queue-backlog errors; candidate SHA-256 is
+  `e7912e973ae1310f4f10caf75b910ec306652cc1f85b3fa5be9c5cf6a96a50b`, worst per-clip
+  processing p95 was 636.517 ms, processing max 738.957 ms, pipeline p95 771.144 ms and
+  pipeline max 825.496 ms;
+- the isolated loopback codec gate decoded the prepared HEVC 2560x1440 profile and
+  reported `camera_accessed=false` and `production_service_touched=false`;
+- the focused visual gate passed 107 tests with one expected incomplete-corpus skip;
+  the full Python gate passed 2,046 tests with the same one expected skip, and frontend
+  tests passed 73/73;
+- `make PYTHON=../../.venv-alpha/bin/python alpha-visual-corpus-validate` reported
+  `PARTIAL`, 13 clips and two missing scenarios; the matching prepare target reported
+  26/26 private artifact reuses. The same explicit worktree Python override was used
+  for replay and codec targets. Compile, JSON, seven Make dry-runs, diff, privacy and
+  tracked-media checks passed.
+
+No candidate baseline was generated, compared or promoted because the manifest is not
+`READY`. The earlier 1,807-media-second/143-run long gate applies only to the 11-clip
+set and was not rerun for this closure. Native MJSXJ17CM/CS2 input, physical IR,
+household scene accuracy and sustained 13-clip performance remain unverified. This
+follow-up is local and unpushed at this checkpoint; no PR or merge was made.
 
 Draft PR #4 已实现并自动化验证 H.265 原码优先、VideoToolbox 按需兼容流、
 profile 绑定票据、无黑屏播放器回退以及可审计 go2rtc 双补丁构建。
