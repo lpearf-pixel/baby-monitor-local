@@ -1,7 +1,7 @@
 # Voice Local Diagnostic Session Design
 
-**Status:** Approved in chat on 2026-08-28; written specification awaiting document
-review. No diagnostic capture has started.
+**Status:** Written specification approved on 2026-08-28. No diagnostic capture has
+started.
 
 ## 1. Purpose
 
