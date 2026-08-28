@@ -231,7 +231,7 @@ Commit: `feat: acquire visual corpus sources safely`
 - Produces: `CorpusPreparer.prepare_clip(clip: VisualCorpusClip) -> PreparedClip`.
 - Produces fixed profiles `xiaomi_source_hd`, `xiaomi_live`, `analysis_realtime`, `analysis_slow`.
 
-- [ ] **Step 1: Write argv/probe RED tests**
+- [x] **Step 1: Write argv/probe RED tests**
 
 Assert no shell execution, no caller-provided codec/filter arguments, fixed `-an`,
 bounded timeout, one video stream, finite duration, and exact profile metadata. Reject
@@ -250,17 +250,17 @@ def test_source_hd_uses_fixed_hevc_profile() -> None:
     assert "-an" in ffmpeg
 ```
 
-- [ ] **Step 2: Write deterministic derivative RED tests**
+- [x] **Step 2: Write deterministic derivative RED tests**
 
 Support only tracked recipe kinds: `SOURCE_SEGMENT`, `SIMULATED_IR`, `LOW_CONTRAST`,
 `BOUNDED_OCCLUSION`, `SYNTHETIC_SCALE`, `LOOP_TO_MINIMUM`. Each recipe has a fixed
 filter builder and must preserve an explicit parent. Reject free-form filters.
 
-- [ ] **Step 3: Run RED**
+- [x] **Step 3: Run RED**
 
 Run: `python -m pytest -q tests/vision/test_corpus_prepare.py`
 
-- [ ] **Step 4: Implement ffprobe, fixed recipes and atomic prepared artifacts**
+- [x] **Step 4: Implement ffprobe, fixed recipes and atomic prepared artifacts**
 
 Use subprocess argv with `stdin=DEVNULL`, `stdout=PIPE`, `stderr=DEVNULL`, fixed timeout
 and process-group cleanup. The deterministic base command removes audio and metadata,
@@ -280,7 +280,7 @@ PROFILE_ARGS = {
 If `libx265` is absent, the HEVC profile is `SKIP` with
 `visual_corpus_hevc_encoder_unavailable`; it never silently changes codec.
 
-- [ ] **Step 5: Run GREEN and commit**
+- [x] **Step 5: Run GREEN and commit**
 
 Run:
 
