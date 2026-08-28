@@ -30,6 +30,13 @@ from services.voice.camera_reply import (
     FixedReplyRenderer,
     LoopbackCameraReplyTransport,
 )
+from services.voice.diagnostic import (
+    DiagnosticAsrObservation,
+    DiagnosticAsrTap,
+    DiagnosticRecord,
+    VoiceDiagnosticWriter,
+    load_active_session,
+)
 from services.voice.listen_only import ListenOnlyController, ListenOnlyOutcome
 from services.voice.paraformer import ParaformerProcess, RecoveringParaformerProcess
 from services.voice.silero_runtime import StreamingSileroVad
@@ -106,9 +113,14 @@ class ListenOnlyVoiceWorker:
         asr_closer: object,
         status_writer: object,
         ducker_closer: object | None = None,
+        diagnostic_tap: object | None = None,
+        diagnostic_writer: object | None = None,
         clock=None,
+        epoch=time.time,
         monotonic_ns=time.monotonic_ns,
     ) -> None:
+        if (diagnostic_tap is None) != (diagnostic_writer is None):
+            raise ValueError("voice_runtime_unavailable")
         self._pump = pump
         self._vad = vad
         self._collector = collector
@@ -116,7 +128,10 @@ class ListenOnlyVoiceWorker:
         self._asr_closer = asr_closer
         self._status_writer = status_writer
         self._ducker_closer = ducker_closer
+        self._diagnostic_tap = diagnostic_tap
+        self._diagnostic_writer = diagnostic_writer
         self._clock = clock or (lambda: datetime.now().astimezone())
+        self._epoch = epoch
         self._monotonic_ns = monotonic_ns
         self._processed_count = 0
         self._utterance_from_replay = False
@@ -160,6 +175,8 @@ class ListenOnlyVoiceWorker:
             if self._utterance_from_replay:
                 self._increment("replay_utterances")
             was_armed = self._armed
+            diagnostic_epoch = self._epoch()
+            diagnostic_replay = self._utterance_from_replay
             outcome: ListenOnlyOutcome = self._controller.handle(
                 utterance.pcm,
                 cancelled,
@@ -198,6 +215,19 @@ class ListenOnlyVoiceWorker:
                 30_000,
                 max(0, (self._monotonic_ns() - started_ns) // 1_000_000),
             )
+            self._offer_diagnostic(
+                utterance.pcm,
+                outcome,
+                observation=(
+                    self._diagnostic_tap.take_observation()
+                    if self._diagnostic_tap is not None
+                    else None
+                ),
+                captured_epoch=diagnostic_epoch,
+                phase_before="armed" if was_armed else "idle",
+                from_replay=diagnostic_replay,
+                latency_ms=latency_ms,
+            )
             if outcome.response_code is not None:
                 self._processed_count += 1
             state = (
@@ -231,6 +261,8 @@ class ListenOnlyVoiceWorker:
         if self._closed:
             return
         self._closed = True
+        if self._diagnostic_writer is not None:
+            self._diagnostic_writer.close()
         if self._ducker_closer is not None:
             self._ducker_closer.close()
         self._collector.close()
@@ -246,6 +278,7 @@ class ListenOnlyVoiceWorker:
         self._controller.reset()
 
     def _write(self, state: str, reason: str, latency_ms: int | None) -> None:
+        self._sync_diagnostic_counts()
         try:
             self._status_writer.write(
                 mode="listen_only",
@@ -257,6 +290,61 @@ class ListenOnlyVoiceWorker:
             )
         except Exception:
             pass
+
+    def _offer_diagnostic(
+        self,
+        pcm: bytes,
+        outcome: ListenOnlyOutcome,
+        *,
+        observation: DiagnosticAsrObservation | None,
+        captured_epoch: float,
+        phase_before: str,
+        from_replay: bool,
+        latency_ms: int,
+    ) -> None:
+        if self._diagnostic_writer is None or observation is None:
+            return
+        try:
+            accepted = self._diagnostic_writer.offer(
+                DiagnosticRecord(
+                    session_id=self._diagnostic_writer.session_id,
+                    captured_epoch=captured_epoch,
+                    pcm=pcm,
+                    from_replay=from_replay,
+                    phase_before=phase_before,
+                    asr_state=observation.state,
+                    asr_text=observation.text,
+                    normalized_text=observation.normalized_text,
+                    action_code=outcome.action_code,
+                    match_kind=outcome.match_kind,
+                    outcome_reason=outcome.reason,
+                    latency_ms=latency_ms,
+                )
+            )
+            if not accepted:
+                self._sync_diagnostic_counts()
+        except Exception:
+            self._increment("voice_diagnostic_failures")
+
+    def _sync_diagnostic_counts(self) -> None:
+        if self._diagnostic_writer is None:
+            return
+        try:
+            snapshot = self._diagnostic_writer.snapshot()
+            self._transition_counts["voice_diagnostic_records"] = min(
+                9_007_199_254_740_991, snapshot.complete_count
+            )
+            self._transition_counts["voice_diagnostic_drops"] = min(
+                9_007_199_254_740_991, snapshot.drop_count
+            )
+            self._transition_counts["voice_diagnostic_failures"] = min(
+                9_007_199_254_740_991, snapshot.failure_count
+            )
+        except Exception:
+            self._transition_counts["voice_diagnostic_failures"] = min(
+                9_007_199_254_740_991,
+                self._transition_counts["voice_diagnostic_failures"] + 1,
+            )
 
     def _increment(self, key: str) -> None:
         self._transition_counts[key] = min(
@@ -341,7 +429,22 @@ def build_listen_only_worker(
         synthesizer = _build_preferred_output(
             voice, root, ducker=ducker, fallback=fallback
         )
-        controller = ListenOnlyController(asr=asr, synthesizer=synthesizer)
+        diagnostic_tap = None
+        diagnostic_writer = None
+        controller_asr: object = asr
+        session = load_active_session(root, now_epoch=time.time())
+        if session is not None:
+            try:
+                diagnostic_tap = DiagnosticAsrTap(asr)
+                diagnostic_writer = VoiceDiagnosticWriter(session)
+                controller_asr = diagnostic_tap
+            except Exception:
+                diagnostic_tap = None
+                diagnostic_writer = None
+                controller_asr = asr
+        controller = ListenOnlyController(
+            asr=controller_asr, synthesizer=synthesizer
+        )
         return ListenOnlyVoiceWorker(
             pump=pump,
             vad=vad,
@@ -350,6 +453,8 @@ def build_listen_only_worker(
             asr_closer=asr,
             status_writer=VoiceStatusWriter(root / "runtime/status/voice.json"),
             ducker_closer=ducker,
+            diagnostic_tap=diagnostic_tap,
+            diagnostic_writer=diagnostic_writer,
         )
     except Exception:
         if ducker is not None:

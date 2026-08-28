@@ -23,7 +23,8 @@ descriptors and permissions, macOS launchd/Make, pytest.
 `docs/superpowers/specs/2026-08-28-voice-local-diagnostic-session-design.md`
 
 **Status:** Approved specification translated into an inline execution plan on
-2026-08-28. Tasks 1–2 private artifacts and bounded writer are complete; Task 3 is next.
+2026-08-28. Tasks 1–3 private artifacts, writer and worker integration are complete;
+Task 4 is next.
 
 ## Global Constraints
 
@@ -236,26 +237,26 @@ shutdown is bounded even when storage settlement fails.
 - Fixed status keys: `voice_diagnostic_records`, `voice_diagnostic_drops`,
   `voice_diagnostic_failures`.
 
-- [ ] **Step 1: Write disabled-path RED regression**
+- [x] **Step 1: Write disabled-path RED regression**
 
   Build and run without a marker. Prove the original ASR object is used directly, no
   diagnostic writer/thread/path exists, status diagnostic counters remain zero and PCM/
   text references are released after each controller call.
 
-- [ ] **Step 2: Write active correlation RED tests**
+- [x] **Step 2: Write active correlation RED tests**
 
   For synthetic PCM/text, prove one record contains the same PCM, ASR observation,
   phase-before, replay flag, action/match outcome and bounded latency. Cover wake, armed
   exact, corrected, rejected, high-risk and ASR-unavailable outcomes without changing
   their existing results.
 
-- [ ] **Step 3: Write failure isolation RED tests**
+- [x] **Step 3: Write failure isolation RED tests**
 
   Queue full, writer closed, marker expiry and writer exception must only increment fixed
   diagnostic counters. Voice outcomes, processed counts, action counters and subsequent
   utterances remain unchanged.
 
-- [ ] **Step 4: Run RED**
+- [x] **Step 4: Run RED**
 
   ```bash
   .venv-alpha/bin/python -m pytest -q \
@@ -263,13 +264,13 @@ shutdown is bounded even when storage settlement fails.
     tests/voice/test_worker.py
   ```
 
-- [ ] **Step 5: Implement minimal worker wiring**
+- [x] **Step 5: Implement minimal worker wiring**
 
   Keep controller semantics unchanged. Capture phase/replay before `handle`, consume the
   ASR observation once afterward, construct one record and call non-blocking `offer`.
   Close writer before closing the ASR/pump, bounded by the fixed settlement timeout.
 
-- [ ] **Step 6: Run GREEN and adjacent Voice gates**
+- [x] **Step 6: Run GREEN and adjacent Voice gates**
 
   ```bash
   .venv-alpha/bin/python -m pytest -q \
@@ -281,7 +282,7 @@ shutdown is bounded even when storage settlement fails.
   git diff --check
   ```
 
-- [ ] **Step 7: Commit**
+- [x] **Step 7: Commit**
 
   ```bash
   git add services/voice/listen_only_runtime.py services/voice/worker.py \

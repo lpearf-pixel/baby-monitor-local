@@ -12,6 +12,10 @@ from packages.contracts.audio import AudioFailureReason
 from services.voice.audio_pump import PumpFrame
 from services.voice.capture import UtteranceResult
 from services.voice.listen_only import ListenOnlyOutcome
+from services.voice.diagnostic import (
+    DiagnosticAsrObservation,
+    DiagnosticSnapshot,
+)
 from packages.contracts.settings import VoiceCareSettings
 from packages.monitoring.go2rtc_build import BuildMetadata
 from services.voice.camera_reply import (
@@ -132,6 +136,37 @@ class AsrCloser:
         self.closed = True
 
 
+class DiagnosticTap:
+    def __init__(self, observation: DiagnosticAsrObservation) -> None:
+        self.observation = observation
+
+    def take_observation(self) -> DiagnosticAsrObservation | None:
+        value, self.observation = self.observation, None
+        return value
+
+
+class DiagnosticWriter:
+    session_id = "a" * 32
+
+    def __init__(self) -> None:
+        self.records = []
+        self.closed = False
+
+    def offer(self, record) -> bool:
+        self.records.append(record)
+        return True
+
+    def snapshot(self) -> DiagnosticSnapshot:
+        return DiagnosticSnapshot(
+            complete_count=len(self.records),
+            complete_bytes=100 * len(self.records),
+            incomplete_count=0,
+        )
+
+    def close(self) -> None:
+        self.closed = True
+
+
 def test_worker_routes_one_completed_utterance_to_listen_only_controller() -> None:
     pump = Pump([PumpFrame(b"p" * 3_200)])
     vad = Vad(VadResult(True, 0.9))
@@ -169,6 +204,9 @@ def test_worker_routes_one_completed_utterance_to_listen_only_controller() -> No
             "ignored_far": 0,
             "ignored_near_reply_echo": 0,
             "ignored_near_start": 0,
+            "voice_diagnostic_drops": 0,
+            "voice_diagnostic_failures": 0,
+            "voice_diagnostic_records": 0,
             "listen_only_action_rejected": 0,
             "listen_only_burping_exact": 0,
             "listen_only_diaper_exact": 0,
@@ -184,6 +222,53 @@ def test_worker_routes_one_completed_utterance_to_listen_only_controller() -> No
             "vad_speech_frames": 1,
         },
     }
+
+
+def test_worker_correlates_same_utterance_and_outcome_once_for_diagnostics() -> None:
+    diagnostic = DiagnosticWriter()
+    worker = ListenOnlyVoiceWorker(
+        pump=Pump([PumpFrame(b"p" * 3_200, replayed=True)]),
+        vad=Vad(VadResult(True, 0.9)),
+        collector=Collector(UtteranceResult(b"u" * 32_000, "terminal_silence")),
+        controller=Controller(
+            ListenOnlyOutcome(
+                "listen_only_acknowledged",
+                "listen_only_received",
+                "idle",
+                action_code="feeding_command",
+                match_kind="exact",
+            ),
+            expired=ListenOnlyOutcome("listen_only_armed", None, "armed"),
+        ),
+        asr_closer=AsrCloser(),
+        status_writer=Status(),
+        diagnostic_tap=DiagnosticTap(
+            DiagnosticAsrObservation("available", "开始喂奶", "开始喂奶")
+        ),
+        diagnostic_writer=diagnostic,
+        epoch=lambda: 1_100.0,
+        monotonic_ns=iter((1_000_000_000, 1_080_000_000)).__next__,
+    )
+
+    worker.step(threading.Event())
+
+    assert len(diagnostic.records) == 1
+    record = diagnostic.records[0]
+    assert record.session_id == "a" * 32
+    assert record.pcm == b"u" * 32_000
+    assert record.asr_text == "开始喂奶"
+    assert record.normalized_text == "开始喂奶"
+    assert record.phase_before == "armed"
+    assert record.from_replay is True
+    assert (record.action_code, record.match_kind) == (
+        "feeding_command",
+        "exact",
+    )
+    assert record.outcome_reason == "listen_only_acknowledged"
+    assert record.latency_ms == 80
+
+    worker.close()
+    assert diagnostic.closed is True
 
 
 def test_worker_preserves_replay_provenance_for_completed_utterance() -> None:
@@ -228,6 +313,9 @@ def test_worker_publishes_only_bounded_replay_transition_counts() -> None:
         "ignored_far": 0,
         "ignored_near_reply_echo": 0,
         "ignored_near_start": 0,
+        "voice_diagnostic_drops": 0,
+        "voice_diagnostic_failures": 0,
+        "voice_diagnostic_records": 0,
         "listen_only_action_rejected": 0,
         "listen_only_burping_exact": 0,
         "listen_only_diaper_exact": 0,

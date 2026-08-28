@@ -231,6 +231,10 @@ class VoiceDiagnosticWriter:
         )
         self._thread.start()
 
+    @property
+    def session_id(self) -> str:
+        return self._session.session_id
+
     def offer(self, record: DiagnosticRecord) -> bool:
         if type(record) is not DiagnosticRecord:
             return False
