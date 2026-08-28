@@ -371,7 +371,7 @@ Commit: `test: admit first visual regression corpus`
 - Produces: `iter_frames(*, started_at: datetime, pace: bool = False) -> Iterator[CapturedFrame]`.
 - Consumes: prepared media metadata and existing `CapturedFrame`.
 
-- [ ] **Step 1: Write decoder lifecycle RED tests**
+- [x] **Step 1: Write decoder lifecycle RED tests**
 
 Cover fixed argv, JPEG pipe framing, aware deterministic timestamps, fps pacing,
 non-monotonic prevention, output-size limits, malformed JPEG, early EOF, timeout,
@@ -390,18 +390,18 @@ def test_frames_use_media_time_not_wall_clock(tmp_path: Path) -> None:
     ]
 ```
 
-- [ ] **Step 2: Run RED**
+- [x] **Step 2: Run RED**
 
 Run: `python -m pytest -q tests/stream/test_file_frame_source.py`
 
-- [ ] **Step 3: Implement a bounded MJPEG pipe decoder**
+- [x] **Step 3: Implement a bounded MJPEG pipe decoder**
 
 Invoke ffmpeg with the prepared file as the only input, `-an`, fixed fps and
 `image2pipe/mjpeg`. Reuse `Go2RtcControlledFrameSource._validate_jpeg` only after making
 that validation a module-level internal helper, preserving all existing frame-source
 tests. Read JPEG SOI/EOI with a 16 MiB cap and never buffer the full decoded video.
 
-- [ ] **Step 4: Run focused compatibility GREEN and commit**
+- [x] **Step 4: Run focused compatibility GREEN and commit**
 
 Run:
 

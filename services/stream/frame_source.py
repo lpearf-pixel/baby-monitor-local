@@ -50,6 +50,26 @@ class FrameBurst:
     frames: tuple[CapturedFrame, ...]
 
 
+def _validate_jpeg(payload: bytes) -> tuple[int, int]:
+    try:
+        with Image.open(BytesIO(payload)) as image:
+            width, height = image.size
+            image.verify()
+            if image.format != "JPEG":
+                raise FrameSourceUnavailable("frame_invalid")
+    except FrameSourceUnavailable:
+        raise
+    except (UnidentifiedImageError, OSError, ValueError) as exc:
+        raise FrameSourceUnavailable("frame_invalid") from exc
+    if (
+        width > MAX_FRAME_WIDTH
+        or height > MAX_FRAME_HEIGHT
+        or width * height > MAX_FRAME_PIXELS
+    ):
+        raise FrameSourceUnavailable("frame_invalid")
+    return width, height
+
+
 def _default_opener(request: Request, timeout: float) -> AbstractContextManager[BinaryIO]:
     opener = build_opener(ProxyHandler({}))
     return opener.open(request, timeout=timeout)  # type: ignore[return-value]
@@ -127,7 +147,7 @@ class Go2RtcControlledFrameSource:
                     if self._monotonic() - started > timeout_seconds:
                         raise FrameSourceUnavailable("burst_timeout")
                     payload = self._read_part(response, boundary)
-                    width, height = self._validate_jpeg(payload)
+                    width, height = _validate_jpeg(payload)
                     captured_at = self._now()
                     if captured_at.tzinfo is None or captured_at.utcoffset() is None:
                         raise FrameSourceUnavailable("frame_invalid")
@@ -201,27 +221,6 @@ class Go2RtcControlledFrameSource:
             raise FrameSourceUnavailable("malformed_mjpeg")
         return payload
 
-    @staticmethod
-    def _validate_jpeg(payload: bytes) -> tuple[int, int]:
-        try:
-            with Image.open(BytesIO(payload)) as image:
-                width, height = image.size
-                image.verify()
-                if image.format != "JPEG":
-                    raise FrameSourceUnavailable("frame_invalid")
-        except FrameSourceUnavailable:
-            raise
-        except (UnidentifiedImageError, OSError, ValueError) as exc:
-            raise FrameSourceUnavailable("frame_invalid") from exc
-        if (
-            width > MAX_FRAME_WIDTH
-            or height > MAX_FRAME_HEIGHT
-            or width * height > MAX_FRAME_PIXELS
-        ):
-            raise FrameSourceUnavailable("frame_invalid")
-        return width, height
-
-
 class Go2RtcAnalysisFrameSource(Go2RtcControlledFrameSource):
     """Streams validated frames from the fixed local `analysis` stream."""
 
@@ -250,7 +249,7 @@ class Go2RtcAnalysisFrameSource(Go2RtcControlledFrameSource):
                 boundary = self._boundary_from_headers(response)
                 while True:
                     payload = self._read_part(response, boundary)
-                    width, height = self._validate_jpeg(payload)
+                    width, height = _validate_jpeg(payload)
                     captured_at = self._now()
                     if (
                         captured_at.tzinfo is None
