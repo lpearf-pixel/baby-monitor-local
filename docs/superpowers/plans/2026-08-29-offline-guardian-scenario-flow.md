@@ -114,7 +114,7 @@ git commit -m "feat: define offline guardian scenarios"
 - Converts declared timeline entries to `GuardianReplayReview` and delegates to `GuardianReplayProjector.run(semantic_profile="synthetic_test", reviews=...)`.
 - Reopens the same isolated store only through `GuardianEventQueryService` for the final bounded projection.
 
-- [ ] **Step 1: Write Guardian lane RED tests**
+- [x] **Step 1: Write Guardian lane RED tests**
 
 Cover safe zero-event, face-obstruction confirmation/dedup/recovery and adult-intervention audit. Assert a fresh database per scenario and these invariants:
 
@@ -127,7 +127,7 @@ assert result.actual_counts == scenario.guardian_expected_counts
 
 Also reject an existing database, symlink root, expectation mismatch, invalid review order and more than 32 transitions.
 
-- [ ] **Step 2: Run RED**
+- [x] **Step 2: Run RED**
 
 ```bash
 ../../.venv-alpha/bin/python -m pytest -q tests/integration/test_offline_guardian_scenario.py -k guardian
@@ -135,11 +135,11 @@ Also reject an existing database, symlink root, expectation mismatch, invalid re
 
 Expected: import failure for `run_guardian_lane`.
 
-- [ ] **Step 3: Implement the minimum Guardian adapter**
+- [x] **Step 3: Implement the minimum Guardian adapter**
 
 Create only a scenario-owned database below the supplied root. Map the existing aggregate to stable keys and compare exact dictionaries. Preserve `GuardianReplayProjector` reason codes; return `scenario_guardian_mismatch` when the projector passes but expectations differ.
 
-- [ ] **Step 4: Run GREEN and adjacent gates**
+- [x] **Step 4: Run GREEN and adjacent gates**
 
 ```bash
 ../../.venv-alpha/bin/python -m pytest -q tests/integration/test_offline_guardian_scenario.py -k guardian tests/vision/test_corpus_guardian_projection.py tests/events/test_guardian_query.py
@@ -147,7 +147,7 @@ Create only a scenario-owned database below the supplied root. Map the existing 
 git diff --check
 ```
 
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
 
 ```bash
 git add services/offline_guardian_scenario.py tests/integration/test_offline_guardian_scenario.py
