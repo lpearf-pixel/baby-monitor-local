@@ -7,16 +7,18 @@ the detailed approved specs and plans remain authoritative for behavior.
 **Private local visual overlay software (current gate):** the contract in
 `docs/superpowers/specs/2026-08-29-private-local-visual-corpus-overlay-design.md` and
 `docs/superpowers/plans/2026-08-29-private-local-visual-corpus-overlay.md` is approved.
-Tasks 1–4 are complete at `0bd6e1a`, `e24eaf7`, `5cf6b0a` and `271badc` with generated tests. The
+Tasks 1–5 are complete at `0bd6e1a`, `e24eaf7`, `5cf6b0a`, `271badc` and `21f853f` with generated tests. The
 mutually exclusive `PRIVATE_LOCAL_CAPTURE` metadata contract does not alter public
 source enums or readiness, and filesystem/media validation reports at most
 `LOCAL_PARTIAL`. Task 3 preserves that boundary until Task 5 verifies digest-bound
 human review, while its pure projection keeps one clip identity for all scenario groups.
 Task 4 adds a fixed shared-source, video-only 20/25/30-second capture boundary with
-single-producer continuity and private atomic publication; no live capture ran. The next
-implementation slice is Task 5 digest-bound human-review preparation and receipt
-software. Do not execute live capture, create a real descriptor, replay private media or
-run any baseline operation. Real capture remains a separate Task 8 authority.
+single-producer continuity and private atomic publication; no live capture ran. Task 5
+binds 500ms plus first/last review frames, human real-time playback and both approval
+states to the exact current digest. The next implementation slice is Task 6 enforcement
+of the private baseline prohibition. Do not execute live capture, create a real
+descriptor, replay private media or run any baseline operation. Real capture remains a
+separate Task 8 authority.
 
 **Visual regression public corpus follow-up (public-corpus proposal base `681edd3`,
 branch remote `75f62b8`; no PR or merge):** follow

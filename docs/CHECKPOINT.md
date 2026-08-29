@@ -356,6 +356,31 @@ private replay or baseline operation ran. `review-prepare` intentionally remains
 stub until Task 5 binds human review to the exact digest. Task 8 remains the first point
 that can receive fresh explicit owner-supervised capture authority.
 
+#### Private local overlay Task 5 digest-bound human review
+
+Task 5 is committed locally at `21f853f`. Strict TDD recorded five initial behavior
+failures for review status, frame preparation, failed-publication cleanup and exact-
+digest completion. The final boundary extracts exactly one ignored frame per 500ms plus
+explicit first and last frames, rejects unexpected inventory and publishes all review
+artifacts as owner-private files. It never approves content. A separate 0600 receipt
+must bind the same opaque asset and SHA-256, identify a human reviewer, confirm real-time
+playback and carry matching approved authorization/privacy states. Model-only,
+pending/rejected, missing-playback, stale-digest and changed-media cases remain
+incomplete.
+
+Fresh Task 5 evidence:
+
+- review tool and validator tests passed 100/100;
+- all private contract/validator/projection/capture tests passed 160/160;
+- the unchanged public corpus contract/tool/baseline command passed 43/43;
+- changed Python compiled, Make review commands dry-ran, `git diff --check` passed and
+  privacy scanning found no credential/private-network material beyond the fixed
+  approved loopback source.
+
+All frames, receipts and media used by tests were generated under pytest temporary
+directories. No live capture, household media, real descriptor/receipt, local replay or
+baseline operation ran. Task 6 private-baseline rejection is next.
+
 Draft PR #4 已实现并自动化验证 H.265 原码优先、VideoToolbox 按需兼容流、
 profile 绑定票据、无黑屏播放器回退以及可审计 go2rtc 双补丁构建。
 

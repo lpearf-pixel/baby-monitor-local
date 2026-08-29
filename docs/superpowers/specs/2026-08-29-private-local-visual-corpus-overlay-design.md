@@ -2,9 +2,9 @@
 
 **Date:** 2026-08-29
 
-**Status:** Approved on 2026-08-29. Software Tasks 1–2 are complete locally. Current
-implementation authority ends at Task 2. This document authorizes no camera access,
-capture, real descriptor, replay, baseline operation or remote operation.
+**Status:** Approved on 2026-08-29. Software Tasks 1–5 are complete locally. This
+document authorizes no camera access, real capture, real descriptor, replay, baseline
+operation or remote operation during the software-only sequence.
 
 ## 1. Goal
 

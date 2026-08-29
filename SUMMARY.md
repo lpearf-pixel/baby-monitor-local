@@ -62,7 +62,12 @@ Updated: 2026-08-29
   publishes only validated 0600 media plus its ignored atomic mapping. No live capture,
   household media, real descriptor, replay or baseline action occurred. Task 1 is
   published through remote head `75f62b8`; Tasks 2–4 are local and not pushed. The
-  exact next slice is Task 5 digest-bound human-review software.
+  Task 5 commit `21f853f` adds closed review preparation at 500ms plus explicit first/
+  last frames and accepts content review only from an ignored exact-digest receipt that
+  records a human reviewer, real-time playback and both approved states. Changed media,
+  model-only review, missing playback acknowledgement and pending/rejected states remain
+  incomplete. No review command was run on household media and no real receipt exists.
+  The exact next slice is Task 6 private-baseline prohibition.
 - Stable Xiaomi line: `stable/xiaomi-alpha` at `0df20ae`.
 - Active Camera Reply review line: `codex/xiaomi-camera-reply-lifecycle-review`, based
   on accepted Voice head `4d479b8`; its published Task 8 checkpoint is `a622a7a`.

@@ -56,7 +56,12 @@
   publishes only validated 0600 media and ignored mapping state. No real private
   descriptor, household capture, content approval, `LOCAL_READY`, replay or baseline
   action has occurred. Task 1 is published through remote head `75f62b8`; Tasks 2–4
-  are local and not pushed.
+  are local and not pushed. Software Task 5 is complete locally at `21f853f`: ignored
+  review frames are bounded to one sample per 500ms plus explicit first/last frames,
+  and `content_review_complete` requires a 0600 exact-digest human receipt with real-time
+  playback and matching approved authorization/privacy states. Old-digest, model-only,
+  incomplete or rejected receipts remain fail-closed. No real review material or receipt
+  was created; Task 6 private-baseline prohibition is next.
 - Environment monitoring design and implementation plan: approved on 2026-08-05.
 - Stable Xiaomi Alpha commit: `0df20ae` on `stable/xiaomi-alpha`.
 - Current visual-corpus worktree branch: `codex/visual-regression-corpus`. The separate

@@ -384,12 +384,12 @@ git commit -m "feat: add bounded private visual capture boundary"
 - Tracked `authorization_review` and `privacy_review` can be `approved` only when the
   ignored receipt matches the same SHA-256.
 
-- [ ] **Step 1: Write review RED tests**
+- [x] **Step 1: Write review RED tests**
 
 Cover sampling interval, first/last frames, real-time-playback acknowledgement,
 digest mismatch, pending/rejected state, changed media and model-only review attempts.
 
-- [ ] **Step 2: Run RED**
+- [x] **Step 2: Run RED**
 
 ```bash
 ../../.venv-alpha/bin/python -m pytest -q \
@@ -397,18 +397,18 @@ digest mismatch, pending/rejected state, changed media and model-only review att
   tests/vision/test_private_visual_overlay.py
 ```
 
-- [ ] **Step 3: Implement local review preparation and receipt checks**
+- [x] **Step 3: Implement local review preparation and receipt checks**
 
 The command prepares review material but never decides content. Human approval is a
 separate explicit action bound to the opaque ID and digest. Keep review detail only in
 ignored storage; tracked metadata records only the two closed states.
 
-- [ ] **Step 4: Run GREEN and privacy scan**
+- [x] **Step 4: Run GREEN and privacy scan**
 
 Run the Step 2 command, compile changed Python and scan added lines for paths, URLs,
 hostnames, private addresses, camera identities and media names.
 
-- [ ] **Step 5: Commit the review slice**
+- [x] **Step 5: Commit the review slice**
 
 ```bash
 git add tools/private_visual_corpus.py \
@@ -579,8 +579,8 @@ baseline command. Stop and request a separate baseline-use decision.
 
 ## Current exact next action
 
-Tasks 1–4 are complete at `0bd6e1a`, `e24eaf7`, `5cf6b0a` and `271badc`. Task 4 added
-the bounded video-only capture software without running a live capture. The exact next
-slice is Task 5 digest-bound human-review software; do not capture household media or
-create a real private descriptor during software Tasks 1–7.
+Tasks 1–5 are complete at `0bd6e1a`, `e24eaf7`, `5cf6b0a`, `271badc` and `21f853f`.
+Task 5 binds sampled review material and human approval to the exact current digest.
+The exact next slice is Task 6 private-baseline prohibition; do not capture household
+media or create a real private descriptor during software Tasks 1–7.
 Task 8 always requires a fresh explicit owner-supervised capture authority.
