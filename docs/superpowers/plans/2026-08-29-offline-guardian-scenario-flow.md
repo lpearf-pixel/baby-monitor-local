@@ -48,7 +48,7 @@
 - Produces `load_offline_scenario_suite(path: Path) -> OfflineScenarioSuiteV1`.
 - Produces `canonical_offline_scenario_bytes(value) -> bytes` and `canonical_offline_run_bytes(value) -> bytes`.
 
-- [ ] **Step 1: Write contract RED tests**
+- [x] **Step 1: Write contract RED tests**
 
 Test the four exact scenario IDs, unique IDs, allowed clip IDs, fixed profiles, ordered aware timestamps, bounded expected counts, closed provenance values and exact field sets. Reject locator-like keys recursively.
 
@@ -67,7 +67,7 @@ def test_result_requires_isolation_proofs() -> None:
         OfflineScenarioRunV1.model_validate(payload)
 ```
 
-- [ ] **Step 2: Run RED**
+- [x] **Step 2: Run RED**
 
 ```bash
 ../../.venv-alpha/bin/python -m pytest -q tests/contracts/test_offline_guardian_scenario.py
@@ -75,7 +75,7 @@ def test_result_requires_isolation_proofs() -> None:
 
 Expected: collection fails because the contract module does not exist.
 
-- [ ] **Step 3: Implement the minimum contracts and four-scenario fixture**
+- [x] **Step 3: Implement the minimum contracts and four-scenario fixture**
 
 Use `extra="forbid"`, strict scalar types, maximum 8 scenarios, 64 expectation keys and 32 lane counts. Define the initial fixture mapping:
 
@@ -88,7 +88,7 @@ VOICE-FEEDING-01    -> generated-voice-feeding-v1 -> voice
 
 The Guardian timelines use the current `VisualReview` field names and only declared ISO-8601 UTC timestamps. The Voice fixture declares opaque step IDs, not transcript text.
 
-- [ ] **Step 4: Run GREEN and static checks**
+- [x] **Step 4: Run GREEN and static checks**
 
 ```bash
 ../../.venv-alpha/bin/python -m pytest -q tests/contracts/test_offline_guardian_scenario.py tests/contracts/test_visual_corpus.py
@@ -96,7 +96,7 @@ The Guardian timelines use the current `VisualReview` field names and only decla
 git diff --check
 ```
 
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
 
 ```bash
 git add packages/contracts/offline_guardian_scenario.py tests/contracts/test_offline_guardian_scenario.py tests/fixtures/offline_guardian_scenarios/scenarios.v1.json

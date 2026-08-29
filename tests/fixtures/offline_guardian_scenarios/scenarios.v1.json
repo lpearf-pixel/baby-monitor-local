@@ -1,0 +1,75 @@
+{
+  "schema_version": 1,
+  "suite_id": "offline-guardian-v1",
+  "scenarios": [
+    {
+      "schema_version": 1,
+      "scenario_id": "SAFE-SLEEP-01",
+      "required_lanes": ["visual_observation", "guardian_deterministic"],
+      "visual": {"clip_id": "DAY-01", "profile": "analysis_realtime", "minimum_frames_processed": 1, "provenance": "PUBLIC_VIDEO"},
+      "guardian": {
+        "provenance": "SYNTHETIC_SEMANTIC_ORACLE",
+        "timeline": [
+          {"observed_at": "2026-08-29T00:00:00Z", "review": {"baby_visibility": "visible", "face_visibility": "clear", "posture": "supine", "bed_state": "inside", "adult_presence": "absent", "image_quality": "usable", "risk": "none", "reason_codes": [], "confidence": 0.9}},
+          {"observed_at": "2026-08-29T00:00:10Z", "review": {"baby_visibility": "visible", "face_visibility": "clear", "posture": "supine", "bed_state": "inside", "adult_presence": "absent", "image_quality": "usable", "risk": "none", "reason_codes": [], "confidence": 0.9}}
+        ],
+        "transition_counts": {}, "event_counts": {}, "dashboard_event_count": 0, "dashboard_open_event_count": 0
+      },
+      "voice": null
+    },
+    {
+      "schema_version": 1,
+      "scenario_id": "FACE-OCCLUSION-01",
+      "required_lanes": ["visual_observation", "guardian_deterministic"],
+      "visual": {"clip_id": "OCC-02", "profile": "analysis_realtime", "minimum_frames_processed": 1, "provenance": "PUBLIC_VIDEO"},
+      "guardian": {
+        "provenance": "SYNTHETIC_SEMANTIC_ORACLE",
+        "timeline": [
+          {"observed_at": "2026-08-29T00:00:00Z", "review": {"baby_visibility": "visible", "face_visibility": "not_visible", "posture": "supine", "bed_state": "inside", "adult_presence": "absent", "image_quality": "usable", "risk": "high", "reason_codes": ["face_not_visible"], "confidence": 0.9}},
+          {"observed_at": "2026-08-29T00:00:10Z", "review": {"baby_visibility": "visible", "face_visibility": "not_visible", "posture": "supine", "bed_state": "inside", "adult_presence": "absent", "image_quality": "usable", "risk": "high", "reason_codes": ["face_not_visible"], "confidence": 0.9}},
+          {"observed_at": "2026-08-29T00:00:20Z", "review": {"baby_visibility": "visible", "face_visibility": "not_visible", "posture": "supine", "bed_state": "inside", "adult_presence": "absent", "image_quality": "usable", "risk": "high", "reason_codes": ["face_not_visible"], "confidence": 0.9}},
+          {"observed_at": "2026-08-29T00:00:30Z", "review": {"baby_visibility": "visible", "face_visibility": "clear", "posture": "supine", "bed_state": "inside", "adult_presence": "absent", "image_quality": "usable", "risk": "none", "reason_codes": [], "confidence": 0.9}},
+          {"observed_at": "2026-08-29T00:00:40Z", "review": {"baby_visibility": "visible", "face_visibility": "clear", "posture": "supine", "bed_state": "inside", "adult_presence": "absent", "image_quality": "usable", "risk": "none", "reason_codes": [], "confidence": 0.9}}
+        ],
+        "transition_counts": {"alert_opened.face_not_visible": 1, "recovered.face_not_visible": 1, "watch_started.face_not_visible": 1},
+        "event_counts": {"face_not_visible.recovered": 1}, "dashboard_event_count": 1, "dashboard_open_event_count": 0
+      },
+      "voice": null
+    },
+    {
+      "schema_version": 1,
+      "scenario_id": "ADULT-INTERVENTION-01",
+      "required_lanes": ["visual_observation", "guardian_deterministic"],
+      "visual": {"clip_id": "NEG-03", "profile": "analysis_realtime", "minimum_frames_processed": 1, "provenance": "PUBLIC_VIDEO"},
+      "guardian": {
+        "provenance": "SYNTHETIC_SEMANTIC_ORACLE",
+        "timeline": [
+          {"observed_at": "2026-08-29T00:00:00Z", "review": {"baby_visibility": "visible", "face_visibility": "not_visible", "posture": "supine", "bed_state": "inside", "adult_presence": "absent", "image_quality": "usable", "risk": "high", "reason_codes": ["face_not_visible"], "confidence": 0.9}},
+          {"observed_at": "2026-08-29T00:00:10Z", "review": {"baby_visibility": "visible", "face_visibility": "not_visible", "posture": "supine", "bed_state": "inside", "adult_presence": "absent", "image_quality": "usable", "risk": "high", "reason_codes": ["face_not_visible"], "confidence": 0.9}},
+          {"observed_at": "2026-08-29T00:00:20Z", "review": {"baby_visibility": "visible", "face_visibility": "not_visible", "posture": "supine", "bed_state": "inside", "adult_presence": "present", "image_quality": "usable", "risk": "high", "reason_codes": ["face_not_visible", "adult_intervention"], "confidence": 0.9}}
+        ],
+        "transition_counts": {"adult_intervention.none": 1, "alert_opened.face_not_visible": 1, "watch_started.face_not_visible": 1},
+        "event_counts": {"face_not_visible.open": 1}, "dashboard_event_count": 1, "dashboard_open_event_count": 1
+      },
+      "voice": null
+    },
+    {
+      "schema_version": 1,
+      "scenario_id": "VOICE-FEEDING-01",
+      "required_lanes": ["voice_generated"],
+      "visual": null,
+      "guardian": null,
+      "voice": {
+        "provenance": "GENERATED_AUDIO",
+        "fixture_id": "generated-voice-feeding-v1",
+        "steps": [
+          {"step_id": "wake", "speech_expected": true, "from_replay": false, "expected_reason": "listen_only_armed", "expected_response_code": "listen_only_ready"},
+          {"step_id": "feeding", "speech_expected": true, "from_replay": false, "expected_reason": "listen_only_acknowledged", "expected_response_code": "listen_only_received"},
+          {"step_id": "no_wake", "speech_expected": true, "from_replay": false, "expected_reason": "listen_only_ignored", "expected_response_code": null},
+          {"step_id": "unsupported", "speech_expected": true, "from_replay": false, "expected_reason": "listen_only_ignored", "expected_response_code": null}
+        ],
+        "expected_response_count": 2
+      }
+    }
+  ]
+}
