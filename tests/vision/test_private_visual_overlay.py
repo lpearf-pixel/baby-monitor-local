@@ -87,6 +87,33 @@ def create_overlay(
     return root, media
 
 
+def write_review_receipt(
+    root: Path,
+    *,
+    payload: bytes = ASSET_BYTES,
+    **overrides: object,
+) -> Path:
+    results = root / "results"
+    results.mkdir(mode=0o700, exist_ok=True)
+    receipt: dict[str, object] = {
+        "schema_version": 1,
+        "private_asset_id": ASSET_ID,
+        "sha256": hashlib.sha256(payload).hexdigest(),
+        "reviewer_type": "human",
+        "sampling_interval_ms": 500,
+        "first_frame_reviewed": True,
+        "last_frame_reviewed": True,
+        "realtime_playback_reviewed": True,
+        "authorization_review": "approved",
+        "privacy_review": "approved",
+    }
+    receipt.update(overrides)
+    path = results / f"{ASSET_ID}.review.json"
+    path.write_text(json.dumps(receipt), encoding="ascii")
+    path.chmod(0o600)
+    return path
+
+
 def facts_for(
     path: Path,
     **overrides: object,
@@ -201,6 +228,51 @@ def test_review_complete_coverage_can_report_local_ready_without_public_ready(
     assert status.reason == "private_overlay_ready"
     assert status.asset_count == 1
     assert status.scenario_count == 2
+
+
+def test_exact_digest_human_receipt_completes_review(tmp_path: Path) -> None:
+    root, _ = create_overlay(tmp_path)
+    write_review_receipt(root)
+
+    validation = validate(
+        descriptor(
+            authorization_review="approved",
+            privacy_review="approved",
+        ),
+        root,
+    )
+
+    assert validation.content_review_complete is True
+
+
+@pytest.mark.parametrize(
+    ("receipt_override", "descriptor_override"),
+    [
+        ({"sha256": "0" * 64}, {}),
+        ({"reviewer_type": "model"}, {}),
+        ({"realtime_playback_reviewed": False}, {}),
+        ({"authorization_review": "pending"}, {}),
+        ({"privacy_review": "rejected"}, {}),
+        ({}, {"authorization_review": "pending"}),
+        ({}, {"privacy_review": "rejected"}),
+    ],
+)
+def test_nonhuman_incomplete_rejected_or_mismatched_review_stays_incomplete(
+    tmp_path: Path,
+    receipt_override: dict[str, object],
+    descriptor_override: dict[str, object],
+) -> None:
+    root, _ = create_overlay(tmp_path)
+    write_review_receipt(root, **receipt_override)
+    metadata = {
+        "authorization_review": "approved",
+        "privacy_review": "approved",
+    }
+    metadata.update(descriptor_override)
+
+    validation = validate(descriptor(**metadata), root)
+
+    assert validation.content_review_complete is False
 
 
 def test_review_complete_but_incomplete_coverage_stays_partial(tmp_path: Path) -> None:

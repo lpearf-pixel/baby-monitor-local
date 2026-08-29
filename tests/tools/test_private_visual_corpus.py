@@ -83,6 +83,12 @@ def test_parser_exposes_only_closed_private_operations() -> None:
         ).private_asset_id
         == ASSET_ID
     )
+    assert (
+        parser.parse_args(
+            ["review-status", "--private-asset-id", ASSET_ID]
+        ).private_asset_id
+        == ASSET_ID
+    )
 
 
 @pytest.mark.parametrize(
@@ -680,3 +686,221 @@ def test_capture_preflight_command_is_read_only(
         "reason=ok",
     ]
     assert list(root.iterdir()) == []
+
+
+def test_review_prepare_extracts_half_second_samples_and_explicit_ends(
+    tmp_path: Path,
+) -> None:
+    module = tool()
+    root = repository(tmp_path)
+    module.capture_private_asset(
+        root,
+        25,
+        preflight=ready_preflight(),
+        postflight=lambda: ready_preflight(),
+        runner=generated_runner,
+        probe=generated_probe,
+        asset_id_factory=lambda: ASSET_ID,
+    )
+    observed: list[tuple[str, ...]] = []
+
+    def frame_runner(argv: tuple[str, ...], _timeout: float) -> None:
+        observed.append(argv)
+        output = Path(argv[-1])
+        if "%06d" in output.name:
+            for sequence in range(1, 51):
+                frame = output.with_name(
+                    output.name.replace("%06d", f"{sequence:06d}")
+                )
+                frame.write_bytes(b"generated-frame")
+        else:
+            output.write_bytes(b"generated-frame")
+
+    result = module.prepare_review_material(
+        root,
+        ASSET_ID,
+        runner=frame_runner,
+        probe=generated_probe,
+    )
+
+    assert result.private_asset_id == ASSET_ID
+    assert result.sha256 == __import__("hashlib").sha256(MEDIA).hexdigest()
+    assert result.sample_interval_ms == 500
+    assert result.sample_frame_count == 50
+    assert result.first_frame_present is True
+    assert result.last_frame_present is True
+    assert len(observed) == 3
+    assert "fps=2" in observed[0]
+    start = observed[1].index("-ss")
+    assert ("-ss", "0") == observed[1][start : start + 2]
+    assert "-sseof" in observed[2]
+    review = root / "runtime/test-corpus/visual/private-overlay/review-frames" / ASSET_ID
+    assert stat.S_IMODE(review.lstat().st_mode) == 0o700
+    for entry in review.iterdir():
+        assert stat.S_IMODE(entry.lstat().st_mode) == 0o600
+
+
+def test_review_prepare_failure_publishes_no_review_directory(tmp_path: Path) -> None:
+    module = tool()
+    root = repository(tmp_path)
+    module.capture_private_asset(
+        root,
+        25,
+        preflight=ready_preflight(),
+        postflight=lambda: ready_preflight(),
+        runner=generated_runner,
+        probe=generated_probe,
+        asset_id_factory=lambda: ASSET_ID,
+    )
+
+    with pytest.raises(module.PrivateVisualCorpusError):
+        module.prepare_review_material(
+            root,
+            ASSET_ID,
+            runner=lambda _argv, _timeout: (_ for _ in ()).throw(TimeoutError()),
+            probe=generated_probe,
+        )
+
+    review_root = root / "runtime/test-corpus/visual/private-overlay/review-frames"
+    assert not (review_root / ASSET_ID).exists()
+
+
+def test_review_prepare_rejects_unexpected_frame_inventory(tmp_path: Path) -> None:
+    module = tool()
+    root = repository(tmp_path)
+    module.capture_private_asset(
+        root,
+        25,
+        preflight=ready_preflight(),
+        postflight=lambda: ready_preflight(),
+        runner=generated_runner,
+        probe=generated_probe,
+        asset_id_factory=lambda: ASSET_ID,
+    )
+
+    def frame_runner(argv: tuple[str, ...], _timeout: float) -> None:
+        output = Path(argv[-1])
+        if "%06d" in output.name:
+            for sequence in range(1, 51):
+                output.with_name(
+                    output.name.replace("%06d", f"{sequence:06d}")
+                ).write_bytes(b"generated-frame")
+            (output.parent / "unexpected.png").write_bytes(b"generated-frame")
+        else:
+            output.write_bytes(b"generated-frame")
+
+    with pytest.raises(
+        module.PrivateVisualCorpusError,
+        match="^private_overlay_review_incomplete$",
+    ):
+        module.prepare_review_material(
+            root,
+            ASSET_ID,
+            runner=frame_runner,
+            probe=generated_probe,
+        )
+
+    review_root = root / "runtime/test-corpus/visual/private-overlay/review-frames"
+    assert not (review_root / ASSET_ID).exists()
+
+
+def test_review_status_prints_no_receipt_detail_or_path(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+    capsys: pytest.CaptureFixture[str],
+) -> None:
+    module = tool()
+    root = repository(tmp_path)
+    monkeypatch.setattr(module, "REPOSITORY_ROOT", root)
+    monkeypatch.setattr(
+        module,
+        "review_status",
+        lambda _root, _asset_id: module.ReviewStatus(
+            private_asset_id=ASSET_ID,
+            state="complete",
+        ),
+    )
+
+    assert module.main(["review-status", "--private-asset-id", ASSET_ID]) == 0
+    assert capsys.readouterr().out.splitlines() == [
+        "result=PASS",
+        "operation=review-status",
+        f"private_asset_id={ASSET_ID}",
+        "review_state=complete",
+    ]
+
+
+def test_review_status_revalidates_changed_media(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    module = tool()
+    root = repository(tmp_path)
+    overlay = root / "runtime/test-corpus/visual/private-overlay"
+    assets = overlay / "assets"
+    results = overlay / "results"
+    for directory in (overlay, assets, overlay / "review-frames", results, overlay / "temp"):
+        directory.mkdir(mode=0o700, parents=True, exist_ok=True)
+        directory.chmod(0o700)
+    media = assets / f"{ASSET_ID}.mkv"
+    media.write_bytes(MEDIA + b"changed")
+    media.chmod(0o600)
+    index = overlay / "index.json"
+    index.write_text(
+        json.dumps(
+            {
+                "schema_version": 1,
+                "assets": [{"private_asset_id": ASSET_ID, "basename": media.name}],
+            }
+        ),
+        encoding="ascii",
+    )
+    index.chmod(0o600)
+    descriptor_path = root / "tests/fixtures/visual_corpus/private_overlay.json"
+    descriptor_path.parent.mkdir(parents=True)
+    descriptor_path.write_text(
+        json.dumps(
+            {
+                "schema_version": 1,
+                "source_type": "PRIVATE_LOCAL_CAPTURE",
+                "assets": [
+                    {
+                        "private_asset_id": ASSET_ID,
+                        "sha256": __import__("hashlib").sha256(MEDIA).hexdigest(),
+                        "bytes": len(MEDIA),
+                        "duration_ms": 25000,
+                        "codec": "hevc",
+                        "width": 2560,
+                        "height": 1440,
+                        "fps": 10.0,
+                        "scenario_ids": ["WIDE-02", "NEG-01"],
+                        "authorization_review": "approved",
+                        "privacy_review": "approved",
+                    }
+                ],
+            }
+        ),
+        encoding="ascii",
+    )
+    receipt = results / f"{ASSET_ID}.review.json"
+    receipt.write_text(
+        json.dumps(
+            {
+                "schema_version": 1,
+                "private_asset_id": ASSET_ID,
+                "sha256": __import__("hashlib").sha256(MEDIA).hexdigest(),
+                "reviewer_type": "human",
+                "sampling_interval_ms": 500,
+                "first_frame_reviewed": True,
+                "last_frame_reviewed": True,
+                "realtime_playback_reviewed": True,
+                "authorization_review": "approved",
+                "privacy_review": "approved",
+            }
+        ),
+        encoding="ascii",
+    )
+    receipt.chmod(0o600)
+    monkeypatch.setattr(module, "probe_private_media", generated_probe)
+
+    assert module.review_status(root, ASSET_ID).state == "incomplete"

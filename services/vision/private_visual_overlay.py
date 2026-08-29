@@ -14,11 +14,13 @@ from packages.contracts.private_visual_overlay import (
     LocalOverlayReadiness,
     PrivateAssetMetadata,
     PrivateOverlayDescriptor,
+    PrivateReviewState,
 )
 from packages.contracts.visual_corpus import CorpusReadiness, ScenarioId
 
 
 MAX_INDEX_BYTES = 64 * 1024
+MAX_REVIEW_RECEIPT_BYTES = 16 * 1024
 _ALLOWED_ROOT_ENTRIES = frozenset(
     {"index.json", "assets", "review-frames", "results", "temp"}
 )
@@ -92,12 +94,16 @@ def validate_private_overlay(
         if _inventory(assets_root) != mapped_basenames:
             raise _PrivateOverlayFailure("private_overlay_mapping_invalid")
 
+        content_review_complete = True
         for asset in descriptor.assets:
             _validate_asset(
                 asset,
                 assets_root / mapping[asset.private_asset_id],
                 assets_identity,
                 probe,
+            )
+            content_review_complete = (
+                content_review_complete and review_complete_for_asset(asset, root)
             )
 
         try:
@@ -128,6 +134,7 @@ def validate_private_overlay(
             asset_count=len(descriptor.assets),
             scenario_count=len(_descriptor_scenarios(descriptor)),
             scenario_ids=_descriptor_scenarios(descriptor),
+            content_review_complete=content_review_complete,
         )
     except _PrivateOverlayFailure as exc:
         return _failure(exc.reason)
@@ -181,6 +188,70 @@ def local_overlay_status(
         reason="private_overlay_ready",
         asset_count=validation.asset_count,
         scenario_count=validation.scenario_count,
+    )
+
+
+def review_complete_for_asset(
+    asset: PrivateAssetMetadata,
+    overlay_root: Path,
+) -> bool:
+    if (
+        asset.authorization_review is not PrivateReviewState.APPROVED
+        or asset.privacy_review is not PrivateReviewState.APPROVED
+    ):
+        return False
+    results = Path(overlay_root) / "results"
+    path = results / f"{asset.private_asset_id}.review.json"
+    try:
+        results_before = _require_directory(results)
+        before = _require_private_file(path)
+        descriptor = _open_read_only(path)
+        try:
+            held = os.fstat(descriptor)
+            if not _same_identity(before, held):
+                return False
+            raw = _read_bounded(descriptor, MAX_REVIEW_RECEIPT_BYTES)
+            after = os.fstat(descriptor)
+            entry_after = os.stat(path, follow_symlinks=False)
+            if not _same_stable_file(held, after) or not _same_identity(
+                after, entry_after
+            ):
+                return False
+        finally:
+            os.close(descriptor)
+        payload = json.loads(raw.decode("ascii"))
+        results_after = os.lstat(results)
+        if not _same_private_directory(results_before, results_after):
+            return False
+    except (OSError, UnicodeError, json.JSONDecodeError, _PrivateOverlayFailure):
+        return False
+    expected_keys = {
+        "schema_version",
+        "private_asset_id",
+        "sha256",
+        "reviewer_type",
+        "sampling_interval_ms",
+        "first_frame_reviewed",
+        "last_frame_reviewed",
+        "realtime_playback_reviewed",
+        "authorization_review",
+        "privacy_review",
+    }
+    return bool(
+        isinstance(payload, dict)
+        and set(payload) == expected_keys
+        and type(payload.get("schema_version")) is int
+        and payload["schema_version"] == 1
+        and payload["private_asset_id"] == asset.private_asset_id
+        and payload["sha256"] == asset.sha256
+        and payload["reviewer_type"] == "human"
+        and type(payload.get("sampling_interval_ms")) is int
+        and payload["sampling_interval_ms"] == 500
+        and payload["first_frame_reviewed"] is True
+        and payload["last_frame_reviewed"] is True
+        and payload["realtime_playback_reviewed"] is True
+        and payload["authorization_review"] == "approved"
+        and payload["privacy_review"] == "approved"
     )
 
 
@@ -488,5 +559,6 @@ __all__ = [
     "PrivateMediaProbe",
     "PrivateOverlayValidation",
     "local_overlay_status",
+    "review_complete_for_asset",
     "validate_private_overlay",
 ]

@@ -37,6 +37,7 @@ from packages.monitoring.xiaomi_media_diagnostic import (  # noqa: E402
 )
 from services.vision.private_visual_overlay import (  # noqa: E402
     PrivateMediaFacts,
+    review_complete_for_asset,
     validate_private_overlay,
 )
 from services.voice.camera_reply import parse_source_media  # noqa: E402
@@ -111,6 +112,22 @@ class CaptureResult:
     data_streams: int
 
 
+@dataclass(frozen=True, slots=True)
+class ReviewPreparation:
+    private_asset_id: str
+    sha256: str
+    sample_interval_ms: int
+    sample_frame_count: int
+    first_frame_present: bool
+    last_frame_present: bool
+
+
+@dataclass(frozen=True, slots=True)
+class ReviewStatus:
+    private_asset_id: str
+    state: str
+
+
 CaptureRunner = Callable[[tuple[str, ...], float], None]
 CaptureProbe = Callable[[Path], PrivateMediaFacts]
 PreflightCollector = Callable[[], CapturePreflight]
@@ -132,6 +149,8 @@ def parser() -> argparse.ArgumentParser:
     capture.add_argument("--duration", type=int, choices=_DURATIONS, required=True)
     review = subcommands.add_parser("review-prepare")
     review.add_argument("--private-asset-id", type=_parse_asset_id, required=True)
+    status = subcommands.add_parser("review-status")
+    status.add_argument("--private-asset-id", type=_parse_asset_id, required=True)
     return command
 
 
@@ -156,7 +175,30 @@ def main(argv: list[str] | None = None) -> int:
             _emit_capture(result)
             return 0
         if arguments.command == "review-prepare":
-            raise PrivateVisualCorpusError("private_overlay_review_incomplete")
+            result = prepare_review_material(
+                REPOSITORY_ROOT,
+                arguments.private_asset_id,
+            )
+            _emit(
+                result="PASS",
+                operation="review-prepare",
+                private_asset_id=result.private_asset_id,
+                sha256=result.sha256,
+                sample_interval_ms=result.sample_interval_ms,
+                sample_frame_count=result.sample_frame_count,
+                first_frame_present=str(result.first_frame_present).lower(),
+                last_frame_present=str(result.last_frame_present).lower(),
+            )
+            return 0
+        if arguments.command == "review-status":
+            result = review_status(REPOSITORY_ROOT, arguments.private_asset_id)
+            _emit(
+                result="PASS",
+                operation="review-status",
+                private_asset_id=result.private_asset_id,
+                review_state=result.state,
+            )
+            return 0
         raise PrivateVisualCorpusError("private_overlay_capture_precondition_failed")
     except KeyboardInterrupt:
         _emit(
@@ -274,6 +316,144 @@ def capture_private_asset(
         finally:
             if not published:
                 _unlink_if_identity(temporary, initial)
+
+
+def prepare_review_material(
+    repository: Path,
+    private_asset_id: str,
+    *,
+    runner: CaptureRunner | None = None,
+    probe: CaptureProbe | None = None,
+) -> ReviewPreparation:
+    if _PRIVATE_ID.fullmatch(private_asset_id) is None:
+        raise PrivateVisualCorpusError("private_overlay_review_incomplete")
+    selected_runner = runner or _run_ffmpeg
+    selected_probe = probe or probe_private_media
+    overlay = _require_existing_overlay(Path(repository))
+    with _capture_lock(overlay / "temp" / "capture.lock"):
+        mapping = _load_index(overlay)
+        basename = mapping.get(private_asset_id)
+        if basename is None:
+            raise PrivateVisualCorpusError("private_overlay_review_incomplete")
+        _require_asset_inventory(overlay / "assets", mapping)
+        media = overlay / "assets" / basename
+        digest_before, bytes_before = _hash_private_file(media)
+        try:
+            facts = selected_probe(media)
+        except PrivateVisualCorpusError:
+            raise
+        except Exception as exc:
+            raise PrivateVisualCorpusError("private_overlay_media_invalid") from exc
+        digest_after, bytes_after = _hash_private_file(media)
+        if (
+            digest_before != digest_after
+            or bytes_before != bytes_after
+            or facts.sha256 != digest_after
+            or facts.bytes != bytes_after
+            or facts.audio_streams != 0
+        ):
+            raise PrivateVisualCorpusError("private_overlay_identity_mismatch")
+
+        review_root = overlay / "review-frames"
+        final = review_root / private_asset_id
+        if final.exists():
+            raise PrivateVisualCorpusError("private_overlay_review_incomplete")
+        try:
+            final.mkdir(mode=0o700)
+        except OSError as exc:
+            raise PrivateVisualCorpusError("private_overlay_review_incomplete") from exc
+        try:
+            expected_samples = max(1, round(facts.duration_ms / 500))
+            commands = _review_ffmpeg_argv(media, final, expected_samples)
+            for argv in commands:
+                try:
+                    selected_runner(argv, 30.0)
+                except KeyboardInterrupt:
+                    raise
+                except Exception as exc:
+                    raise PrivateVisualCorpusError(
+                        "private_overlay_review_incomplete"
+                    ) from exc
+            samples = sorted(final.glob("sample-*.png"))
+            first = final / "first.png"
+            last = final / "last.png"
+            expected_names = {
+                *(
+                    f"sample-{sequence:06d}.png"
+                    for sequence in range(1, expected_samples + 1)
+                ),
+                "first.png",
+                "last.png",
+            }
+            actual_names = {entry.name for entry in os.scandir(final)}
+            if (
+                len(samples) != expected_samples
+                or actual_names != expected_names
+                or not first.exists()
+                or not last.exists()
+            ):
+                raise PrivateVisualCorpusError("private_overlay_review_incomplete")
+            for frame in (*samples, first, last):
+                _seal_review_file(frame)
+            manifest = final / "review-manifest.json"
+            _write_private_json(
+                manifest,
+                {
+                    "schema_version": 1,
+                    "private_asset_id": private_asset_id,
+                    "sha256": digest_after,
+                    "sample_interval_ms": 500,
+                    "sample_frame_count": len(samples),
+                    "first_frame_present": True,
+                    "last_frame_present": True,
+                },
+            )
+            _fsync_directory(final)
+            _fsync_directory(review_root)
+            return ReviewPreparation(
+                private_asset_id=private_asset_id,
+                sha256=digest_after,
+                sample_interval_ms=500,
+                sample_frame_count=len(samples),
+                first_frame_present=True,
+                last_frame_present=True,
+            )
+        except BaseException:
+            _remove_owned_review_directory(final)
+            raise
+
+
+def review_status(repository: Path, private_asset_id: str) -> ReviewStatus:
+    descriptor_path = Path(repository) / _DESCRIPTOR_RELATIVE
+    overlay = Path(repository) / _PRIVATE_RELATIVE
+    try:
+        descriptor = load_private_overlay_descriptor(descriptor_path)
+    except PrivateVisualOverlayError as exc:
+        raise PrivateVisualCorpusError("private_overlay_review_incomplete") from exc
+    selected = next(
+        (
+            asset
+            for asset in descriptor.assets
+            if asset.private_asset_id == private_asset_id
+        ),
+        None,
+    )
+    if selected is None or not overlay.exists():
+        raise PrivateVisualCorpusError("private_overlay_review_incomplete")
+    validation = validate_private_overlay(
+        descriptor,
+        overlay,
+        probe=probe_private_media,
+    )
+    return ReviewStatus(
+        private_asset_id=private_asset_id,
+        state=(
+            "complete"
+            if validation.readiness is not LocalOverlayReadiness.LOCAL_UNAVAILABLE
+            and review_complete_for_asset(selected, overlay)
+            else "incomplete"
+        ),
+    )
 
 
 def probe_private_media(path: Path) -> PrivateMediaFacts:
@@ -481,6 +661,20 @@ def _prepare_overlay_layout(repository: Path) -> Path:
     return overlay
 
 
+def _require_existing_overlay(repository: Path) -> Path:
+    root = repository.absolute()
+    overlay = root / _PRIVATE_RELATIVE
+    try:
+        _require_directory(root, private=False)
+        _require_directory(overlay, private=True)
+        for name in ("assets", "review-frames", "results", "temp"):
+            _require_directory(overlay / name, private=True)
+        _require_root_inventory(overlay)
+    except PrivateVisualCorpusError as exc:
+        raise PrivateVisualCorpusError("private_overlay_review_incomplete") from exc
+    return overlay
+
+
 def _ensure_directory(path: Path, *, private: bool) -> None:
     try:
         path.mkdir(mode=0o700, exist_ok=True)
@@ -640,6 +834,55 @@ def _ffmpeg_argv(duration: int, destination: Path) -> tuple[str, ...]:
     )
 
 
+def _review_ffmpeg_argv(
+    source: Path,
+    destination: Path,
+    expected_samples: int,
+) -> tuple[tuple[str, ...], ...]:
+    prefix = (
+        FFMPEG_EXECUTABLE,
+        "-nostdin",
+        "-hide_banner",
+        "-loglevel",
+        "error",
+        "-y",
+    )
+    return (
+        prefix
+        + (
+            "-i",
+            str(source),
+            "-vf",
+            "fps=2",
+            "-vsync",
+            "0",
+            "-frames:v",
+            str(expected_samples),
+            str(destination / "sample-%06d.png"),
+        ),
+        prefix
+        + (
+            "-ss",
+            "0",
+            "-i",
+            str(source),
+            "-frames:v",
+            "1",
+            str(destination / "first.png"),
+        ),
+        prefix
+        + (
+            "-sseof",
+            "-0.001",
+            "-i",
+            str(source),
+            "-frames:v",
+            "1",
+            str(destination / "last.png"),
+        ),
+    )
+
+
 def _run_ffmpeg(argv: tuple[str, ...], timeout_seconds: float) -> None:
     try:
         process = subprocess.Popen(
@@ -647,6 +890,7 @@ def _run_ffmpeg(argv: tuple[str, ...], timeout_seconds: float) -> None:
             stdin=subprocess.DEVNULL,
             stdout=subprocess.DEVNULL,
             stderr=subprocess.DEVNULL,
+            preexec_fn=_child_private_umask,
         )
     except OSError:
         raise PrivateVisualCorpusError(
@@ -668,6 +912,92 @@ def _run_ffmpeg(argv: tuple[str, ...], timeout_seconds: float) -> None:
         ) from None
     if returncode != 0:
         raise PrivateVisualCorpusError("private_overlay_capture_precondition_failed")
+
+
+def _child_private_umask() -> None:
+    os.umask(0o077)
+
+
+def _seal_review_file(path: Path) -> None:
+    try:
+        before = path.lstat()
+        if (
+            not stat.S_ISREG(before.st_mode)
+            or stat.S_ISLNK(before.st_mode)
+            or before.st_uid != os.getuid()
+            or before.st_nlink != 1
+            or not 0 < before.st_size <= _MAX_MEDIA_BYTES
+        ):
+            raise PrivateVisualCorpusError("private_overlay_review_incomplete")
+        path.chmod(0o600)
+        after = path.lstat()
+    except OSError as exc:
+        raise PrivateVisualCorpusError("private_overlay_review_incomplete") from exc
+    if not _same_identity(before, after) or not _private_file(after):
+        raise PrivateVisualCorpusError("private_overlay_review_incomplete")
+
+
+def _write_private_json(path: Path, payload: Mapping[str, object]) -> None:
+    raw = json.dumps(payload, sort_keys=True, separators=(",", ":")).encode("ascii")
+    flags = (
+        os.O_WRONLY
+        | os.O_CREAT
+        | os.O_EXCL
+        | getattr(os, "O_CLOEXEC", 0)
+        | getattr(os, "O_NOFOLLOW", 0)
+    )
+    try:
+        descriptor = os.open(path, flags, 0o600)
+        try:
+            offset = 0
+            while offset < len(raw):
+                written = os.write(descriptor, raw[offset:])
+                if written <= 0:
+                    raise OSError("short private write")
+                offset += written
+            os.fsync(descriptor)
+        finally:
+            os.close(descriptor)
+    except OSError as exc:
+        raise PrivateVisualCorpusError("private_overlay_review_incomplete") from exc
+
+
+def _remove_owned_review_directory(path: Path) -> None:
+    try:
+        directory = path.lstat()
+    except FileNotFoundError:
+        return
+    except OSError:
+        return
+    if (
+        not stat.S_ISDIR(directory.st_mode)
+        or stat.S_ISLNK(directory.st_mode)
+        or directory.st_uid != os.getuid()
+        or stat.S_IMODE(directory.st_mode) != 0o700
+    ):
+        return
+    try:
+        entries = list(os.scandir(path))
+    except OSError:
+        return
+    for entry in entries:
+        try:
+            value = entry.stat(follow_symlinks=False)
+        except OSError:
+            return
+        if (
+            not stat.S_ISREG(value.st_mode)
+            or stat.S_ISLNK(value.st_mode)
+            or value.st_uid != os.getuid()
+            or value.st_nlink != 1
+        ):
+            return
+    try:
+        for entry in entries:
+            os.unlink(entry.path)
+        os.rmdir(path)
+    except OSError:
+        return
 
 
 def _validate_captured_media(
