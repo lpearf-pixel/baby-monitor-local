@@ -91,6 +91,12 @@ Updated: 2026-08-29
   No camera, speaker, PTZ, notification, production database, Baby Care write or baseline
   operation ran. This proves repeatable component integration, not infant-recognition
   accuracy, household safety, real Voice recall or Xiaomi device compatibility.
+  The eight-scenario expansion design is approved at
+  `docs/superpowers/specs/2026-08-29-offline-guardian-scenario-expansion-design.md`.
+  It adds rollover/prone and baby-not-visible Guardian oracles plus generated diaper
+  and burping Voice scenarios, corrects synthetic visual provenance and keeps actual
+  visual output non-ground-truth. The owner paused before plan or implementation; no
+  expansion code, fixture, report or runtime action has occurred.
 - Stable Xiaomi line: `stable/xiaomi-alpha` at `0df20ae`.
 - Active Camera Reply review line: `codex/xiaomi-camera-reply-lifecycle-review`, based
   on accepted Voice head `4d479b8`; its published Task 8 checkpoint is `a622a7a`.

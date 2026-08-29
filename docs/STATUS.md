@@ -89,6 +89,11 @@
   167 focused, 2276 passed / 1 expected public-corpus skip for full Python and 73/73
   frontend; compile, shell, Make and diff checks pass. No production or real-device
   boundary was opened.
+  The follow-up eight-scenario expansion design is approved in
+  `docs/superpowers/specs/2026-08-29-offline-guardian-scenario-expansion-design.md`:
+  rollover/prone and baby-not-visible visual/oracle pairs plus generated diaper and
+  burping actions. Implementation is owner-paused before an implementation plan; no
+  code, fixture, model, threshold, baseline or runtime state changed for the expansion.
 - Environment monitoring design and implementation plan: approved on 2026-08-05.
 - Stable Xiaomi Alpha commit: `0df20ae` on `stable/xiaomi-alpha`.
 - Current visual-corpus worktree branch: `codex/visual-regression-corpus`. The separate

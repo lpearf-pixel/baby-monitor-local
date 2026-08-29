@@ -1943,3 +1943,20 @@ compileall, bash -n, Make dry-runs, JSON parse, git diff --check: PASS
 tracked-media and added-line private-literal scans: no prohibited match
 independent review: 0 Critical / 0 Important / 0 Minor
 ```
+
+## 2026-08-29 Offline scenario expansion design and pause
+
+After the first four-scenario flow closed, the owner approved a design to extend the
+fixed suite to eight scenarios: rollover/prone, baby-not-visible, generated diaper and
+generated burping. The approved design is
+`docs/superpowers/specs/2026-08-29-offline-guardian-scenario-expansion-design.md`.
+
+The design keeps video output observational, uses separate synthetic Guardian oracles,
+adds exact low-risk Voice action counters and forbids model/threshold changes, private
+capture, Camera Reply, Baby Care writes and baseline promotion. It also records that
+`OCC-02`/`OCC-03` are public-derived synthetic visuals and that the five selected clips
+resolve to three public downloads totaling 25,964,039 declared bytes.
+
+The owner then paused work and requested a documentation checkpoint plus remote push.
+No implementation plan, code, fixture, manifest, model, report or runtime operation was
+created for the expansion.

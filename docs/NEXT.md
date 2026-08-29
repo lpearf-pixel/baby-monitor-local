@@ -10,11 +10,14 @@ generated Voice scenario, seven independent lanes and one ignored JSON/HTML repo
 The latest run passed 4/4 scenarios, 7/7 lanes and 165/165 frames with no decode,
 worker or drop errors. Keep visual observations separate from synthetic Guardian
 expectations; in particular, `NEG-03` currently reports adult absent in all 50 frames.
-The next offline product slice is a separately reviewed expansion using existing
-licensed/generated fixtures for movement/rollover, baby-not-visible and the already
-approved low-risk diaper/burping Voice actions. It must add scenario-specific regression
-expectations without changing Guardian rules, enabling Camera Reply or writing Baby
-Care. Real-baby accuracy and public baseline promotion remain separate later gates.
+The next offline product slice is the approved expansion design at
+`docs/superpowers/specs/2026-08-29-offline-guardian-scenario-expansion-design.md`.
+It uses existing licensed/generated fixtures for movement/rollover and
+baby-not-visible, and generated inputs for the approved low-risk diaper/burping Voice
+actions. The owner paused before plan and implementation. When explicitly resumed,
+write the implementation plan first; do not change Guardian rules, enable Camera Reply
+or write Baby Care. Real-baby accuracy and public baseline promotion remain separate
+later gates.
 
 **Private local visual overlay (deferred by owner):** the contract in
 `docs/superpowers/specs/2026-08-29-private-local-visual-corpus-overlay-design.md` and
