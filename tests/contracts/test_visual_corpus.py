@@ -195,6 +195,17 @@ def test_contract_rejects_extra_fields() -> None:
         module.VisualCorpusManifest.model_validate(payload)
 
 
+def test_public_manifest_rejects_private_local_capture() -> None:
+    module = contracts()
+    payload = first_stage_payload()
+    payload["clips"][0]["source_type"] = "PRIVATE_LOCAL_CAPTURE"  # type: ignore[index]
+
+    with pytest.raises(ValidationError):
+        module.VisualCorpusManifest.model_validate(payload)
+
+    assert "PRIVATE_LOCAL_CAPTURE" not in {item.value for item in module.SourceType}
+
+
 def test_contract_rejects_duplicate_source_and_clip_ids() -> None:
     module = contracts()
     duplicate_source = first_stage_payload()

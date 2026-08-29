@@ -1,0 +1,22 @@
+{
+  "assets": [
+    {
+      "authorization_review": "pending",
+      "bytes": 1048576,
+      "codec": "hevc",
+      "duration_ms": 25000,
+      "fps": 10.0,
+      "height": 1440,
+      "privacy_review": "pending",
+      "private_asset_id": "plc-0123456789abcdef0123456789abcdef",
+      "scenario_ids": [
+        "WIDE-02",
+        "NEG-01"
+      ],
+      "sha256": "1111111111111111111111111111111111111111111111111111111111111111",
+      "width": 2560
+    }
+  ],
+  "schema_version": 1,
+  "source_type": "PRIVATE_LOCAL_CAPTURE"
+}
