@@ -349,13 +349,13 @@ git commit -m "feat: publish offline scenario report"
 - `run` prepares/reuses only the three referenced public clips, builds the current pinned realtime model, runs all scenarios and publishes one ignored report directory.
 - Make targets: `alpha-offline-scenario-validate`, `alpha-offline-scenario-run`.
 
-- [ ] **Step 1: Write CLI RED tests**
+- [x] **Step 1: Write CLI RED tests**
 
 Assert exact parser surface, no caller paths/URLs/models/ports, fixed Make commands,
 bounded stable output, no raw errors and safe cleanup. Patch the runner in CLI tests and
 assert no production service constructor is referenced.
 
-- [ ] **Step 2: Run RED**
+- [x] **Step 2: Run RED**
 
 ```bash
 ../../.venv-alpha/bin/python -m pytest -q tests/tools/test_offline_guardian_scenario.py
@@ -363,7 +363,7 @@ assert no production service constructor is referenced.
 
 Expected: CLI module and Make targets are missing.
 
-- [ ] **Step 3: Implement validate and run**
+- [x] **Step 3: Implement validate and run**
 
 Reuse `CorpusDownloader`, `CorpusPreparer`, `CorpusLayout` and the fixed model builder.
 Select exactly `DAY-01`, `OCC-02` and `NEG-03`; reuse/download only their declared
@@ -375,7 +375,7 @@ accuracy from it.
 Output only result, scenario counts, lane counts, overall reason and the relative
 ignored report name. Do not print absolute paths.
 
-- [ ] **Step 4: Run focused GREEN and dry-runs**
+- [x] **Step 4: Run focused GREEN and dry-runs**
 
 ```bash
 ../../.venv-alpha/bin/python -m pytest -q tests/tools/test_offline_guardian_scenario.py tests/integration/test_offline_guardian_scenario.py
@@ -384,7 +384,7 @@ make -n alpha-offline-scenario-run
 git diff --check
 ```
 
-- [ ] **Step 5: Run the actual bounded flow**
+- [x] **Step 5: Run the actual bounded flow**
 
 ```bash
 ../../.venv-alpha/bin/python tools/offline_guardian_scenario.py validate
@@ -395,7 +395,7 @@ Require at least one real admitted public clip to decode and process. Record fac
 PASS/FAIL/SKIP per lane. Do not change Guardian rules or fixture expectations after
 seeing results; fix only implementation defects.
 
-- [ ] **Step 6: Commit**
+- [x] **Step 6: Commit**
 
 ```bash
 git add Makefile tools/offline_guardian_scenario.py tests/tools/test_offline_guardian_scenario.py
