@@ -1960,3 +1960,34 @@ resolve to three public downloads totaling 25,964,039 declared bytes.
 The owner then paused work and requested a documentation checkpoint plus remote push.
 No implementation plan, code, fixture, manifest, model, report or runtime operation was
 created for the expansion.
+
+## 2026-08-29 Offline scenario expansion review amendments
+
+An independent documentation and interface review used published branch checkpoint
+`60af28c066baf09d8d43455f964a52c0fd52bfdf`. The review found no Critical issue and
+closed four Important design ambiguities before implementation planning:
+
+- the deterministic scenarios are now named `PRONE-CANDIDATE-01` and
+  `OUTSIDE-CANDIDATE-01`, matching the actual Guardian risk kinds;
+- `DAY-03` and `OCC-03` declare an `INDEPENDENT` relationship to their synthetic
+  Guardian oracles, so artificial occlusion cannot be presented as bed-exit evidence;
+- generated Voice expectations bind action code and match kind per step, distinguish a
+  valid differently named action from an ambiguous multi-action negative, and retain
+  no-wake silence;
+- the fixed visual gate requires exact 65/50/50/100/65 frame counts, 330 total frames,
+  zero skipped/dropped/error frames and thirteen total lanes rather than accepting one
+  processed frame.
+
+The provenance contract is intentionally one-level: a synthetic scenario clip requires
+one reviewed direct `PUBLIC_DATASET` parent with the same source identity. A synthetic
+parent, deeper chain, cycle or source mismatch fails before media preparation. SUMMARY,
+STATUS and NEXT now describe the already published private-overlay and four-scenario
+work truthfully instead of retaining the obsolete `75f62b8` remote checkpoint.
+
+The owner-reported focused evidence at reviewed base `60af28c` was 167 passed. The
+independent review environment did not contain the project pytest environment, so it
+did not claim a fresh Python rerun. This docs-only amendment passed `git diff --check`,
+stale-state/spec-term scans and an added-line private-literal scan. It changes no code,
+fixture, manifest, implementation plan, model, threshold, baseline or runtime state and
+does not authorize camera, household-media, Camera Reply, PTZ, notification or Baby
+Care operations.

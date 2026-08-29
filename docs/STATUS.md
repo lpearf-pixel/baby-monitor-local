@@ -6,9 +6,10 @@
 - Design: approved.
 - Visual regression corpus (2026-08-29): the isolated feature branch
   `codex/visual-regression-corpus` has public-corpus proposal base
-  `681edd3c49d0ccca442af064188a4e8b814a4db5` and exact remote head
-  `75f62b8c9dfdf66766878df8812fd79efffeaf3d`, with no PR, merge or protected-branch
-  change. Published closure commits `fb3218d`, `165b0db`, `d01c23d` and
+  `681edd3c49d0ccca442af064188a4e8b814a4db5`. The published branch includes the
+  private-overlay software, four-scenario flow and expansion-design checkpoint
+  `60af28c`; this docs-only review amendment follows it, with no PR, merge or
+  protected-branch change. Published closure commits `fb3218d`, `165b0db`, `d01c23d` and
   `4c51120` extend the earlier `533399c` gate. Four downloaded public sources,
   13 reviewed clips,
   contact sheets, 26 prepared files and result JSON remain ignored/private.
@@ -39,24 +40,24 @@
   `docs/superpowers/specs/2026-08-29-private-local-visual-corpus-overlay-design.md`.
   It keeps `PUBLIC_DATASET + DIRECT_HTTPS` unchanged, tracks no private locator,
   separates `LOCAL_READY` from public readiness and forbids private baseline operations
-  by default. Software Task 1 is complete locally at `0bd6e1a`: the mutually exclusive
+  by default. Software Task 1 is complete at `0bd6e1a`: the mutually exclusive
   contract, bounded redacted loader, canonical bytes and synthetic example are
-  implemented and tested. Software Task 2 is complete locally at `e24eaf7`: ignored
+  implemented and tested. Software Task 2 is complete at `e24eaf7`: ignored
   mapping, permissions, identity, streaming hash, held-FD media facts and TOCTOU changes
   fail closed with stable reasons. Successful media validation remains `LOCAL_PARTIAL`.
-  Software Task 3 is complete locally at `5cf6b0a`: public readiness is copied unchanged,
+  Software Task 3 is complete at `5cf6b0a`: public readiness is copied unchanged,
   local readiness requires a separate future digest-bound content-review capability,
   and one opaque asset projects once into its sorted scenario groups. Duplicate digest
   or mapping identities fail closed; no private projection enters the public replay
-  result schema. Software Task 4 is complete locally at `271badc`: its four closed
+  result schema. Software Task 4 is complete at `271badc`: its four closed
   commands validate the overlay, inspect capture readiness, capture exactly 20/25/30
   seconds of video-only media from the fixed existing loopback source, and keep review
   preparation fail-closed until Task 5. Capture requires Camera Reply false and one
   unchanged producer generation, uses bounded TERM/KILL settlement, and atomically
   publishes only validated 0600 media and ignored mapping state. No real private
   descriptor, household capture, content approval, `LOCAL_READY`, replay or baseline
-  action has occurred. Task 1 is published through remote head `75f62b8`; Tasks 2–7
-  are local and not pushed. Software Task 5 is complete locally at `21f853f`: ignored
+  action has occurred. Software Tasks 1–7 and the independent review fixes are
+  published on the current branch. Software Task 5 is complete at `21f853f`: ignored
   review frames are bounded to one sample per 500ms plus explicit first/last frames,
   and `content_review_complete` requires a 0600 exact-digest human receipt with real-time
   playback and matching approved authorization/privacy states. Old-digest, model-only,
@@ -72,8 +73,8 @@
   No household media, real descriptor, receipt, `LOCAL_READY`, replay or baseline
   operation occurred. Task 8 owner-supervised capture is next and is not authorized by
   the software-only sequence.
-- Offline Guardian scenario flow: approved software Tasks 1-8 are implemented locally
-  through `b174f94` and remain unpushed. The fixed CLI selects `DAY-01`, `OCC-02` and
+- Offline Guardian scenario flow: approved software Tasks 1-8 are implemented and
+  published through `b174f94`. The fixed CLI selects `DAY-01`, `OCC-02` and
   `NEG-03`, runs 4 scenarios/7 independent lanes and publishes a bounded media-free
   ignored JSON/HTML report. Exact-head run `run-74f6b9a00d23b67a` passed 165/165 frames
   with zero decode, worker or dropped-frame errors; worst model/pipeline p95 was
@@ -91,9 +92,10 @@
   boundary was opened.
   The follow-up eight-scenario expansion design is approved in
   `docs/superpowers/specs/2026-08-29-offline-guardian-scenario-expansion-design.md`:
-  rollover/prone and baby-not-visible visual/oracle pairs plus generated diaper and
-  burping actions. Implementation is owner-paused before an implementation plan; no
-  code, fixture, model, threshold, baseline or runtime state changed for the expansion.
+  independent `prone_candidate` and `outside_candidate` visual/oracle lanes plus
+  generated diaper and burping actions. Implementation is owner-paused before an
+  implementation plan; no code, fixture, model, threshold, baseline or runtime state
+  changed for the expansion.
 - Environment monitoring design and implementation plan: approved on 2026-08-05.
 - Stable Xiaomi Alpha commit: `0df20ae` on `stable/xiaomi-alpha`.
 - Current visual-corpus worktree branch: `codex/visual-regression-corpus`. The separate
