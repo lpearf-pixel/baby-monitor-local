@@ -7,18 +7,18 @@ the detailed approved specs and plans remain authoritative for behavior.
 **Private local visual overlay software (current gate):** the contract in
 `docs/superpowers/specs/2026-08-29-private-local-visual-corpus-overlay-design.md` and
 `docs/superpowers/plans/2026-08-29-private-local-visual-corpus-overlay.md` is approved.
-Tasks 1–2 are complete locally at `0bd6e1a` and `e24eaf7` with generated tests. The
+Tasks 1–3 are complete at `0bd6e1a`, `e24eaf7` and `5cf6b0a` with generated tests. The
 mutually exclusive `PRIVATE_LOCAL_CAPTURE` metadata contract does not alter public
 source enums or readiness, and filesystem/media validation reports at most
-`LOCAL_PARTIAL`. The next
-implementation slice, after explicit continuation, is Task 3 readiness separation and
-single-clip multi-scenario projection using generated files only. Do not capture,
-create a real descriptor, replay private media or run any baseline operation. Real
-capture remains a separate Task 8 authority.
+`LOCAL_PARTIAL`. Task 3 preserves that boundary until Task 5 verifies digest-bound
+human review, while its pure projection keeps one clip identity for all scenario groups.
+The next implementation slice, after explicit continuation, is Task 4 bounded
+video-only capture software and tests. Do not execute live capture, create a real
+descriptor, replay private media or run any baseline operation. Real capture remains a
+separate Task 8 authority.
 
-**Visual regression public corpus follow-up (published remote and proposal-base head
-`681edd3`; no PR or
-merge):** follow
+**Visual regression public corpus follow-up (public-corpus proposal base `681edd3`,
+branch remote `75f62b8`; no PR or merge):** follow
 `docs/superpowers/plans/2026-08-29-visual-regression-corpus-ready-baseline.md`.
 Retain the 13 reviewed clips as the repeatable candidate set.
 `NEG-02` and synthetic `OCC-03` are now covered; acquire a licensed, checksum-pinned

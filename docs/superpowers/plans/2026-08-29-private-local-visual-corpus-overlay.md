@@ -247,18 +247,20 @@ git commit -m "feat: validate private visual overlay assets"
 - Produces one ephemeral private clip identity per `private_asset_id` and projects every
   unique `scenario_id` into comparison groups without creating another clip.
 
-- [ ] **Step 1: Write readiness RED tests**
+- [x] **Step 1: Write readiness RED tests**
 
-Assert absent overlay gives `LOCAL_UNAVAILABLE`, valid but incomplete coverage gives
-`LOCAL_PARTIAL`, and one approved asset with `("WIDE-02", "NEG-01")` gives
-`LOCAL_READY` while public readiness remains `PARTIAL`.
+Assert absent overlay gives `LOCAL_UNAVAILABLE` and valid media without a digest-bound
+human-review capability gives `LOCAL_PARTIAL`, even when tracked review fields say
+approved. Use a generated review-complete validation capability to prove one approved
+asset with `("WIDE-02", "NEG-01")` can give `LOCAL_READY` while public readiness
+remains `PARTIAL`. The production media-only validator must never set that capability.
 
-- [ ] **Step 2: Write multi-scenario RED tests**
+- [x] **Step 2: Write multi-scenario RED tests**
 
 Assert one asset produces one result with `scenario:WIDE-02` and `scenario:NEG-01`
 exactly once in sorted order. Reject two clip identities backed by one digest or mapping.
 
-- [ ] **Step 3: Run RED**
+- [x] **Step 3: Run RED**
 
 ```bash
 ../../.venv-alpha/bin/python -m pytest -q \
@@ -266,16 +268,20 @@ exactly once in sorted order. Reject two clip identities backed by one digest or
   tests/vision/test_corpus_replay.py
 ```
 
-- [ ] **Step 4: Implement the minimal local aggregation**
+- [x] **Step 4: Implement the minimal local aggregation**
 
-Keep public manifest validation independent. Add a pure comparison-group helper that
-accepts a unique scenario tuple; do not change public clip IDs or public readiness.
+Keep public manifest validation independent. Add a pure private comparison projection
+that accepts unique assets and mapping identities; do not change public clip IDs,
+`ReplayResultSet` or public readiness. Media validation retains
+`content_review_complete=false`; only Task 5's digest-bound receipt validation may
+produce that future capability.
 
-- [ ] **Step 5: Run GREEN**
+- [x] **Step 5: Run GREEN**
 
-Run the Step 3 command and the existing 42-test focused gate.
+Run the Step 3 command and the existing public focused gate (currently 43 cases after
+the Task 1 source-exclusivity regression).
 
-- [ ] **Step 6: Commit the readiness slice**
+- [x] **Step 6: Commit the readiness slice**
 
 ```bash
 git add services/vision/private_visual_overlay.py \
@@ -573,8 +579,8 @@ baseline command. Stop and request a separate baseline-use decision.
 
 ## Current exact next action
 
-Tasks 1–2 are complete locally at `0bd6e1a` and `e24eaf7`. Stop for review. If the
-owner explicitly continues the approved software plan, execute Task 3 only with strict
-TDD. Do not capture household media or create a real private descriptor during
-software Tasks 1–7.
+Tasks 1–3 are complete at `0bd6e1a`, `e24eaf7` and `5cf6b0a`. Stop for review. If the
+owner explicitly continues the approved software plan, execute Task 4 software only
+with strict TDD; do not run a live capture command. Do not capture household media or
+create a real private descriptor during software Tasks 1–7.
 Task 8 always requires a fresh explicit owner-supervised capture authority.

@@ -301,6 +301,35 @@ baseline path was accessed. A valid media-only overlay deliberately reports
 `LOCAL_PARTIAL`; content review, scenario readiness and `LOCAL_READY` remain later
 tasks.
 
+#### Private local overlay Task 3 readiness and identity separation
+
+Task 3 is committed locally at `5cf6b0a`. Strict TDD first recorded seven behavior
+failures for the missing readiness and projection interfaces while 52 prior cases stayed
+green. The minimum implementation reports public and local readiness in separate fields,
+keeps every media-only validation at `LOCAL_PARTIAL`, and requires a future
+digest-bound human-review capability before the requested scenario set can become
+`LOCAL_READY`. The generated positive contract proves public `PARTIAL` remains unchanged.
+
+Private replay identity is a distinct in-memory projection, not a public
+`ReplayResultSet`. One opaque asset produces one clip identity and sorted
+`scenario:NEG-01` plus `scenario:WIDE-02` groups. Duplicate asset digest or ignored
+mapping identity fails closed as `private_overlay_duplicate_clip`; scenario coverage
+does not duplicate the clip.
+
+Fresh Task 3 evidence:
+
+- Task 3 validator/replay tests passed 59/59;
+- private contract plus validator/replay tests passed 107/107;
+- the public corpus contract/tool/baseline command passed 43/43;
+- changed Python compiled, `git diff --check` and added-line privacy scan passed;
+- public corpus validation remained `PASS`, `PARTIAL`, 13 clips and two missing
+  scenarios.
+
+No household media, camera, producer, Camera Reply, speaker or PTZ path was accessed.
+No live capture, real descriptor, private replay or baseline operation ran, and no real
+`LOCAL_READY` claim was made. Task 4 is next and is software-only until a separate Task
+8 owner-supervised capture authority.
+
 Draft PR #4 已实现并自动化验证 H.265 原码优先、VideoToolbox 按需兼容流、
 profile 绑定票据、无黑屏播放器回退以及可审计 go2rtc 双补丁构建。
 

@@ -5,8 +5,9 @@
 - Repository: initialized and public.
 - Design: approved.
 - Visual regression corpus (2026-08-29): the isolated feature branch
-  `codex/visual-regression-corpus` is published at exact remote and proposal-base head
-  `681edd3c49d0ccca442af064188a4e8b814a4db5`, with no PR, merge or protected-branch
+  `codex/visual-regression-corpus` has public-corpus proposal base
+  `681edd3c49d0ccca442af064188a4e8b814a4db5` and exact remote head
+  `75f62b8c9dfdf66766878df8812fd79efffeaf3d`, with no PR, merge or protected-branch
   change. Published closure commits `fb3218d`, `165b0db`, `d01c23d` and
   `4c51120` extend the earlier `533399c` gate. Four downloaded public sources,
   13 reviewed clips,
@@ -43,11 +44,17 @@
   implemented and tested. Software Task 2 is complete locally at `e24eaf7`: ignored
   mapping, permissions, identity, streaming hash, held-FD media facts and TOCTOU changes
   fail closed with stable reasons. Successful media validation remains `LOCAL_PARTIAL`.
-  No real private descriptor, household capture, content approval, `LOCAL_READY`, replay
-  or baseline action has occurred. Tasks 1–2 are local and not pushed.
+  Software Task 3 is complete locally at `5cf6b0a`: public readiness is copied unchanged,
+  local readiness requires a separate future digest-bound content-review capability,
+  and one opaque asset projects once into its sorted scenario groups. Duplicate digest
+  or mapping identities fail closed; no private projection enters the public replay
+  result schema. No real private descriptor, household capture, content approval,
+  `LOCAL_READY`, replay or baseline action has occurred. Task 1 is published through
+  remote head `75f62b8`; Tasks 2–3 are local and not pushed.
 - Environment monitoring design and implementation plan: approved on 2026-08-05.
 - Stable Xiaomi Alpha commit: `0df20ae` on `stable/xiaomi-alpha`.
-- Active local development branch: `codex/xiaomi-camera-reply-lifecycle-review`.
+- Current visual-corpus worktree branch: `codex/visual-regression-corpus`. The separate
+  Camera Reply review line remains `codex/xiaomi-camera-reply-lifecycle-review`.
 - 2026-08-20 go2rtc lifecycle correction: the installed macOS path now has one
   user-level launchd owner. `alpha-start` bootstraps a missing job, kickstarts only a
   loaded unhealthy job, never falls back to a second direct process, and verifies the

@@ -5,8 +5,9 @@ Updated: 2026-08-29
 ## Snapshot
 
 - Repository: `lpearf-pixel/baby-monitor-local` (public).
-- Visual regression corpus work is published on `codex/visual-regression-corpus` at
-  exact remote and proposal-base head `681edd3c49d0ccca442af064188a4e8b814a4db5`, with no PR,
+- Visual regression corpus work is published on `codex/visual-regression-corpus`; the
+  public-corpus proposal base is `681edd3c49d0ccca442af064188a4e8b814a4db5` and the
+  exact remote head is `75f62b8c9dfdf66766878df8812fd79efffeaf3d`, with no PR,
   merge or protected-branch change. It includes closure implementation `fb3218d`,
   evidence checkpoint `165b0db`, bounded-source review `d01c23d` and final
   government-source review `4c51120`, READY plan `f5c4b34` and the latest bounded
@@ -50,9 +51,13 @@ Updated: 2026-08-29
   Task 2 commit `e24eaf7` adds descriptor-bound ignored-overlay validation with
   0700/0600 ownership checks, closed mapping inventory, held-FD double hashing,
   no-audio media facts and root/parent/index TOCTOU revalidation. Valid media remains
-  `LOCAL_PARTIAL`; content review and `LOCAL_READY` are not implemented. No household
-  capture, real descriptor, replay or baseline action exists; Tasks 1–2 are local and
-  not pushed.
+  `LOCAL_PARTIAL`. Task 3 commit `5cf6b0a` keeps public and local readiness separate,
+  requires a future digest-bound human-review capability before `LOCAL_READY`, and
+  projects one opaque private clip identity into all unique scenario groups without
+  entering public `ReplayResultSet` or baseline paths. Content receipt validation is
+  still pending Task 5, so no real `LOCAL_READY` claim exists. No household capture,
+  real descriptor, replay or baseline action occurred. Task 1 is published through
+  remote head `75f62b8`; Tasks 2–3 are local and not pushed.
 - Stable Xiaomi line: `stable/xiaomi-alpha` at `0df20ae`.
 - Active Camera Reply review line: `codex/xiaomi-camera-reply-lifecycle-review`, based
   on accepted Voice head `4d479b8`; its published Task 8 checkpoint is `a622a7a`.
