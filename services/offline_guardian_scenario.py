@@ -2,6 +2,9 @@ from __future__ import annotations
 
 import os
 import stat
+import threading
+from collections import Counter
+from collections.abc import Callable
 from pathlib import Path
 
 from packages.contracts.offline_guardian_scenario import (
@@ -17,6 +20,88 @@ from services.vision.corpus_replay import (
     VisualCorpusReplay,
 )
 from services.vision.realtime_models import RealtimeModelBackend
+from services.voice.listen_only import Asr, ListenOnlyController, Synthesizer
+from services.voice.vad import VoiceActivityDetector
+
+
+VOICE_FRAME_BYTES = 3_200
+MAX_GENERATED_PCM_BYTES = 1_024 * 1_024
+
+
+def run_voice_lane(
+    scenario: OfflineGuardianScenarioV1,
+    fixture_provider: Callable[[str], bytes],
+    vad: VoiceActivityDetector,
+    asr: Asr,
+    synthesizer: Synthesizer,
+) -> ScenarioLaneResult:
+    """Exercise generated PCM through VAD and the current listen-only controller."""
+
+    voice = scenario.voice
+    if voice is None or "voice_generated" not in scenario.required_lanes:
+        return _voice_failure("offline_scenario_lane_unavailable")
+
+    controller = ListenOnlyController(asr=asr, synthesizer=synthesizer)
+    outcome_counts: Counter[str] = Counter()
+    response_count = 0
+    speech_count = 0
+    cancelled = threading.Event()
+    for step in voice.steps:
+        try:
+            pcm = fixture_provider(step.step_id)
+        except Exception:
+            return _voice_failure("offline_scenario_voice_fixture_invalid")
+        if (
+            not isinstance(pcm, bytes)
+            or not pcm
+            or len(pcm) > MAX_GENERATED_PCM_BYTES
+            or len(pcm) % VOICE_FRAME_BYTES
+        ):
+            return _voice_failure("offline_scenario_voice_fixture_invalid")
+
+        speech = False
+        for offset in range(0, len(pcm), VOICE_FRAME_BYTES):
+            observation = vad.observe(pcm[offset : offset + VOICE_FRAME_BYTES])
+            if observation.reason is not None:
+                return _voice_failure(observation.reason)
+            speech = speech or observation.speech
+        if speech != step.speech_expected:
+            return _voice_failure("scenario_voice_mismatch")
+        if not speech:
+            continue
+        speech_count += 1
+        outcome = controller.handle(
+            pcm,
+            cancelled,
+            from_replay=step.from_replay,
+        )
+        pcm = b""
+        if outcome.reason in {"voice_model_unavailable", "voice_output_unavailable"}:
+            return _voice_failure(outcome.reason)
+        if (
+            outcome.reason != step.expected_reason
+            or outcome.response_code != step.expected_response_code
+        ):
+            return _voice_failure("scenario_voice_mismatch")
+        outcome_counts[f"outcome.{outcome.reason}"] += 1
+        response_count += int(outcome.response_code is not None)
+
+    counts = {
+        "steps.total": len(voice.steps),
+        "vad.speech": speech_count,
+        "responses.total": response_count,
+        **dict(sorted(outcome_counts.items())),
+    }
+    return ScenarioLaneResult(
+        lane="voice_generated",
+        status="PASS" if response_count == voice.expected_response_count else "FAIL",
+        reason=(
+            "ok"
+            if response_count == voice.expected_response_count
+            else "scenario_voice_mismatch"
+        ),
+        counts=counts,
+    )
 
 
 def run_visual_lane(
@@ -168,4 +253,12 @@ def _visual_failure(reason: str) -> ScenarioLaneResult:
     )
 
 
-__all__ = ["run_guardian_lane", "run_visual_lane"]
+def _voice_failure(reason: str) -> ScenarioLaneResult:
+    return ScenarioLaneResult(
+        lane="voice_generated",
+        status="FAIL",
+        reason=reason,
+    )
+
+
+__all__ = ["run_guardian_lane", "run_visual_lane", "run_voice_lane"]

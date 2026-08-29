@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import stat
 import subprocess
+import threading
 from pathlib import Path
 
 import pytest
@@ -12,6 +13,8 @@ from packages.contracts.offline_guardian_scenario import (
 )
 from services.vision.corpus_manifest import load_manifest
 from services.vision.realtime_models import RealtimeModelError, RealtimeModelSignals
+from services.voice.asr import AsrResult
+from services.voice.vad import VoiceActivityDetector
 
 
 FIXTURE = (
@@ -270,3 +273,149 @@ def test_visual_lane_reports_missing_prepared_artifact_without_path(
     assert result.status == "FAIL"
     assert result.reason == "visual_corpus_input_invalid"
     assert "private-household-name" not in repr(result)
+
+
+def generated_pcm(amplitude: int) -> bytes:
+    return int(amplitude).to_bytes(2, "little", signed=True) * 3_200
+
+
+class ScenarioAsr:
+    def __init__(self, mapping: dict[bytes, str | Exception]) -> None:
+        self.mapping = mapping
+
+    def transcribe(self, pcm: bytes) -> AsrResult:
+        value = self.mapping[pcm]
+        if isinstance(value, Exception):
+            raise value
+        return AsrResult(value, "zh", 1)
+
+
+class RecordingScenarioSynth:
+    def __init__(self, *, succeed: bool = True) -> None:
+        self.succeed = succeed
+        self.codes: list[str] = []
+
+    def speak_code(self, code: str, _cancelled: threading.Event) -> bool:
+        self.codes.append(code)
+        return self.succeed
+
+
+def voice_fixtures() -> tuple[dict[str, bytes], ScenarioAsr]:
+    pcm = {
+        "wake": generated_pcm(4_000),
+        "feeding": generated_pcm(5_000),
+        "no_wake": generated_pcm(6_000),
+        "unsupported": generated_pcm(7_000),
+    }
+    return pcm, ScenarioAsr(
+        {
+            pcm["wake"]: "小小",
+            pcm["feeding"]: "我是爸爸，开始喂奶",
+            pcm["no_wake"]: "今天天气如何",
+            pcm["unsupported"]: "播放音乐",
+        }
+    )
+
+
+def speech_vad() -> VoiceActivityDetector:
+    return VoiceActivityDetector(lambda waveform: 0.9 if waveform.any() else 0.0)
+
+
+def test_voice_lane_runs_generated_pcm_vad_and_current_controller() -> None:
+    from services.offline_guardian_scenario import run_voice_lane
+
+    fixtures, asr = voice_fixtures()
+    synth = RecordingScenarioSynth()
+
+    result = run_voice_lane(
+        scenario("VOICE-FEEDING-01"),
+        fixtures.__getitem__,
+        speech_vad(),
+        asr,
+        synth,
+    )
+
+    assert result.lane == "voice_generated"
+    assert result.status == "PASS"
+    assert result.reason == "ok"
+    assert result.counts == {
+        "steps.total": 4,
+        "vad.speech": 4,
+        "responses.total": 2,
+        "outcome.listen_only_acknowledged": 1,
+        "outcome.listen_only_armed": 1,
+        "outcome.listen_only_ignored": 2,
+    }
+    assert synth.codes == ["listen_only_ready", "listen_only_received"]
+    assert "pcm" not in repr(result).lower()
+    assert "transcript" not in repr(result).lower()
+
+
+def test_voice_lane_rejects_empty_pcm_before_asr() -> None:
+    from services.offline_guardian_scenario import run_voice_lane
+
+    fixtures, asr = voice_fixtures()
+    fixtures["wake"] = b""
+
+    result = run_voice_lane(
+        scenario("VOICE-FEEDING-01"),
+        fixtures.__getitem__,
+        speech_vad(),
+        asr,
+        RecordingScenarioSynth(),
+    )
+
+    assert result.status == "FAIL"
+    assert result.reason == "offline_scenario_voice_fixture_invalid"
+
+
+def test_voice_lane_propagates_model_and_output_failure_codes() -> None:
+    from services.offline_guardian_scenario import run_voice_lane
+
+    fixtures, _asr = voice_fixtures()
+    failed_asr = ScenarioAsr(
+        {value: RuntimeError("private model detail") for value in fixtures.values()}
+    )
+    model_result = run_voice_lane(
+        scenario("VOICE-FEEDING-01"),
+        fixtures.__getitem__,
+        speech_vad(),
+        failed_asr,
+        RecordingScenarioSynth(),
+    )
+    output_result = run_voice_lane(
+        scenario("VOICE-FEEDING-01"),
+        fixtures.__getitem__,
+        speech_vad(),
+        voice_fixtures()[1],
+        RecordingScenarioSynth(succeed=False),
+    )
+
+    assert (model_result.status, model_result.reason) == (
+        "FAIL",
+        "voice_model_unavailable",
+    )
+    assert (output_result.status, output_result.reason) == (
+        "FAIL",
+        "voice_output_unavailable",
+    )
+
+
+def test_voice_lane_fails_closed_when_expectation_changes() -> None:
+    from services.offline_guardian_scenario import run_voice_lane
+
+    value = scenario("VOICE-FEEDING-01")
+    voice = value.voice.model_copy(update={"expected_response_count": 3})
+    changed = value.model_copy(update={"voice": voice})
+    fixtures, asr = voice_fixtures()
+
+    result = run_voice_lane(
+        changed,
+        fixtures.__getitem__,
+        speech_vad(),
+        asr,
+        RecordingScenarioSynth(),
+    )
+
+    assert result.status == "FAIL"
+    assert result.reason == "scenario_voice_mismatch"

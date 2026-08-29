@@ -210,13 +210,13 @@ git commit -m "feat: replay public video in scenario lane"
   standalone wake, Feeding command and negative steps; the recording synthesizer
   retains response codes only.
 
-- [ ] **Step 1: Write Voice lane RED tests**
+- [x] **Step 1: Write Voice lane RED tests**
 
 Use non-empty generated PCM and an injected strict ASR fixture that returns `AsrResult` objects for opaque step IDs. Verify exact wake -> `listen_only_ready`, exact Feeding -> one `listen_only_received`, no-wake -> silent and cancellation/unsupported -> silent. Assert PCM and text are absent from the lane result.
 
 Test ASR exception, empty PCM, output failure, wrong response count, high-risk medication and replay-marked input as fail-closed or rejected according to the current controller.
 
-- [ ] **Step 2: Run RED**
+- [x] **Step 2: Run RED**
 
 ```bash
 ../../.venv-alpha/bin/python -m pytest -q tests/integration/test_offline_guardian_scenario.py -k voice
@@ -224,7 +224,7 @@ Test ASR exception, empty PCM, output failure, wrong response count, high-risk m
 
 Expected: `run_voice_lane` is missing.
 
-- [ ] **Step 3: Implement the minimum Voice adapter**
+- [x] **Step 3: Implement the minimum Voice adapter**
 
 Do not construct `VoiceIntentOutbox`, `VoiceCareClient`, signer, Keychain, capture
 decoder or Camera Reply. Consume generated PCM in fixed 100 ms frames through the
@@ -232,14 +232,14 @@ existing `VoiceActivityDetector` with a generated-fixture runner, then pass only
 speech-positive complete fixture utterances to the controller. Zero local references
 after each step and serialize only VAD/outcome/reply counters.
 
-- [ ] **Step 4: Run GREEN and adjacent gates**
+- [x] **Step 4: Run GREEN and adjacent gates**
 
 ```bash
 ../../.venv-alpha/bin/python -m pytest -q tests/integration/test_offline_guardian_scenario.py -k voice tests/voice/test_listen_only.py tests/voice/test_tts.py
 git diff --check
 ```
 
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
 
 ```bash
 git add services/offline_guardian_scenario.py tests/integration/test_offline_guardian_scenario.py
