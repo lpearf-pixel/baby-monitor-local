@@ -72,6 +72,23 @@
   No household media, real descriptor, receipt, `LOCAL_READY`, replay or baseline
   operation occurred. Task 8 owner-supervised capture is next and is not authorized by
   the software-only sequence.
+- Offline Guardian scenario flow: approved software Tasks 1-8 are implemented locally
+  through `b174f94` and remain unpushed. The fixed CLI selects `DAY-01`, `OCC-02` and
+  `NEG-03`, runs 4 scenarios/7 independent lanes and publishes a bounded media-free
+  ignored JSON/HTML report. Exact-head run `run-74f6b9a00d23b67a` passed 165/165 frames
+  with zero decode, worker or dropped-frame errors; worst model/pipeline p95 was
+  114.143/134.541 ms. Guardian synthetic-oracle results were 0 safe-sleep events, one
+  recovered face-not-visible event and one open adult-intervention scenario event.
+  Generated Voice recorded wake-ready plus one Feeding acknowledgement and kept two
+  negatives silent. The real visual lane did not recognize the adult scenario as adult
+  (`adult_track.absent=50`), which is recorded as an observational model limitation and
+  is not overwritten by the Guardian oracle. The runner has a whole-command deadline,
+  private path/permission gates, fresh Voice components, bounded close settlement and
+  atomic interrupt-safe reporting. Independent review is clean of Critical/Important
+  findings, including closure of its final alarm-ownership Minor. Fresh gates are
+  167 focused, 2276 passed / 1 expected public-corpus skip for full Python and 73/73
+  frontend; compile, shell, Make and diff checks pass. No production or real-device
+  boundary was opened.
 - Environment monitoring design and implementation plan: approved on 2026-08-05.
 - Stable Xiaomi Alpha commit: `0df20ae` on `stable/xiaomi-alpha`.
 - Current visual-corpus worktree branch: `codex/visual-regression-corpus`. The separate

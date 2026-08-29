@@ -73,6 +73,24 @@ Updated: 2026-08-29
   independent review is clean at 0 Critical / 0 Important / 0 Minor. No household media,
   real descriptor, receipt, `LOCAL_READY`, replay or baseline operation occurred. The
   exact next slice is Task 8 owner-supervised capture, which needs fresh explicit authority.
+- The approved offline Guardian scenario flow is implemented locally through `b174f94`
+  on the same branch; it is not pushed. One fixed command replays three admitted public
+  clips through the current visual worker, runs separate synthetic-oracle Guardian and
+  Dashboard projections, and exercises generated Voice wake plus Feeding behavior. The
+  latest exact-head run passed 4/4 scenarios and 7/7 lanes: 165/165 visual frames, zero
+  decode/worker/drop errors, model p95 at most 114.143 ms and pipeline p95 at most
+  134.541 ms. Guardian produced zero safe-sleep events, one recovered face-not-visible
+  event and one open adult-intervention scenario event; generated Voice produced two
+  response codes and two silent negatives. Actual visual observations remain separate:
+  the adult scenario reported `adult_track.absent` for 50/50 frames, so this flow exposes
+  a model gap rather than treating the scenario label or Guardian oracle as ground truth.
+  The ignored report is under `run-74f6b9a00d23b67a/report` with 0700/0600 permissions.
+  Final gates passed 167 focused tests, 2276 full Python tests with one expected
+  incomplete-public-corpus skip, and 73 frontend tests; compile, shell, Make, diff and
+  privacy/media checks passed.
+  No camera, speaker, PTZ, notification, production database, Baby Care write or baseline
+  operation ran. This proves repeatable component integration, not infant-recognition
+  accuracy, household safety, real Voice recall or Xiaomi device compatibility.
 - Stable Xiaomi line: `stable/xiaomi-alpha` at `0df20ae`.
 - Active Camera Reply review line: `codex/xiaomi-camera-reply-lifecycle-review`, based
   on accepted Voice head `4d479b8`; its published Task 8 checkpoint is `a622a7a`.

@@ -4,7 +4,19 @@ The repository baseline, environment software and functional Guardian loop are
 complete. Do not restart completed milestones. Execute the following stages in order;
 the detailed approved specs and plans remain authoritative for behavior.
 
-**Private local visual overlay (next gate requires owner supervision):** the contract in
+**Offline Guardian scenario flow: software-complete, expansion next.** The approved
+four-scenario flow is implemented locally through `b174f94`: three public clips, one
+generated Voice scenario, seven independent lanes and one ignored JSON/HTML report.
+The latest run passed 4/4 scenarios, 7/7 lanes and 165/165 frames with no decode,
+worker or drop errors. Keep visual observations separate from synthetic Guardian
+expectations; in particular, `NEG-03` currently reports adult absent in all 50 frames.
+The next offline product slice is a separately reviewed expansion using existing
+licensed/generated fixtures for movement/rollover, baby-not-visible and the already
+approved low-risk diaper/burping Voice actions. It must add scenario-specific regression
+expectations without changing Guardian rules, enabling Camera Reply or writing Baby
+Care. Real-baby accuracy and public baseline promotion remain separate later gates.
+
+**Private local visual overlay (deferred by owner):** the contract in
 `docs/superpowers/specs/2026-08-29-private-local-visual-corpus-overlay-design.md` and
 `docs/superpowers/plans/2026-08-29-private-local-visual-corpus-overlay.md` is approved.
 Software Tasks 1–7 are complete through `f37ae57`, including Task 6 baseline rejection
@@ -16,8 +28,9 @@ Task 4 adds a fixed shared-source, video-only 20/25/30-second capture boundary w
 single-producer continuity and private atomic publication; no live capture ran. Task 5
 binds 500ms plus first/last review frames, human real-time playback and both approval
 states to the exact current digest. Private baseline generation, comparison and
-promotion fail before output creation. The next slice is Task 8 owner-supervised local
-capture and admission; it requires fresh explicit authority before any camera access.
+promotion fail before output creation. Task 8 owner-supervised local capture and
+admission is deliberately deferred; it requires fresh explicit authority before any
+camera access.
 Until then, do not capture, create a real descriptor, replay private media or run any
 baseline operation.
 

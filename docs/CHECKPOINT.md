@@ -1894,3 +1894,52 @@ Fresh commands and results:
 No camera, go2rtc producer, household media, real private descriptor, review receipt,
 private replay or baseline operation was accessed. `LOCAL_READY` was not claimed. Task 8
 owner-supervised capture remains a separate gate requiring fresh explicit authority.
+
+## 2026-08-29 Offline Guardian scenario flow
+
+User approved the offline scenario design and full implementation plan. Local commits
+`a65f5e9` through `b174f94` add a closed four-scenario contract, three independent
+visual/Guardian/Voice lanes, isolated Guardian SQLite and Dashboard query projection,
+one fixed CLI/Make entry and bounded canonical JSON plus static HTML reporting. The
+final review fixes retain observation/candidate aggregates, enforce owner-private
+symlink-free runtime and prepared-media boundaries, make report interruption rollback
+identity-safe, apply a whole-command deadline and require fresh, bounded-settlement
+Voice components. Independent review reported no Critical or Important finding.
+
+Exact bounded run:
+
+```text
+../../.venv-alpha/bin/python tools/offline_guardian_scenario.py validate
+result=PASS; suite_id=offline-guardian-v1; scenario_count=4; visual_clip_count=3
+
+../../.venv-alpha/bin/python tools/offline_guardian_scenario.py run
+result=PASS; reason=ok; pass_count=4; skip_count=0; fail_count=0; lane_count=7
+report=run-74f6b9a00d23b67a/report
+```
+
+The three visual lanes processed 65 + 50 + 50 = 165 frames with zero decode, worker
+and dropped-frame errors. Model p95 values were 114.143, 105.912 and 104.766 ms;
+pipeline p95 values were 134.541, 126.772 and 129.825 ms. The safe clip emitted one
+observational significant-motion watch. The occlusion clip reported face-count zero
+for 50/50 frames. The adult scenario reported `adult_track.absent` for 50/50 frames,
+so it remains explicit evidence of a model limitation rather than a successful adult
+detection claim.
+
+The separate synthetic Guardian oracle produced zero safe-sleep events, one recovered
+face-not-visible event and one open adult-intervention scenario event. Generated Voice
+processed four speech fixtures, emitted wake-ready and one Feeding acknowledgement,
+and ignored both negatives. Report directory/files were 0700/0600. No camera, go2rtc,
+speaker, PTZ, household media/audio, notification, production database, Baby Care or
+baseline operation was accessed. Software PASS does not prove model accuracy, real
+Guardian safety, Xiaomi compatibility, far-field Voice recall or unattended care.
+
+Final exact-head verification:
+
+```text
+focused Python: 167 passed
+full Python: 2276 passed, 1 skipped (visual_corpus_first_stage_incomplete)
+frontend: 73 passed
+compileall, bash -n, Make dry-runs, JSON parse, git diff --check: PASS
+tracked-media and added-line private-literal scans: no prohibited match
+independent review: 0 Critical / 0 Important / 0 Minor
+```

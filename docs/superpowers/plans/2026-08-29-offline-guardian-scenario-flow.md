@@ -254,9 +254,11 @@ git commit -m "feat: add generated voice scenario lane"
 
 **Interfaces:**
 - Produces `OfflineGuardianScenarioRunner.run(suite: OfflineScenarioSuiteV1) -> OfflineScenarioRunV1`.
-- Constructor injects the visual manifest, prepared resolver, model backend, Voice
-  fixture provider, VAD, ASR and recording synthesizer.
+- Constructor injects the visual manifest, descriptor-bound prepared root/resolver,
+  model backend, Voice fixture provider and fresh VAD/ASR/synthesizer factories.
 - Creates a mode-`0700` new session directory and one child directory per scenario.
+- Applies a nested-safe deadline; the fixed CLI owns the outer 180-second deadline
+  across preparation, model construction, orchestration and report publication.
 
 - [x] **Step 1: Write orchestration RED tests**
 
@@ -320,7 +322,8 @@ Expected: report module is missing.
 
 Use `html.escape`, a fixed template with no script and no external resource, maximum
 256 KiB JSON and 512 KiB HTML. Create temp files as `0600`, fsync them, publish without
-replacement, fsync the directory and retain no extra artifact.
+replacement and fsync the directory. On failure/interruption remove only identity-proven
+owned finals; a private temporary artifact may remain if safe cleanup itself fails.
 
 - [x] **Step 4: Run GREEN and privacy scan**
 
@@ -415,7 +418,7 @@ git commit -m "feat: run offline guardian scenario flow"
 - Records only aggregate software/public-fixture evidence and the exact report schema.
 - Leaves private capture Task 8, public baseline, real Voice and device gates deferred.
 
-- [ ] **Step 1: Run final focused and complete gates**
+- [x] **Step 1: Run final focused and complete gates**
 
 ```bash
 ../../.venv-alpha/bin/python -m pytest -q tests/contracts/test_offline_guardian_scenario.py tests/integration/test_offline_guardian_scenario.py tests/tools/test_offline_guardian_scenario.py tests/vision/test_corpus_replay.py tests/vision/test_corpus_guardian_projection.py tests/voice/test_listen_only.py tests/api/test_alpha_app.py
@@ -429,18 +432,18 @@ git diff --check
 Run JSON parsing, Make dry-runs, tracked-media scan and added-line credential/private
 literal scan. Confirm no camera/go2rtc/Ollama/notification/Baby Care process was opened.
 
-- [ ] **Step 2: Independent review**
+- [x] **Step 2: Independent review**
 
 Request read-only review of contract closure, oracle separation, isolated state,
 resource settlement, filesystem publication, HTML escaping, privacy and prohibited
 client initialization. Resolve every Critical or Important finding with RED/GREEN.
 
-- [ ] **Step 3: Update factual documents**
+- [x] **Step 3: Update factual documents**
 
 Record actual scenario/lane results and exact test counts. State separately what the
 flow proves and what remains device-/model-/human-gated.
 
-- [ ] **Step 4: Commit the closure**
+- [x] **Step 4: Commit the closure**
 
 ```bash
 git add SUMMARY.md docs/STATUS.md docs/CHECKPOINT.md docs/NEXT.md docs/superpowers/plans/2026-08-29-offline-guardian-scenario-flow.md

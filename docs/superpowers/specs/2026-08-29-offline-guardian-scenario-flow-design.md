@@ -2,9 +2,10 @@
 
 **Date:** 2026-08-29
 
-**Status:** Proposed for review. This document does not authorize implementation,
-camera access, household-media access, production database writes, notification
-delivery, Camera Reply, PTZ, baseline promotion or protected-branch changes.
+**Status:** Approved and implemented locally through `b174f94`. The approval covered
+only the offline software flow; it did not authorize camera access, household-media
+access, production database writes, notification delivery, Camera Reply, PTZ, baseline
+promotion or protected-branch changes.
 
 ## 1. Goal
 
@@ -141,8 +142,9 @@ honestly support the transport condition.
 - Voice lane: generated audio fixtures cover exact wake, one supported Feeding command,
   the fixed acknowledgement sink, a no-wake negative and a cancellation/unsupported
   negative.
-- Expected effect: exactly one accepted closed intent and one recording-sink response;
-  negatives remain silent. No Baby Care client, signer, outbox or write path is built.
+- Expected effect: exactly one accepted closed intent and two recording-sink response
+  codes (wake-ready plus Feeding acknowledgement); both negatives remain silent. No
+  Baby Care client, signer, outbox or write path is built.
 
 Diaper and burping generated scenarios may be added only after this first flow is green.
 Medication remains excluded because its high-risk design and acceptance are separate.
@@ -154,10 +156,13 @@ generated report and SQLite file is mode `0600`. It rejects symlinks, pre-existi
 unexpected entries, non-owner files, hard links, repository escape and more than the
 fixed scenario/report limits.
 
-Each scenario receives a fresh visual worker state, Guardian state machine, SQLite
-store, query service and Voice controller. No state carries between scenarios. The
-runner closes iterators, stores, schedulers and recording sinks on success, failure,
-timeout and interruption.
+Each scenario receives fresh visual worker state, Guardian state, SQLite store, query
+service and, when required, fresh Voice VAD/ASR/synthesizer components. No state carries
+between scenarios. The fixed CLI applies one 180-second deadline across preparation,
+model construction, every lane and report publication; an unrelated active host alarm
+is rejected rather than replaced. Iterators, stores and Voice components settle on
+success, failure, timeout and interruption, and a close failure makes the Voice lane
+fail closed.
 
 Production database paths, evidence paths and notification dispatchers are rejected at
 construction time. The runner must prove `production_state_touched=false`,
