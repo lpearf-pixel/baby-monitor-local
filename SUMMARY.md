@@ -6,13 +6,11 @@ Updated: 2026-08-29
 
 - Repository: `lpearf-pixel/baby-monitor-local` (public).
 - Visual regression corpus work is published on `codex/visual-regression-corpus` at
-  documentation head `533399c` over implementation head `5143f69`; local and remote
-  matched at publication, with no PR or merge. The current unpushed closure commits are
-  `fb3218d3ae8385a43f4e85167cba80c3d9aa54a1`, documentation checkpoint
-  `165b0db5ced15f39160a602e423791dc69bcbb0a` and bounded-source checkpoint
-  `d01c23d3df30434ead36cf289b7a783544b70cbe`; they keep that exact baseline and admit
-  one additional checksum-pinned local-only public source. Four sources now yield 13
-  reviewed clips and 26 private prepared artifacts.
+  exact local/remote head `4c511203e568e428460fc69dc47ebe86e80ed168`, with no PR,
+  merge or protected-branch change. It includes closure implementation `fb3218d`,
+  evidence checkpoint `165b0db`, bounded-source review `d01c23d` and final
+  government-source review `4c51120` over the earlier `533399c` gate. Four sources
+  now yield 13 reviewed clips and 26 private prepared artifacts.
   `NEG-02` is real object-only footage and `OCC-03` is a human-reviewed deterministic
   majority-obstruction derivative. The manifest remains intentionally `PARTIAL`:
   `WIDE-02` and `NEG-01` still lack ten continuous seconds of a licensed real empty
@@ -35,6 +33,11 @@ Updated: 2026-08-29
   compared or promoted while the corpus is incomplete. These results
   prove deterministic public-file replay and regression instrumentation, not Guardian
   accuracy, native Xiaomi CS2 compatibility, real IR behavior or household safety.
+  The approved continuation is
+  `docs/superpowers/plans/2026-08-29-visual-regression-corpus-ready-baseline.md`.
+  It time-bounds future source review, keeps repeated/restricted sources closed, and
+  resolves the existing mismatch between multi-scenario clips and clip-ID-only baseline
+  promotion before any READY candidate can be promoted. Execution has not started.
 - Stable Xiaomi line: `stable/xiaomi-alpha` at `0df20ae`.
 - Active Camera Reply review line: `codex/xiaomi-camera-reply-lifecycle-review`, based
   on accepted Voice head `4d479b8`; its published Task 8 checkpoint is `a622a7a`.

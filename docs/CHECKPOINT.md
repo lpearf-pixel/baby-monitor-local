@@ -133,6 +133,24 @@ same 108,588,489-byte source already reviewed and rejected above, so it was not 
 again. No new clip, manifest entry, replay result or baseline was created. Readiness
 remains `PARTIAL`, with `WIDE-02` and `NEG-01` missing.
 
+#### Closure publication and READY/baseline continuation
+
+The four closure commits were subsequently fast-forward pushed. Local and remote
+`codex/visual-regression-corpus` now match at exact
+`4c511203e568e428460fc69dc47ebe86e80ed168`; the tracked worktree was clean at
+publication. No PR or merge was created and `main`/`stable/xiaomi-alpha` were not
+modified.
+
+The next stage is recorded without executing it at
+`docs/superpowers/plans/2026-08-29-visual-regression-corpus-ready-baseline.md`.
+It preserves the 13-clip `PARTIAL` set, makes each future source-search attempt a
+bounded batch, and treats a source-less REJECT as a valid stop. A qualifying real
+empty-wide segment may cover both `WIDE-02` and `NEG-01`; before promotion, software
+must project scenario IDs into replay comparison groups so the approved multi-scenario
+manifest contract does not require duplicated media clip IDs. No source acquisition,
+manifest change, replay, codec gate, long run, candidate generation or baseline
+promotion was performed while writing this plan.
+
 Draft PR #4 已实现并自动化验证 H.265 原码优先、VideoToolbox 按需兼容流、
 profile 绑定票据、无黑屏播放器回退以及可审计 go2rtc 双补丁构建。
 

@@ -810,3 +810,19 @@ metadata. Only two checksum-pinned 480x360 thumbnails were reproducible, and bot
 close adult/baby crib demonstration rather than proving a ten-second empty-wide interval.
 The CDC file exposed through Wikimedia Commons was the same public-domain candidate
 already rejected above, not a new source. No manifest, replay or baseline command changed.
+
+#### Task 11 publication and continuation boundary
+
+Task 11 was fast-forward published with the rest of the closure history at exact
+local/remote head `4c511203e568e428460fc69dc47ebe86e80ed168`. No PR, merge or
+protected-branch change occurred. This predecessor plan remains a completed audit
+record; do not reopen its checked tasks or append an unbounded Task 12.
+
+The only continuation is:
+
+`docs/superpowers/plans/2026-08-29-visual-regression-corpus-ready-baseline.md`
+
+That plan owns the bounded source stop ledger, one-clip/multi-scenario promotion
+alignment, READY transition, fresh replay/codec/30-minute gates and explicit
+digest-approved baseline promotion. At publication of this plan entry, none of those
+continuation tasks has run.

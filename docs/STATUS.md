@@ -5,12 +5,11 @@
 - Repository: initialized and public.
 - Design: approved.
 - Visual regression corpus (2026-08-29): the isolated feature branch
-  `codex/visual-regression-corpus` is published at `533399c` over implementation head
-  `5143f69`, with no PR or merge. The current unpushed closure commits are
-  `fb3218d3ae8385a43f4e85167cba80c3d9aa54a1`, `165b0db5ced15f39160a602e423791dc69bcbb0a`
-  and `d01c23d3df30434ead36cf289b7a783544b70cbe`;
-  they keep the `533399c` baseline and
-  track metadata/recipes only. Four downloaded public sources, 13 reviewed clips,
+  `codex/visual-regression-corpus` is published at exact local/remote head
+  `4c511203e568e428460fc69dc47ebe86e80ed168`, with no PR, merge or protected-branch
+  change. Published closure commits `fb3218d`, `165b0db`, `d01c23d` and
+  `4c51120` extend the earlier `533399c` gate. Four downloaded public sources,
+  13 reviewed clips,
   contact sheets, 26 prepared files and result JSON remain ignored/private.
   `NEG-02` adds real object-only coverage and `OCC-03` adds a reviewed deterministic
   majority obstruction. The manifest remains `PARTIAL` because `WIDE-02` and `NEG-01`
@@ -28,8 +27,12 @@
   download: YouTube required interactive verification and the Vimeo mirror reset before
   metadata. Two owner-private thumbnails were checksum-pinned for rejection evidence;
   the previously reviewed CDC public-domain video was recognized as a duplicate source,
-  not a new candidate. This is
-  regression behavior, not accuracy or real-device evidence.
+  not a new candidate. This is regression behavior, not accuracy or real-device
+  evidence. The docs-only continuation plan at
+  `docs/superpowers/plans/2026-08-29-visual-regression-corpus-ready-baseline.md`
+  makes one bounded source batch the only entry, then gates scenario-group alignment,
+  one multi-scenario real-wide clip, READY replay, fresh 30-minute evidence and
+  digest-approved baseline promotion. No continuation task has run.
 - Environment monitoring design and implementation plan: approved on 2026-08-05.
 - Stable Xiaomi Alpha commit: `0df20ae` on `stable/xiaomi-alpha`.
 - Active local development branch: `codex/xiaomi-camera-reply-lifecycle-review`.

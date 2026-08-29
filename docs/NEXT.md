@@ -4,8 +4,10 @@ The repository baseline, environment software and functional Guardian loop are
 complete. Do not restart completed milestones. Execute the following stages in order;
 the detailed approved specs and plans remain authoritative for behavior.
 
-**Visual regression corpus follow-up (published baseline `533399c`, closure commits
-`fb3218d`/`165b0db`/`d01c23d` unpushed):** retain the 13 reviewed clips as the repeatable candidate set.
+**Visual regression corpus follow-up (published local/remote head `4c511203`; no PR or
+merge):** follow
+`docs/superpowers/plans/2026-08-29-visual-regression-corpus-ready-baseline.md`.
+Retain the 13 reviewed clips as the repeatable candidate set.
 `NEG-02` and synthetic `OCC-03` are now covered; acquire a licensed, checksum-pinned
 real empty crib/room wide clip that can honestly close both `WIDE-02` and `NEG-01`.
 Do not retry the already rejected Pexels `7509178`, `7508454`, `7509174`, `7509180`,
@@ -13,10 +15,13 @@ Do not retry the already rejected Pexels `7509178`, `7508454`, `7509174`, `75091
 Do not count CPSC `VNekf5P9_Yg`/`UGFvlRQFY30` as available until a non-interactive,
 license-clear full media download can be checksum-pinned; thumbnails alone are not clips.
 Until those two gaps close, readiness stays `PARTIAL` and no baseline may be generated,
-compared or promoted. After closure, rerun short replay and the isolated HEVC gate,
-review objective labels, then explicitly promote the first baseline by exact candidate
-digest. Also rerun the bounded long gate if 13-clip sustained evidence is needed. Public
-replay is additional software evidence; it does not replace real-device gates below.
+compared or promoted. Review at most eight new source pages and three full downloads in
+one attempt; a clean REJECT ends that attempt without manifest or code changes. After a
+source passes, first align baseline promotion with the approved one-clip/multi-scenario
+contract, then admit one `WIDE-02` clip carrying both remaining scenario IDs. Only a
+READY manifest unlocks short replay, the isolated HEVC gate, a fresh 30-minute run and
+owner approval of the exact baseline digest. Public replay is additional software
+evidence; it does not replace real-device gates below.
 
 **Operational recovery gate (2026-08-20): PASS.** The i9 now has one launchd-owned
 go2rtc app with a stable macOS Local Network designated requirement. A fresh source
