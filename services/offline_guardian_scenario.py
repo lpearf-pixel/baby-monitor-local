@@ -4,6 +4,7 @@ import os
 import signal
 import stat
 import threading
+import time
 from collections import Counter
 from collections.abc import Callable
 from contextlib import contextmanager
@@ -32,6 +33,7 @@ from services.voice.vad import VoiceActivityDetector
 VOICE_FRAME_BYTES = 3_200
 MAX_GENERATED_PCM_BYTES = 1_024 * 1_024
 DEFAULT_RUN_TIMEOUT_SECONDS = 180.0
+SETTLEMENT_TIMEOUT_SECONDS = 1.0
 
 
 class OfflineScenarioTimeout(BaseException):
@@ -109,9 +111,13 @@ class OfflineGuardianScenarioRunner:
                             asr,
                             synthesizer,
                         )
-                    finally:
-                        for component in reversed(components):
-                            _close_best_effort(component)
+                    except BaseException:
+                        _close_voice_components(components)
+                        raise
+                    if not _close_voice_components(components):
+                        result = _voice_failure(
+                            "offline_scenario_voice_cleanup_failed"
+                        )
                 lanes.append(result)
                 if result.status != "PASS" and first_reason is None:
                     first_reason = result.reason
@@ -420,13 +426,19 @@ def _private_prepared_file(path: Path, root: Path) -> bool:
     )
 
 
-def _close_best_effort(component: object) -> None:
-    close = getattr(component, "close", None)
-    if callable(close):
+def _close_voice_components(components: list[object]) -> bool:
+    settled = True
+    for component in reversed(components):
+        close = getattr(component, "close", None)
+        if not callable(close):
+            continue
         try:
             close()
+        except OfflineScenarioTimeout:
+            settled = False
         except Exception:
-            pass
+            settled = False
+    return settled
 
 
 @contextmanager
@@ -434,17 +446,36 @@ def _run_deadline(timeout_seconds: float):
     if threading.current_thread() is not threading.main_thread():
         raise ValueError("offline_scenario_runtime_unsafe")
     previous_handler = signal.getsignal(signal.SIGALRM)
+    previous_timer = signal.getitimer(signal.ITIMER_REAL)
+    started = time.monotonic()
+    previous_remaining = previous_timer[0]
+    effective_timeout = (
+        min(timeout_seconds, previous_remaining)
+        if previous_remaining > 0
+        else timeout_seconds
+    )
 
     def expire(_signum: int, _frame: object) -> None:
+        signal.setitimer(signal.ITIMER_REAL, SETTLEMENT_TIMEOUT_SECONDS)
         raise OfflineScenarioTimeout("offline_scenario_timeout")
 
     signal.signal(signal.SIGALRM, expire)
-    previous_timer = signal.setitimer(signal.ITIMER_REAL, timeout_seconds)
+    signal.setitimer(signal.ITIMER_REAL, effective_timeout)
     try:
         yield
     finally:
-        signal.setitimer(signal.ITIMER_REAL, *previous_timer)
+        signal.setitimer(signal.ITIMER_REAL, 0)
         signal.signal(signal.SIGALRM, previous_handler)
+        elapsed = time.monotonic() - started
+        restored_remaining = max(0.0, previous_remaining - elapsed)
+        signal.setitimer(
+            signal.ITIMER_REAL,
+            restored_remaining,
+            previous_timer[1],
+        )
+
+
+offline_scenario_deadline = _run_deadline
 
 
 def _failure(reason: str) -> ScenarioLaneResult:
@@ -474,6 +505,7 @@ def _voice_failure(reason: str) -> ScenarioLaneResult:
 __all__ = [
     "OfflineGuardianScenarioRunner",
     "OfflineScenarioTimeout",
+    "offline_scenario_deadline",
     "run_guardian_lane",
     "run_visual_lane",
     "run_voice_lane",

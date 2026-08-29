@@ -51,13 +51,15 @@ def publish_offline_scenario_report(
         json_temp.unlink()
         html_temp.unlink()
         _fsync_directory(root)
-    except OSError:
+    except BaseException as exc:
         for final in reversed(published):
             _unlink_same_inode(final, identities.get(final))
         for temporary in (json_temp, html_temp):
             _unlink_private_temp(temporary)
         _fsync_directory_best_effort(root)
-        raise ValueError("offline_scenario_report_failed") from None
+        if isinstance(exc, OSError):
+            raise ValueError("offline_scenario_report_failed") from None
+        raise
     return json_path, html_path
 
 

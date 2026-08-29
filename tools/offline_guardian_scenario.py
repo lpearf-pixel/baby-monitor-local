@@ -23,8 +23,10 @@ from packages.contracts.visual_corpus import (
 )
 from services.offline_guardian_report import publish_offline_scenario_report
 from services.offline_guardian_scenario import (
+    DEFAULT_RUN_TIMEOUT_SECONDS,
     OfflineGuardianScenarioRunner,
     OfflineScenarioTimeout,
+    offline_scenario_deadline,
 )
 from services.vision.corpus_download import CorpusDownloader, MAX_FIRST_STAGE_BYTES
 from services.vision.corpus_manifest import load_manifest
@@ -109,7 +111,8 @@ def _validate() -> int:
 
 
 def _run() -> int:
-    run, report_name = _execute_fixed_flow()
+    with offline_scenario_deadline(DEFAULT_RUN_TIMEOUT_SECONDS):
+        run, report_name = _execute_fixed_flow()
     lanes = tuple(lane for result in run.results for lane in result.lanes)
     _emit(
         result=run.status,

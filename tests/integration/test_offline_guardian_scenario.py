@@ -155,7 +155,7 @@ class DegradedVisualBackend:
         raise RealtimeModelError("private model detail")
 
 
-def generated_video(path: Path) -> None:
+def generated_video(path: Path, *, duration_seconds: int = 2) -> None:
     completed = subprocess.run(
         (
             "ffmpeg",
@@ -169,7 +169,7 @@ def generated_video(path: Path) -> None:
             "-i",
             "testsrc=size=320x180:rate=10",
             "-t",
-            "2",
+            str(duration_seconds),
             "-c:v",
             "libx264",
             "-pix_fmt",
@@ -193,7 +193,7 @@ def test_visual_lane_replays_real_file_through_current_worker(tmp_path: Path) ->
     from services.offline_guardian_scenario import run_visual_lane
 
     media = tmp_path / "public-fixture.mkv"
-    generated_video(media)
+    generated_video(media, duration_seconds=13)
 
     result = run_visual_lane(
         scenario("SAFE-SLEEP-01"),
@@ -206,12 +206,13 @@ def test_visual_lane_replays_real_file_through_current_worker(tmp_path: Path) ->
     assert result.lane == "visual_observation"
     assert result.status == "PASS"
     assert result.reason == "ok"
-    assert result.counts["frames.total"] == 10
+    assert result.counts["frames.total"] == 65
     assert result.counts["frames.processed"] >= 1
     assert result.counts["errors.decode"] == 0
     assert result.counts["errors.worker"] == 0
-    assert result.counts["observation.pose_count.1"] == 10
-    assert result.counts["observation.face_count.1"] == 10
+    assert result.counts["observation.pose_count.1"] == 65
+    assert result.counts["observation.face_count.1"] == 65
+    assert result.counts["candidate.watch_opened.significant_bed_motion"] == 1
     assert result.metrics_ms["pipeline.p95"] >= 0
     assert result.metrics_ms["model.p95"] >= 0
     assert not (tmp_path / "guardian-events.sqlite3").exists()
@@ -693,6 +694,76 @@ def test_runner_closes_created_voice_components_when_factory_fails(
     assert closed == ["vad"]
 
 
+def test_runner_fails_when_voice_component_close_fails(tmp_path: Path) -> None:
+    from services.offline_guardian_scenario import OfflineGuardianScenarioRunner
+
+    media = tmp_path / "public-fixture.mkv"
+    generated_video(media)
+    suite = load_offline_scenario_suite(FIXTURE)
+    voice_only = suite.model_copy(update={"scenarios": (suite.scenarios[-1],)})
+    fixtures, asr = voice_fixtures()
+
+    class FailingSynth(RecordingScenarioSynth):
+        def close(self) -> None:
+            raise RuntimeError("private close failure")
+
+    runner = OfflineGuardianScenarioRunner(
+        runtime_root=tmp_path / "scenario-run",
+        runtime_boundary=tmp_path,
+        visual_manifest=load_manifest(VISUAL_MANIFEST),
+        prepared_resolver=lambda _clip, _profile: media,
+        prepared_root=tmp_path,
+        model_backend=AvailableVisualBackend(),
+        voice_fixture_provider=fixtures.__getitem__,
+        voice_vad_factory=speech_vad,
+        voice_asr_factory=lambda: ScenarioAsr(asr.mapping),
+        voice_synthesizer_factory=FailingSynth,
+    )
+
+    result = runner.run(voice_only)
+
+    assert result.status == "FAIL"
+    assert result.reason == "offline_scenario_voice_cleanup_failed"
+
+
+def test_runner_timeout_keeps_voice_cleanup_bounded(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    import services.offline_guardian_scenario as module
+
+    media = tmp_path / "public-fixture.mkv"
+    generated_video(media)
+    suite = load_offline_scenario_suite(FIXTURE)
+    voice_only = suite.model_copy(update={"scenarios": (suite.scenarios[-1],)})
+    fixtures, asr = voice_fixtures()
+
+    class BlockingSynth(RecordingScenarioSynth):
+        def close(self) -> None:
+            time.sleep(1)
+
+    monkeypatch.setattr(module, "SETTLEMENT_TIMEOUT_SECONDS", 0.02)
+    monkeypatch.setattr(module, "run_voice_lane", lambda *_args: time.sleep(1))
+    runner = module.OfflineGuardianScenarioRunner(
+        runtime_root=tmp_path / "scenario-run",
+        runtime_boundary=tmp_path,
+        visual_manifest=load_manifest(VISUAL_MANIFEST),
+        prepared_resolver=lambda _clip, _profile: media,
+        prepared_root=tmp_path,
+        model_backend=AvailableVisualBackend(),
+        voice_fixture_provider=fixtures.__getitem__,
+        voice_vad_factory=speech_vad,
+        voice_asr_factory=lambda: ScenarioAsr(asr.mapping),
+        voice_synthesizer_factory=BlockingSynth,
+        timeout_seconds=0.01,
+    )
+
+    started = time.monotonic()
+    with pytest.raises(module.OfflineScenarioTimeout):
+        runner.run(voice_only)
+    assert time.monotonic() - started < 0.2
+
+
 def report_run() -> OfflineScenarioRunV1:
     return OfflineScenarioRunV1(
         suite_id="offline-guardian-v1",
@@ -828,6 +899,32 @@ def test_report_rolls_back_finals_when_second_temp_cleanup_fails(
     retained = destination / ".scenario-report.html.tmp"
     assert retained.is_file()
     assert stat.S_IMODE(retained.stat().st_mode) == 0o600
+
+
+def test_report_rolls_back_finals_when_interrupted(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    import services.offline_guardian_report as module
+
+    destination = report_destination(tmp_path)
+    real_link = module._link_no_replace
+    calls = 0
+
+    def interrupt_second(source: Path, target: Path) -> None:
+        nonlocal calls
+        calls += 1
+        if calls == 2:
+            raise KeyboardInterrupt
+        real_link(source, target)
+
+    monkeypatch.setattr(module, "_link_no_replace", interrupt_second)
+
+    with pytest.raises(KeyboardInterrupt):
+        module.publish_offline_scenario_report(report_run(), destination)
+
+    assert not (destination / "scenario-result.v1.json").exists()
+    assert not (destination / "scenario-report.html").exists()
 
 
 def test_report_rejects_destination_below_symlink_ancestor(tmp_path: Path) -> None:

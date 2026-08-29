@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import inspect
 import subprocess
+import time
 from pathlib import Path
 
 import pytest
@@ -99,6 +100,19 @@ def test_underlying_failure_is_redacted(monkeypatch: pytest.MonkeyPatch, capsys)
     assert module().main(["run"]) == 2
     assert capsys.readouterr().out == (
         "result=FAIL\nreason=offline_scenario_command_failed\n"
+    )
+
+
+def test_run_deadline_covers_work_before_runner(
+    monkeypatch: pytest.MonkeyPatch,
+    capsys,
+) -> None:
+    monkeypatch.setattr(module(), "DEFAULT_RUN_TIMEOUT_SECONDS", 0.01)
+    monkeypatch.setattr(module(), "_execute_fixed_flow", lambda: time.sleep(1))
+
+    assert module().main(["run"]) == 2
+    assert capsys.readouterr().out == (
+        "result=FAIL\nreason=offline_scenario_timeout\n"
     )
 
 
