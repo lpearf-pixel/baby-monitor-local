@@ -1960,3 +1960,16 @@ resolve to three public downloads totaling 25,964,039 declared bytes.
 The owner then paused work and requested a documentation checkpoint plus remote push.
 No implementation plan, code, fixture, manifest, model, report or runtime operation was
 created for the expansion.
+
+## 2026-08-29 Offline scenario expansion specification revision
+
+The docs-only revision starts from exact local and remote HEAD
+`60af28c066baf09d8d43455f964a52c0fd52bfdf`. It renames the visual/oracle scenarios to
+`PRONE-CANDIDATE-01` and `OUTSIDE-CANDIDATE-01`, makes the two lanes explicitly
+`INDEPENDENT`, closes Voice per-step action/match expectations and three negative
+classes, fixes single-level public-parent provenance and pins visual replay to
+65/50/50/100/65 frames (330 total) with zero skipped, dropped, decode or worker counts.
+
+Verification for this revision is the existing exact focused command with **167
+passed**, plus `git diff --check` PASS. No implementation plan, code, fixture, manifest,
+runtime, real-device, PR, merge or protected-branch action is part of this revision.

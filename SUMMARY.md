@@ -7,7 +7,7 @@ Updated: 2026-08-29
 - Repository: `lpearf-pixel/baby-monitor-local` (public).
 - Visual regression corpus work is published on `codex/visual-regression-corpus`; the
   public-corpus proposal base is `681edd3c49d0ccca442af064188a4e8b814a4db5` and the
-  exact remote head is `75f62b8c9dfdf66766878df8812fd79efffeaf3d`, with no PR,
+  exact remote head is `60af28c066baf09d8d43455f964a52c0fd52bfdf`, with no PR,
   merge or protected-branch change. It includes closure implementation `fb3218d`,
   evidence checkpoint `165b0db`, bounded-source review `d01c23d` and final
   government-source review `4c51120`, READY plan `f5c4b34` and the latest bounded
@@ -60,8 +60,9 @@ Updated: 2026-08-29
   safe-stub `review-prepare` commands. It fixes input to the existing loopback shared
   producer, requires Camera Reply false and stable single-producer pre/post state, and
   publishes only validated 0600 media plus its ignored atomic mapping. No live capture,
-  household media, real descriptor, replay or baseline action occurred. Task 1 is
-  published through remote head `75f62b8`; Tasks 2–7 are local and not pushed. The
+  household media, real descriptor, replay or baseline action occurred. Software
+  Tasks 1–7 and their independent-review fixes are published through remote head
+  `60af28c`. The
   Task 5 commit `21f853f` adds closed review preparation at 500ms plus explicit first/
   last frames and accepts content review only from an ignored exact-digest receipt that
   records a human reviewer, real-time playback and both approved states. Task 6 commit
@@ -73,8 +74,8 @@ Updated: 2026-08-29
   independent review is clean at 0 Critical / 0 Important / 0 Minor. No household media,
   real descriptor, receipt, `LOCAL_READY`, replay or baseline operation occurred. The
   exact next slice is Task 8 owner-supervised capture, which needs fresh explicit authority.
-- The approved offline Guardian scenario flow is implemented locally through `b174f94`
-  on the same branch; it is not pushed. One fixed command replays three admitted public
+- The approved offline Guardian scenario flow is implemented through `b174f94` and
+  published on the same branch through remote head `60af28c`. One fixed command replays three admitted public
   clips through the current visual worker, runs separate synthetic-oracle Guardian and
   Dashboard projections, and exercises generated Voice wake plus Feeding behavior. The
   latest exact-head run passed 4/4 scenarios and 7/7 lanes: 165/165 visual frames, zero
@@ -93,9 +94,9 @@ Updated: 2026-08-29
   accuracy, household safety, real Voice recall or Xiaomi device compatibility.
   The eight-scenario expansion design is approved at
   `docs/superpowers/specs/2026-08-29-offline-guardian-scenario-expansion-design.md`.
-  It adds rollover/prone and baby-not-visible Guardian oracles plus generated diaper
-  and burping Voice scenarios, corrects synthetic visual provenance and keeps actual
-  visual output non-ground-truth. The owner paused before plan or implementation; no
+  It adds `PRONE-CANDIDATE-01` and `OUTSIDE-CANDIDATE-01` Guardian oracles plus
+  generated diaper and burping Voice scenarios, corrects synthetic visual provenance
+  and keeps visual/oracle lanes `INDEPENDENT`. The owner paused before plan or implementation; no
   expansion code, fixture, report or runtime action has occurred.
 - Stable Xiaomi line: `stable/xiaomi-alpha` at `0df20ae`.
 - Active Camera Reply review line: `codex/xiaomi-camera-reply-lifecycle-review`, based

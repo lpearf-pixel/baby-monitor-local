@@ -10,10 +10,10 @@ promotion, PR creation, merge or protected-branch changes.
 ## 1. Goal
 
 Extend the accepted four-scenario offline flow to the existing suite limit of eight
-scenarios. The extension adds repeatable evidence for rollover/prone Guardian behavior,
-baby-not-visible Guardian behavior and the already closed low-risk diaper and burping
-Voice actions. It must preserve the separation between actual visual observations and
-synthetic deterministic Guardian expectations.
+scenarios. The extension adds repeatable evidence for `prone_candidate` Guardian
+behavior, `outside_candidate` Guardian behavior and the already closed low-risk diaper
+and burping Voice actions. It must preserve the separation between actual visual
+observations and synthetic deterministic Guardian expectations.
 
 The extension is a regression and integration test. It does not prove that the current
 model recognizes real rollover, prone sleep, face covering, absence from bed or adult
@@ -45,7 +45,7 @@ The existing four scenarios remain unchanged in purpose:
 
 The expansion adds exactly four scenarios:
 
-### 3.1 ROLLOVER-PRONE-01
+### 3.1 PRONE-CANDIDATE-01
 
 - Visual observation uses admitted public clip `DAY-03` with
   `provenance=PUBLIC_VIDEO` and `analysis_realtime`.
@@ -59,7 +59,7 @@ The expansion adds exactly four scenarios:
   open event.
 - The report must not describe `DAY-03` as a real rollover or prone-sleep example.
 
-### 3.2 BABY-NOT-VISIBLE-01
+### 3.2 OUTSIDE-CANDIDATE-01
 
 - Visual observation uses public-derived synthetic clip `OCC-03` with
   `provenance=GENERATED_VISUAL` and `analysis_realtime`.
@@ -74,17 +74,19 @@ The expansion adds exactly four scenarios:
 ### 3.3 VOICE-DIAPER-01
 
 - Generated mono PCM covers exact wake, exact `diaper_change_start`, a fresh exact
-  wake, exact `diaper_change_complete`, a no-wake negative and a cross-action negative.
-- Expected output is two wake-ready codes, two acknowledgement codes, exact action
-  counts for start and complete, and silence for both negatives.
+  wake, exact `diaper_change_complete` and all three negative classes in section 5.
+- Expected output includes two wake-ready codes, acknowledgements for both target
+  actions, correct classification of the legal cross-action control, and silence for
+  ambiguous multi-action and no-wake controls.
 - No transcript or PCM enters the result. No signer, outbox or Baby Care client exists.
 
 ### 3.4 VOICE-BURPING-01
 
 - Generated mono PCM covers exact wake, exact `burping_start`, a fresh exact wake,
-  exact `burping_complete`, a no-wake negative and a cross-action negative.
-- Expected output is two wake-ready codes, two acknowledgement codes, exact action
-  counts for start and complete, and silence for both negatives.
+  exact `burping_complete` and all three negative classes in section 5.
+- Expected output includes two wake-ready codes, acknowledgements for both target
+  actions, correct classification of the legal cross-action control, and silence for
+  ambiguous multi-action and no-wake controls.
 - This proves only generated-fixture controller behavior, not Xiaomi microphone recall
   or real adult speech recognition.
 
@@ -93,12 +95,15 @@ The expansion adds exactly four scenarios:
 `OCC-02` is a tracked `SYNTHETIC` derivative of admitted public clip `DAY-02`; its
 scenario provenance must be corrected from `PUBLIC_VIDEO` to `GENERATED_VISUAL`.
 
-Scenario-to-manifest validation must enforce:
+Scenario-to-manifest validation must enforce a one-level provenance rule:
 
 - `PUBLIC_DATASET` clip -> `PUBLIC_VIDEO`;
-- `SYNTHETIC` clip with an admitted public ancestry chain -> `GENERATED_VISUAL`;
-- private-local, missing, duplicate, unsupported or ancestry-invalid clips -> fail
-  before download, preparation, model construction or runtime-root creation.
+- `SYNTHETIC` clip -> `GENERATED_VISUAL`, with exactly one non-null
+  `parent_clip_id` whose parent is a direct `PUBLIC_DATASET` clip;
+- that public parent must not itself have a parent;
+- recursive ancestry, a synthetic parent, missing/duplicate parent, private-local,
+  unsupported or provenance-mismatched clip -> fail before download, preparation,
+  model construction or runtime-root creation.
 
 The fixed CLI selects exactly five unique visual clips:
 
@@ -109,10 +114,38 @@ DAY-01, OCC-02, NEG-03, DAY-03, OCC-03
 Their three unique public source downloads total 25,964,039 declared bytes, below the
 existing 128 MiB first-stage aggregate cap. The cap must not be raised.
 
+At the fixed 5 FPS replay profile, the exact frame contract is:
+
+```text
+DAY-01  = 65
+OCC-02  = 50
+NEG-03  = 50
+DAY-03  = 100
+OCC-03  = 65
+total   = 330
+```
+
+Every clip must report `frames.total == frames.processed` at its exact value and
+`frames.skipped == frames.dropped == errors.decode == errors.worker == 0`. Any mismatch
+fails the visual lane; these transport/accounting assertions do not make visual labels
+ground truth.
+
 ## 5. Voice result contract
 
-The existing generated Voice lane must add bounded action-code counters so an
-acknowledgement cannot hide cross-action classification:
+The existing generated Voice lane must add two optional closed expectations to every
+step:
+
+```text
+expected_action_code: ActionCode | null
+expected_match_kind: exact | corrected | high_risk_candidate | null
+```
+
+The lane must compare both values for every step, including wake and negative steps;
+absence is represented only by `null`. A reason/response match with the wrong action or
+match kind is `scenario_voice_mismatch`.
+
+The result also adds bounded action-code counters so an acknowledgement cannot hide
+cross-action classification:
 
 ```text
 action.feeding_command
@@ -127,7 +160,36 @@ high-risk medication candidates retain their existing closed behavior; medicatio
 excluded from this expansion. Result contracts remain bounded and contain no text,
 audio, paths, URLs, identifiers or model prose.
 
+The three mandatory negative classes are:
+
+1. **Legal cross-action control:** an exact low-risk command from the other tested
+   action domain in one exact wake-with-command step. It is negative only for the
+   scenario's target action. It must be acknowledged under its own
+   `expected_action_code` with
+   `expected_match_kind=exact`, and must not increment either target-action counter.
+2. **Ambiguous multi-action control:** one wake-prefixed utterance containing two or
+   more action domains. It must return `listen_only_ignored`, with no response, action
+   code or match kind and no action counter increment.
+3. **No-wake control:** one otherwise exact target action while the controller is idle,
+   without a wake phrase. It must return `listen_only_ignored`, with no response,
+   action code or match kind and no action counter increment.
+
+The cross-action control for the diaper scenario is a burping action; the control for
+the burping scenario is a diaper action. Questions, medication and unsupported commands
+remain additional closed controls but cannot replace these three mandatory classes.
+Each new Voice scenario therefore has exactly seven steps: standalone wake, target
+start, standalone wake, target complete, legal cross-action wake-with-command,
+ambiguous multi-action wake-with-command and no-wake target action. Its exact expected
+response count is five: two ready codes, two target acknowledgements and one legal
+cross-action acknowledgement.
+
 ## 6. Isolation and execution
+
+The visual lane and Guardian lane have the explicit relationship `INDEPENDENT`.
+Neither consumes, gates, rewrites or derives expectations from the other's result.
+Scenario ID is their only join key, and aggregate status merely combines their separate
+PASS/FAIL/SKIP states. A Guardian oracle PASS can never fill in a missing visual
+candidate, and a visual observation can never create a Guardian event in this flow.
 
 The extension reuses the accepted runner, whole-command 180-second deadline, fresh
 Voice component factories, owner-private runtime and prepared-media validation, atomic
@@ -150,7 +212,8 @@ No baseline is generated, compared or promoted.
 - Guardian PASS means declared synthetic reviews produced the exact current rule,
   event, deduplication, recovery and Dashboard projection.
 - Voice PASS means generated PCM and fixed ASR fixtures produced exact closed action
-  outcomes and silent negatives.
+  outcomes, correctly self-classified the legal cross-action control and kept the
+  ambiguous/no-wake controls silent.
 - Aggregate PASS requires every required lane to pass.
 
 The report and handoff must list actual visual candidate counts, including zero. A
@@ -161,8 +224,8 @@ it cannot be replaced by the Guardian oracle or converted into a success claim.
 
 - Unknown scenario, wrong provenance, missing clip or unsafe public ancestry fails
   before media preparation.
-- Wrong action code, response count, negative acceptance or cross-action acceptance
-  fails the Voice lane.
+- Wrong action code, match kind, response count, ambiguous/no-wake acceptance or legal
+  cross-action misclassification fails the Voice lane.
 - Guardian transition/event/Dashboard mismatch fails the Guardian lane without
   changing thresholds or expected results after observation.
 - Timeout, interruption, component close failure or report failure retains the first
@@ -176,12 +239,18 @@ Implementation requires RED -> GREEN coverage for:
 
 - exactly eight unique scenarios and the four new IDs;
 - provenance correction for `OCC-02` and manifest-bound provenance rejection;
-- public-derived ancestry validation and the exact five-clip selection;
+- one-level public-parent validation, recursive/synthetic-parent rejection and the
+  exact five-clip selection;
+- exact 65/50/50/100/65 frame accounting, 330 total and zero skipped/dropped/decode/
+  worker counts;
+- explicit `INDEPENDENT` visual/oracle contract coverage;
 - prone watch/open/dedup/recovery and final recovered Dashboard state;
 - outside watch/open/dedup/recovery and final recovered Dashboard state;
-- diaper start/complete exact action counters plus negative silence;
-- burping start/complete exact action counters plus negative silence;
-- cross-action, question, unsupported and medication inputs remaining closed;
+- diaper start/complete exact action counters plus all three negative classes;
+- burping start/complete exact action counters plus all three negative classes;
+- per-step action-code/match-kind mismatch rejection;
+- legal cross-action self-classification, ambiguous multi-action silence and no-wake
+  silence, with question/unsupported/medication inputs remaining closed;
 - report privacy, action-count bounds and explicit visual non-proof language;
 - the actual bounded eight-scenario run through all required lanes;
 - focused, full Python, frontend, compile, shell, Make, diff, media and privacy gates.

@@ -12,9 +12,9 @@ worker or drop errors. Keep visual observations separate from synthetic Guardian
 expectations; in particular, `NEG-03` currently reports adult absent in all 50 frames.
 The next offline product slice is the approved expansion design at
 `docs/superpowers/specs/2026-08-29-offline-guardian-scenario-expansion-design.md`.
-It uses existing licensed/generated fixtures for movement/rollover and
-baby-not-visible, and generated inputs for the approved low-risk diaper/burping Voice
-actions. The owner paused before plan and implementation. When explicitly resumed,
+It uses existing licensed/generated fixtures for `PRONE-CANDIDATE-01` and
+`OUTSIDE-CANDIDATE-01`, and generated inputs for the approved low-risk diaper/burping
+Voice actions. Visual and Guardian oracle lanes remain `INDEPENDENT`. The owner paused before plan and implementation. When explicitly resumed,
 write the implementation plan first; do not change Guardian rules, enable Camera Reply
 or write Baby Care. Real-baby accuracy and public baseline promotion remain separate
 later gates.
@@ -38,7 +38,7 @@ Until then, do not capture, create a real descriptor, replay private media or ru
 baseline operation.
 
 **Visual regression public corpus follow-up (public-corpus proposal base `681edd3`,
-branch remote `75f62b8`; no PR or merge):** follow
+branch remote `60af28c`; no PR or merge):** follow
 `docs/superpowers/plans/2026-08-29-visual-regression-corpus-ready-baseline.md`.
 Retain the 13 reviewed clips as the repeatable candidate set.
 `NEG-02` and synthetic `OCC-03` are now covered; acquire a licensed, checksum-pinned
