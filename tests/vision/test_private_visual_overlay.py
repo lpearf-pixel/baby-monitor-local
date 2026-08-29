@@ -245,6 +245,44 @@ def test_exact_digest_human_receipt_completes_review(tmp_path: Path) -> None:
     assert validation.content_review_complete is True
 
 
+def test_review_tree_nonprivate_file_blocks_local_readiness(tmp_path: Path) -> None:
+    root, _ = create_overlay(tmp_path)
+    write_review_receipt(root)
+    review_root = root / "review-frames"
+    review_root.mkdir(mode=0o700)
+    review = review_root / ASSET_ID
+    review.mkdir(mode=0o700)
+    frame = review / "first.png"
+    frame.write_bytes(b"generated-frame")
+    frame.chmod(0o644)
+
+    validation = validate(
+        descriptor(
+            authorization_review="approved",
+            privacy_review="approved",
+        ),
+        root,
+    )
+
+    assert validation.readiness is LocalOverlayReadiness.LOCAL_UNAVAILABLE
+    assert validation.reason == "private_overlay_permissions_invalid"
+
+
+def test_optional_private_tree_inventory_is_bounded(tmp_path: Path) -> None:
+    root, _ = create_overlay(tmp_path)
+    temp = root / "temp"
+    temp.mkdir(mode=0o700)
+    for sequence in range(513):
+        entry = temp / f"entry-{sequence:03d}.tmp"
+        entry.write_bytes(b"x")
+        entry.chmod(0o600)
+
+    validation = validate(descriptor(), root)
+
+    assert validation.readiness is LocalOverlayReadiness.LOCAL_UNAVAILABLE
+    assert validation.reason == "private_overlay_mapping_invalid"
+
+
 @pytest.mark.parametrize(
     ("receipt_override", "descriptor_override"),
     [

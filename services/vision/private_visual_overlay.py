@@ -21,6 +21,7 @@ from packages.contracts.visual_corpus import CorpusReadiness, ScenarioId
 
 MAX_INDEX_BYTES = 64 * 1024
 MAX_REVIEW_RECEIPT_BYTES = 16 * 1024
+MAX_PRIVATE_TREE_ENTRIES = 512
 _ALLOWED_ROOT_ENTRIES = frozenset(
     {"index.json", "assets", "review-frames", "results", "temp"}
 )
@@ -291,12 +292,55 @@ def _validate_root_inventory(root: Path) -> None:
     ):
         raise _PrivateOverlayFailure("private_overlay_mapping_invalid")
     for name in _OPTIONAL_DIRECTORIES.intersection(entries):
-        _require_directory(root / name)
+        directory = root / name
+        _require_directory(directory)
+        _validate_private_tree(directory)
 
 
 def _inventory(path: Path) -> set[str]:
+    observed: set[str] = set()
     with os.scandir(path) as entries:
-        return {entry.name for entry in entries}
+        for entry in entries:
+            if len(observed) >= MAX_PRIVATE_TREE_ENTRIES:
+                raise _PrivateOverlayFailure("private_overlay_mapping_invalid")
+            observed.add(entry.name)
+    return observed
+
+
+def _validate_private_tree(root: Path) -> None:
+    pending: list[tuple[Path, int]] = [(root, 0)]
+    total = 0
+    while pending:
+        directory, depth = pending.pop()
+        with os.scandir(directory) as entries:
+            for entry in entries:
+                total += 1
+                if total > MAX_PRIVATE_TREE_ENTRIES:
+                    raise _PrivateOverlayFailure("private_overlay_mapping_invalid")
+                try:
+                    value = entry.stat(follow_symlinks=False)
+                except OSError as exc:
+                    raise _PrivateOverlayFailure(
+                        "private_overlay_permissions_invalid"
+                    ) from exc
+                path = Path(entry.path)
+                if stat.S_ISLNK(value.st_mode):
+                    raise _PrivateOverlayFailure(
+                        "private_overlay_permissions_invalid"
+                    )
+                if stat.S_ISDIR(value.st_mode):
+                    if depth >= 2:
+                        raise _PrivateOverlayFailure(
+                            "private_overlay_mapping_invalid"
+                        )
+                    _require_directory(path)
+                    pending.append((path, depth + 1))
+                elif stat.S_ISREG(value.st_mode):
+                    _require_private_file(path)
+                else:
+                    raise _PrivateOverlayFailure(
+                        "private_overlay_permissions_invalid"
+                    )
 
 
 def _require_directory(path: Path) -> os.stat_result:

@@ -4,13 +4,21 @@ import importlib
 import json
 import os
 import stat
+import subprocess
 import threading
 from dataclasses import replace
 from pathlib import Path
+from types import SimpleNamespace
 
 import pytest
 
 from services.vision.private_visual_overlay import PrivateMediaFacts
+from packages.contracts.private_visual_overlay import (
+    LocalOverlayReadiness,
+    PrivateOverlayDescriptor,
+)
+from packages.contracts.visual_corpus import CorpusReadiness, ScenarioId
+from services.vision.private_visual_overlay import PrivateOverlayValidation
 
 
 ASSET_ID = "plc-0123456789abcdef0123456789abcdef"
@@ -113,6 +121,19 @@ def test_parser_rejects_caller_controlled_media_and_baseline_inputs(
 ) -> None:
     with pytest.raises(SystemExit):
         tool().parser().parse_args(arguments)
+
+
+def test_parser_never_echoes_rejected_private_value(
+    capsys: pytest.CaptureFixture[str],
+) -> None:
+    marker = "SENSITIVE_MARKER"
+
+    with pytest.raises(SystemExit):
+        tool().parser().parse_args(
+            ["capture", "--duration", "20", "--destination", marker]
+        )
+
+    assert marker not in capsys.readouterr().err
 
 
 @pytest.mark.parametrize(
@@ -618,10 +639,17 @@ def test_validate_and_review_prepare_do_not_create_missing_private_runtime(
     module = tool()
     root = repository(tmp_path)
     monkeypatch.setattr(module, "REPOSITORY_ROOT", root)
+    monkeypatch.setattr(
+        module,
+        "load_manifest",
+        lambda _path: SimpleNamespace(readiness=CorpusReadiness.PARTIAL),
+    )
 
     assert module.main(["validate"]) == 2
     validate_output = capsys.readouterr().out
     assert "result=FAIL" in validate_output
+    assert "public_readiness=PARTIAL" in validate_output
+    assert "local_readiness=LOCAL_UNAVAILABLE" in validate_output
     assert "reason=private_overlay_unavailable" in validate_output
     assert list(root.iterdir()) == []
 
@@ -804,6 +832,163 @@ def test_review_prepare_rejects_unexpected_frame_inventory(tmp_path: Path) -> No
     assert not (review_root / ASSET_ID).exists()
 
 
+def test_review_prepare_uses_one_held_descriptor_for_all_frame_reads(
+    tmp_path: Path,
+) -> None:
+    module = tool()
+    root = repository(tmp_path)
+    module.capture_private_asset(
+        root,
+        25,
+        preflight=ready_preflight(),
+        postflight=lambda: ready_preflight(),
+        runner=generated_runner,
+        probe=generated_probe,
+        asset_id_factory=lambda: ASSET_ID,
+    )
+    sources: list[str] = []
+
+    def frame_runner(argv: tuple[str, ...], _timeout: float) -> None:
+        source = argv[argv.index("-i") + 1]
+        sources.append(source)
+        output = Path(argv[-1])
+        if "%06d" in output.name:
+            for sequence in range(1, 51):
+                output.with_name(
+                    output.name.replace("%06d", f"{sequence:06d}")
+                ).write_bytes(b"generated-frame")
+        else:
+            output.write_bytes(b"generated-frame")
+
+    module.prepare_review_material(
+        root,
+        ASSET_ID,
+        runner=frame_runner,
+        probe=generated_probe,
+    )
+
+    assert len(sources) == 3
+    assert len(set(sources)) == 1
+    assert sources[0].startswith("/dev/fd/")
+
+
+def test_review_prepare_rejects_in_place_media_change_even_when_bytes_restore(
+    tmp_path: Path,
+) -> None:
+    module = tool()
+    root = repository(tmp_path)
+    module.capture_private_asset(
+        root,
+        25,
+        preflight=ready_preflight(),
+        postflight=lambda: ready_preflight(),
+        runner=generated_runner,
+        probe=generated_probe,
+        asset_id_factory=lambda: ASSET_ID,
+    )
+    media = (
+        root
+        / "runtime/test-corpus/visual/private-overlay/assets"
+        / f"{ASSET_ID}.mkv"
+    )
+    calls = 0
+
+    def frame_runner(argv: tuple[str, ...], _timeout: float) -> None:
+        nonlocal calls
+        calls += 1
+        if calls == 1:
+            media.write_bytes(b"changed-private-video-bytes")
+            media.chmod(0o600)
+        elif calls == 3:
+            media.write_bytes(MEDIA)
+            media.chmod(0o600)
+            current = media.stat()
+            os.utime(
+                media,
+                ns=(current.st_atime_ns, current.st_mtime_ns + 1_000_000),
+            )
+        output = Path(argv[-1])
+        if "%06d" in output.name:
+            for sequence in range(1, 51):
+                output.with_name(
+                    output.name.replace("%06d", f"{sequence:06d}")
+                ).write_bytes(b"generated-frame")
+        else:
+            output.write_bytes(b"generated-frame")
+
+    with pytest.raises(
+        module.PrivateVisualCorpusError,
+        match="^private_overlay_identity_mismatch$",
+    ):
+        module.prepare_review_material(
+            root,
+            ASSET_ID,
+            runner=frame_runner,
+            probe=generated_probe,
+        )
+
+    review = (
+        root
+        / "runtime/test-corpus/visual/private-overlay/review-frames"
+        / ASSET_ID
+    )
+    assert not review.exists()
+
+
+def test_review_prepare_real_ffmpeg_creates_explicit_last_frame(
+    tmp_path: Path,
+) -> None:
+    module = tool()
+    root = repository(tmp_path)
+
+    def real_video_runner(argv: tuple[str, ...], _timeout: float) -> None:
+        completed = subprocess.run(
+            (
+                module.FFMPEG_EXECUTABLE,
+                "-nostdin",
+                "-hide_banner",
+                "-loglevel",
+                "error",
+                "-y",
+                "-f",
+                "lavfi",
+                "-i",
+                "color=c=black:s=320x180:r=10",
+                "-t",
+                "2",
+                "-c:v",
+                "libx264",
+                "-pix_fmt",
+                "yuv420p",
+                "-an",
+                "-f",
+                "matroska",
+                argv[-1],
+            ),
+            stdin=subprocess.DEVNULL,
+            stdout=subprocess.DEVNULL,
+            stderr=subprocess.DEVNULL,
+            timeout=15,
+            check=False,
+        )
+        assert completed.returncode == 0
+
+    module.capture_private_asset(
+        root,
+        25,
+        preflight=ready_preflight(),
+        postflight=lambda: ready_preflight(),
+        runner=real_video_runner,
+        probe=generated_probe,
+        asset_id_factory=lambda: ASSET_ID,
+    )
+
+    result = module.prepare_review_material(root, ASSET_ID)
+
+    assert result.sample_frame_count == 4
+    assert result.last_frame_present is True
+
+
 def test_review_status_prints_no_receipt_detail_or_path(
     tmp_path: Path,
     monkeypatch: pytest.MonkeyPatch,
@@ -904,3 +1089,109 @@ def test_review_status_revalidates_changed_media(
     monkeypatch.setattr(module, "probe_private_media", generated_probe)
 
     assert module.review_status(root, ASSET_ID).state == "incomplete"
+
+
+def test_validate_command_reports_public_and_local_readiness_separately(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+    capsys: pytest.CaptureFixture[str],
+) -> None:
+    module = tool()
+    root = repository(tmp_path)
+    descriptor_path = root / "tests/fixtures/visual_corpus/private_overlay.json"
+    descriptor_path.parent.mkdir(parents=True)
+    descriptor_path.write_text("{}", encoding="ascii")
+    overlay = root / "runtime/test-corpus/visual/private-overlay"
+    overlay.mkdir(parents=True)
+    asset = PrivateOverlayDescriptor.model_validate(
+        {
+            "schema_version": 1,
+            "source_type": "PRIVATE_LOCAL_CAPTURE",
+            "assets": [
+                {
+                    "private_asset_id": ASSET_ID,
+                    "sha256": "1" * 64,
+                    "bytes": 1,
+                    "duration_ms": 25000,
+                    "codec": "hevc",
+                    "width": 1,
+                    "height": 1,
+                    "fps": 10.0,
+                    "scenario_ids": ["WIDE-02", "NEG-01"],
+                    "authorization_review": "approved",
+                    "privacy_review": "approved",
+                }
+            ],
+        }
+    )
+    monkeypatch.setattr(module, "load_private_overlay_descriptor", lambda _path: asset)
+    monkeypatch.setattr(
+        module,
+        "validate_private_overlay",
+        lambda *_args, **_kwargs: PrivateOverlayValidation(
+            readiness=LocalOverlayReadiness.LOCAL_PARTIAL,
+            reason="private_overlay_valid",
+            asset_count=1,
+            scenario_count=2,
+            scenario_ids=(ScenarioId.WIDE_02, ScenarioId.NEG_01),
+            content_review_complete=True,
+        ),
+    )
+    monkeypatch.setattr(
+        module,
+        "load_manifest",
+        lambda _path: SimpleNamespace(readiness=CorpusReadiness.PARTIAL),
+    )
+
+    assert module._validate_command(root) == 0
+    assert capsys.readouterr().out.splitlines() == [
+        "result=PASS",
+        "operation=validate",
+        "public_readiness=PARTIAL",
+        "local_readiness=LOCAL_READY",
+        "reason=private_overlay_ready",
+        "asset_count=1",
+        "scenario_count=2",
+    ]
+
+
+def test_validate_command_requires_both_fixed_local_scenarios(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+    capsys: pytest.CaptureFixture[str],
+) -> None:
+    module = tool()
+    root = repository(tmp_path)
+    descriptor_path = root / "tests/fixtures/visual_corpus/private_overlay.json"
+    descriptor_path.parent.mkdir(parents=True)
+    descriptor_path.write_text("{}", encoding="ascii")
+    overlay = root / "runtime/test-corpus/visual/private-overlay"
+    overlay.mkdir(parents=True)
+    monkeypatch.setattr(
+        module,
+        "load_private_overlay_descriptor",
+        lambda _path: SimpleNamespace(),
+    )
+    monkeypatch.setattr(
+        module,
+        "validate_private_overlay",
+        lambda *_args, **_kwargs: PrivateOverlayValidation(
+            readiness=LocalOverlayReadiness.LOCAL_PARTIAL,
+            reason="private_overlay_valid",
+            asset_count=1,
+            scenario_count=1,
+            scenario_ids=(ScenarioId.WIDE_02,),
+            content_review_complete=True,
+        ),
+    )
+    monkeypatch.setattr(
+        module,
+        "load_manifest",
+        lambda _path: SimpleNamespace(readiness=CorpusReadiness.PARTIAL),
+    )
+
+    assert module._validate_command(root) == 0
+    output = capsys.readouterr().out.splitlines()
+    assert "public_readiness=PARTIAL" in output
+    assert "local_readiness=LOCAL_PARTIAL" in output
+    assert "reason=private_overlay_scenario_invalid" in output
