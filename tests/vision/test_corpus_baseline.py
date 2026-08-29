@@ -9,9 +9,11 @@ from services.vision.corpus_baseline import (
     BaselineError,
     build_result_set,
     compare_result_sets,
+    load_result_set,
     promote_baseline,
     result_set_digest,
 )
+from services.vision.corpus_replay import PrivateReplayProjection
 
 
 MANDATORY_CLIPS = (
@@ -31,6 +33,7 @@ MANDATORY_CLIPS = (
     "NEG-02",
     "NEG-03",
 )
+PRIVATE_ASSET_ID = "plc-0123456789abcdef0123456789abcdef"
 
 
 def replay_result(
@@ -99,6 +102,33 @@ def test_build_result_set_sorts_clips_and_rejects_duplicates() -> None:
 
     with pytest.raises(BaselineError, match="visual_baseline_clip_identity_invalid"):
         result_set(results=(replay_result(), replay_result()))
+
+
+def test_build_rejects_private_projection_with_stable_reason() -> None:
+    private = PrivateReplayProjection(
+        clip_id=PRIVATE_ASSET_ID,
+        groups=("scenario:NEG-01", "scenario:WIDE-02"),
+    )
+
+    with pytest.raises(BaselineError, match="^private_baseline_operation_forbidden$"):
+        build_result_set(
+            manifest_digest="a" * 64,
+            recipe_digest="b" * 64,
+            profile="analysis_realtime",
+            git_sha="d" * 40,
+            model_artifacts=("openvino:" + "c" * 64,),
+            results=(private,),  # type: ignore[arg-type]
+        )
+
+
+def test_compare_rejects_directly_constructed_private_result_set() -> None:
+    public = result_set()
+    private = public.model_copy(
+        update={"results": (replay_result(PRIVATE_ASSET_ID),)}
+    )
+
+    with pytest.raises(BaselineError, match="^private_baseline_operation_forbidden$"):
+        compare_result_sets(public, private)
 
 
 @pytest.mark.parametrize(
@@ -303,3 +333,23 @@ def test_promotion_is_canonical_atomic_and_never_replaces(tmp_path: Path) -> Non
             expected_digest=digest,
         )
     assert destination.read_bytes() == original
+
+
+def test_private_envelope_is_rejected_before_baseline_destination_creation(
+    tmp_path: Path,
+) -> None:
+    candidate = tmp_path / "private-candidate.json"
+    candidate.write_text(
+        "{\"schema_version\":1,\"source_type\":\"PRIVATE_LOCAL_CAPTURE\","
+        f"\"private_asset_id\":\"{PRIVATE_ASSET_ID}\",\"results\":[]}}",
+        encoding="ascii",
+    )
+    destination = tmp_path / "not-created" / "baseline.json"
+
+    with pytest.raises(BaselineError, match="^private_baseline_operation_forbidden$"):
+        load_result_set(candidate)
+    with pytest.raises(BaselineError, match="^private_baseline_operation_forbidden$"):
+        promote_baseline(candidate, destination, expected_digest="0" * 64)
+
+    assert not destination.exists()
+    assert not destination.parent.exists()

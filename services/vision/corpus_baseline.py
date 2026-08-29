@@ -3,6 +3,7 @@ from __future__ import annotations
 import hashlib
 import json
 import os
+import re
 import stat
 import tempfile
 from pathlib import Path
@@ -46,6 +47,7 @@ MANDATORY_WIDE_GROUPS = frozenset(
         "wide_role:empty_or_object_only_crib_wide",
     }
 )
+_PRIVATE_ASSET_ID = re.compile(r"^plc-[0-9a-f]{32}$")
 
 
 class BaselineError(RuntimeError):
@@ -61,6 +63,8 @@ def build_result_set(
     model_artifacts: tuple[str, ...],
     results: tuple[ReplayResult, ...],
 ) -> ReplayResultSet:
+    if any(_is_private_result(result) for result in results):
+        raise BaselineError("private_baseline_operation_forbidden")
     clip_ids = [result.clip_id for result in results]
     if len(set(clip_ids)) != len(clip_ids):
         raise BaselineError("visual_baseline_clip_identity_invalid")
@@ -213,6 +217,8 @@ def _identity(value: ReplayResultSet) -> tuple[object, ...]:
 
 
 def _validated_result_set(value: ReplayResultSet) -> ReplayResultSet:
+    if _is_private_result_set(value):
+        raise BaselineError("private_baseline_operation_forbidden")
     try:
         return ReplayResultSet.model_validate(value.model_dump())
     except (ValidationError, ValueError) as exc:
@@ -299,12 +305,44 @@ def load_result_set(path: Path) -> ReplayResultSet:
             raise BaselineError("visual_baseline_candidate_invalid")
         if metadata.st_size <= 0 or metadata.st_size > MAX_RESULT_SET_BYTES:
             raise BaselineError("visual_baseline_candidate_invalid")
-        payload = path.read_bytes()
-        return ReplayResultSet.model_validate_json(payload)
+        raw = path.read_bytes()
+        payload = json.loads(raw)
+        if _is_private_payload(payload):
+            raise BaselineError("private_baseline_operation_forbidden")
+        return ReplayResultSet.model_validate(payload)
     except BaselineError:
         raise
     except (OSError, ValidationError, ValueError) as exc:
         raise BaselineError("visual_baseline_candidate_invalid") from exc
+
+
+def _is_private_result(value: object) -> bool:
+    clip_id = getattr(value, "clip_id", None)
+    return isinstance(clip_id, str) and _PRIVATE_ASSET_ID.fullmatch(clip_id) is not None
+
+
+def _is_private_result_set(value: object) -> bool:
+    results = getattr(value, "results", ())
+    return isinstance(results, (tuple, list)) and any(
+        _is_private_result(result) for result in results
+    )
+
+
+def _is_private_payload(payload: object) -> bool:
+    if not isinstance(payload, dict):
+        return False
+    if payload.get("source_type") == "PRIVATE_LOCAL_CAPTURE":
+        return True
+    if _PRIVATE_ASSET_ID.fullmatch(str(payload.get("private_asset_id", ""))):
+        return True
+    results = payload.get("results")
+    if not isinstance(results, list):
+        return False
+    return any(
+        isinstance(result, dict)
+        and _PRIVATE_ASSET_ID.fullmatch(str(result.get("clip_id", ""))) is not None
+        for result in results
+    )
 
 
 def _path_has_symlink(path: Path) -> bool:
