@@ -5,19 +5,21 @@ complete. Do not restart completed milestones. Execute the following stages in o
 the detailed approved specs and plans remain authoritative for behavior.
 
 **Offline Guardian scenario flow: software-complete, expansion next.** The approved
-four-scenario flow is implemented locally through `b174f94`: three public clips, one
-generated Voice scenario, seven independent lanes and one ignored JSON/HTML report.
+four-scenario flow is implemented and published through `b174f94`: three public clips,
+one generated Voice scenario, seven independent lanes and one ignored JSON/HTML report.
 The latest run passed 4/4 scenarios, 7/7 lanes and 165/165 frames with no decode,
 worker or drop errors. Keep visual observations separate from synthetic Guardian
 expectations; in particular, `NEG-03` currently reports adult absent in all 50 frames.
 The next offline product slice is the approved expansion design at
 `docs/superpowers/specs/2026-08-29-offline-guardian-scenario-expansion-design.md`.
-It uses existing licensed/generated fixtures for `PRONE-CANDIDATE-01` and
-`OUTSIDE-CANDIDATE-01`, and generated inputs for the approved low-risk diaper/burping
-Voice actions. Visual and Guardian oracle lanes remain `INDEPENDENT`. The owner paused before plan and implementation. When explicitly resumed,
-write the implementation plan first; do not change Guardian rules, enable Camera Reply
-or write Baby Care. Real-baby accuracy and public baseline promotion remain separate
-later gates.
+It uses existing licensed/generated `DAY-03` and `OCC-03` fixtures only as independent
+pipeline observations, separate from synthetic `prone_candidate` and
+`outside_candidate` Guardian oracles, and uses generated inputs for the approved
+low-risk diaper/burping Voice actions. Visual and Guardian oracle lanes remain
+`INDEPENDENT`. The owner paused before plan and implementation. When explicitly
+resumed, write the implementation plan first; do not change Guardian rules, enable
+Camera Reply or write Baby Care. Real-baby accuracy and public baseline promotion
+remain separate later gates.
 
 **Private local visual overlay (deferred by owner):** the contract in
 `docs/superpowers/specs/2026-08-29-private-local-visual-corpus-overlay-design.md` and
@@ -37,8 +39,9 @@ camera access.
 Until then, do not capture, create a real descriptor, replay private media or run any
 baseline operation.
 
-**Visual regression public corpus follow-up (public-corpus proposal base `681edd3`,
-branch remote `60af28c`; no PR or merge):** follow
+**Visual regression public corpus follow-up (public-corpus proposal base `681edd3`;
+later private-overlay and offline-scenario work is published on the same feature branch;
+no PR or merge):** follow
 `docs/superpowers/plans/2026-08-29-visual-regression-corpus-ready-baseline.md`.
 Retain the 13 reviewed clips as the repeatable candidate set.
 `NEG-02` and synthetic `OCC-03` are now covered; acquire a licensed, checksum-pinned

@@ -1961,15 +1961,34 @@ The owner then paused work and requested a documentation checkpoint plus remote 
 No implementation plan, code, fixture, manifest, model, report or runtime operation was
 created for the expansion.
 
-## 2026-08-29 Offline scenario expansion specification revision
+## 2026-08-29 Offline scenario expansion review amendments
 
-The docs-only revision starts from exact local and remote HEAD
-`60af28c066baf09d8d43455f964a52c0fd52bfdf`. It renames the visual/oracle scenarios to
-`PRONE-CANDIDATE-01` and `OUTSIDE-CANDIDATE-01`, makes the two lanes explicitly
-`INDEPENDENT`, closes Voice per-step action/match expectations and three negative
-classes, fixes single-level public-parent provenance and pins visual replay to
-65/50/50/100/65 frames (330 total) with zero skipped, dropped, decode or worker counts.
+An independent documentation and interface review used published branch checkpoint
+`60af28c066baf09d8d43455f964a52c0fd52bfdf`. The review found no Critical issue and
+closed four Important design ambiguities before implementation planning:
 
-Verification for this revision is the existing exact focused command with **167
-passed**, plus `git diff --check` PASS. No implementation plan, code, fixture, manifest,
-runtime, real-device, PR, merge or protected-branch action is part of this revision.
+- the deterministic scenarios are now named `PRONE-CANDIDATE-01` and
+  `OUTSIDE-CANDIDATE-01`, matching the actual Guardian risk kinds;
+- `DAY-03` and `OCC-03` declare an `INDEPENDENT` relationship to their synthetic
+  Guardian oracles, so artificial occlusion cannot be presented as bed-exit evidence;
+- generated Voice expectations bind action code and match kind per step, distinguish a
+  valid differently named action from an ambiguous multi-action negative, and retain
+  no-wake silence;
+- the fixed visual gate requires exact 65/50/50/100/65 frame counts, 330 total frames,
+  zero skipped/dropped/error frames and thirteen total lanes rather than accepting one
+  processed frame.
+
+The provenance contract is intentionally one-level: a synthetic scenario clip requires
+one reviewed direct `PUBLIC_DATASET` parent with the same source identity. A synthetic
+parent, deeper chain, cycle or source mismatch fails before media preparation. SUMMARY,
+STATUS and NEXT now describe the already published private-overlay and four-scenario
+work truthfully instead of retaining the obsolete `75f62b8` remote checkpoint.
+
+The reviewed base was exact local and remote HEAD
+`60af28c066baf09d8d43455f964a52c0fd52bfdf`. The focused evidence at that base was
+**167 passed**. The independent review environment did not contain the project pytest
+environment, so it did not claim a second fresh Python rerun. This docs-only amendment
+passed `git diff --check`, stale-state/spec-term scans and an added-line private-literal
+scan. It changes no code, fixture, manifest, implementation plan, model, threshold,
+baseline or runtime state and does not authorize camera, household-media, Camera Reply,
+PTZ, notification or Baby Care operations.

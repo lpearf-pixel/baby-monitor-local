@@ -2,17 +2,18 @@
 
 **Date:** 2026-08-29
 
-**Status:** Approved design; implementation paused by the owner. This document does
-not authorize implementation while paused, camera or household-media access, model or
-threshold changes, Camera Reply, PTZ, notification delivery, Baby Care writes, baseline
-promotion, PR creation, merge or protected-branch changes.
+**Status:** Approved design with review amendments incorporated; implementation paused
+by the owner. This document does not authorize implementation while paused, camera or
+household-media access, model or threshold changes, Camera Reply, PTZ, notification
+delivery, Baby Care writes, baseline promotion, PR creation, merge or protected-branch
+changes.
 
 ## 1. Goal
 
 Extend the accepted four-scenario offline flow to the existing suite limit of eight
-scenarios. The extension adds repeatable evidence for `prone_candidate` Guardian
-behavior, `outside_candidate` Guardian behavior and the already closed low-risk diaper
-and burping Voice actions. It must preserve the separation between actual visual
+scenarios. The extension adds repeatable evidence for `prone_candidate` and
+`outside_candidate` Guardian behavior and the already closed low-risk diaper and
+burping Voice actions. It must preserve the separation between actual visual
 observations and synthetic deterministic Guardian expectations.
 
 The extension is a regression and integration test. It does not prove that the current
@@ -49,6 +50,8 @@ The expansion adds exactly four scenarios:
 
 - Visual observation uses admitted public clip `DAY-03` with
   `provenance=PUBLIC_VIDEO` and `analysis_realtime`.
+- The scenario declares `visual_oracle_relationship=INDEPENDENT`. The public clip is a
+  pipeline observation and is not the evidence source for the Guardian oracle.
 - Its actual observation/candidate counts remain observational. The visual lane passes
   only pipeline, model-state, frame-accounting and privacy/isolation gates.
 - A separate `SYNTHETIC_SEMANTIC_ORACLE` supplies two qualifying
@@ -57,19 +60,23 @@ The expansion adds exactly four scenarios:
 - Expected Guardian behavior is one watch, one alert, no duplicate event and one
   recovery for `prone_candidate`; final Dashboard state has one recovered event and no
   open event.
-- The report must not describe `DAY-03` as a real rollover or prone-sleep example.
+- The report must not describe `DAY-03` as a real rollover or prone-sleep example. Any
+  emitted `possible_rollover_or_prone` count, including zero, remains observational and
+  does not change the deterministic `prone_candidate` result.
 
 ### 3.2 OUTSIDE-CANDIDATE-01
 
 - Visual observation uses public-derived synthetic clip `OCC-03` with
   `provenance=GENERATED_VISUAL` and `analysis_realtime`.
+- The scenario declares `visual_oracle_relationship=INDEPENDENT`. Artificial majority
+  occlusion is not evidence that the subject is outside the bed.
 - A separate oracle supplies two qualifying `outside_candidate` reviews, one duplicate
   review and two explicit inside/visible safe reviews.
 - Expected Guardian behavior is one watch, one alert, no duplicate event and one
   recovery for `outside_candidate`; final Dashboard state has one recovered event and
   no open event.
 - `OCC-03` is not a real household absence example and cannot validate bed-exit
-  accuracy.
+  accuracy, baby-not-visible accuracy or the mapping between those states.
 
 ### 3.3 VOICE-DIAPER-01
 
@@ -98,12 +105,14 @@ scenario provenance must be corrected from `PUBLIC_VIDEO` to `GENERATED_VISUAL`.
 Scenario-to-manifest validation must enforce a one-level provenance rule:
 
 - `PUBLIC_DATASET` clip -> `PUBLIC_VIDEO`;
-- `SYNTHETIC` clip -> `GENERATED_VISUAL`, with exactly one non-null
-  `parent_clip_id` whose parent is a direct `PUBLIC_DATASET` clip;
-- that public parent must not itself have a parent;
-- recursive ancestry, a synthetic parent, missing/duplicate parent, private-local,
-  unsupported or provenance-mismatched clip -> fail before download, preparation,
-  model construction or runtime-root creation.
+- `SYNTHETIC` clip -> `GENERATED_VISUAL` only when its direct parent is one reviewed
+  `PUBLIC_DATASET` clip with the same `source_id`;
+- another synthetic parent, a deeper chain, cycle, mismatched source, private-local,
+  missing, duplicate or unsupported clip -> fail
+  before download, preparation, model construction or runtime-root creation.
+
+This version intentionally permits one derivation level only. Recursive ancestry is a
+separate future contract and must not be inferred by an implementation plan.
 
 The fixed CLI selects exactly five unique visual clips:
 
@@ -114,21 +123,21 @@ DAY-01, OCC-02, NEG-03, DAY-03, OCC-03
 Their three unique public source downloads total 25,964,039 declared bytes, below the
 existing 128 MiB first-stage aggregate cap. The cap must not be raised.
 
-At the fixed 5 FPS replay profile, the exact frame contract is:
+The fixed `analysis_realtime` profile is 5 FPS. Successful execution requires exact
+frame accounting, not the existing one-frame minimum:
 
-```text
-DAY-01  = 65
-OCC-02  = 50
-NEG-03  = 50
-DAY-03  = 100
-OCC-03  = 65
-total   = 330
-```
+| Clip | Expected frames |
+|---|---:|
+| `DAY-01` | 65 |
+| `OCC-02` | 50 |
+| `NEG-03` | 50 |
+| `DAY-03` | 100 |
+| `OCC-03` | 65 |
+| **Total** | **330** |
 
-Every clip must report `frames.total == frames.processed` at its exact value and
-`frames.skipped == frames.dropped == errors.decode == errors.worker == 0`. Any mismatch
-fails the visual lane; these transport/accounting assertions do not make visual labels
-ground truth.
+Every visual lane requires `frames.total == frames.processed == expected`, with zero
+skipped, dropped, decode-error and worker-error frames. The complete fixed suite has
+exactly eight scenarios and thirteen required lanes.
 
 ## 5. Voice result contract
 
@@ -155,10 +164,18 @@ action.burping_start
 action.burping_complete
 ```
 
-Only exact low-risk action matches may increment these counters. Corrected Feeding and
-high-risk medication candidates retain their existing closed behavior; medication is
-excluded from this expansion. Result contracts remain bounded and contain no text,
-audio, paths, URLs, identifiers or model prose.
+Each `VoiceScenarioStepV1` must declare `expected_action_code` and
+`expected_match_kind`, both nullable and checked against the individual controller
+outcome. Aggregate counters are report evidence only; they cannot replace per-step
+comparison. Only exact low-risk action matches may increment these counters. Corrected
+Feeding and high-risk medication candidates retain their existing closed behavior;
+medication is excluded from this expansion. Result contracts remain bounded and
+contain no text, audio, paths, URLs, identifiers or model prose.
+
+An exact command for another approved low-risk action is not inherently negative. When
+freshly armed it must resolve to its own action code. The two silent negative classes in
+this suite are instead: an exact action without a wake, and one explicitly ambiguous
+multi-action wake-with-command input that matches no single approved action.
 
 The three mandatory negative classes are:
 
@@ -216,16 +233,19 @@ No baseline is generated, compared or promoted.
   ambiguous/no-wake controls silent.
 - Aggregate PASS requires every required lane to pass.
 
-The report and handoff must list actual visual candidate counts, including zero. A
-missing rollover, obstruction or absence candidate is a model-capability observation;
-it cannot be replaced by the Guardian oracle or converted into a success claim.
+The report and handoff must list a fixed bounded set of actual visual candidate counts,
+including explicit zero values. A missing rollover, obstruction or outside candidate is
+a model-capability observation; it cannot be replaced by the Guardian oracle or
+converted into a success claim. The report must expose the `INDEPENDENT` visual/oracle
+relationship for the two new Guardian scenarios.
 
 ## 8. Failure handling
 
 - Unknown scenario, wrong provenance, missing clip or unsafe public ancestry fails
   before media preparation.
-- Wrong action code, match kind, response count, ambiguous/no-wake acceptance or legal
-  cross-action misclassification fails the Voice lane.
+- Wrong per-step action code or match kind, response count, no-wake acceptance or
+  ambiguous multi-action acceptance fails the Voice lane. A valid differently named
+  action must be classified as itself rather than forced silent.
 - Guardian transition/event/Dashboard mismatch fails the Guardian lane without
   changing thresholds or expected results after observation.
 - Timeout, interruption, component close failure or report failure retains the first
@@ -237,20 +257,22 @@ it cannot be replaced by the Guardian oracle or converted into a success claim.
 
 Implementation requires RED -> GREEN coverage for:
 
-- exactly eight unique scenarios and the four new IDs;
+- exactly eight unique scenarios, thirteen required lanes and the four new IDs;
 - provenance correction for `OCC-02` and manifest-bound provenance rejection;
-- one-level public-parent validation, recursive/synthetic-parent rejection and the
-  exact five-clip selection;
-- exact 65/50/50/100/65 frame accounting, 330 total and zero skipped/dropped/decode/
-  worker counts;
-- explicit `INDEPENDENT` visual/oracle contract coverage;
+- direct-parent-only public derivation validation and the exact five-clip selection;
+- exact per-clip frame counts totaling 330, with zero skipped/dropped/error frames;
+- `INDEPENDENT` visual/oracle relationship validation and reporting;
 - prone watch/open/dedup/recovery and final recovered Dashboard state;
 - outside watch/open/dedup/recovery and final recovered Dashboard state;
-- diaper start/complete exact action counters plus all three negative classes;
-- burping start/complete exact action counters plus all three negative classes;
+- diaper start/complete per-step action binding, exact counters and all three negative
+  classes;
+- burping start/complete per-step action binding, exact counters and all three negative
+  classes;
 - per-step action-code/match-kind mismatch rejection;
 - legal cross-action self-classification, ambiguous multi-action silence and no-wake
-  silence, with question/unsupported/medication inputs remaining closed;
+  silence;
+- no-wake, ambiguous multi-action, question, unsupported and medication inputs
+  remaining closed while another valid exact low-risk action retains its own identity;
 - report privacy, action-count bounds and explicit visual non-proof language;
 - the actual bounded eight-scenario run through all required lanes;
 - focused, full Python, frontend, compile, shell, Make, diff, media and privacy gates.
