@@ -165,13 +165,13 @@ git commit -m "feat: run isolated guardian scenario lane"
 - Delegates to `VisualCorpusReplay.run_clip` with a new `ReplayProfile` per scenario.
 - Retains only `ReplayResult` aggregate fields; never forwards frame observations into the Guardian oracle.
 
-- [ ] **Step 1: Write visual lane RED tests**
+- [x] **Step 1: Write visual lane RED tests**
 
 Generate a short H.264 Matroska fixture under `tmp_path`, select the tracked clip by exact ID, and exercise the real `FfmpegFileFrameSource`, `VisionFramePolicy` and `VisualWorker`. Assert frame accounting, no persisted observations, bounded metrics and no Guardian database.
 
 Add fail-closed tests for missing clip, missing prepared artifact, decode failure, model unavailable, worker failure and clip-ID mismatch.
 
-- [ ] **Step 2: Run RED**
+- [x] **Step 2: Run RED**
 
 ```bash
 ../../.venv-alpha/bin/python -m pytest -q tests/integration/test_offline_guardian_scenario.py -k visual
@@ -179,18 +179,18 @@ Add fail-closed tests for missing clip, missing prepared artifact, decode failur
 
 Expected: `run_visual_lane` is missing.
 
-- [ ] **Step 3: Implement the minimum visual adapter**
+- [x] **Step 3: Implement the minimum visual adapter**
 
 Use the injected prepared resolver and model backend. Map `ReplayResult` to bounded counts and metrics without interpreting them as expected safety labels. A model-degraded or failed replay returns the exact stable reason and makes the required lane FAIL.
 
-- [ ] **Step 4: Run GREEN and adjacent gates**
+- [x] **Step 4: Run GREEN and adjacent gates**
 
 ```bash
 ../../.venv-alpha/bin/python -m pytest -q tests/integration/test_offline_guardian_scenario.py -k visual tests/vision/test_corpus_replay.py tests/vision/test_worker.py
 git diff --check
 ```
 
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
 
 ```bash
 git add services/offline_guardian_scenario.py tests/integration/test_offline_guardian_scenario.py
