@@ -9,6 +9,9 @@ from pathlib import Path
 
 from packages.contracts.offline_guardian_scenario import (
     OfflineGuardianScenarioV1,
+    OfflineScenarioResultV1,
+    OfflineScenarioRunV1,
+    OfflineScenarioSuiteV1,
     ScenarioLaneResult,
 )
 from packages.contracts.visual_corpus import VisualCorpusManifest
@@ -26,6 +29,112 @@ from services.voice.vad import VoiceActivityDetector
 
 VOICE_FRAME_BYTES = 3_200
 MAX_GENERATED_PCM_BYTES = 1_024 * 1_024
+
+
+class OfflineGuardianScenarioRunner:
+    def __init__(
+        self,
+        *,
+        runtime_root: Path,
+        visual_manifest: VisualCorpusManifest,
+        prepared_resolver: PreparedResolver,
+        model_backend: RealtimeModelBackend | None,
+        voice_fixture_provider: Callable[[str], bytes],
+        voice_vad: VoiceActivityDetector,
+        voice_asr: Asr,
+        voice_synthesizer: Synthesizer,
+    ) -> None:
+        self._runtime_root = Path(runtime_root)
+        self._visual_manifest = visual_manifest
+        self._prepared_resolver = prepared_resolver
+        self._model_backend = model_backend
+        self._voice_fixture_provider = voice_fixture_provider
+        self._voice_vad = voice_vad
+        self._voice_asr = voice_asr
+        self._voice_synthesizer = voice_synthesizer
+
+    def run(self, suite: OfflineScenarioSuiteV1) -> OfflineScenarioRunV1:
+        self._create_runtime_root()
+        results: list[OfflineScenarioResultV1] = []
+        first_reason: str | None = None
+        any_skip = False
+        for scenario in suite.scenarios:
+            scenario_root = self._runtime_root / scenario.scenario_id
+            scenario_root.mkdir(mode=0o700)
+            scenario_root.chmod(0o700)
+            lanes: list[ScenarioLaneResult] = []
+            for lane in scenario.required_lanes:
+                if lane == "visual_observation":
+                    result = run_visual_lane(
+                        scenario,
+                        self._visual_manifest,
+                        self._prepared_resolver,
+                        self._model_backend,
+                    )
+                elif lane == "guardian_deterministic":
+                    result = run_guardian_lane(scenario, scenario_root)
+                else:
+                    result = run_voice_lane(
+                        scenario,
+                        self._voice_fixture_provider,
+                        self._voice_vad,
+                        self._voice_asr,
+                        self._voice_synthesizer,
+                    )
+                lanes.append(result)
+                if result.status != "PASS" and first_reason is None:
+                    first_reason = result.reason
+                any_skip = any_skip or result.status == "SKIP"
+            scenario_status = _aggregate_status(lanes)
+            scenario_reason = next(
+                (lane.reason for lane in lanes if lane.status != "PASS"),
+                "ok",
+            )
+            results.append(
+                OfflineScenarioResultV1(
+                    scenario_id=scenario.scenario_id,
+                    status=scenario_status,
+                    reason=scenario_reason,
+                    lanes=tuple(lanes),
+                )
+            )
+
+        overall_status = _aggregate_status(
+            tuple(lane for result in results for lane in result.lanes)
+        )
+        return OfflineScenarioRunV1(
+            suite_id=suite.suite_id,
+            status=overall_status,
+            reason=first_reason or ("offline_scenario_skipped" if any_skip else "ok"),
+            results=tuple(results),
+        )
+
+    def _create_runtime_root(self) -> None:
+        root = self._runtime_root
+        parent = root.parent
+        if (
+            root.exists()
+            or root.is_symlink()
+            or not _private_runtime_root(parent)
+        ):
+            raise ValueError("offline_scenario_runtime_unsafe")
+        try:
+            root.mkdir(mode=0o700)
+            root.chmod(0o700)
+        except OSError:
+            raise ValueError("offline_scenario_runtime_unsafe") from None
+        if not _private_runtime_root(root):
+            raise ValueError("offline_scenario_runtime_unsafe")
+
+
+def _aggregate_status(
+    lanes: tuple[ScenarioLaneResult, ...] | list[ScenarioLaneResult],
+) -> str:
+    if any(lane.status == "FAIL" for lane in lanes):
+        return "FAIL"
+    if any(lane.status == "SKIP" for lane in lanes):
+        return "SKIP"
+    return "PASS"
 
 
 def run_voice_lane(
@@ -261,4 +370,9 @@ def _voice_failure(reason: str) -> ScenarioLaneResult:
     )
 
 
-__all__ = ["run_guardian_lane", "run_visual_lane", "run_voice_lane"]
+__all__ = [
+    "OfflineGuardianScenarioRunner",
+    "run_guardian_lane",
+    "run_visual_lane",
+    "run_voice_lane",
+]

@@ -419,3 +419,111 @@ def test_voice_lane_fails_closed_when_expectation_changes() -> None:
 
     assert result.status == "FAIL"
     assert result.reason == "scenario_voice_mismatch"
+
+
+def build_runner(tmp_path: Path, media: Path, *, backend: object | None = None):
+    from services.offline_guardian_scenario import OfflineGuardianScenarioRunner
+
+    fixtures, asr = voice_fixtures()
+    return OfflineGuardianScenarioRunner(
+        runtime_root=tmp_path / "scenario-run",
+        visual_manifest=load_manifest(VISUAL_MANIFEST),
+        prepared_resolver=lambda _clip, _profile: media,
+        model_backend=backend if backend is not None else AvailableVisualBackend(),
+        voice_fixture_provider=fixtures.__getitem__,
+        voice_vad=speech_vad(),
+        voice_asr=asr,
+        voice_synthesizer=RecordingScenarioSynth(),
+    )
+
+
+def test_runner_executes_all_required_lanes_in_declared_order(tmp_path: Path) -> None:
+    media = tmp_path / "public-fixture.mkv"
+    generated_video(media)
+    suite = load_offline_scenario_suite(FIXTURE)
+
+    result = build_runner(tmp_path, media).run(suite)
+
+    assert result.status == "PASS"
+    assert result.reason == "ok"
+    assert [item.scenario_id for item in result.results] == [
+        item.scenario_id for item in suite.scenarios
+    ]
+    assert [[lane.lane for lane in item.lanes] for item in result.results] == [
+        list(item.required_lanes) for item in suite.scenarios
+    ]
+    assert all(item.status == "PASS" for item in result.results)
+    assert result.production_state_touched is False
+    assert result.notification_dispatch_attempted is False
+    assert result.evidence_persisted is False
+    assert result.camera_opened is False
+    assert result.raw_audio_persisted is False
+    assert result.baby_care_called is False
+    root = tmp_path / "scenario-run"
+    assert stat.S_IMODE(root.stat().st_mode) == 0o700
+    assert {item.name for item in root.iterdir()} == {
+        item.scenario_id for item in suite.scenarios
+    }
+    assert all(stat.S_IMODE(item.stat().st_mode) == 0o700 for item in root.iterdir())
+
+
+def test_runner_retains_first_failure_and_does_not_retry_lane(tmp_path: Path) -> None:
+    from services.offline_guardian_scenario import OfflineGuardianScenarioRunner
+
+    media = tmp_path / "public-fixture.mkv"
+    generated_video(media)
+    suite = load_offline_scenario_suite(FIXTURE)
+    fixtures, asr = voice_fixtures()
+    resolved: list[str] = []
+    runner = OfflineGuardianScenarioRunner(
+        runtime_root=tmp_path / "scenario-run",
+        visual_manifest=load_manifest(VISUAL_MANIFEST),
+        prepared_resolver=lambda clip, _profile: (resolved.append(clip.clip_id), media)[1],
+        model_backend=None,
+        voice_fixture_provider=fixtures.__getitem__,
+        voice_vad=speech_vad(),
+        voice_asr=asr,
+        voice_synthesizer=RecordingScenarioSynth(),
+    )
+
+    result = runner.run(suite)
+
+    assert result.status == "FAIL"
+    assert result.reason == "visual_corpus_model_unavailable"
+    assert resolved == []
+    assert [item.status for item in result.results] == ["FAIL", "FAIL", "FAIL", "PASS"]
+
+
+@pytest.mark.parametrize("kind", ["directory", "symlink"])
+def test_runner_rejects_preexisting_runtime_root(tmp_path: Path, kind: str) -> None:
+    media = tmp_path / "public-fixture.mkv"
+    generated_video(media)
+    root = tmp_path / "scenario-run"
+    if kind == "directory":
+        root.mkdir(mode=0o700)
+        (root / "unknown").write_text("private", encoding="utf-8")
+    else:
+        actual = tmp_path / "actual"
+        actual.mkdir(mode=0o700)
+        root.symlink_to(actual, target_is_directory=True)
+
+    with pytest.raises(ValueError, match="^offline_scenario_runtime_unsafe$"):
+        build_runner(tmp_path, media).run(load_offline_scenario_suite(FIXTURE))
+
+
+def test_runner_does_not_turn_interruption_into_result(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    import services.offline_guardian_scenario as module
+
+    media = tmp_path / "public-fixture.mkv"
+    generated_video(media)
+    monkeypatch.setattr(
+        module,
+        "run_visual_lane",
+        lambda *_args, **_kwargs: (_ for _ in ()).throw(KeyboardInterrupt()),
+    )
+
+    with pytest.raises(KeyboardInterrupt):
+        build_runner(tmp_path, media).run(load_offline_scenario_suite(FIXTURE))

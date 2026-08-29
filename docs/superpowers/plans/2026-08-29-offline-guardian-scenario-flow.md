@@ -258,13 +258,13 @@ git commit -m "feat: add generated voice scenario lane"
   fixture provider, VAD, ASR and recording synthesizer.
 - Creates a mode-`0700` new session directory and one child directory per scenario.
 
-- [ ] **Step 1: Write orchestration RED tests**
+- [x] **Step 1: Write orchestration RED tests**
 
 Run all four fixture scenarios and assert order, fresh state, aggregate PASS only when every required lane passes, optional SKIP preservation, first failure retention, no lane restart and all six isolation booleans false.
 
 Add timeout/interruption and filesystem tests for symlink roots, pre-existing unknown entries, wrong modes, hard-linked output and more than eight scenarios.
 
-- [ ] **Step 2: Run RED**
+- [x] **Step 2: Run RED**
 
 ```bash
 ../../.venv-alpha/bin/python -m pytest -q tests/integration/test_offline_guardian_scenario.py -k runner
@@ -272,11 +272,11 @@ Add timeout/interruption and filesystem tests for symlink roots, pre-existing un
 
 Expected: runner API is missing.
 
-- [ ] **Step 3: Implement the minimum orchestrator**
+- [x] **Step 3: Implement the minimum orchestrator**
 
 Execute lanes in declared order, use fresh adapters per scenario and compute overall state from required lane states. The runner never catches `KeyboardInterrupt` as PASS and never creates output outside its supplied ignored root.
 
-- [ ] **Step 4: Run GREEN**
+- [x] **Step 4: Run GREEN**
 
 ```bash
 ../../.venv-alpha/bin/python -m pytest -q tests/integration/test_offline_guardian_scenario.py
@@ -284,7 +284,7 @@ Execute lanes in declared order, use fresh adapters per scenario and compute ove
 git diff --check
 ```
 
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
 
 ```bash
 git add services/offline_guardian_scenario.py tests/integration/test_offline_guardian_scenario.py
