@@ -184,20 +184,20 @@ git commit -m "feat: define private visual overlay contract"
 - The injected `probe(path: Path) -> PrivateMediaFacts` returns only aggregate facts:
   bytes, SHA-256, stream counts, duration, codec, width, height and fps.
 
-- [ ] **Step 1: Write filesystem RED tests**
+- [x] **Step 1: Write filesystem RED tests**
 
 Use `tmp_path` to cover missing overlay, root/file modes, owner mismatch through an
 injected stat result, symlinked parents/files, hard links, escape paths, duplicate
 mapping entries, unknown inventory entries and a mapping to the wrong asset ID.
 
-- [ ] **Step 2: Write media RED tests**
+- [x] **Step 2: Write media RED tests**
 
 Cover exact bytes/hash success and failures for changing file, mismatched digest,
 duration, codec, dimensions and fps. Require exactly one video stream and reject any
 audio, subtitle or data stream with `private_overlay_audio_present` or
 `private_overlay_media_invalid`.
 
-- [ ] **Step 3: Run RED**
+- [x] **Step 3: Run RED**
 
 ```bash
 ../../.venv-alpha/bin/python -m pytest -q \
@@ -206,14 +206,14 @@ audio, subtitle or data stream with `private_overlay_audio_present` or
 
 Expected: collection fails because `services.vision.private_visual_overlay` is absent.
 
-- [ ] **Step 4: Implement descriptor-bound validation**
+- [x] **Step 4: Implement descriptor-bound validation**
 
 Resolve `index.json` only below the canonical root. Open each asset descriptor-first,
 compare `fstat` identity to the directory entry, hash the held descriptor, probe the
 same `/dev/fd` or immutable owner-private snapshot and recheck identity before success.
 Never unlink ambiguous input. Return only stable reason codes.
 
-- [ ] **Step 5: Run GREEN and diff checks**
+- [x] **Step 5: Run GREEN and diff checks**
 
 ```bash
 ../../.venv-alpha/bin/python -m pytest -q \
@@ -225,7 +225,7 @@ Never unlink ambiguous input. Return only stable reason codes.
 git diff --check
 ```
 
-- [ ] **Step 6: Commit the validator slice**
+- [x] **Step 6: Commit the validator slice**
 
 ```bash
 git add services/vision/private_visual_overlay.py \
@@ -573,7 +573,8 @@ baseline command. Stop and request a separate baseline-use decision.
 
 ## Current exact next action
 
-Task 1 is complete locally at `0bd6e1a`. Stop for review. If the owner explicitly
-continues the approved software plan, execute Task 2 only with strict TDD. Do not
-capture household media or create a real private descriptor during software Tasks 1–7.
+Tasks 1–2 are complete locally at `0bd6e1a` and `e24eaf7`. Stop for review. If the
+owner explicitly continues the approved software plan, execute Task 3 only with strict
+TDD. Do not capture household media or create a real private descriptor during
+software Tasks 1–7.
 Task 8 always requires a fresh explicit owner-supervised capture authority.

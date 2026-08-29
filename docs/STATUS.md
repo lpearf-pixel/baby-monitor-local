@@ -40,9 +40,11 @@
   separates `LOCAL_READY` from public readiness and forbids private baseline operations
   by default. Software Task 1 is complete locally at `0bd6e1a`: the mutually exclusive
   contract, bounded redacted loader, canonical bytes and synthetic example are
-  implemented and tested. No resolver, real private descriptor, household capture,
-  local media
-  validation, replay or baseline action has occurred. Task 1 is local and not pushed.
+  implemented and tested. Software Task 2 is complete locally at `e24eaf7`: ignored
+  mapping, permissions, identity, streaming hash, held-FD media facts and TOCTOU changes
+  fail closed with stable reasons. Successful media validation remains `LOCAL_PARTIAL`.
+  No real private descriptor, household capture, content approval, `LOCAL_READY`, replay
+  or baseline action has occurred. Tasks 1–2 are local and not pushed.
 - Environment monitoring design and implementation plan: approved on 2026-08-05.
 - Stable Xiaomi Alpha commit: `0df20ae` on `stable/xiaomi-alpha`.
 - Active local development branch: `codex/xiaomi-camera-reply-lifecycle-review`.

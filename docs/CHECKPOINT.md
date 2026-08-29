@@ -269,8 +269,37 @@ Fresh Task 1 evidence:
 No public source enum, public manifest data, validator, replay or baseline
 implementation changed. No ignored overlay was created, no household media or real
 private metadata was read, and no camera, producer, Camera Reply, speaker or PTZ path
-was accessed. Task 2 filesystem/media validation remains pending; Task 8 capture has no
-authority.
+was accessed. At this checkpoint Task 2 filesystem/media validation remained pending;
+Task 8 capture had no authority.
+
+#### Private local overlay Task 2 filesystem and media validation
+
+Task 2 is committed locally at `e24eaf7`. Strict TDD began with the expected collection
+error because `services.vision.private_visual_overlay` did not exist. The first minimum
+implementation passed 33 generated-file cases. Four subsequent RED/GREEN rounds closed
+malformed probe output, media-file and directory-entry changes, `assets` and canonical
+root symlink replacement, and late root/assets inventory or index changes.
+
+The validator now resolves only a closed ignored `index.json`, requires owner `0700`
+directories and `0600` single-link files, compares directory entries to held descriptors,
+streams SHA-256 before and after the injected `/dev/fd` probe, rejects audio and all
+unexpected streams, and revalidates mapping and inventory before success. It never
+deletes ambiguous input and emits only bounded aggregate counts and stable reasons.
+
+Fresh Task 2 evidence:
+
+- filesystem/media tests passed 43/43;
+- Task 1 contract plus Task 2 validator tests passed 91/91;
+- the public corpus contract/tool/baseline command passed 43/43;
+- changed Python compiled and `git diff --check` passed;
+- public corpus validation remained `PASS`, `PARTIAL`, 13 clips and two missing
+  scenarios.
+
+All files were generated under pytest temporary directories. No ignored household
+overlay, real descriptor, camera, producer, Camera Reply, speaker, PTZ, replay or
+baseline path was accessed. A valid media-only overlay deliberately reports
+`LOCAL_PARTIAL`; content review, scenario readiness and `LOCAL_READY` remain later
+tasks.
 
 Draft PR #4 已实现并自动化验证 H.265 原码优先、VideoToolbox 按需兼容流、
 profile 绑定票据、无黑屏播放器回退以及可审计 go2rtc 双补丁构建。

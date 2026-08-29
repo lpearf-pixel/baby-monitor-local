@@ -47,8 +47,12 @@ Updated: 2026-08-29
   redacted loader, canonical serialization and a synthetic pending-review example.
   Public enums and manifest remain unchanged, and `LOCAL_READY` remains separate from
   public readiness.
-  No overlay resolver, household capture, real descriptor, replay or baseline action
-  exists; the local Task 1 work is not pushed.
+  Task 2 commit `e24eaf7` adds descriptor-bound ignored-overlay validation with
+  0700/0600 ownership checks, closed mapping inventory, held-FD double hashing,
+  no-audio media facts and root/parent/index TOCTOU revalidation. Valid media remains
+  `LOCAL_PARTIAL`; content review and `LOCAL_READY` are not implemented. No household
+  capture, real descriptor, replay or baseline action exists; Tasks 1–2 are local and
+  not pushed.
 - Stable Xiaomi line: `stable/xiaomi-alpha` at `0df20ae`.
 - Active Camera Reply review line: `codex/xiaomi-camera-reply-lifecycle-review`, based
   on accepted Voice head `4d479b8`; its published Task 8 checkpoint is `a622a7a`.
