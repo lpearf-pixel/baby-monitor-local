@@ -3,6 +3,7 @@ from __future__ import annotations
 import stat
 import subprocess
 import threading
+import time
 from pathlib import Path
 
 import pytest
@@ -185,6 +186,7 @@ def generated_video(path: Path) -> None:
         check=False,
     )
     assert completed.returncode == 0
+    path.chmod(0o600)
 
 
 def test_visual_lane_replays_real_file_through_current_worker(tmp_path: Path) -> None:
@@ -197,6 +199,7 @@ def test_visual_lane_replays_real_file_through_current_worker(tmp_path: Path) ->
         scenario("SAFE-SLEEP-01"),
         load_manifest(VISUAL_MANIFEST),
         lambda _clip, _profile: media,
+        tmp_path,
         AvailableVisualBackend(),
     )
 
@@ -207,6 +210,8 @@ def test_visual_lane_replays_real_file_through_current_worker(tmp_path: Path) ->
     assert result.counts["frames.processed"] >= 1
     assert result.counts["errors.decode"] == 0
     assert result.counts["errors.worker"] == 0
+    assert result.counts["observation.pose_count.1"] == 10
+    assert result.counts["observation.face_count.1"] == 10
     assert result.metrics_ms["pipeline.p95"] >= 0
     assert result.metrics_ms["model.p95"] >= 0
     assert not (tmp_path / "guardian-events.sqlite3").exists()
@@ -226,6 +231,7 @@ def test_visual_lane_rejects_unknown_clip_before_resolving_media() -> None:
         changed,
         load_manifest(VISUAL_MANIFEST),
         lambda *_args: called.append("resolver"),
+        Path.cwd(),
         AvailableVisualBackend(),
     )
 
@@ -255,6 +261,7 @@ def test_visual_lane_fails_closed_for_required_model_state(
         scenario("SAFE-SLEEP-01"),
         load_manifest(VISUAL_MANIFEST),
         lambda _clip, _profile: media,
+        tmp_path,
         backend,
     )
 
@@ -271,12 +278,39 @@ def test_visual_lane_reports_missing_prepared_artifact_without_path(
         scenario("SAFE-SLEEP-01"),
         load_manifest(VISUAL_MANIFEST),
         lambda _clip, _profile: tmp_path / "private-household-name.mkv",
+        tmp_path,
         AvailableVisualBackend(),
     )
 
     assert result.status == "FAIL"
     assert result.reason == "visual_corpus_input_invalid"
     assert "private-household-name" not in repr(result)
+
+
+def test_visual_lane_rejects_prepared_media_below_symlink_ancestor(
+    tmp_path: Path,
+) -> None:
+    from services.offline_guardian_scenario import run_visual_lane
+
+    actual = tmp_path / "actual"
+    nested = actual / "prepared"
+    nested.mkdir(mode=0o700, parents=True)
+    actual.chmod(0o700)
+    media = nested / "fixture.mkv"
+    generated_video(media)
+    linked = tmp_path / "linked"
+    linked.symlink_to(actual, target_is_directory=True)
+
+    result = run_visual_lane(
+        scenario("SAFE-SLEEP-01"),
+        load_manifest(VISUAL_MANIFEST),
+        lambda _clip, _profile: linked / "prepared/fixture.mkv",
+        linked / "prepared",
+        AvailableVisualBackend(),
+    )
+
+    assert result.status == "FAIL"
+    assert result.reason == "visual_corpus_input_invalid"
 
 
 def generated_pcm(amplitude: int) -> bytes:
@@ -425,19 +459,28 @@ def test_voice_lane_fails_closed_when_expectation_changes() -> None:
     assert result.reason == "scenario_voice_mismatch"
 
 
-def build_runner(tmp_path: Path, media: Path, *, backend: object | None = None):
+def build_runner(
+    tmp_path: Path,
+    media: Path,
+    *,
+    backend: object | None = None,
+    timeout_seconds: float = 180.0,
+):
     from services.offline_guardian_scenario import OfflineGuardianScenarioRunner
 
     fixtures, asr = voice_fixtures()
     return OfflineGuardianScenarioRunner(
         runtime_root=tmp_path / "scenario-run",
+        runtime_boundary=tmp_path,
         visual_manifest=load_manifest(VISUAL_MANIFEST),
         prepared_resolver=lambda _clip, _profile: media,
+        prepared_root=media.parent,
         model_backend=backend if backend is not None else AvailableVisualBackend(),
         voice_fixture_provider=fixtures.__getitem__,
-        voice_vad=speech_vad(),
-        voice_asr=asr,
-        voice_synthesizer=RecordingScenarioSynth(),
+        voice_vad_factory=speech_vad,
+        voice_asr_factory=lambda: ScenarioAsr(asr.mapping),
+        voice_synthesizer_factory=RecordingScenarioSynth,
+        timeout_seconds=timeout_seconds,
     )
 
 
@@ -481,13 +524,15 @@ def test_runner_retains_first_failure_and_does_not_retry_lane(tmp_path: Path) ->
     resolved: list[str] = []
     runner = OfflineGuardianScenarioRunner(
         runtime_root=tmp_path / "scenario-run",
+        runtime_boundary=tmp_path,
         visual_manifest=load_manifest(VISUAL_MANIFEST),
         prepared_resolver=lambda clip, _profile: (resolved.append(clip.clip_id), media)[1],
+        prepared_root=media.parent,
         model_backend=None,
         voice_fixture_provider=fixtures.__getitem__,
-        voice_vad=speech_vad(),
-        voice_asr=asr,
-        voice_synthesizer=RecordingScenarioSynth(),
+        voice_vad_factory=speech_vad,
+        voice_asr_factory=lambda: ScenarioAsr(asr.mapping),
+        voice_synthesizer_factory=RecordingScenarioSynth,
     )
 
     result = runner.run(suite)
@@ -515,6 +560,22 @@ def test_runner_rejects_preexisting_runtime_root(tmp_path: Path, kind: str) -> N
         build_runner(tmp_path, media).run(load_offline_scenario_suite(FIXTURE))
 
 
+def test_runner_rejects_runtime_root_below_symlink_ancestor(tmp_path: Path) -> None:
+    media = tmp_path / "public-fixture.mkv"
+    generated_video(media)
+    actual = tmp_path / "actual"
+    nested = actual / "nested"
+    nested.mkdir(mode=0o700, parents=True)
+    actual.chmod(0o700)
+    linked = tmp_path / "linked"
+    linked.symlink_to(actual, target_is_directory=True)
+
+    with pytest.raises(ValueError, match="^offline_scenario_runtime_unsafe$"):
+        build_runner(linked / "nested", media).run(
+            load_offline_scenario_suite(FIXTURE)
+        )
+
+
 def test_runner_does_not_turn_interruption_into_result(
     tmp_path: Path,
     monkeypatch: pytest.MonkeyPatch,
@@ -531,6 +592,105 @@ def test_runner_does_not_turn_interruption_into_result(
 
     with pytest.raises(KeyboardInterrupt):
         build_runner(tmp_path, media).run(load_offline_scenario_suite(FIXTURE))
+
+
+def test_runner_deadline_interrupts_blocking_lane(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    import services.offline_guardian_scenario as module
+
+    media = tmp_path / "public-fixture.mkv"
+    generated_video(media)
+    monkeypatch.setattr(module, "run_visual_lane", lambda *_args: time.sleep(1))
+
+    with pytest.raises(module.OfflineScenarioTimeout):
+        build_runner(tmp_path, media, timeout_seconds=0.01).run(
+            load_offline_scenario_suite(FIXTURE)
+        )
+
+
+def test_runner_builds_and_closes_fresh_voice_components(tmp_path: Path) -> None:
+    from services.offline_guardian_scenario import OfflineGuardianScenarioRunner
+
+    media = tmp_path / "public-fixture.mkv"
+    generated_video(media)
+    suite = load_offline_scenario_suite(FIXTURE)
+    voice_only = suite.model_copy(update={"scenarios": (suite.scenarios[-1],)})
+    fixtures, asr = voice_fixtures()
+    closed: list[str] = []
+
+    class ClosingVad(VoiceActivityDetector):
+        def close(self) -> None:
+            closed.append("vad")
+
+    class ClosingAsr(ScenarioAsr):
+        def close(self) -> None:
+            closed.append("asr")
+
+    class ClosingSynth(RecordingScenarioSynth):
+        def close(self) -> None:
+            closed.append("synth")
+
+    runner = OfflineGuardianScenarioRunner(
+        runtime_root=tmp_path / "scenario-run",
+        runtime_boundary=tmp_path,
+        visual_manifest=load_manifest(VISUAL_MANIFEST),
+        prepared_resolver=lambda _clip, _profile: media,
+        prepared_root=tmp_path,
+        model_backend=AvailableVisualBackend(),
+        voice_fixture_provider=fixtures.__getitem__,
+        voice_vad_factory=lambda: ClosingVad(
+            lambda waveform: 0.9 if waveform.any() else 0.0
+        ),
+        voice_asr_factory=lambda: ClosingAsr(asr.mapping),
+        voice_synthesizer_factory=ClosingSynth,
+    )
+
+    result = runner.run(voice_only)
+
+    assert result.status == "PASS"
+    assert closed == ["synth", "asr", "vad"]
+
+
+def test_runner_closes_created_voice_components_when_factory_fails(
+    tmp_path: Path,
+) -> None:
+    from services.offline_guardian_scenario import OfflineGuardianScenarioRunner
+
+    media = tmp_path / "public-fixture.mkv"
+    generated_video(media)
+    suite = load_offline_scenario_suite(FIXTURE)
+    voice_only = suite.model_copy(update={"scenarios": (suite.scenarios[-1],)})
+    fixtures, _asr = voice_fixtures()
+    closed: list[str] = []
+
+    class ClosingVad(VoiceActivityDetector):
+        def close(self) -> None:
+            closed.append("vad")
+
+    def failing_asr_factory():
+        raise RuntimeError("private factory failure")
+
+    runner = OfflineGuardianScenarioRunner(
+        runtime_root=tmp_path / "scenario-run",
+        runtime_boundary=tmp_path,
+        visual_manifest=load_manifest(VISUAL_MANIFEST),
+        prepared_resolver=lambda _clip, _profile: media,
+        prepared_root=tmp_path,
+        model_backend=AvailableVisualBackend(),
+        voice_fixture_provider=fixtures.__getitem__,
+        voice_vad_factory=lambda: ClosingVad(
+            lambda waveform: 0.9 if waveform.any() else 0.0
+        ),
+        voice_asr_factory=failing_asr_factory,
+        voice_synthesizer_factory=RecordingScenarioSynth,
+    )
+
+    with pytest.raises(RuntimeError, match="private factory failure"):
+        runner.run(voice_only)
+
+    assert closed == ["vad"]
 
 
 def report_run() -> OfflineScenarioRunV1:
@@ -588,6 +748,7 @@ def test_report_publishes_canonical_json_and_static_html(tmp_path: Path) -> None
     assert "<script" not in html.lower()
     assert "http:" not in html.lower()
     assert "https:" not in html.lower()
+    assert "does not prove model accuracy" in html
     assert stat.S_IMODE(json_path.stat().st_mode) == 0o600
     assert stat.S_IMODE(html_path.stat().st_mode) == 0o600
     assert {item.name for item in json_path.parent.iterdir()} == {
@@ -641,6 +802,46 @@ def test_report_rolls_back_owned_first_publication_when_second_fails(
         module.publish_offline_scenario_report(report_run(), destination)
 
     assert list(destination.iterdir()) == []
+
+
+def test_report_rolls_back_finals_when_second_temp_cleanup_fails(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    import services.offline_guardian_report as module
+
+    destination = report_destination(tmp_path)
+    real_unlink = Path.unlink
+
+    def fail_html_temp(path: Path, *args, **kwargs) -> None:
+        if path.name == ".scenario-report.html.tmp":
+            raise OSError("private cleanup failure")
+        real_unlink(path, *args, **kwargs)
+
+    monkeypatch.setattr(Path, "unlink", fail_html_temp)
+
+    with pytest.raises(ValueError, match="^offline_scenario_report_failed$"):
+        module.publish_offline_scenario_report(report_run(), destination)
+
+    assert not (destination / "scenario-result.v1.json").exists()
+    assert not (destination / "scenario-report.html").exists()
+    retained = destination / ".scenario-report.html.tmp"
+    assert retained.is_file()
+    assert stat.S_IMODE(retained.stat().st_mode) == 0o600
+
+
+def test_report_rejects_destination_below_symlink_ancestor(tmp_path: Path) -> None:
+    from services.offline_guardian_report import publish_offline_scenario_report
+
+    actual = tmp_path / "actual"
+    nested = actual / "nested"
+    nested.mkdir(mode=0o700, parents=True)
+    actual.chmod(0o700)
+    linked = tmp_path / "linked"
+    linked.symlink_to(actual, target_is_directory=True)
+
+    with pytest.raises(ValueError, match="^offline_scenario_report_unsafe$"):
+        publish_offline_scenario_report(report_run(), linked / "nested")
 
 
 def test_report_size_limit_fails_before_publication(

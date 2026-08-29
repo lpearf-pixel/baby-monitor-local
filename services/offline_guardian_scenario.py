@@ -1,10 +1,12 @@
 from __future__ import annotations
 
 import os
+import signal
 import stat
 import threading
 from collections import Counter
 from collections.abc import Callable
+from contextlib import contextmanager
 from pathlib import Path
 
 from packages.contracts.offline_guardian_scenario import (
@@ -29,6 +31,11 @@ from services.voice.vad import VoiceActivityDetector
 
 VOICE_FRAME_BYTES = 3_200
 MAX_GENERATED_PCM_BYTES = 1_024 * 1_024
+DEFAULT_RUN_TIMEOUT_SECONDS = 180.0
+
+
+class OfflineScenarioTimeout(BaseException):
+    """Whole-run deadline that lane-level Exception handlers cannot swallow."""
 
 
 class OfflineGuardianScenarioRunner:
@@ -36,24 +43,36 @@ class OfflineGuardianScenarioRunner:
         self,
         *,
         runtime_root: Path,
+        runtime_boundary: Path,
         visual_manifest: VisualCorpusManifest,
         prepared_resolver: PreparedResolver,
+        prepared_root: Path,
         model_backend: RealtimeModelBackend | None,
         voice_fixture_provider: Callable[[str], bytes],
-        voice_vad: VoiceActivityDetector,
-        voice_asr: Asr,
-        voice_synthesizer: Synthesizer,
+        voice_vad_factory: Callable[[], VoiceActivityDetector],
+        voice_asr_factory: Callable[[], Asr],
+        voice_synthesizer_factory: Callable[[], Synthesizer],
+        timeout_seconds: float = DEFAULT_RUN_TIMEOUT_SECONDS,
     ) -> None:
         self._runtime_root = Path(runtime_root)
+        self._runtime_boundary = Path(runtime_boundary)
         self._visual_manifest = visual_manifest
         self._prepared_resolver = prepared_resolver
+        self._prepared_root = Path(prepared_root)
         self._model_backend = model_backend
         self._voice_fixture_provider = voice_fixture_provider
-        self._voice_vad = voice_vad
-        self._voice_asr = voice_asr
-        self._voice_synthesizer = voice_synthesizer
+        self._voice_vad_factory = voice_vad_factory
+        self._voice_asr_factory = voice_asr_factory
+        self._voice_synthesizer_factory = voice_synthesizer_factory
+        if not 0 < timeout_seconds <= DEFAULT_RUN_TIMEOUT_SECONDS:
+            raise ValueError("offline_scenario_timeout_invalid")
+        self._timeout_seconds = float(timeout_seconds)
 
     def run(self, suite: OfflineScenarioSuiteV1) -> OfflineScenarioRunV1:
+        with _run_deadline(self._timeout_seconds):
+            return self._run(suite)
+
+    def _run(self, suite: OfflineScenarioSuiteV1) -> OfflineScenarioRunV1:
         self._create_runtime_root()
         results: list[OfflineScenarioResultV1] = []
         first_reason: str | None = None
@@ -69,18 +88,30 @@ class OfflineGuardianScenarioRunner:
                         scenario,
                         self._visual_manifest,
                         self._prepared_resolver,
+                        self._prepared_root,
                         self._model_backend,
                     )
                 elif lane == "guardian_deterministic":
                     result = run_guardian_lane(scenario, scenario_root)
                 else:
-                    result = run_voice_lane(
-                        scenario,
-                        self._voice_fixture_provider,
-                        self._voice_vad,
-                        self._voice_asr,
-                        self._voice_synthesizer,
-                    )
+                    components: list[object] = []
+                    try:
+                        vad = self._voice_vad_factory()
+                        components.append(vad)
+                        asr = self._voice_asr_factory()
+                        components.append(asr)
+                        synthesizer = self._voice_synthesizer_factory()
+                        components.append(synthesizer)
+                        result = run_voice_lane(
+                            scenario,
+                            self._voice_fixture_provider,
+                            vad,
+                            asr,
+                            synthesizer,
+                        )
+                    finally:
+                        for component in reversed(components):
+                            _close_best_effort(component)
                 lanes.append(result)
                 if result.status != "PASS" and first_reason is None:
                     first_reason = result.reason
@@ -111,9 +142,10 @@ class OfflineGuardianScenarioRunner:
 
     def _create_runtime_root(self) -> None:
         root = self._runtime_root
-        parent = root.parent
+        parent = self._runtime_boundary
         if (
-            root.exists()
+            root.parent != parent
+            or root.exists()
             or root.is_symlink()
             or not _private_runtime_root(parent)
         ):
@@ -217,6 +249,7 @@ def run_visual_lane(
     scenario: OfflineGuardianScenarioV1,
     manifest: VisualCorpusManifest,
     prepared_resolver: PreparedResolver,
+    prepared_root: Path,
     model_backend: RealtimeModelBackend | None,
 ) -> ScenarioLaneResult:
     """Replay one admitted public clip and retain observational aggregates only."""
@@ -234,8 +267,18 @@ def run_visual_lane(
         model_backend=model_backend,
         require_model=True,
     )
+    root = Path(prepared_root)
+    if not _private_runtime_root(root):
+        return _visual_failure("visual_corpus_input_invalid")
+
+    def resolve_prepared(clip, selected_profile):
+        path = prepared_resolver(clip, selected_profile)
+        if not _private_prepared_file(path, root):
+            raise ValueError
+        return path
+
     aggregate = VisualCorpusReplay(
-        prepared_resolver=prepared_resolver,
+        prepared_resolver=resolve_prepared,
     ).run_clip(clips[0], profile=profile)
     counts = {
         "frames.total": aggregate.frames_total,
@@ -244,7 +287,17 @@ def run_visual_lane(
         "frames.dropped": aggregate.dropped_frames,
         "errors.decode": aggregate.decode_errors,
         "errors.worker": aggregate.worker_errors,
+        **{
+            f"observation.{key}": count
+            for key, count in aggregate.observation_counts.items()
+        },
+        **{
+            f"candidate.{key}": count
+            for key, count in aggregate.candidate_counts.items()
+        },
     }
+    if len(counts) > 64:
+        return _visual_failure("offline_scenario_visual_aggregate_overflow")
     metrics = {
         "model.p50": aggregate.processing_p50_ms,
         "model.p95": aggregate.processing_p95_ms,
@@ -340,10 +393,58 @@ def _private_runtime_root(root: Path) -> bool:
         return False
     return (
         stat.S_ISDIR(metadata.st_mode)
-        and not root.is_symlink()
+        and not _path_has_symlink(root)
         and metadata.st_uid == os.getuid()
         and stat.S_IMODE(metadata.st_mode) == 0o700
     )
+
+
+def _path_has_symlink(path: Path) -> bool:
+    absolute = path.absolute()
+    return any(candidate.is_symlink() for candidate in (absolute, *absolute.parents))
+
+
+def _private_prepared_file(path: Path, root: Path) -> bool:
+    candidate = Path(path)
+    try:
+        metadata = candidate.lstat()
+    except OSError:
+        return False
+    return (
+        candidate.parent == root
+        and not _path_has_symlink(candidate)
+        and stat.S_ISREG(metadata.st_mode)
+        and metadata.st_uid == os.getuid()
+        and stat.S_IMODE(metadata.st_mode) == 0o600
+        and metadata.st_nlink == 1
+    )
+
+
+def _close_best_effort(component: object) -> None:
+    close = getattr(component, "close", None)
+    if callable(close):
+        try:
+            close()
+        except Exception:
+            pass
+
+
+@contextmanager
+def _run_deadline(timeout_seconds: float):
+    if threading.current_thread() is not threading.main_thread():
+        raise ValueError("offline_scenario_runtime_unsafe")
+    previous_handler = signal.getsignal(signal.SIGALRM)
+
+    def expire(_signum: int, _frame: object) -> None:
+        raise OfflineScenarioTimeout("offline_scenario_timeout")
+
+    signal.signal(signal.SIGALRM, expire)
+    previous_timer = signal.setitimer(signal.ITIMER_REAL, timeout_seconds)
+    try:
+        yield
+    finally:
+        signal.setitimer(signal.ITIMER_REAL, *previous_timer)
+        signal.signal(signal.SIGALRM, previous_handler)
 
 
 def _failure(reason: str) -> ScenarioLaneResult:
@@ -372,6 +473,7 @@ def _voice_failure(reason: str) -> ScenarioLaneResult:
 
 __all__ = [
     "OfflineGuardianScenarioRunner",
+    "OfflineScenarioTimeout",
     "run_guardian_lane",
     "run_visual_lane",
     "run_voice_lane",

@@ -34,21 +34,26 @@ def publish_offline_scenario_report(
     html_path = root / HTML_NAME
     json_temp = root / ".scenario-result.v1.json.tmp"
     html_temp = root / ".scenario-report.html.tmp"
-    published: list[tuple[Path, Path]] = []
+    identities: dict[Path, tuple[int, int]] = {}
+    published: list[Path] = []
     try:
         _write_private(json_temp, json_bytes)
         _write_private(html_temp, html_bytes)
+        identities = {
+            json_path: _file_identity(json_temp),
+            html_path: _file_identity(html_temp),
+        }
         _link_no_replace(json_temp, json_path)
-        published.append((json_path, json_temp))
+        published.append(json_path)
         _link_no_replace(html_temp, html_path)
-        published.append((html_path, html_temp))
+        published.append(html_path)
         _fsync_directory(root)
         json_temp.unlink()
         html_temp.unlink()
         _fsync_directory(root)
     except OSError:
-        for final, temporary in reversed(published):
-            _unlink_same_inode(final, temporary)
+        for final in reversed(published):
+            _unlink_same_inode(final, identities.get(final))
         for temporary in (json_temp, html_temp):
             _unlink_private_temp(temporary)
         _fsync_directory_best_effort(root)
@@ -86,6 +91,10 @@ def _render_html(run: OfflineScenarioRunV1) -> str:
         "<body><h1>Offline Guardian Scenario Report</h1>"
         f"<p>suite={html.escape(run.suite_id)} status={html.escape(run.status)} "
         f"reason={html.escape(run.reason)}</p>"
+        "<p>This offline regression does not prove model accuracy, household-scene "
+        "accuracy, camera compatibility, notification delivery or unattended-care "
+        "safety. Guardian counts are synthetic-oracle results; PASS means they matched "
+        "the tracked expectations.</p>"
         "<table><thead><tr><th>scenario</th><th>lane</th><th>status</th>"
         "<th>reason</th><th>counts</th><th>metrics</th></tr></thead><tbody>"
         + "".join(rows)
@@ -101,7 +110,7 @@ def _private_empty_directory(root: Path) -> bool:
         return False
     return (
         stat.S_ISDIR(metadata.st_mode)
-        and not root.is_symlink()
+        and not _path_has_symlink(root)
         and metadata.st_uid == os.getuid()
         and stat.S_IMODE(metadata.st_mode) == 0o700
         and not entries
@@ -126,14 +135,20 @@ def _link_no_replace(source: Path, target: Path) -> None:
     os.link(source, target, follow_symlinks=False)
 
 
-def _unlink_same_inode(path: Path, reference: Path) -> None:
+def _file_identity(path: Path) -> tuple[int, int]:
+    metadata = path.lstat()
+    if not stat.S_ISREG(metadata.st_mode):
+        raise OSError
+    return metadata.st_dev, metadata.st_ino
+
+
+def _unlink_same_inode(path: Path, identity: tuple[int, int] | None) -> None:
     try:
         path_info = path.lstat()
-        reference_info = reference.lstat()
         if (
-            stat.S_ISREG(path_info.st_mode)
-            and path_info.st_dev == reference_info.st_dev
-            and path_info.st_ino == reference_info.st_ino
+            identity is not None
+            and stat.S_ISREG(path_info.st_mode)
+            and (path_info.st_dev, path_info.st_ino) == identity
         ):
             path.unlink()
     except OSError:
@@ -166,6 +181,11 @@ def _fsync_directory_best_effort(path: Path) -> None:
         _fsync_directory(path)
     except OSError:
         return
+
+
+def _path_has_symlink(path: Path) -> bool:
+    absolute = path.absolute()
+    return any(candidate.is_symlink() for candidate in (absolute, *absolute.parents))
 
 
 __all__ = ["publish_offline_scenario_report"]

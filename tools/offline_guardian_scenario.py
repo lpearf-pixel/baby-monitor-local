@@ -16,10 +16,17 @@ if str(REPOSITORY_ROOT) not in sys.path:
     sys.path.insert(0, str(REPOSITORY_ROOT))
 
 from packages.contracts.offline_guardian_scenario import load_offline_scenario_suite
-from packages.contracts.visual_corpus import SourceType, VisualCorpusManifest
+from packages.contracts.visual_corpus import (
+    SourceType,
+    VisualCorpusClip,
+    VisualCorpusManifest,
+)
 from services.offline_guardian_report import publish_offline_scenario_report
-from services.offline_guardian_scenario import OfflineGuardianScenarioRunner
-from services.vision.corpus_download import CorpusDownloader
+from services.offline_guardian_scenario import (
+    OfflineGuardianScenarioRunner,
+    OfflineScenarioTimeout,
+)
+from services.vision.corpus_download import CorpusDownloader, MAX_FIRST_STAGE_BYTES
 from services.vision.corpus_manifest import load_manifest
 from services.vision.corpus_prepare import CorpusPreparer
 from services.vision.corpus_storage import CorpusLayout
@@ -70,6 +77,9 @@ def main(argv: list[str] | None = None) -> int:
     except KeyboardInterrupt:
         _emit(result="FAIL", reason="offline_scenario_interrupted")
         return 130
+    except OfflineScenarioTimeout:
+        _emit(result="FAIL", reason="offline_scenario_timeout")
+        return 2
     except Exception as exc:
         reason = str(exc)
         if reason not in SAFE_REASONS:
@@ -116,24 +126,25 @@ def _run() -> int:
 
 def _execute_fixed_flow():
     suite = load_offline_scenario_suite(SCENARIO_SUITE_PATH)
-    manifest, prepared = _prepare_selected_visuals()
+    manifest, prepared, prepared_root = _prepare_selected_visuals()
     backend = _build_model_backend_quietly()
-    fixture_pcm, asr = _generated_voice_fixture()
-    synthesizer = _RecordingSynthesizer()
+    fixture_pcm, asr_factory = _generated_voice_fixture()
     run_root = _new_run_root_path()
     runner = OfflineGuardianScenarioRunner(
         runtime_root=run_root,
+        runtime_boundary=RUN_PARENT,
         visual_manifest=manifest,
         prepared_resolver=lambda clip, profile: prepared[clip.clip_id][
             profile.profile_id
         ],
+        prepared_root=prepared_root,
         model_backend=backend,
         voice_fixture_provider=fixture_pcm.__getitem__,
-        voice_vad=VoiceActivityDetector(
-            lambda waveform: 0.9 if waveform.any() else 0.0
+        voice_vad_factory=lambda: VoiceActivityDetector(
+            lambda waveform: 0.9 if waveform.any() else 0.0,
         ),
-        voice_asr=asr,
-        voice_synthesizer=synthesizer,
+        voice_asr_factory=asr_factory,
+        voice_synthesizer_factory=_RecordingSynthesizer,
     )
     run = runner.run(suite)
     report_root = run_root / "report"
@@ -143,12 +154,22 @@ def _execute_fixed_flow():
     return run, f"{run_root.name}/report"
 
 
-def _prepare_selected_visuals() -> tuple[VisualCorpusManifest, dict[str, dict[str, Path]]]:
+def _prepare_selected_visuals() -> tuple[
+    VisualCorpusManifest,
+    dict[str, dict[str, Path]],
+    Path,
+]:
     manifest = load_manifest(VISUAL_MANIFEST_PATH)
     clips = _selected_visual_clips(manifest)
     layout = CorpusLayout.for_repository(REPOSITORY_ROOT)
     sources_by_id = {source.source_id: source for source in manifest.sources}
     selected_source_ids = tuple(dict.fromkeys(clip.source_id for clip in clips))
+    expected_total = sum(
+        sources_by_id[source_id].expected_bytes or MAX_FIRST_STAGE_BYTES + 1
+        for source_id in selected_source_ids
+    )
+    if expected_total > MAX_FIRST_STAGE_BYTES:
+        raise RuntimeError("offline_scenario_command_failed")
     downloaded = {
         source_id: CorpusDownloader(layout=layout).fetch(sources_by_id[source_id]).path
         for source_id in selected_source_ids
@@ -166,10 +187,16 @@ def _prepare_selected_visuals() -> tuple[VisualCorpusManifest, dict[str, dict[st
         source_resolver=downloaded.__getitem__,
     )
     prepared = tuple(preparer.prepare_clip(clip) for clip in clips)
-    return manifest, {
-        item.clip_id: {artifact.profile_id: artifact.path for artifact in item.artifacts}
-        for item in prepared
-    }
+    return (
+        manifest,
+        {
+            item.clip_id: {
+                artifact.profile_id: artifact.path for artifact in item.artifacts
+            }
+            for item in prepared
+        },
+        layout.prepared,
+    )
 
 
 def _selected_visual_clips(manifest: VisualCorpusManifest):
@@ -183,7 +210,10 @@ def _selected_visual_clips(manifest: VisualCorpusManifest):
     return selected
 
 
-def _is_public_or_public_derived(clip, by_id: dict[str, object]) -> bool:
+def _is_public_or_public_derived(
+    clip: VisualCorpusClip,
+    by_id: dict[str, VisualCorpusClip],
+) -> bool:
     if clip.source_type is SourceType.PUBLIC_DATASET:
         return True
     if clip.source_type is not SourceType.SYNTHETIC or clip.parent_clip_id is None:
@@ -197,6 +227,8 @@ def _is_public_or_public_derived(clip, by_id: dict[str, object]) -> bool:
 
 
 def _new_run_root_path() -> Path:
+    if _path_has_symlink(RUN_PARENT):
+        raise ValueError("offline_scenario_runtime_unsafe")
     RUN_PARENT.mkdir(mode=0o700, parents=True, exist_ok=True)
     RUN_PARENT.chmod(0o700)
     metadata = RUN_PARENT.lstat()
@@ -214,6 +246,11 @@ def _new_run_root_path() -> Path:
     raise ValueError("offline_scenario_runtime_unsafe")
 
 
+def _path_has_symlink(path: Path) -> bool:
+    absolute = path.absolute()
+    return any(candidate.is_symlink() for candidate in (absolute, *absolute.parents))
+
+
 def _generated_voice_fixture():
     values = {
         "wake": _pcm(4_000),
@@ -221,14 +258,13 @@ def _generated_voice_fixture():
         "no_wake": _pcm(6_000),
         "unsupported": _pcm(7_000),
     }
-    return values, _FixtureAsr(
-        {
-            values["wake"]: "\u5c0f\u5c0f",
-            values["feeding"]: "\u6211\u662f\u7238\u7238\uff0c\u5f00\u59cb\u5582\u5976",
-            values["no_wake"]: "\u4eca\u5929\u5929\u6c14\u5982\u4f55",
-            values["unsupported"]: "\u64ad\u653e\u97f3\u4e50",
-        }
-    )
+    mapping = {
+        values["wake"]: "\u5c0f\u5c0f",
+        values["feeding"]: "\u6211\u662f\u7238\u7238\uff0c\u5f00\u59cb\u5582\u5976",
+        values["no_wake"]: "\u4eca\u5929\u5929\u6c14\u5982\u4f55",
+        values["unsupported"]: "\u64ad\u653e\u97f3\u4e50",
+    }
+    return values, lambda: _FixtureAsr(mapping)
 
 
 def _pcm(amplitude: int) -> bytes:
