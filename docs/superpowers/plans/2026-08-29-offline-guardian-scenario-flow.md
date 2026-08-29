@@ -301,14 +301,14 @@ git commit -m "feat: orchestrate offline guardian scenarios"
 - Produces `publish_offline_scenario_report(run: OfflineScenarioRunV1, destination: Path) -> tuple[Path, Path]`.
 - Publishes `scenario-result.v1.json` and `scenario-report.html` with no-replace atomic semantics.
 
-- [ ] **Step 1: Write report RED tests**
+- [x] **Step 1: Write report RED tests**
 
 Assert canonical JSON round-trip, deterministic escaped HTML, scenario/lane states,
 metrics and Dashboard counts. Search both outputs for fixture transcript, PCM marker,
 paths, URLs, hostnames, IPs and model prose. Test no overwrite, symlink destination,
 wrong directory mode, partial publication rollback and output size limits.
 
-- [ ] **Step 2: Run RED**
+- [x] **Step 2: Run RED**
 
 ```bash
 ../../.venv-alpha/bin/python -m pytest -q tests/integration/test_offline_guardian_scenario.py -k report
@@ -316,13 +316,13 @@ wrong directory mode, partial publication rollback and output size limits.
 
 Expected: report module is missing.
 
-- [ ] **Step 3: Implement the minimum renderer and publisher**
+- [x] **Step 3: Implement the minimum renderer and publisher**
 
 Use `html.escape`, a fixed template with no script and no external resource, maximum
 256 KiB JSON and 512 KiB HTML. Create temp files as `0600`, fsync them, publish without
 replacement, fsync the directory and retain no extra artifact.
 
-- [ ] **Step 4: Run GREEN and privacy scan**
+- [x] **Step 4: Run GREEN and privacy scan**
 
 ```bash
 ../../.venv-alpha/bin/python -m pytest -q tests/integration/test_offline_guardian_scenario.py
@@ -330,7 +330,7 @@ replacement, fsync the directory and retain no extra artifact.
 git diff --check
 ```
 
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
 
 ```bash
 git add services/offline_guardian_report.py tests/integration/test_offline_guardian_scenario.py

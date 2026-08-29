@@ -9,6 +9,10 @@ import pytest
 
 from packages.contracts.offline_guardian_scenario import (
     OfflineGuardianScenarioV1,
+    OfflineScenarioResultV1,
+    OfflineScenarioRunV1,
+    ScenarioLaneResult,
+    canonical_offline_run_bytes,
     load_offline_scenario_suite,
 )
 from services.vision.corpus_manifest import load_manifest
@@ -527,3 +531,128 @@ def test_runner_does_not_turn_interruption_into_result(
 
     with pytest.raises(KeyboardInterrupt):
         build_runner(tmp_path, media).run(load_offline_scenario_suite(FIXTURE))
+
+
+def report_run() -> OfflineScenarioRunV1:
+    return OfflineScenarioRunV1(
+        suite_id="offline-guardian-v1",
+        status="PASS",
+        reason="ok",
+        results=(
+            OfflineScenarioResultV1(
+                scenario_id="SAFE-SLEEP-01",
+                status="PASS",
+                reason="ok",
+                lanes=(
+                    ScenarioLaneResult(
+                        lane="visual_observation",
+                        status="PASS",
+                        reason="ok",
+                        counts={"frames.processed": 10},
+                        metrics_ms={"pipeline.p95": 12.5},
+                    ),
+                    ScenarioLaneResult(
+                        lane="guardian_deterministic",
+                        status="PASS",
+                        reason="ok",
+                        counts={"dashboard.event": 0, "dashboard.open": 0},
+                    ),
+                ),
+            ),
+        ),
+    )
+
+
+def report_destination(tmp_path: Path) -> Path:
+    destination = tmp_path / "report"
+    destination.mkdir(mode=0o700)
+    return destination
+
+
+def test_report_publishes_canonical_json_and_static_html(tmp_path: Path) -> None:
+    from services.offline_guardian_report import publish_offline_scenario_report
+
+    run = report_run()
+    json_path, html_path = publish_offline_scenario_report(
+        run,
+        report_destination(tmp_path),
+    )
+
+    assert json_path.read_bytes() == canonical_offline_run_bytes(run)
+    html = html_path.read_text(encoding="ascii")
+    assert "SAFE-SLEEP-01" in html
+    assert "visual_observation" in html
+    assert "frames.processed" in html
+    assert "dashboard.event" in html
+    assert "pipeline.p95" in html
+    assert "<script" not in html.lower()
+    assert "http:" not in html.lower()
+    assert "https:" not in html.lower()
+    assert stat.S_IMODE(json_path.stat().st_mode) == 0o600
+    assert stat.S_IMODE(html_path.stat().st_mode) == 0o600
+    assert {item.name for item in json_path.parent.iterdir()} == {
+        "scenario-result.v1.json",
+        "scenario-report.html",
+    }
+
+
+@pytest.mark.parametrize("kind", ["existing", "symlink", "wrong_mode"])
+def test_report_fails_closed_for_unsafe_destination(tmp_path: Path, kind: str) -> None:
+    from services.offline_guardian_report import publish_offline_scenario_report
+
+    destination = report_destination(tmp_path)
+    if kind == "existing":
+        existing = destination / "scenario-result.v1.json"
+        existing.write_text("private-existing", encoding="ascii")
+        existing.chmod(0o600)
+    elif kind == "wrong_mode":
+        destination.chmod(0o755)
+    else:
+        actual = destination
+        destination = tmp_path / "linked-report"
+        destination.symlink_to(actual, target_is_directory=True)
+
+    with pytest.raises(ValueError, match="^offline_scenario_report_unsafe$"):
+        publish_offline_scenario_report(report_run(), destination)
+    if kind == "existing":
+        assert (destination / "scenario-result.v1.json").read_text() == "private-existing"
+
+
+def test_report_rolls_back_owned_first_publication_when_second_fails(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    import services.offline_guardian_report as module
+
+    destination = report_destination(tmp_path)
+    real_link = module._link_no_replace
+    calls = 0
+
+    def fail_second(source: Path, target: Path) -> None:
+        nonlocal calls
+        calls += 1
+        if calls == 2:
+            raise OSError("private failure")
+        real_link(source, target)
+
+    monkeypatch.setattr(module, "_link_no_replace", fail_second)
+
+    with pytest.raises(ValueError, match="^offline_scenario_report_failed$"):
+        module.publish_offline_scenario_report(report_run(), destination)
+
+    assert list(destination.iterdir()) == []
+
+
+def test_report_size_limit_fails_before_publication(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    import services.offline_guardian_report as module
+
+    destination = report_destination(tmp_path)
+    monkeypatch.setattr(module, "MAX_REPORT_JSON_BYTES", 1)
+
+    with pytest.raises(ValueError, match="^offline_scenario_report_too_large$"):
+        module.publish_offline_scenario_report(report_run(), destination)
+
+    assert list(destination.iterdir()) == []
