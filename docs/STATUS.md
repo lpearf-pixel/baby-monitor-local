@@ -34,13 +34,15 @@
   one multi-scenario real-wide clip, READY replay, fresh 30-minute evidence and
   digest-approved baseline promotion. Its bounded public-source attempts produced only
   recorded REJECT outcomes, so no later public gate has run.
-  A proposed private local overlay is now documented separately in
+  The approved private local overlay is documented separately in
   `docs/superpowers/specs/2026-08-29-private-local-visual-corpus-overlay-design.md`.
   It keeps `PUBLIC_DATASET + DIRECT_HTTPS` unchanged, tracks no private locator,
   separates `LOCAL_READY` from public readiness and forbids private baseline operations
-  by default. This is design evidence only: no implementation, private descriptor,
-  household capture, local validation or baseline action has occurred. The proposal is
-  local, docs-only, awaiting review and not pushed.
+  by default. Software Task 1 is complete locally at `0bd6e1a`: the mutually exclusive
+  contract, bounded redacted loader, canonical bytes and synthetic example are
+  implemented and tested. No resolver, real private descriptor, household capture,
+  local media
+  validation, replay or baseline action has occurred. Task 1 is local and not pushed.
 - Environment monitoring design and implementation plan: approved on 2026-08-05.
 - Stable Xiaomi Alpha commit: `0df20ae` on `stable/xiaomi-alpha`.
 - Active local development branch: `codex/xiaomi-camera-reply-lifecycle-review`.

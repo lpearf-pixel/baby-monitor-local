@@ -77,7 +77,7 @@ Xiaomi producer diagnostics, Make.
 - Preserves `VisualCorpusManifest`, `VisualCorpusSource`, `SourceType` and
   `DownloadMethod` without adding an enum value or field.
 
-- [ ] **Step 1: Write public-compatibility RED tests**
+- [x] **Step 1: Write public-compatibility RED tests**
 
 Add tests proving the current manifest digest is unchanged and that a public source
 with `source_type="PRIVATE_LOCAL_CAPTURE"` is rejected.
@@ -90,7 +90,7 @@ def test_public_manifest_rejects_private_local_capture() -> None:
         VisualCorpusManifest.model_validate(payload)
 ```
 
-- [ ] **Step 2: Write private descriptor RED tests**
+- [x] **Step 2: Write private descriptor RED tests**
 
 Cover the exact structural/asset allowlist, `plc-[0-9a-f]{32}`, lowercase SHA-256,
 128 MiB maximum, 10–60 second duration, finite positive fps, unique scenario IDs and
@@ -110,7 +110,7 @@ def test_private_metadata_rejects_locator_fields(forbidden: dict[str, str]) -> N
         PrivateOverlayDescriptor.model_validate(payload)
 ```
 
-- [ ] **Step 3: Run RED**
+- [x] **Step 3: Run RED**
 
 ```bash
 ../../.venv-alpha/bin/python -m pytest -q \
@@ -121,7 +121,7 @@ def test_private_metadata_rejects_locator_fields(forbidden: dict[str, str]) -> N
 Expected: new private module/import tests fail; all pre-existing public tests remain
 green.
 
-- [ ] **Step 4: Implement the minimal closed models**
+- [x] **Step 4: Implement the minimal closed models**
 
 Use frozen Pydantic models with `extra="forbid"`. Keep the new literal separate:
 
@@ -145,7 +145,7 @@ locator-shaped value to `private_overlay_forbidden_locator` without returning th
 The example descriptor uses only synthetic repeated hexadecimal values and pending
 review states.
 
-- [ ] **Step 5: Run GREEN and public regression**
+- [x] **Step 5: Run GREEN and public regression**
 
 Run the Step 3 command, then:
 
@@ -156,9 +156,10 @@ Run the Step 3 command, then:
   tests/vision/test_corpus_baseline.py
 ```
 
-Expected: the new contract tests pass and the existing focused gate remains 42/42.
+Expected: the new contract tests pass and all 42 pre-existing focused cases remain
+green; the added public-compatibility case makes the current command 43/43.
 
-- [ ] **Step 6: Commit the contract slice**
+- [x] **Step 6: Commit the contract slice**
 
 ```bash
 git add packages/contracts/private_visual_overlay.py \
@@ -572,7 +573,7 @@ baseline command. Stop and request a separate baseline-use decision.
 
 ## Current exact next action
 
-Wait for owner approval of the specification and this plan. After approval, execute
-Task 1 only with strict TDD. Do not capture household media or create a real private
-descriptor during software Tasks 1–7. Task 8 always requires a fresh explicit
-owner-supervised capture authority.
+Task 1 is complete locally at `0bd6e1a`. Stop for review. If the owner explicitly
+continues the approved software plan, execute Task 2 only with strict TDD. Do not
+capture household media or create a real private descriptor during software Tasks 1–7.
+Task 8 always requires a fresh explicit owner-supervised capture authority.

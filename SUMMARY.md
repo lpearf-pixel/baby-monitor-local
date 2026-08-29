@@ -40,13 +40,15 @@ Updated: 2026-08-29
   resolves the existing mismatch between multi-scenario clips and clip-ID-only baseline
   promotion before any READY candidate can be promoted. Its bounded searches produced
   no PASS source; public readiness remains `PARTIAL`.
-  A separate docs-only private-local-overlay proposal now awaits owner review at
+  The private-local-overlay contract is approved at
   `docs/superpowers/specs/2026-08-29-private-local-visual-corpus-overlay-design.md`,
-  with implementation plan in the adjacent plans directory. It preserves the public
-  contract, introduces an isolated `PRIVATE_LOCAL_CAPTURE` descriptor and separates
-  runtime-only `LOCAL_READY` from public readiness. This local docs-only proposal is
-  awaiting review and is not pushed. It authorizes no implementation, capture,
-  manifest edit, replay or baseline operation.
+  with implementation plan in the adjacent plans directory. Local Task 1 commit
+  `0bd6e1a` defines a separate closed `PRIVATE_LOCAL_CAPTURE` descriptor, stable
+  redacted loader, canonical serialization and a synthetic pending-review example.
+  Public enums and manifest remain unchanged, and `LOCAL_READY` remains separate from
+  public readiness.
+  No overlay resolver, household capture, real descriptor, replay or baseline action
+  exists; the local Task 1 work is not pushed.
 - Stable Xiaomi line: `stable/xiaomi-alpha` at `0df20ae`.
 - Active Camera Reply review line: `codex/xiaomi-camera-reply-lifecycle-review`, based
   on accepted Voice head `4d479b8`; its published Task 8 checkpoint is `a622a7a`.

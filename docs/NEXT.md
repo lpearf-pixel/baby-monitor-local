@@ -4,14 +4,15 @@ The repository baseline, environment software and functional Guardian loop are
 complete. Do not restart completed milestones. Execute the following stages in order;
 the detailed approved specs and plans remain authoritative for behavior.
 
-**Private local visual overlay review (current docs-only gate):** review
+**Private local visual overlay software (current gate):** the contract in
 `docs/superpowers/specs/2026-08-29-private-local-visual-corpus-overlay-design.md` and
-`docs/superpowers/plans/2026-08-29-private-local-visual-corpus-overlay.md`. The proposal
-adds a mutually exclusive `PRIVATE_LOCAL_CAPTURE` descriptor, ignored 0700/0600 file
-mapping and separate `LOCAL_READY` state while preserving public readiness. Do not
-implement, capture, create a real descriptor, replay private media or run any baseline
-operation until the spec is explicitly approved. After approval, execute software
-Task 1 only with generated tests; real capture remains a separate Task 8 authority.
+`docs/superpowers/plans/2026-08-29-private-local-visual-corpus-overlay.md` is approved.
+Task 1 is complete locally at `0bd6e1a` with generated tests: the mutually exclusive
+`PRIVATE_LOCAL_CAPTURE` metadata contract does not alter public source enums or
+readiness. The next authorized implementation slice, after explicit continuation, is
+Task 2 filesystem/media validation using generated files only. Do not capture, create a
+real descriptor, replay private media or run any baseline operation. Real capture
+remains a separate Task 8 authority.
 
 **Visual regression public corpus follow-up (published remote and proposal-base head
 `681edd3`; no PR or

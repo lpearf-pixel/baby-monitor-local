@@ -242,8 +242,35 @@ Fresh proposal evidence:
 - `make PYTHON=../../.venv-alpha/bin/python alpha-visual-corpus-validate` returned
   `result=PASS`, `readiness=PARTIAL`, `clip_count=13`, `admission=SKIP` and
   `missing_scenarios=2`;
-- the proposal remains local, docs-only, unpushed and pending owner review. It grants
-  no authority to implement software Tasks 1–7 or perform supervised Task 8 capture.
+- at this proposal checkpoint it was local, docs-only, unpushed and pending owner
+  review; the following checkpoint records the later Task 1 authority.
+
+#### Private local overlay Task 1 contract
+
+The owner continued from the approved overlay contract and authorized Task 1 only;
+the implementation is committed locally at `0bd6e1a`.
+Strict TDD first produced 37 expected failures because the private contract module did
+not exist, while all 15 selected public contract cases stayed green. The minimum
+implementation adds a separate closed `PRIVATE_LOCAL_CAPTURE` model, strict opaque
+asset metadata, stable redacted loading, canonical JSON bytes and a generated
+pending-review example. A second RED exposed Pydantic numeric coercion in 9/10 cases;
+strict numeric fields then closed that boundary.
+
+Fresh Task 1 evidence:
+
+- private plus public contract tests passed 63/63;
+- the original 42-test public corpus set remains green and the added public/private
+  exclusivity case makes that command 43/43;
+- changed Python compiled, the generated JSON example parsed through both `json.tool`
+  and the new closed loader, and `git diff --check` passed;
+- public corpus validation remained `PASS`, `PARTIAL`, 13 clips and two missing
+  scenarios.
+
+No public source enum, public manifest data, validator, replay or baseline
+implementation changed. No ignored overlay was created, no household media or real
+private metadata was read, and no camera, producer, Camera Reply, speaker or PTZ path
+was accessed. Task 2 filesystem/media validation remains pending; Task 8 capture has no
+authority.
 
 Draft PR #4 已实现并自动化验证 H.265 原码优先、VideoToolbox 按需兼容流、
 profile 绑定票据、无黑屏播放器回退以及可审计 go2rtc 双补丁构建。

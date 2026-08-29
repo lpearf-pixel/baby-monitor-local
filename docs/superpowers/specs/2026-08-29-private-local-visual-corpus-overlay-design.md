@@ -2,8 +2,9 @@
 
 **Date:** 2026-08-29
 
-**Status:** Proposed for owner review. This document authorizes no implementation,
-camera access, capture, manifest edit, replay, baseline operation or remote operation.
+**Status:** Approved on 2026-08-29. Current implementation authority is limited to
+software Task 1. This document authorizes no camera access, capture, real descriptor,
+replay, baseline operation or remote operation.
 
 ## 1. Goal
 
