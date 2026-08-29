@@ -3,13 +3,14 @@ from __future__ import annotations
 import math
 import time
 from collections import Counter
-from collections.abc import Callable, Iterator, Sequence
+from collections.abc import Callable, Iterator, Mapping, Sequence
 from dataclasses import dataclass, field
 from datetime import UTC, datetime
 from io import StringIO
 from pathlib import Path
 from typing import Literal, Protocol
 
+from packages.contracts.private_visual_overlay import PrivateAssetMetadata
 from packages.contracts.vision import (
     NormalizedPolygon,
     RealtimeCandidateTransition,
@@ -46,6 +47,45 @@ from services.vision.worker import VisualWorker
 REPLAY_STARTED_AT = datetime(2000, 1, 1, tzinfo=UTC)
 MAX_REPLAY_FRAMES = 600
 MAX_AGGREGATE_KEYS = 128
+
+
+class PrivateReplayProjectionError(ValueError):
+    """Stable failure for a private replay identity projection."""
+
+
+@dataclass(frozen=True)
+class PrivateReplayProjection:
+    clip_id: str
+    groups: tuple[str, ...]
+
+
+def private_replay_projections(
+    assets: Sequence[PrivateAssetMetadata],
+    *,
+    mapping: Mapping[str, str],
+) -> tuple[PrivateReplayProjection, ...]:
+    asset_ids = [asset.private_asset_id for asset in assets]
+    digests = [asset.sha256 for asset in assets]
+    mapping_values = list(mapping.values())
+    if (
+        not 1 <= len(assets) <= 20
+        or len(set(asset_ids)) != len(asset_ids)
+        or len(set(digests)) != len(digests)
+        or set(mapping) != set(asset_ids)
+        or len(mapping_values) != len(set(mapping_values))
+        or any(not isinstance(value, str) or not value for value in mapping_values)
+    ):
+        raise PrivateReplayProjectionError("private_overlay_duplicate_clip")
+
+    return tuple(
+        PrivateReplayProjection(
+            clip_id=asset.private_asset_id,
+            groups=tuple(
+                sorted({f"scenario:{scenario.value}" for scenario in asset.scenario_ids})
+            ),
+        )
+        for asset in sorted(assets, key=lambda item: item.private_asset_id)
+    )
 
 
 class ReplayFrameSource(Protocol):

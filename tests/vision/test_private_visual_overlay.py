@@ -9,10 +9,12 @@ from typing import Callable
 
 import pytest
 
+import services.vision.private_visual_overlay as private_overlay_module
 from packages.contracts.private_visual_overlay import (
     LocalOverlayReadiness,
     PrivateOverlayDescriptor,
 )
+from packages.contracts.visual_corpus import CorpusReadiness
 from services.vision.private_visual_overlay import (
     PrivateMediaFacts,
     validate_private_overlay,
@@ -134,6 +136,89 @@ def test_missing_overlay_is_unavailable_without_creation(tmp_path: Path) -> None
     assert result.readiness is LocalOverlayReadiness.LOCAL_UNAVAILABLE
     assert result.reason == "private_overlay_unavailable"
     assert not root.exists()
+
+
+def test_local_status_keeps_absent_overlay_separate_from_public_readiness(
+    tmp_path: Path,
+) -> None:
+    validation = validate(descriptor(), tmp_path / "missing-private-overlay")
+
+    status = private_overlay_module.local_overlay_status(
+        CorpusReadiness.PARTIAL,
+        validation,
+        ("WIDE-02", "NEG-01"),
+    )
+
+    assert status.public_readiness is CorpusReadiness.PARTIAL
+    assert status.local_readiness is LocalOverlayReadiness.LOCAL_UNAVAILABLE
+    assert status.reason == "private_overlay_unavailable"
+
+
+def test_media_only_validation_cannot_claim_local_ready(tmp_path: Path) -> None:
+    root, _ = create_overlay(tmp_path)
+    validation = validate(
+        descriptor(
+            authorization_review="approved",
+            privacy_review="approved",
+        ),
+        root,
+    )
+
+    status = private_overlay_module.local_overlay_status(
+        CorpusReadiness.PARTIAL,
+        validation,
+        ("WIDE-02", "NEG-01"),
+    )
+
+    assert status.public_readiness is CorpusReadiness.PARTIAL
+    assert status.local_readiness is LocalOverlayReadiness.LOCAL_PARTIAL
+    assert status.reason == "private_overlay_review_incomplete"
+
+
+def test_review_complete_coverage_can_report_local_ready_without_public_ready(
+    tmp_path: Path,
+) -> None:
+    root, _ = create_overlay(tmp_path)
+    validation = replace(
+        validate(
+            descriptor(
+                authorization_review="approved",
+                privacy_review="approved",
+            ),
+            root,
+        ),
+        content_review_complete=True,
+    )
+
+    status = private_overlay_module.local_overlay_status(
+        CorpusReadiness.PARTIAL,
+        validation,
+        ("WIDE-02", "NEG-01"),
+    )
+
+    assert status.public_readiness is CorpusReadiness.PARTIAL
+    assert status.local_readiness is LocalOverlayReadiness.LOCAL_READY
+    assert status.reason == "private_overlay_ready"
+    assert status.asset_count == 1
+    assert status.scenario_count == 2
+
+
+def test_review_complete_but_incomplete_coverage_stays_partial(tmp_path: Path) -> None:
+    root, _ = create_overlay(tmp_path)
+    validation = replace(
+        validate(descriptor(scenario_ids=["WIDE-02"]), root),
+        content_review_complete=True,
+    )
+
+    status = private_overlay_module.local_overlay_status(
+        CorpusReadiness.PARTIAL,
+        validation,
+        ("WIDE-02", "NEG-01"),
+    )
+
+    assert status.public_readiness is CorpusReadiness.PARTIAL
+    assert status.local_readiness is LocalOverlayReadiness.LOCAL_PARTIAL
+    assert status.reason == "private_overlay_scenario_invalid"
 
 
 @pytest.mark.parametrize("target", ["root", "assets", "index", "media"])

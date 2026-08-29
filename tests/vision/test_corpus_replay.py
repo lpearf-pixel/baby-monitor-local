@@ -1,13 +1,16 @@
 from __future__ import annotations
 
+import hashlib
 import importlib
 from dataclasses import replace
 from datetime import UTC, datetime, timedelta
 from io import BytesIO
 from pathlib import Path
 
+import pytest
 from PIL import Image, ImageDraw
 
+from packages.contracts.private_visual_overlay import PrivateOverlayDescriptor
 from packages.contracts.vision import RealtimeObservation
 from packages.contracts.visual_corpus import VisualCorpusClip
 from services.stream.file_frame_source import FileFrameSourceUnavailable
@@ -17,10 +20,84 @@ from services.vision.realtime_models import RealtimeModelError, RealtimeModelSig
 
 
 STARTED_AT = datetime(2026, 8, 28, tzinfo=UTC)
+PRIVATE_ASSET_ID = "plc-0123456789abcdef0123456789abcdef"
+SECOND_PRIVATE_ASSET_ID = "plc-fedcba9876543210fedcba9876543210"
 
 
 def replay_module():
     return importlib.import_module("services.vision.corpus_replay")
+
+
+def private_asset():
+    payload = b"synthetic-private-replay"
+    return PrivateOverlayDescriptor.model_validate(
+        {
+            "schema_version": 1,
+            "source_type": "PRIVATE_LOCAL_CAPTURE",
+            "assets": [
+                {
+                    "private_asset_id": PRIVATE_ASSET_ID,
+                    "sha256": hashlib.sha256(payload).hexdigest(),
+                    "bytes": len(payload),
+                    "duration_ms": 25_000,
+                    "codec": "hevc",
+                    "width": 2560,
+                    "height": 1440,
+                    "fps": 10.0,
+                    "scenario_ids": ["WIDE-02", "NEG-01"],
+                    "authorization_review": "approved",
+                    "privacy_review": "approved",
+                }
+            ],
+        }
+    ).assets[0]
+
+
+def test_private_asset_projects_one_ephemeral_clip_with_all_scenario_groups() -> None:
+    module = replay_module()
+    asset = private_asset()
+
+    projections = module.private_replay_projections(
+        (asset,),
+        mapping={PRIVATE_ASSET_ID: "asset.mp4"},
+    )
+
+    assert len(projections) == 1
+    assert projections[0].clip_id == PRIVATE_ASSET_ID
+    assert projections[0].groups == (
+        "scenario:NEG-01",
+        "scenario:WIDE-02",
+    )
+
+
+@pytest.mark.parametrize("duplicate", ["digest", "mapping"])
+def test_private_projection_rejects_two_clip_identities_for_one_backing(
+    duplicate: str,
+) -> None:
+    module = replay_module()
+    first = private_asset()
+    second = first.model_copy(
+        update={
+            "private_asset_id": SECOND_PRIVATE_ASSET_ID,
+            "sha256": (
+                first.sha256
+                if duplicate == "digest"
+                else hashlib.sha256(b"second-synthetic-private-replay").hexdigest()
+            ),
+        }
+    )
+    mapping = {
+        PRIVATE_ASSET_ID: "asset.mp4",
+        SECOND_PRIVATE_ASSET_ID: (
+            "asset.mp4" if duplicate == "mapping" else "second.mp4"
+        ),
+    }
+
+    with pytest.raises(
+        module.PrivateReplayProjectionError,
+        match="private_overlay_duplicate_clip",
+    ):
+        module.private_replay_projections((first, second), mapping=mapping)
 
 
 def clip(clip_id: str = "DAY-01", *, duration_ms: int = 12_000) -> VisualCorpusClip:

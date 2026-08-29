@@ -15,6 +15,7 @@ from packages.contracts.private_visual_overlay import (
     PrivateAssetMetadata,
     PrivateOverlayDescriptor,
 )
+from packages.contracts.visual_corpus import CorpusReadiness, ScenarioId
 
 
 MAX_INDEX_BYTES = 64 * 1024
@@ -44,6 +45,19 @@ class PrivateMediaFacts:
 @dataclass(frozen=True)
 class PrivateOverlayValidation:
     readiness: LocalOverlayReadiness
+    reason: str
+    asset_count: int
+    scenario_count: int
+    scenario_ids: tuple[ScenarioId, ...] = ()
+    # Media validation always leaves this false. Task 5 may set it only after
+    # verifying an ignored human-review receipt bound to every selected digest.
+    content_review_complete: bool = False
+
+
+@dataclass(frozen=True)
+class LocalOverlayStatus:
+    public_readiness: CorpusReadiness
+    local_readiness: LocalOverlayReadiness
     reason: str
     asset_count: int
     scenario_count: int
@@ -112,18 +126,77 @@ def validate_private_overlay(
             readiness=LocalOverlayReadiness.LOCAL_PARTIAL,
             reason="private_overlay_valid",
             asset_count=len(descriptor.assets),
-            scenario_count=len(
-                {
-                    scenario
-                    for asset in descriptor.assets
-                    for scenario in asset.scenario_ids
-                }
-            ),
+            scenario_count=len(_descriptor_scenarios(descriptor)),
+            scenario_ids=_descriptor_scenarios(descriptor),
         )
     except _PrivateOverlayFailure as exc:
         return _failure(exc.reason)
     except OSError:
         return _failure("private_overlay_unavailable")
+
+
+def local_overlay_status(
+    public_readiness: CorpusReadiness,
+    validation: PrivateOverlayValidation,
+    required_scenarios: tuple[ScenarioId | str, ...],
+) -> LocalOverlayStatus:
+    if validation.readiness is LocalOverlayReadiness.LOCAL_UNAVAILABLE:
+        return LocalOverlayStatus(
+            public_readiness=public_readiness,
+            local_readiness=LocalOverlayReadiness.LOCAL_UNAVAILABLE,
+            reason=validation.reason,
+            asset_count=validation.asset_count,
+            scenario_count=validation.scenario_count,
+        )
+
+    if not validation.content_review_complete:
+        return LocalOverlayStatus(
+            public_readiness=public_readiness,
+            local_readiness=LocalOverlayReadiness.LOCAL_PARTIAL,
+            reason="private_overlay_review_incomplete",
+            asset_count=validation.asset_count,
+            scenario_count=validation.scenario_count,
+        )
+
+    try:
+        required = tuple(ScenarioId(value) for value in required_scenarios)
+    except ValueError:
+        required = ()
+    if (
+        not required
+        or len(set(required)) != len(required)
+        or not set(required).issubset(validation.scenario_ids)
+    ):
+        return LocalOverlayStatus(
+            public_readiness=public_readiness,
+            local_readiness=LocalOverlayReadiness.LOCAL_PARTIAL,
+            reason="private_overlay_scenario_invalid",
+            asset_count=validation.asset_count,
+            scenario_count=validation.scenario_count,
+        )
+
+    return LocalOverlayStatus(
+        public_readiness=public_readiness,
+        local_readiness=LocalOverlayReadiness.LOCAL_READY,
+        reason="private_overlay_ready",
+        asset_count=validation.asset_count,
+        scenario_count=validation.scenario_count,
+    )
+
+
+def _descriptor_scenarios(
+    descriptor: PrivateOverlayDescriptor,
+) -> tuple[ScenarioId, ...]:
+    return tuple(
+        sorted(
+            {
+                scenario
+                for asset in descriptor.assets
+                for scenario in asset.scenario_ids
+            },
+            key=lambda scenario: scenario.value,
+        )
+    )
 
 
 def _validate_root(root: Path) -> tuple[Path, os.stat_result]:
@@ -405,12 +478,15 @@ def _failure(reason: str) -> PrivateOverlayValidation:
         reason=reason,
         asset_count=0,
         scenario_count=0,
+        scenario_ids=(),
     )
 
 
 __all__ = [
+    "LocalOverlayStatus",
     "PrivateMediaFacts",
     "PrivateMediaProbe",
     "PrivateOverlayValidation",
+    "local_overlay_status",
     "validate_private_overlay",
 ]
