@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import stat
 import subprocess
+import signal
 import threading
 import time
 from pathlib import Path
@@ -609,6 +610,32 @@ def test_runner_deadline_interrupts_blocking_lane(
         build_runner(tmp_path, media, timeout_seconds=0.01).run(
             load_offline_scenario_suite(FIXTURE)
         )
+
+
+def test_runner_rejects_an_external_alarm_without_replacing_it(
+    tmp_path: Path,
+) -> None:
+    import services.offline_guardian_scenario as module
+
+    media = tmp_path / "public-fixture.mkv"
+    generated_video(media)
+    previous_handler = signal.getsignal(signal.SIGALRM)
+
+    def external_handler(_signum: int, _frame: object) -> None:
+        return None
+
+    signal.signal(signal.SIGALRM, external_handler)
+    signal.setitimer(signal.ITIMER_REAL, 5.0)
+    try:
+        with pytest.raises(ValueError, match="^offline_scenario_runtime_unsafe$"):
+            build_runner(tmp_path, media).run(
+                load_offline_scenario_suite(FIXTURE)
+            )
+        assert signal.getsignal(signal.SIGALRM) is external_handler
+        assert signal.getitimer(signal.ITIMER_REAL)[0] > 0
+    finally:
+        signal.setitimer(signal.ITIMER_REAL, 0)
+        signal.signal(signal.SIGALRM, previous_handler)
 
 
 def test_runner_builds_and_closes_fresh_voice_components(tmp_path: Path) -> None:

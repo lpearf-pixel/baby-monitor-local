@@ -447,6 +447,12 @@ def _run_deadline(timeout_seconds: float):
         raise ValueError("offline_scenario_runtime_unsafe")
     previous_handler = signal.getsignal(signal.SIGALRM)
     previous_timer = signal.getitimer(signal.ITIMER_REAL)
+    if previous_timer[0] > 0 and not getattr(
+        previous_handler,
+        "_offline_scenario_deadline",
+        False,
+    ):
+        raise ValueError("offline_scenario_runtime_unsafe")
     started = time.monotonic()
     previous_remaining = previous_timer[0]
     effective_timeout = (
@@ -458,6 +464,8 @@ def _run_deadline(timeout_seconds: float):
     def expire(_signum: int, _frame: object) -> None:
         signal.setitimer(signal.ITIMER_REAL, SETTLEMENT_TIMEOUT_SECONDS)
         raise OfflineScenarioTimeout("offline_scenario_timeout")
+
+    expire._offline_scenario_deadline = True  # type: ignore[attr-defined]
 
     signal.signal(signal.SIGALRM, expire)
     signal.setitimer(signal.ITIMER_REAL, effective_timeout)
