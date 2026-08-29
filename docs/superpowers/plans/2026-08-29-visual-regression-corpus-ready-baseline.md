@@ -67,6 +67,9 @@ remote operations each require the authority stated by the executing user turn.
 - Camera access, installed go2rtc, launchd, production SQLite and household inference
   are outside this plan. The codec gate uses only a temporary loopback process and a
   prepared public file.
+- This remains the public READY plan. The proposed private overlay at
+  `docs/superpowers/plans/2026-08-29-private-local-visual-corpus-overlay.md` has a
+  separate `LOCAL_READY` state and cannot unlock this plan's G1–G6 public gates.
 
 ---
 
@@ -549,3 +552,7 @@ Wait for explicit source-search execution authority. Then execute Task 1 only. A
 bounded REJECT is a complete valid result and leaves the corpus at `PARTIAL`; a PASS
 unlocks Task 2. Do not pre-implement the scenario-group change or touch the manifest
 before a source passes.
+
+The private-overlay proposal is a separate review queue. Reviewing or later
+implementing it does not count as a public Task 1 PASS and does not authorize capture,
+manifest edits, replay or baseline operations under this plan.

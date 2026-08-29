@@ -380,3 +380,14 @@ clips include at least three real licensed wide views, the existing worker and i
 Guardian/Dashboard path replay deterministically, a baseline/candidate comparison is
 produced, focused/full software gates pass, and every unavailable dataset or device-only
 gate is reported honestly.
+
+## 15. Proposed private local overlay amendment
+
+The public corpus, its `PUBLIC_DATASET + DIRECT_HTTPS` source path and the completion
+criteria above remain unchanged. A proposed optional private overlay is specified at
+`docs/superpowers/specs/2026-08-29-private-local-visual-corpus-overlay-design.md`.
+It defines the only permitted exception to the household-media prohibition: an
+owner-authorized, ignored, local-only source with no tracked locator and a separate
+`LOCAL_READY` state. It cannot satisfy or rename public `READY`, enter the public
+manifest or authorize baseline promotion. Until that amendment is explicitly approved
+and implemented, the existing household-media prohibition remains in force.

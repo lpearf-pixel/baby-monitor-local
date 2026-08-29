@@ -5,8 +5,8 @@
 - Repository: initialized and public.
 - Design: approved.
 - Visual regression corpus (2026-08-29): the isolated feature branch
-  `codex/visual-regression-corpus` is published at exact local/remote head
-  `4c511203e568e428460fc69dc47ebe86e80ed168`, with no PR, merge or protected-branch
+  `codex/visual-regression-corpus` is published at exact remote and proposal-base head
+  `681edd3c49d0ccca442af064188a4e8b814a4db5`, with no PR, merge or protected-branch
   change. Published closure commits `fb3218d`, `165b0db`, `d01c23d` and
   `4c51120` extend the earlier `533399c` gate. Four downloaded public sources,
   13 reviewed clips,
@@ -32,7 +32,15 @@
   `docs/superpowers/plans/2026-08-29-visual-regression-corpus-ready-baseline.md`
   makes one bounded source batch the only entry, then gates scenario-group alignment,
   one multi-scenario real-wide clip, READY replay, fresh 30-minute evidence and
-  digest-approved baseline promotion. No continuation task has run.
+  digest-approved baseline promotion. Its bounded public-source attempts produced only
+  recorded REJECT outcomes, so no later public gate has run.
+  A proposed private local overlay is now documented separately in
+  `docs/superpowers/specs/2026-08-29-private-local-visual-corpus-overlay-design.md`.
+  It keeps `PUBLIC_DATASET + DIRECT_HTTPS` unchanged, tracks no private locator,
+  separates `LOCAL_READY` from public readiness and forbids private baseline operations
+  by default. This is design evidence only: no implementation, private descriptor,
+  household capture, local validation or baseline action has occurred. The proposal is
+  local, docs-only, awaiting review and not pushed.
 - Environment monitoring design and implementation plan: approved on 2026-08-05.
 - Stable Xiaomi Alpha commit: `0df20ae` on `stable/xiaomi-alpha`.
 - Active local development branch: `codex/xiaomi-camera-reply-lifecycle-review`.

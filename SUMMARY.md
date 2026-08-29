@@ -6,10 +6,11 @@ Updated: 2026-08-29
 
 - Repository: `lpearf-pixel/baby-monitor-local` (public).
 - Visual regression corpus work is published on `codex/visual-regression-corpus` at
-  exact local/remote head `4c511203e568e428460fc69dc47ebe86e80ed168`, with no PR,
+  exact remote and proposal-base head `681edd3c49d0ccca442af064188a4e8b814a4db5`, with no PR,
   merge or protected-branch change. It includes closure implementation `fb3218d`,
   evidence checkpoint `165b0db`, bounded-source review `d01c23d` and final
-  government-source review `4c51120` over the earlier `533399c` gate. Four sources
+  government-source review `4c51120`, READY plan `f5c4b34` and the latest bounded
+  REJECT checkpoint `681edd3` over the earlier `533399c` gate. Four sources
   now yield 13 reviewed clips and 26 private prepared artifacts.
   `NEG-02` is real object-only footage and `OCC-03` is a human-reviewed deterministic
   majority-obstruction derivative. The manifest remains intentionally `PARTIAL`:
@@ -33,11 +34,19 @@ Updated: 2026-08-29
   compared or promoted while the corpus is incomplete. These results
   prove deterministic public-file replay and regression instrumentation, not Guardian
   accuracy, native Xiaomi CS2 compatibility, real IR behavior or household safety.
-  The approved continuation is
+  The public continuation is
   `docs/superpowers/plans/2026-08-29-visual-regression-corpus-ready-baseline.md`.
   It time-bounds future source review, keeps repeated/restricted sources closed, and
   resolves the existing mismatch between multi-scenario clips and clip-ID-only baseline
-  promotion before any READY candidate can be promoted. Execution has not started.
+  promotion before any READY candidate can be promoted. Its bounded searches produced
+  no PASS source; public readiness remains `PARTIAL`.
+  A separate docs-only private-local-overlay proposal now awaits owner review at
+  `docs/superpowers/specs/2026-08-29-private-local-visual-corpus-overlay-design.md`,
+  with implementation plan in the adjacent plans directory. It preserves the public
+  contract, introduces an isolated `PRIVATE_LOCAL_CAPTURE` descriptor and separates
+  runtime-only `LOCAL_READY` from public readiness. This local docs-only proposal is
+  awaiting review and is not pushed. It authorizes no implementation, capture,
+  manifest edit, replay or baseline operation.
 - Stable Xiaomi line: `stable/xiaomi-alpha` at `0df20ae`.
 - Active Camera Reply review line: `codex/xiaomi-camera-reply-lifecycle-review`, based
   on accepted Voice head `4d479b8`; its published Task 8 checkpoint is `a622a7a`.

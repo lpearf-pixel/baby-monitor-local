@@ -218,6 +218,33 @@ manifest change is proposed, no candidate is marked READY, and no baseline, repl
 business-code command was run. The manifest remains `PARTIAL` with 13 clips and missing
 `WIDE-02` and `NEG-01` coverage.
 
+#### Private local visual corpus overlay proposal
+
+Starting from clean local/remote head
+`681edd3c49d0ccca442af064188a4e8b814a4db5`, a docs-only proposal defines a private
+local visual-corpus overlay without changing the existing public corpus. The proposed
+contract keeps `PUBLIC_DATASET + DIRECT_HTTPS` intact, adds a mutually exclusive
+`PRIVATE_LOCAL_CAPTURE` descriptor with no tracked locator, and places the opaque asset
+mapping and all media below ignored owner-private runtime. It separates runtime-only
+`LOCAL_READY` from public `DESIGN_ONLY | PARTIAL | READY`; private media cannot make the
+public corpus READY and cannot enter baseline generation, comparison or promotion
+without a separate approved design.
+
+The proposal also records migration behavior, stable fail-closed reason classes, the
+validator test matrix and eight later implementation tasks. One digest-bound private
+asset may cover both `WIDE-02` and `NEG-01`, but it remains one clip. No implementation,
+manifest, validator or baseline file changed; no household media, camera, producer,
+Camera Reply, speaker or PTZ path was accessed.
+
+Fresh proposal evidence:
+
+- the existing corpus contract/tool/baseline gate passed 42/42;
+- `make PYTHON=../../.venv-alpha/bin/python alpha-visual-corpus-validate` returned
+  `result=PASS`, `readiness=PARTIAL`, `clip_count=13`, `admission=SKIP` and
+  `missing_scenarios=2`;
+- the proposal remains local, docs-only, unpushed and pending owner review. It grants
+  no authority to implement software Tasks 1–7 or perform supervised Task 8 capture.
+
 Draft PR #4 已实现并自动化验证 H.265 原码优先、VideoToolbox 按需兼容流、
 profile 绑定票据、无黑屏播放器回退以及可审计 go2rtc 双补丁构建。
 
