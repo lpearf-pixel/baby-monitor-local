@@ -48,9 +48,15 @@
   local readiness requires a separate future digest-bound content-review capability,
   and one opaque asset projects once into its sorted scenario groups. Duplicate digest
   or mapping identities fail closed; no private projection enters the public replay
-  result schema. No real private descriptor, household capture, content approval,
-  `LOCAL_READY`, replay or baseline action has occurred. Task 1 is published through
-  remote head `75f62b8`; Tasks 2–3 are local and not pushed.
+  result schema. Software Task 4 is complete locally at `271badc`: its four closed
+  commands validate the overlay, inspect capture readiness, capture exactly 20/25/30
+  seconds of video-only media from the fixed existing loopback source, and keep review
+  preparation fail-closed until Task 5. Capture requires Camera Reply false and one
+  unchanged producer generation, uses bounded TERM/KILL settlement, and atomically
+  publishes only validated 0600 media and ignored mapping state. No real private
+  descriptor, household capture, content approval, `LOCAL_READY`, replay or baseline
+  action has occurred. Task 1 is published through remote head `75f62b8`; Tasks 2–4
+  are local and not pushed.
 - Environment monitoring design and implementation plan: approved on 2026-08-05.
 - Stable Xiaomi Alpha commit: `0df20ae` on `stable/xiaomi-alpha`.
 - Current visual-corpus worktree branch: `codex/visual-regression-corpus`. The separate

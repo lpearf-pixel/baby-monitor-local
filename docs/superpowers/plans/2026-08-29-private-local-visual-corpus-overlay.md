@@ -307,34 +307,34 @@ git commit -m "feat: report private visual local readiness"
 - Produces only bounded fields: result, reason, opaque asset ID, bytes, SHA-256,
   duration, codec, dimensions, fps and stream counts.
 
-- [ ] **Step 1: Write parser and preflight RED tests**
+- [x] **Step 1: Write parser and preflight RED tests**
 
 Assert there is no source URL, destination, host, port, camera ID, codec override,
 ffmpeg argument or baseline subcommand. Reject Camera Reply not explicitly false,
 pending speaker state, missing/second/replaced producer and any non-`auto` configuration.
 
-- [ ] **Step 2: Write capture RED tests**
+- [x] **Step 2: Write capture RED tests**
 
 Use fake ffmpeg/ffprobe executables. Assert fixed input is the shared loopback `source`
 alias, `-map 0:v:0` and `-an` are present, captures are sequential, duration is one of
 20/25/30, umask/permissions are private, output publication is atomic and timeout or
 interrupt leaves no accepted mapping.
 
-- [ ] **Step 3: Run RED**
+- [x] **Step 3: Run RED**
 
 ```bash
 ../../.venv-alpha/bin/python -m pytest -q \
   tests/tools/test_private_visual_corpus.py
 ```
 
-- [ ] **Step 4: Implement fixed commands**
+- [x] **Step 4: Implement fixed commands**
 
 Use an owner-private `.tmp` file with an explicit container format, one bounded ffmpeg
 process and TERM/KILL settlement. Persist no audio byte. Validate the settled file
 before atomically updating ignored `index.json`. Do not start/restart go2rtc or call any
 Voice, Camera Reply, speaker or PTZ operation.
 
-- [ ] **Step 5: Add Make targets and run GREEN**
+- [x] **Step 5: Add Make targets and run GREEN**
 
 Add only:
 
@@ -360,7 +360,7 @@ git diff --check
 
 No live capture command runs in this task.
 
-- [ ] **Step 6: Commit the capture software slice**
+- [x] **Step 6: Commit the capture software slice**
 
 ```bash
 git add tools/private_visual_corpus.py \
@@ -579,8 +579,8 @@ baseline command. Stop and request a separate baseline-use decision.
 
 ## Current exact next action
 
-Tasks 1–3 are complete at `0bd6e1a`, `e24eaf7` and `5cf6b0a`. Stop for review. If the
-owner explicitly continues the approved software plan, execute Task 4 software only
-with strict TDD; do not run a live capture command. Do not capture household media or
+Tasks 1–4 are complete at `0bd6e1a`, `e24eaf7`, `5cf6b0a` and `271badc`. Task 4 added
+the bounded video-only capture software without running a live capture. The exact next
+slice is Task 5 digest-bound human-review software; do not capture household media or
 create a real private descriptor during software Tasks 1–7.
 Task 8 always requires a fresh explicit owner-supervised capture authority.

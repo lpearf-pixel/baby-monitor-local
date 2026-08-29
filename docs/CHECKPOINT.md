@@ -330,6 +330,32 @@ No live capture, real descriptor, private replay or baseline operation ran, and 
 `LOCAL_READY` claim was made. Task 4 is next and is software-only until a separate Task
 8 owner-supervised capture authority.
 
+#### Private local overlay Task 4 bounded capture software
+
+Task 4 is committed locally at `271badc`. Strict TDD first recorded 34 expected module
+collection failures, then added focused RED/GREEN coverage for hardlink identity,
+publication and index settlement, subprocess timeout, and held `/dev/fd` validation.
+The closed tool exposes only `validate`, `capture-preflight`, `capture --duration
+{20,25,30}` and `review-prepare --private-asset-id`. Capture is fixed to the existing
+loopback shared `source`, maps video only, refuses Camera Reply or speaker activity and
+requires the same single producer protocol, generation and consumer count after capture.
+It uses owner-private directories/files, bounded TERM/KILL settlement, no-replace media
+publication and rollback-aware atomic ignored index replacement.
+
+Fresh Task 4 evidence:
+
+- private contract, validation, projection/replay and capture tests passed 147/147;
+- the unchanged public corpus contract/tool/baseline command passed 43/43;
+- changed Python compiled; four Make targets dry-ran without executing capture; and
+  `git diff --check` passed;
+- public validation remained `PASS`, `PARTIAL`, 13 clips and two missing scenarios;
+- absent private overlay validation failed closed as `private_overlay_unavailable`.
+
+No live capture, household media, camera access, go2rtc restart, real descriptor,
+private replay or baseline operation ran. `review-prepare` intentionally remains a safe
+stub until Task 5 binds human review to the exact digest. Task 8 remains the first point
+that can receive fresh explicit owner-supervised capture authority.
+
 Draft PR #4 已实现并自动化验证 H.265 原码优先、VideoToolbox 按需兼容流、
 profile 绑定票据、无黑屏播放器回退以及可审计 go2rtc 双补丁构建。
 

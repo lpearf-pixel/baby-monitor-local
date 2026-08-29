@@ -55,9 +55,14 @@ Updated: 2026-08-29
   requires a future digest-bound human-review capability before `LOCAL_READY`, and
   projects one opaque private clip identity into all unique scenario groups without
   entering public `ReplayResultSet` or baseline paths. Content receipt validation is
-  still pending Task 5, so no real `LOCAL_READY` claim exists. No household capture,
-  real descriptor, replay or baseline action occurred. Task 1 is published through
-  remote head `75f62b8`; Tasks 2–3 are local and not pushed.
+  still pending Task 5, so no real `LOCAL_READY` claim exists. Task 4 commit `271badc`
+  adds the closed `validate`, `capture-preflight`, bounded video-only `capture` and
+  safe-stub `review-prepare` commands. It fixes input to the existing loopback shared
+  producer, requires Camera Reply false and stable single-producer pre/post state, and
+  publishes only validated 0600 media plus its ignored atomic mapping. No live capture,
+  household media, real descriptor, replay or baseline action occurred. Task 1 is
+  published through remote head `75f62b8`; Tasks 2–4 are local and not pushed. The
+  exact next slice is Task 5 digest-bound human-review software.
 - Stable Xiaomi line: `stable/xiaomi-alpha` at `0df20ae`.
 - Active Camera Reply review line: `codex/xiaomi-camera-reply-lifecycle-review`, based
   on accepted Voice head `4d479b8`; its published Task 8 checkpoint is `a622a7a`.
