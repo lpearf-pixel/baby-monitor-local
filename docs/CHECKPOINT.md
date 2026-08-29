@@ -151,6 +151,73 @@ manifest contract does not require duplicated media clip IDs. No source acquisit
 manifest change, replay, codec gate, long run, candidate generation or baseline
 promotion was performed while writing this plan.
 
+#### READY/baseline Task 1 bounded source batch — REJECT
+
+Task 1 ran once against the clean docs-only plan head `f5c4b346b6da43ad3942f7b7a91d596ef361c477`;
+its parent is the published starting point
+`4c511203e568e428460fc69dc47ebe86e80ed168`. The batch reviewed exactly eight new
+primary source pages, downloaded zero full files and did not retry any known-source
+stop-ledger entry:
+
+- Pixabay `150435` describes a real 1920x1080 baby room without people and declares the
+  Pixabay Content License, but its public media metadata path returned a Cloudflare
+  anti-bot verification challenge. No cookie, account, impersonation or bypass was
+  attempted, so it lacks the required stable non-interactive direct file.
+- Dissolve `17A335_232` describes an 11-second empty crib in a dim nursery, but the
+  complete file requires a paid purchase/license transaction rather than a stable
+  public direct file.
+- Storyblocks `nursery-room` exposes 16-second and 12-second no-people nursery-wide
+  descriptions, but only through its subscription catalogue; no immutable public item
+  ID plus non-interactive full-file URL was available.
+- Pond5 `empty-baby-crib` exposes 10-second empty-room and empty-wide nursery listings,
+  including contributors `BlackBoxGuild` and `SuperstockImages`, but the complete
+  files are marketplace assets without a stable public direct-file URL.
+- Pexels `7508618`, `7509031`, `7509035` and `7578507` were rejected directly from
+  their primary descriptions because they contain a mother and baby, a child, a baby,
+  and a family with a baby respectively; none can provide an adult-absent,
+  baby-not-visible interval.
+
+No candidate reached the complete-file gate, so byte length, SHA-256 and 500 ms frame
+sampling were not fabricated. No known-source re-open condition changed. Aggregate
+decision: `REJECT visual_corpus_real_empty_wide_source_unavailable`. The manifest stays
+`PARTIAL` with 13 clips and the two missing scenarios `WIDE-02` and `NEG-01`; no code,
+manifest, replay, codec, candidate or baseline command was changed or run.
+
+#### READY/baseline Task 1 Pexels candidate follow-up — REJECT
+
+Before retrieval, exact-ID searches of this checkpoint, the Task 1 plan, the committed
+manifest and the ignored research inventory found no prior review of Pexels `12160812`
+or `7883968`. Neither ID was a duplicate of the source stop ledger as of docs-only head
+`f5c4b346b6da43ad3942f7b7a91d596ef361c477`.
+
+Both candidates used their original numeric Pexels page URL and the public
+`https://www.pexels.com/download/video/<id>/` endpoint. The endpoint required no login,
+cookie reuse or interactive challenge and redirected to an HTTPS `videos.pexels.com`
+complete MP4 with `Content-Disposition: attachment`. The Pexels License page states that
+Pexels photos and videos are free to use and may be modified; the recorded license basis
+is `https://www.pexels.com/license/`. Because both candidates were rejected, their
+original media remains ignored, private local research material and is not approved for
+GitHub redistribution.
+
+- Pexels `12160812`: original page `https://www.pexels.com/video/12160812/`; resolved
+  file `https://videos.pexels.com/video-files/12160812/12160812-uhd_3840_2160_25fps.mp4`;
+  23,276,681 bytes; SHA-256
+  `6d7fddbc19f0c6f5fa9e8396e3e4d0195f0784c0e3eb7dcdefeeee49080d2228`; H.264,
+  3840x2160 at 25 fps, 7.360 seconds. Decision: `REJECT duration_below_10_seconds`.
+- Pexels `7883968`: original page `https://www.pexels.com/video/7883968/`; resolved
+  file `https://videos.pexels.com/video-files/7883968/7883968-uhd_2160_3840_25fps.mp4`;
+  21,804,436 bytes; SHA-256
+  `25c5188d26fe7d5e262b4dc65bceefbd9180422e2b02e3cf1c194259cc2887c2`; H.264,
+  2160x3840 at 25 fps, 7.880 seconds. Decision: `REJECT duration_below_10_seconds`.
+
+Each file is below 128 MiB, but each fails the mandatory duration gate. Following the
+first-failure stop rule, neither candidate proceeded to the 500 ms sampling and continuous
+10-second manual content review. In particular, no content claim or additional domain
+mismatch claim was inferred for `12160812` after its objective duration failure. No
+manifest change is proposed, no candidate is marked READY, and no baseline, replay or
+business-code command was run. The manifest remains `PARTIAL` with 13 clips and missing
+`WIDE-02` and `NEG-01` coverage.
+
 Draft PR #4 已实现并自动化验证 H.265 原码优先、VideoToolbox 按需兼容流、
 profile 绑定票据、无黑屏播放器回退以及可审计 go2rtc 双补丁构建。
 
