@@ -432,13 +432,13 @@ git commit -m "feat: bind private visual review to asset digest"
 - Private result envelopes use a distinct schema and are rejected by public baseline
   loading. The private CLI exposes no generate, compare or promote command.
 
-- [ ] **Step 1: Write baseline-boundary RED tests**
+- [x] **Step 1: Write baseline-boundary RED tests**
 
 Assert private envelopes fail before destination creation with
 `private_baseline_operation_forbidden`; assert public promotion behavior and its
 canonical digest remain unchanged.
 
-- [ ] **Step 2: Run RED**
+- [x] **Step 2: Run RED**
 
 ```bash
 ../../.venv-alpha/bin/python -m pytest -q \
@@ -446,17 +446,17 @@ canonical digest remain unchanged.
   tests/tools/test_private_visual_corpus.py
 ```
 
-- [ ] **Step 3: Implement the minimum scope guard**
+- [x] **Step 3: Implement the minimum scope guard**
 
 Do not add private fields to `ReplayResultSet`. Reject the distinct private envelope at
 the boundary and keep private aggregate files below ignored runtime. Do not silently
 drop private clips and continue with a public subset.
 
-- [ ] **Step 4: Run GREEN and the existing public gate**
+- [x] **Step 4: Run GREEN and the existing public gate**
 
 Run the Step 2 command and the 42-test focused public corpus gate.
 
-- [ ] **Step 5: Commit the baseline guard**
+- [x] **Step 5: Commit the baseline guard**
 
 ```bash
 git add services/vision/corpus_baseline.py \
@@ -480,7 +480,7 @@ git commit -m "fix: reject private visual baseline operations"
 - Documents public/local readiness separately and provides short ASCII-only commands.
 - Does not add a real private descriptor or media.
 
-- [ ] **Step 1: Run all overlay and public focused tests**
+- [x] **Step 1: Run all overlay and public focused tests**
 
 ```bash
 ../../.venv-alpha/bin/python -m pytest -q \
@@ -493,7 +493,7 @@ git commit -m "fix: reject private visual baseline operations"
   tests/vision/test_corpus_baseline.py
 ```
 
-- [ ] **Step 2: Run complete software and static gates**
+- [x] **Step 2: Run complete software and static gates**
 
 ```bash
 ../../.venv-alpha/bin/python -m pytest -q
@@ -506,19 +506,19 @@ Run JSON parsing, Make dry-runs, tracked-media checks and a final added-line pri
 scan. Verify the existing public command still reports 13 clips, `PARTIAL` and two
 missing scenarios.
 
-- [ ] **Step 3: Independent review before local commit**
+- [x] **Step 3: Independent review before local commit**
 
 Request a review of the complete implementation for source exclusivity, path
 containment, TOCTOU, permission enforcement, no-audio behavior, readiness isolation,
 baseline rejection and producer lifecycle safety. Resolve every Critical or Important
 finding with RED/GREEN tests before committing.
 
-- [ ] **Step 4: Update factual handoff documents**
+- [x] **Step 4: Update factual handoff documents**
 
 Record software evidence only. State that no household media was captured, no local
 asset was admitted and `LOCAL_READY` was not achieved.
 
-- [ ] **Step 5: Commit the closure**
+- [x] **Step 5: Commit the closure**
 
 ```bash
 git add tests/fixtures/visual_corpus/README.md \
@@ -579,8 +579,8 @@ baseline command. Stop and request a separate baseline-use decision.
 
 ## Current exact next action
 
-Tasks 1–5 are complete at `0bd6e1a`, `e24eaf7`, `5cf6b0a`, `271badc` and `21f853f`.
-Task 5 binds sampled review material and human approval to the exact current digest.
-The exact next slice is Task 6 private-baseline prohibition; do not capture household
-media or create a real private descriptor during software Tasks 1–7.
-Task 8 always requires a fresh explicit owner-supervised capture authority.
+Software Tasks 1–7 are complete through `f37ae57`; Task 6 baseline rejection is
+`5c28050`. Task 5 binds sampled review material and human approval to the exact current
+digest, and the final independent review is clean. The exact next slice is Task 8.
+Do not capture household media or create a real private descriptor without fresh
+explicit owner-supervised capture authority.

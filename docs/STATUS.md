@@ -55,13 +55,23 @@
   unchanged producer generation, uses bounded TERM/KILL settlement, and atomically
   publishes only validated 0600 media and ignored mapping state. No real private
   descriptor, household capture, content approval, `LOCAL_READY`, replay or baseline
-  action has occurred. Task 1 is published through remote head `75f62b8`; Tasks 2–4
+  action has occurred. Task 1 is published through remote head `75f62b8`; Tasks 2–7
   are local and not pushed. Software Task 5 is complete locally at `21f853f`: ignored
   review frames are bounded to one sample per 500ms plus explicit first/last frames,
   and `content_review_complete` requires a 0600 exact-digest human receipt with real-time
   playback and matching approved authorization/privacy states. Old-digest, model-only,
   incomplete or rejected receipts remain fail-closed. No real review material or receipt
-  was created; Task 6 private-baseline prohibition is next.
+  was created. Software Task 6 is complete at `5c28050`: private baseline generation,
+  comparison and promotion are rejected before output creation while the public
+  baseline contract remains unchanged. Task 7 and independent review are complete
+  through `f37ae57`: review extraction uses one stable held descriptor, recursively
+  enforces private inventory permissions and bounds, emits public and local readiness
+  independently, and requires the fixed `WIDE-02 + NEG-01` set for `LOCAL_READY`.
+  Fresh evidence is 214 focused tests and 2209 passed / 1 expected public-corpus skip
+  in the full suite; independent review found no Critical, Important or Minor issue.
+  No household media, real descriptor, receipt, `LOCAL_READY`, replay or baseline
+  operation occurred. Task 8 owner-supervised capture is next and is not authorized by
+  the software-only sequence.
 - Environment monitoring design and implementation plan: approved on 2026-08-05.
 - Stable Xiaomi Alpha commit: `0df20ae` on `stable/xiaomi-alpha`.
 - Current visual-corpus worktree branch: `codex/visual-regression-corpus`. The separate

@@ -4,21 +4,22 @@ The repository baseline, environment software and functional Guardian loop are
 complete. Do not restart completed milestones. Execute the following stages in order;
 the detailed approved specs and plans remain authoritative for behavior.
 
-**Private local visual overlay software (current gate):** the contract in
+**Private local visual overlay (next gate requires owner supervision):** the contract in
 `docs/superpowers/specs/2026-08-29-private-local-visual-corpus-overlay-design.md` and
 `docs/superpowers/plans/2026-08-29-private-local-visual-corpus-overlay.md` is approved.
-Tasks 1–5 are complete at `0bd6e1a`, `e24eaf7`, `5cf6b0a`, `271badc` and `21f853f` with generated tests. The
+Software Tasks 1–7 are complete through `f37ae57`, including Task 6 baseline rejection
+at `5c28050` and the independent-review fixes. The
 mutually exclusive `PRIVATE_LOCAL_CAPTURE` metadata contract does not alter public
-source enums or readiness, and filesystem/media validation reports at most
-`LOCAL_PARTIAL`. Task 3 preserves that boundary until Task 5 verifies digest-bound
-human review, while its pure projection keeps one clip identity for all scenario groups.
+source enums or readiness, and a missing overlay reports public `PARTIAL` separately
+from `LOCAL_UNAVAILABLE`. A valid but unreviewed overlay remains `LOCAL_PARTIAL`.
 Task 4 adds a fixed shared-source, video-only 20/25/30-second capture boundary with
 single-producer continuity and private atomic publication; no live capture ran. Task 5
 binds 500ms plus first/last review frames, human real-time playback and both approval
-states to the exact current digest. The next implementation slice is Task 6 enforcement
-of the private baseline prohibition. Do not execute live capture, create a real
-descriptor, replay private media or run any baseline operation. Real capture remains a
-separate Task 8 authority.
+states to the exact current digest. Private baseline generation, comparison and
+promotion fail before output creation. The next slice is Task 8 owner-supervised local
+capture and admission; it requires fresh explicit authority before any camera access.
+Until then, do not capture, create a real descriptor, replay private media or run any
+baseline operation.
 
 **Visual regression public corpus follow-up (public-corpus proposal base `681edd3`,
 branch remote `75f62b8`; no PR or merge):** follow

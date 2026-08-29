@@ -1871,3 +1871,26 @@ p95 668 ms、full-care false、Dad/Mom 均不存在。若干早期尝试分别�
 present / Mom absent；Voice 仍为 healthy/listen-only，Xiaomi source 仍 PASS，未重启
 go2rtc、未启用 full-care、未调用 Baby Care。用户将 Mom 与 Nanny/Nancy 采集延期；Mom
 之后的双 profile 隔离门因此仍 pending，Nanny/Nancy 尚无批准的注册合同。
+
+## 2026-08-29 Private local visual overlay software closure
+
+Software Tasks 1–7 are complete locally. Task 6 commit `5c28050` rejects private
+baseline generation, comparison and promotion before creating output. Independent
+review then identified and closed bounded ffmpeg last-frame extraction, held-FD review
+TOCTOU, recursive 0700/0600 inventory enforcement, a 512-entry inventory bound,
+redacted argument failures and truthful public/local readiness. The review-fix commit is
+`f37ae57`; final independent review reported 0 Critical, 0 Important and 0 Minor.
+
+Fresh commands and results:
+
+- seven-file overlay/public focused gate: 214 passed;
+- full `python -m pytest -q`: 2209 passed, 1 skipped in 322.58 seconds; the only skip is
+  `visual_corpus_first_stage_incomplete`, consistent with public `PARTIAL`;
+- compileall, `bash -n tools/*.sh`, JSON parsing, Make dry-runs and `git diff --check`:
+  PASS;
+- public validation: PASS, `readiness=PARTIAL`, 13 clips and 2 missing scenarios;
+- tracked media and added-line privacy scans: no prohibited match.
+
+No camera, go2rtc producer, household media, real private descriptor, review receipt,
+private replay or baseline operation was accessed. `LOCAL_READY` was not claimed. Task 8
+owner-supervised capture remains a separate gate requiring fresh explicit authority.

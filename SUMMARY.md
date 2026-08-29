@@ -61,13 +61,18 @@ Updated: 2026-08-29
   producer, requires Camera Reply false and stable single-producer pre/post state, and
   publishes only validated 0600 media plus its ignored atomic mapping. No live capture,
   household media, real descriptor, replay or baseline action occurred. Task 1 is
-  published through remote head `75f62b8`; Tasks 2–4 are local and not pushed. The
+  published through remote head `75f62b8`; Tasks 2–7 are local and not pushed. The
   Task 5 commit `21f853f` adds closed review preparation at 500ms plus explicit first/
   last frames and accepts content review only from an ignored exact-digest receipt that
-  records a human reviewer, real-time playback and both approved states. Changed media,
-  model-only review, missing playback acknowledgement and pending/rejected states remain
-  incomplete. No review command was run on household media and no real receipt exists.
-  The exact next slice is Task 6 private-baseline prohibition.
+  records a human reviewer, real-time playback and both approved states. Task 6 commit
+  `5c28050` rejects private result envelopes and every private generate/compare/promote
+  request before output creation. Independent review fixes through `f37ae57` add a real
+  ffmpeg last-frame gate, one stable held-FD across review, recursive private inventory
+  bounds, redacted parsing and truthful public/local readiness. Fresh closure evidence is
+  214/214 focused and 2209 passed / 1 expected public-corpus skip for the full suite;
+  independent review is clean at 0 Critical / 0 Important / 0 Minor. No household media,
+  real descriptor, receipt, `LOCAL_READY`, replay or baseline operation occurred. The
+  exact next slice is Task 8 owner-supervised capture, which needs fresh explicit authority.
 - Stable Xiaomi line: `stable/xiaomi-alpha` at `0df20ae`.
 - Active Camera Reply review line: `codex/xiaomi-camera-reply-lifecycle-review`, based
   on accepted Voice head `4d479b8`; its published Task 8 checkpoint is `a622a7a`.

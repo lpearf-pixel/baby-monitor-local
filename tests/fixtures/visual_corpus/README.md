@@ -49,3 +49,12 @@ no decode, worker, duplicate-event or backlog errors and 48.105 MiB RSS growth; 
 not rerun or relabelled as 13-clip sustained evidence. These are observational
 regression and performance results, not accuracy labels. No baseline is tracked while
 the manifest is `PARTIAL`; promotion must continue to fail closed.
+
+An optional private local overlay has a separate contract and never changes this public
+manifest or its readiness. Its tracked descriptor contains only an opaque asset ID,
+media facts, scenario IDs and closed review states; the asset mapping, media, sampled
+frames, review receipt and results remain under ignored owner-private runtime. A valid
+private overlay may report `LOCAL_READY` while this public corpus remains `PARTIAL`, but
+private results are prohibited from public baseline generation, comparison and
+promotion. See `docs/runbooks/PRIVATE_VISUAL_CORPUS_OVERLAY.md`. Real capture remains a
+separately supervised Task 8 action and is not part of the software closure.
