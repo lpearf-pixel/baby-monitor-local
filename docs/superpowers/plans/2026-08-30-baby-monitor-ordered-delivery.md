@@ -157,7 +157,7 @@ Expected: validation reports eight scenarios, thirteen lanes, five clips and 330
 expected frames. The run must account for 330/330 frames with zero skipped, dropped,
 decode-error or worker-error frames. Actual visual candidate counts remain observational.
 
-- [ ] **Step 3: Complete review and factual closure**
+- [x] **Step 3: Complete review and factual closure**
 
 Run the detailed final gate, review the exact diff and update status documents only
 with fresh evidence. Push only when the owner explicitly requests it.

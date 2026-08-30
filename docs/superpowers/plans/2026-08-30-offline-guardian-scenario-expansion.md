@@ -21,12 +21,11 @@ existing corpus pipeline, Node test runner and Make.
 **Spec:**
 `docs/superpowers/specs/2026-08-29-offline-guardian-scenario-expansion-design.md`
 
-**Execution status (2026-08-30):** Tasks 1-6 and Task 7 Steps 1-3/5-6 were completed
-through business head `0688d38` and docs checkpoint `277da3e`. The fixed run passed
-8/8 scenarios, 13/13 lanes and 330/330 frames; full software gates are recorded in
-`docs/CHECKPOINT.md`. Task 7 Step 4 remains open because no independent reviewer has
-yet reviewed the merged exact head. Do not advance to the next ordered product stage
-until that review is clean or its findings are resolved.
+**Execution status (2026-08-30):** Tasks 1-7 are complete through business head
+`5d91d8a`. The exact run passed 8/8 scenarios, 13/13 lanes and 330/330 frames; fresh
+software gates and scoped review-fix evidence are recorded in `docs/CHECKPOINT.md`.
+Independent review is clean at 0 Critical / 0 Important / 0 Minor. Stage 1 is closed;
+the next ordered action is Stage 2 Step 1 evidence reconciliation, not a household run.
 
 ## Global Constraints
 
@@ -922,7 +921,7 @@ Expected: only planned source/test/fixture/docs files changed; no tracked runtim
 database, credential, private path or network literal. Review every match rather than
 assuming empty output.
 
-- [ ] **Step 4: Perform independent review**
+- [x] **Step 4: Perform independent review**
 
 Review exact contract closure, direct-parent provenance, validation-before-I/O ordering,
 330-frame settlement, visual/oracle independence, Guardian dedup/recovery, Voice

@@ -2087,3 +2087,54 @@ The fresh run's worst per-clip model p50/p95/max was
 No camera, microphone, speaker, PTZ, production service, Baby Care writer, notification
 or baseline action ran. This verifies the merged software/offline flow, not real-baby
 accuracy or real-device acceptance.
+
+## 2026-08-30 Offline Guardian expansion exact-head review closure
+
+Independent review of merged head `f05071a75a727696a08140cb7d5cd08aba5c826a`
+found six Important and one Minor contract/evidence gaps. Focused RED/GREEN fixes at
+`9e0f5e0`, `7856463` and final business head
+`5d91d8aa08a1bbc85355abe2899cff2e2236e531` now:
+
+- reject duplicate selected visual clips and invalid one-level public ancestry before
+  runtime creation, preparation or model construction;
+- require the exact 8-scenario/13-lane/5-clip/330-frame/3-source/25,964,039-byte suite;
+- require nullable Voice action/match fields, reject invalid medication/exact pairings
+  and emit all five low-risk action counters including zeros;
+- emit the closed visual candidate Cartesian counts and the explicit
+  `INDEPENDENT` observational/oracle relationship;
+- preserve the first stable Voice failure and every bounded action/outcome counter
+  already observed before a later lane or component-cleanup failure.
+
+The final independent scoped review reported 0 Critical, 0 Important and 0 Minor.
+Fresh exact-head verification was:
+
+```text
+focused Python: 228 passed
+full Python: 2320 passed, 1 skipped in 257.43 seconds
+skip: visual_corpus_first_stage_incomplete
+frontend: 73 passed
+compileall packages/services/tools: PASS
+bash -n tools/*.sh: PASS
+Make validate/run dry-runs: PASS
+git diff --check: PASS
+fixed validate: PASS, 8 scenarios, 13 lanes, 5 clips, 330 frames,
+  3 public sources, 25,964,039 declared bytes
+fixed run: PASS, 8/8 scenarios, 13/13 lanes, 330 frames,
+  0 skipped/dropped/decode/worker errors
+report: run-2d1f9fc9e940abd7/report
+```
+
+Worst per-clip model p50/p95/max was 85.268/110.311/389.264 ms; pipeline
+p50/p95/max was 107.499/139.705/413.197 ms. The ignored run/report directories and
+files remained 0700/0600. The exact implementation range contains no tracked media or
+database and no prohibited client; privacy-scan matches were only policy text, the scan
+pattern itself and Python return annotations. No camera, microphone, speaker, PTZ,
+Xiaomi/go2rtc client, notification, production database, Baby Care writer, model or
+threshold change, public manifest change or baseline action ran.
+
+This closes ordered-delivery Stage 1 as repeatable offline integration evidence. It does
+not prove infant recognition accuracy, household safety, real Voice recall, Xiaomi
+compatibility or unattended care. Remote `origin/codex/visual-regression-corpus`
+remains `f05071a`; the three review-fix commits are local and unpushed. Stage 2 Step 1
+software-only Voice evidence reconciliation is next; any household test still requires
+separate adult-supervised authority.

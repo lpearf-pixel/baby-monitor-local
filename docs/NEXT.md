@@ -16,23 +16,22 @@ the detailed approved specs and plans remain authoritative for behavior.
    without combining their readiness states;
 5. complete deferred real-device observations and the final 72-hour release gate.
 
-Stage 1 implementation and software gates are complete; its independent merged-head
-review remains open. Stages 2-5 are queued, not blanket authority for household
+Stage 1 implementation, software gates and independent exact-head review are complete.
+Stages 2-5 are queued, not blanket authority for household
 capture, speaker activation, PTZ, medication, Baby Care writes, installation, PR,
 merge, stable changes or release publication.
 
-**Offline Guardian scenario expansion: software-complete locally.** Business head
-`0688d38` expands the fixed flow to eight scenarios, thirteen lanes and exactly 330
-visual frames. Run `run-717e98f5f1ac4c83` passed every scenario/lane with zero skipped,
-dropped, decode-error or worker-error frames; full Python is 2289 passed / 1 expected
+**Offline Guardian scenario expansion: review-complete locally.** Business head
+`5d91d8a` expands the fixed flow to eight scenarios, thirteen lanes and exactly 330
+visual frames. Run `run-2d1f9fc9e940abd7` passed every scenario/lane with zero skipped,
+dropped, decode-error or worker-error frames; full Python is 2320 passed / 1 expected
 public-corpus skip and frontend is 73/73. Visual observations remain independent from
 synthetic Guardian oracles, and generated Voice output is checked against exact action
-and match identities. Do not tune models or thresholds to the synthetic labels. The
-immediate next action is the independent review required by Task 7 Step 4. Only a clean
-review (or resolved findings) advances to the separate low-risk Feeding/diaper/burping
-Voice decision in the authoritative delivery plan. That stage still requires its own
-approved scope; real-baby accuracy and public baseline promotion remain separate later
-gates.
+and match identities. Independent review is clean at 0 Critical / 0 Important / 0 Minor.
+Do not tune models or thresholds to the synthetic labels. The immediate next action is
+Stage 2 Step 1: reconcile the existing low-risk Feeding/diaper/burping Voice evidence
+without a household run. Stage 2 Step 2 still stops for separate adult-supervised
+authority; real-baby accuracy and public baseline promotion remain separate later gates.
 
 **Private local visual overlay (deferred by owner):** the contract in
 `docs/superpowers/specs/2026-08-29-private-local-visual-corpus-overlay-design.md` and

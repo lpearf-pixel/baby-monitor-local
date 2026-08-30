@@ -86,29 +86,32 @@ Updated: 2026-08-30
   independent review is clean at 0 Critical / 0 Important / 0 Minor. No household media,
   real descriptor, receipt, `LOCAL_READY`, replay or baseline operation occurred. The
   exact next slice is Task 8 owner-supervised capture, which needs fresh explicit authority.
-- The approved offline Guardian scenario expansion is implemented locally through
-  business head `0688d38` on the same feature branch. The fixed command now runs eight
+- The approved offline Guardian scenario expansion is review-complete locally through
+  business head `5d91d8a` on the same feature branch. The fixed command runs eight
   scenarios and thirteen lanes: five visual observations, five independent synthetic
   Guardian oracles and three generated Voice scenarios. Exact local run
-  `run-717e98f5f1ac4c83` passed 8/8 scenarios, 13/13 lanes and 330/330 frames with zero
+  `run-2d1f9fc9e940abd7` passed 8/8 scenarios, 13/13 lanes and 330/330 frames with zero
   skipped, dropped, decode-error or worker-error frames. Worst per-clip model p50/p95/max
-  was 85.877/117.110/405.576 ms; pipeline p50/p95/max was
-  108.322/142.444/429.669 ms. Guardian produced recovered face-not-visible,
+  was 85.268/110.311/389.264 ms; pipeline p50/p95/max was
+  107.499/139.705/413.197 ms. Guardian produced recovered face-not-visible,
   prone-candidate and outside-candidate events plus one open adult-intervention event.
   Generated Voice matched exact Feeding, diaper and burping actions, legal cross-action
   steps, ambiguous multi-action silence and no-wake silence. Actual visual observations
   and Guardian oracle results are explicitly `INDEPENDENT`; the suite does not use model
-  output as ground truth. The ignored report is 0700/0600. Fresh gates passed 220 focused
-  tests, 2289 full Python tests with one expected incomplete-public-corpus skip and 73
+  output as ground truth. The ignored report is 0700/0600. Fresh gates passed 228 focused
+  tests, 2320 full Python tests with one expected incomplete-public-corpus skip and 73
   frontend tests; compile, shell, Make, diff and private-literal checks passed.
   No camera, speaker, PTZ, notification, production database, Baby Care write or baseline
   operation ran. This proves repeatable offline component integration, not infant
   recognition accuracy, household safety, real Voice recall or Xiaomi compatibility.
   The implementation follows the approved expansion design and the reconciled detailed
   plan at `docs/superpowers/plans/2026-08-30-offline-guardian-scenario-expansion.md`.
-  The implementation commits were local before this ordinary remote merge; neither a PR
-  nor a protected-branch change was made. The merged detailed plan adds one still-open
-  independent-review checkpoint; do not advance to the Voice stage until it is clean.
+  Independent review and two scoped follow-ups closed all findings at 0 Critical,
+  0 Important and 0 Minor: duplicate visual selection now fails before runtime creation,
+  and Voice failures retain already observed bounded action/evidence counters. The local
+  branch is ahead of unchanged remote `f05071a`; these review fixes are not pushed. No PR
+  or protected-branch change was made. Stage 1 is closed; the next ordered slice is the
+  software-only reconciliation in Stage 2 before any separately authorized household run.
 - Stable Xiaomi line: `stable/xiaomi-alpha` at `0df20ae`.
 - Active Camera Reply review line: `codex/xiaomi-camera-reply-lifecycle-review`, based
   on accepted Voice head `4d479b8`; its published Task 8 checkpoint is `a622a7a`.

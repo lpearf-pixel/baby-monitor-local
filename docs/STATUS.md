@@ -82,23 +82,24 @@
   No household media, real descriptor, receipt, `LOCAL_READY`, replay or baseline
   operation occurred. Task 8 owner-supervised capture is next and is not authorized by
   the software-only sequence.
-- Offline Guardian scenario expansion: implemented locally through `0688d38`; the
-  remote branch remains `7cf8d02`. The fixed CLI selects `DAY-01`, `OCC-02`, `NEG-03`,
+- Offline Guardian scenario expansion: review-complete locally through `5d91d8a`; the
+  remote branch remains `f05071a`. The fixed CLI selects `DAY-01`, `OCC-02`, `NEG-03`,
   `DAY-03` and `OCC-03`, runs 8 scenarios/13 lanes and publishes a bounded media-free
-  ignored JSON/HTML report. Run `run-717e98f5f1ac4c83` passed 330/330 exact visual
+  ignored JSON/HTML report. Run `run-2d1f9fc9e940abd7` passed 330/330 exact visual
   frames with skipped/dropped/decode/worker counts all zero. Worst per-clip model
-  p50/p95/max was 85.877/117.110/405.576 ms and pipeline p50/p95/max was
-  108.322/142.444/429.669 ms. The synthetic Guardian lane produced the expected safe,
+  p50/p95/max was 85.268/110.311/389.264 ms and pipeline p50/p95/max was
+  107.499/139.705/413.197 ms. The synthetic Guardian lane produced the expected safe,
   occlusion, adult-intervention, prone-candidate and outside-candidate lifecycle results;
   every paired visual lane is explicitly `INDEPENDENT`. Generated Voice verified exact
   Feeding, diaper and burping action identities plus legal cross-action, ambiguous and
-  no-wake cases. Fresh gates are 220 focused, 2289 passed / 1 expected public-corpus skip
+  no-wake cases. Fresh gates are 228 focused, 2320 passed / 1 expected public-corpus skip
   for full Python and 73/73 frontend; compile, shell, Make, diff and privacy checks pass.
   No model/threshold, public manifest, baseline, camera, production state or Baby Care
   boundary changed. This is repeatable integration evidence, not accuracy or real-device
-  acceptance. The implementation and software gates are complete, while the detailed
-  remote plan's independent-review checkpoint remains open on the merged exact head.
-  No PR or protected-branch change occurred.
+  acceptance. Independent review closed at 0 Critical / 0 Important / 0 Minor after
+  rejecting duplicate selected clips before runtime and preserving bounded Voice action
+  evidence across lane and cleanup failures. Stage 1 is complete; the fixes are local and
+  unpushed, and no PR or protected-branch change occurred.
 - Environment monitoring design and implementation plan: approved on 2026-08-05.
 - Stable Xiaomi Alpha commit: `0df20ae` on `stable/xiaomi-alpha`.
 - Current visual-corpus worktree branch: `codex/visual-regression-corpus`. The separate
