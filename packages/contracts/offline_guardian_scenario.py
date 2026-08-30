@@ -18,6 +18,16 @@ LaneName = Literal[
     "voice_generated",
 ]
 RunStatus = Literal["PASS", "FAIL", "SKIP"]
+ScenarioActionCode = Literal[
+    "feeding_command",
+    "diaper_change_start",
+    "diaper_change_complete",
+    "burping_start",
+    "burping_complete",
+    "medication_start_candidate",
+    "medication_complete_candidate",
+]
+ScenarioMatchKind = Literal["exact", "corrected", "high_risk_candidate"]
 _COUNT_KEY = re.compile(r"^[a-z0-9][a-z0-9_.-]{0,95}$")
 
 
@@ -28,7 +38,7 @@ class OfflineScenarioContract(BaseModel):
 class VisualScenarioV1(OfflineScenarioContract):
     clip_id: str = Field(pattern=r"^[A-Z][A-Z0-9-]{1,63}$")
     profile: Literal["analysis_realtime", "analysis_slow"]
-    minimum_frames_processed: int = Field(ge=1, le=18_000)
+    expected_frames_processed: int = Field(ge=1, le=18_000)
     provenance: Literal["PUBLIC_VIDEO", "GENERATED_VISUAL"]
 
 
@@ -82,6 +92,24 @@ class VoiceScenarioStepV1(OfflineScenarioContract):
         default=None,
         pattern=r"^[a-z0-9_]+$",
     )
+    expected_action_code: ScenarioActionCode | None = None
+    expected_match_kind: ScenarioMatchKind | None = None
+
+    @model_validator(mode="after")
+    def require_action_identity_pair(self) -> "VoiceScenarioStepV1":
+        if (self.expected_action_code is None) != (self.expected_match_kind is None):
+            raise ValueError("offline_scenario_voice_invalid")
+        if (
+            self.expected_match_kind == "corrected"
+            and self.expected_action_code != "feeding_command"
+        ):
+            raise ValueError("offline_scenario_voice_invalid")
+        if self.expected_match_kind == "high_risk_candidate" and not (
+            self.expected_action_code is not None
+            and self.expected_action_code.startswith("medication_")
+        ):
+            raise ValueError("offline_scenario_voice_invalid")
+        return self
 
 
 class VoiceScenarioV1(OfflineScenarioContract):
@@ -105,6 +133,7 @@ class OfflineGuardianScenarioV1(OfflineScenarioContract):
     visual: VisualScenarioV1 | None = None
     guardian: GuardianScenarioV1 | None = None
     voice: VoiceScenarioV1 | None = None
+    visual_oracle_relationship: Literal["INDEPENDENT"] | None = None
 
     @model_validator(mode="after")
     def require_coherent_lanes(self) -> "OfflineGuardianScenarioV1":
@@ -120,6 +149,9 @@ class OfflineGuardianScenarioV1(OfflineScenarioContract):
             if value is not None
         }
         if configured != set(self.required_lanes):
+            raise ValueError("offline_scenario_lane_invalid")
+        paired = {"visual_observation", "guardian_deterministic"}.issubset(configured)
+        if paired != (self.visual_oracle_relationship == "INDEPENDENT"):
             raise ValueError("offline_scenario_lane_invalid")
         return self
 
@@ -248,7 +280,9 @@ __all__ = [
     "OfflineScenarioResultV1",
     "OfflineScenarioRunV1",
     "OfflineScenarioSuiteV1",
+    "ScenarioActionCode",
     "ScenarioLaneResult",
+    "ScenarioMatchKind",
     "VisualScenarioV1",
     "VoiceScenarioStepV1",
     "VoiceScenarioV1",

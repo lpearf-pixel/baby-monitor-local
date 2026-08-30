@@ -6,7 +6,7 @@
       "schema_version": 1,
       "scenario_id": "SAFE-SLEEP-01",
       "required_lanes": ["visual_observation", "guardian_deterministic"],
-      "visual": {"clip_id": "DAY-01", "profile": "analysis_realtime", "minimum_frames_processed": 1, "provenance": "PUBLIC_VIDEO"},
+      "visual": {"clip_id": "DAY-01", "profile": "analysis_realtime", "expected_frames_processed": 65, "provenance": "PUBLIC_VIDEO"},
       "guardian": {
         "provenance": "SYNTHETIC_SEMANTIC_ORACLE",
         "timeline": [
@@ -15,13 +15,14 @@
         ],
         "transition_counts": {}, "event_counts": {}, "dashboard_event_count": 0, "dashboard_open_event_count": 0
       },
-      "voice": null
+      "voice": null,
+      "visual_oracle_relationship": "INDEPENDENT"
     },
     {
       "schema_version": 1,
       "scenario_id": "FACE-OCCLUSION-01",
       "required_lanes": ["visual_observation", "guardian_deterministic"],
-      "visual": {"clip_id": "OCC-02", "profile": "analysis_realtime", "minimum_frames_processed": 1, "provenance": "PUBLIC_VIDEO"},
+      "visual": {"clip_id": "OCC-02", "profile": "analysis_realtime", "expected_frames_processed": 50, "provenance": "GENERATED_VISUAL"},
       "guardian": {
         "provenance": "SYNTHETIC_SEMANTIC_ORACLE",
         "timeline": [
@@ -34,13 +35,14 @@
         "transition_counts": {"alert_opened.face_not_visible": 1, "recovered.face_not_visible": 1, "watch_started.face_not_visible": 1},
         "event_counts": {"face_not_visible.recovered": 1}, "dashboard_event_count": 1, "dashboard_open_event_count": 0
       },
-      "voice": null
+      "voice": null,
+      "visual_oracle_relationship": "INDEPENDENT"
     },
     {
       "schema_version": 1,
       "scenario_id": "ADULT-INTERVENTION-01",
       "required_lanes": ["visual_observation", "guardian_deterministic"],
-      "visual": {"clip_id": "NEG-03", "profile": "analysis_realtime", "minimum_frames_processed": 1, "provenance": "PUBLIC_VIDEO"},
+      "visual": {"clip_id": "NEG-03", "profile": "analysis_realtime", "expected_frames_processed": 50, "provenance": "PUBLIC_VIDEO"},
       "guardian": {
         "provenance": "SYNTHETIC_SEMANTIC_ORACLE",
         "timeline": [
@@ -51,7 +53,8 @@
         "transition_counts": {"adult_intervention.none": 1, "alert_opened.face_not_visible": 1, "watch_started.face_not_visible": 1},
         "event_counts": {"face_not_visible.open": 1}, "dashboard_event_count": 1, "dashboard_open_event_count": 1
       },
-      "voice": null
+      "voice": null,
+      "visual_oracle_relationship": "INDEPENDENT"
     },
     {
       "schema_version": 1,
@@ -63,13 +66,98 @@
         "provenance": "GENERATED_AUDIO",
         "fixture_id": "generated-voice-feeding-v1",
         "steps": [
-          {"step_id": "wake", "speech_expected": true, "from_replay": false, "expected_reason": "listen_only_armed", "expected_response_code": "listen_only_ready"},
-          {"step_id": "feeding", "speech_expected": true, "from_replay": false, "expected_reason": "listen_only_acknowledged", "expected_response_code": "listen_only_received"},
-          {"step_id": "no_wake", "speech_expected": true, "from_replay": false, "expected_reason": "listen_only_ignored", "expected_response_code": null},
-          {"step_id": "unsupported", "speech_expected": true, "from_replay": false, "expected_reason": "listen_only_ignored", "expected_response_code": null}
+          {"step_id": "wake", "speech_expected": true, "from_replay": false, "expected_reason": "listen_only_armed", "expected_response_code": "listen_only_ready", "expected_action_code": null, "expected_match_kind": null},
+          {"step_id": "feeding", "speech_expected": true, "from_replay": false, "expected_reason": "listen_only_acknowledged", "expected_response_code": "listen_only_received", "expected_action_code": "feeding_command", "expected_match_kind": "exact"},
+          {"step_id": "no_wake", "speech_expected": true, "from_replay": false, "expected_reason": "listen_only_ignored", "expected_response_code": null, "expected_action_code": null, "expected_match_kind": null},
+          {"step_id": "unsupported", "speech_expected": true, "from_replay": false, "expected_reason": "listen_only_ignored", "expected_response_code": null, "expected_action_code": null, "expected_match_kind": null}
         ],
         "expected_response_count": 2
-      }
+      },
+      "visual_oracle_relationship": null
+    },
+    {
+      "schema_version": 1,
+      "scenario_id": "PRONE-CANDIDATE-01",
+      "required_lanes": ["visual_observation", "guardian_deterministic"],
+      "visual": {"clip_id": "DAY-03", "profile": "analysis_realtime", "expected_frames_processed": 100, "provenance": "PUBLIC_VIDEO"},
+      "guardian": {
+        "provenance": "SYNTHETIC_SEMANTIC_ORACLE",
+        "timeline": [
+          {"observed_at": "2026-08-29T01:00:00Z", "review": {"baby_visibility": "visible", "face_visibility": "clear", "posture": "prone_candidate", "bed_state": "inside", "adult_presence": "absent", "image_quality": "usable", "risk": "high", "reason_codes": ["prone_candidate"], "confidence": 0.9}},
+          {"observed_at": "2026-08-29T01:00:10Z", "review": {"baby_visibility": "visible", "face_visibility": "clear", "posture": "prone_candidate", "bed_state": "inside", "adult_presence": "absent", "image_quality": "usable", "risk": "high", "reason_codes": ["prone_candidate"], "confidence": 0.9}},
+          {"observed_at": "2026-08-29T01:00:20Z", "review": {"baby_visibility": "visible", "face_visibility": "clear", "posture": "prone_candidate", "bed_state": "inside", "adult_presence": "absent", "image_quality": "usable", "risk": "high", "reason_codes": ["prone_candidate"], "confidence": 0.9}},
+          {"observed_at": "2026-08-29T01:00:30Z", "review": {"baby_visibility": "visible", "face_visibility": "clear", "posture": "supine", "bed_state": "inside", "adult_presence": "absent", "image_quality": "usable", "risk": "none", "reason_codes": [], "confidence": 0.9}},
+          {"observed_at": "2026-08-29T01:00:40Z", "review": {"baby_visibility": "visible", "face_visibility": "clear", "posture": "supine", "bed_state": "inside", "adult_presence": "absent", "image_quality": "usable", "risk": "none", "reason_codes": [], "confidence": 0.9}}
+        ],
+        "transition_counts": {"alert_opened.prone_candidate": 1, "recovered.prone_candidate": 1, "watch_started.prone_candidate": 1},
+        "event_counts": {"prone_candidate.recovered": 1}, "dashboard_event_count": 1, "dashboard_open_event_count": 0
+      },
+      "voice": null,
+      "visual_oracle_relationship": "INDEPENDENT"
+    },
+    {
+      "schema_version": 1,
+      "scenario_id": "OUTSIDE-CANDIDATE-01",
+      "required_lanes": ["visual_observation", "guardian_deterministic"],
+      "visual": {"clip_id": "OCC-03", "profile": "analysis_realtime", "expected_frames_processed": 65, "provenance": "GENERATED_VISUAL"},
+      "guardian": {
+        "provenance": "SYNTHETIC_SEMANTIC_ORACLE",
+        "timeline": [
+          {"observed_at": "2026-08-29T02:00:00Z", "review": {"baby_visibility": "not_visible", "face_visibility": "not_visible", "posture": "supine", "bed_state": "outside_candidate", "adult_presence": "absent", "image_quality": "usable", "risk": "watch", "reason_codes": ["outside_candidate"], "confidence": 0.9}},
+          {"observed_at": "2026-08-29T02:00:10Z", "review": {"baby_visibility": "not_visible", "face_visibility": "not_visible", "posture": "supine", "bed_state": "outside_candidate", "adult_presence": "absent", "image_quality": "usable", "risk": "watch", "reason_codes": ["outside_candidate"], "confidence": 0.9}},
+          {"observed_at": "2026-08-29T02:00:20Z", "review": {"baby_visibility": "not_visible", "face_visibility": "not_visible", "posture": "supine", "bed_state": "outside_candidate", "adult_presence": "absent", "image_quality": "usable", "risk": "watch", "reason_codes": ["outside_candidate"], "confidence": 0.9}},
+          {"observed_at": "2026-08-29T02:00:30Z", "review": {"baby_visibility": "visible", "face_visibility": "clear", "posture": "supine", "bed_state": "inside", "adult_presence": "absent", "image_quality": "usable", "risk": "none", "reason_codes": [], "confidence": 0.9}},
+          {"observed_at": "2026-08-29T02:00:40Z", "review": {"baby_visibility": "visible", "face_visibility": "clear", "posture": "supine", "bed_state": "inside", "adult_presence": "absent", "image_quality": "usable", "risk": "none", "reason_codes": [], "confidence": 0.9}}
+        ],
+        "transition_counts": {"alert_opened.outside_candidate": 1, "recovered.outside_candidate": 1, "watch_started.outside_candidate": 1},
+        "event_counts": {"outside_candidate.recovered": 1}, "dashboard_event_count": 1, "dashboard_open_event_count": 0
+      },
+      "voice": null,
+      "visual_oracle_relationship": "INDEPENDENT"
+    },
+    {
+      "schema_version": 1,
+      "scenario_id": "VOICE-DIAPER-01",
+      "required_lanes": ["voice_generated"],
+      "visual": null,
+      "guardian": null,
+      "voice": {
+        "provenance": "GENERATED_AUDIO",
+        "fixture_id": "generated-voice-diaper-v1",
+        "steps": [
+          {"step_id": "diaper_wake_start", "speech_expected": true, "from_replay": false, "expected_reason": "listen_only_armed", "expected_response_code": "listen_only_ready", "expected_action_code": null, "expected_match_kind": null},
+          {"step_id": "diaper_start", "speech_expected": true, "from_replay": false, "expected_reason": "listen_only_acknowledged", "expected_response_code": "listen_only_received", "expected_action_code": "diaper_change_start", "expected_match_kind": "exact"},
+          {"step_id": "diaper_wake_complete", "speech_expected": true, "from_replay": false, "expected_reason": "listen_only_armed", "expected_response_code": "listen_only_ready", "expected_action_code": null, "expected_match_kind": null},
+          {"step_id": "diaper_complete", "speech_expected": true, "from_replay": false, "expected_reason": "listen_only_acknowledged", "expected_response_code": "listen_only_received", "expected_action_code": "diaper_change_complete", "expected_match_kind": "exact"},
+          {"step_id": "diaper_cross_burping", "speech_expected": true, "from_replay": false, "expected_reason": "listen_only_acknowledged", "expected_response_code": "listen_only_received", "expected_action_code": "burping_start", "expected_match_kind": "exact"},
+          {"step_id": "diaper_ambiguous", "speech_expected": true, "from_replay": false, "expected_reason": "listen_only_ignored", "expected_response_code": null, "expected_action_code": null, "expected_match_kind": null},
+          {"step_id": "diaper_no_wake", "speech_expected": true, "from_replay": false, "expected_reason": "listen_only_ignored", "expected_response_code": null, "expected_action_code": null, "expected_match_kind": null}
+        ],
+        "expected_response_count": 5
+      },
+      "visual_oracle_relationship": null
+    },
+    {
+      "schema_version": 1,
+      "scenario_id": "VOICE-BURPING-01",
+      "required_lanes": ["voice_generated"],
+      "visual": null,
+      "guardian": null,
+      "voice": {
+        "provenance": "GENERATED_AUDIO",
+        "fixture_id": "generated-voice-burping-v1",
+        "steps": [
+          {"step_id": "burping_wake_start", "speech_expected": true, "from_replay": false, "expected_reason": "listen_only_armed", "expected_response_code": "listen_only_ready", "expected_action_code": null, "expected_match_kind": null},
+          {"step_id": "burping_start", "speech_expected": true, "from_replay": false, "expected_reason": "listen_only_acknowledged", "expected_response_code": "listen_only_received", "expected_action_code": "burping_start", "expected_match_kind": "exact"},
+          {"step_id": "burping_wake_complete", "speech_expected": true, "from_replay": false, "expected_reason": "listen_only_armed", "expected_response_code": "listen_only_ready", "expected_action_code": null, "expected_match_kind": null},
+          {"step_id": "burping_complete", "speech_expected": true, "from_replay": false, "expected_reason": "listen_only_acknowledged", "expected_response_code": "listen_only_received", "expected_action_code": "burping_complete", "expected_match_kind": "exact"},
+          {"step_id": "burping_cross_diaper", "speech_expected": true, "from_replay": false, "expected_reason": "listen_only_acknowledged", "expected_response_code": "listen_only_received", "expected_action_code": "diaper_change_start", "expected_match_kind": "exact"},
+          {"step_id": "burping_ambiguous", "speech_expected": true, "from_replay": false, "expected_reason": "listen_only_ignored", "expected_response_code": null, "expected_action_code": null, "expected_match_kind": null},
+          {"step_id": "burping_no_wake", "speech_expected": true, "from_replay": false, "expected_reason": "listen_only_ignored", "expected_response_code": null, "expected_action_code": null, "expected_match_kind": null}
+        ],
+        "expected_response_count": 5
+      },
+      "visual_oracle_relationship": null
     }
   ]
 }

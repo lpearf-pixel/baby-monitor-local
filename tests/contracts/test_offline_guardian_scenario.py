@@ -47,8 +47,8 @@ def scenario_payload() -> dict[str, object]:
         "visual": {
             "clip_id": "OCC-02",
             "profile": "analysis_realtime",
-            "minimum_frames_processed": 1,
-            "provenance": "PUBLIC_VIDEO",
+            "expected_frames_processed": 50,
+            "provenance": "GENERATED_VISUAL",
         },
         "guardian": {
             "provenance": "SYNTHETIC_SEMANTIC_ORACLE",
@@ -65,6 +65,7 @@ def scenario_payload() -> dict[str, object]:
             "dashboard_open_event_count": 1,
         },
         "voice": None,
+        "visual_oracle_relationship": "INDEPENDENT",
     }
 
 
@@ -208,7 +209,7 @@ def test_run_rejects_duplicate_scenarios_and_invalid_count_keys() -> None:
         module.OfflineScenarioRunV1.model_validate(invalid)
 
 
-def test_tracked_four_scenario_fixture_loads_with_exact_identity() -> None:
+def test_tracked_eight_scenario_fixture_loads_with_exact_identity() -> None:
     module = contracts()
     suite = module.load_offline_scenario_suite(FIXTURE)
 
@@ -217,4 +218,39 @@ def test_tracked_four_scenario_fixture_loads_with_exact_identity() -> None:
         "FACE-OCCLUSION-01",
         "ADULT-INTERVENTION-01",
         "VOICE-FEEDING-01",
+        "PRONE-CANDIDATE-01",
+        "OUTSIDE-CANDIDATE-01",
+        "VOICE-DIAPER-01",
+        "VOICE-BURPING-01",
     )
+    assert sum(len(item.required_lanes) for item in suite.scenarios) == 13
+    assert [
+        item.visual.expected_frames_processed
+        for item in suite.scenarios
+        if item.visual is not None
+    ] == [65, 50, 50, 100, 65]
+
+
+def test_visual_guardian_pair_requires_independent_relationship() -> None:
+    module = contracts()
+    payload = scenario_payload()
+    payload["visual_oracle_relationship"] = None
+
+    with pytest.raises(ValidationError):
+        module.OfflineGuardianScenarioV1.model_validate(payload)
+
+
+def test_voice_step_rejects_half_bound_action_identity() -> None:
+    module = contracts()
+    payload = {
+        "step_id": "burping_start",
+        "speech_expected": True,
+        "from_replay": False,
+        "expected_reason": "listen_only_acknowledged",
+        "expected_response_code": "listen_only_received",
+        "expected_action_code": "burping_start",
+        "expected_match_kind": None,
+    }
+
+    with pytest.raises(ValidationError):
+        module.VoiceScenarioStepV1.model_validate(payload)
