@@ -556,6 +556,73 @@ def test_runner_rejects_invalid_visual_binding_before_runtime_root(tmp_path: Pat
     assert not runtime_root.exists()
 
 
+def duplicate_selected_visual_suite(*, visual_only: bool = False):
+    suite = load_offline_scenario_suite(FIXTURE)
+    first = suite.scenarios[0]
+    second = suite.scenarios[1]
+    assert first.visual is not None
+    assert second.visual is not None
+    duplicate = second.model_copy(
+        update={
+            "visual": second.visual.model_copy(
+                update={"clip_id": first.visual.clip_id, "provenance": "PUBLIC_VIDEO"}
+            )
+        }
+    )
+    if not visual_only:
+        return suite.model_copy(
+            update={
+                "scenarios": tuple(
+                    duplicate if item.scenario_id == second.scenario_id else item
+                    for item in suite.scenarios
+                )
+            }
+        )
+    first = first.model_copy(
+        update={
+            "required_lanes": ("visual_observation",),
+            "guardian": None,
+            "visual_oracle_relationship": None,
+        }
+    )
+    duplicate = duplicate.model_copy(
+        update={
+            "required_lanes": ("visual_observation",),
+            "guardian": None,
+            "visual_oracle_relationship": None,
+        }
+    )
+    return suite.model_copy(update={"scenarios": (first, duplicate)})
+
+
+def test_binding_validator_rejects_duplicate_selected_clip_ids() -> None:
+    from services.offline_guardian_scenario import validate_visual_scenario_bindings
+
+    with pytest.raises(
+        ValueError,
+        match="^offline_scenario_visual_provenance_invalid$",
+    ):
+        validate_visual_scenario_bindings(
+            duplicate_selected_visual_suite(),
+            load_manifest(VISUAL_MANIFEST),
+        )
+
+
+def test_runner_rejects_duplicate_selected_clip_before_runtime_root(
+    tmp_path: Path,
+) -> None:
+    runtime_root = tmp_path / "scenario-run"
+    runner = build_runner(tmp_path, tmp_path / "unused.mkv")
+
+    with pytest.raises(
+        ValueError,
+        match="^offline_scenario_visual_provenance_invalid$",
+    ):
+        runner.run(duplicate_selected_visual_suite(visual_only=True))
+
+    assert not runtime_root.exists()
+
+
 @pytest.mark.parametrize(
     ("backend", "reason"),
     [
@@ -989,6 +1056,44 @@ def test_voice_lane_rejects_right_response_with_wrong_action() -> None:
     )
 
     assert (result.status, result.reason) == ("FAIL", "scenario_voice_mismatch")
+
+
+def test_voice_lane_failure_preserves_observed_exact_actions_and_partial_counts() -> None:
+    from services.offline_guardian_scenario import run_voice_lane
+
+    value = scenario("VOICE-DIAPER-01")
+    assert value.voice is not None
+    steps = list(value.voice.steps)
+    steps[-1] = steps[-1].model_copy(
+        update={"expected_reason": "listen_only_acknowledged"}
+    )
+    changed = value.model_copy(
+        update={"voice": value.voice.model_copy(update={"steps": tuple(steps)})}
+    )
+    fixtures, asr = voice_fixtures()
+
+    result = run_voice_lane(
+        changed,
+        fixtures.__getitem__,
+        speech_vad(),
+        asr,
+        RecordingScenarioSynth(),
+    )
+
+    assert (result.status, result.reason) == ("FAIL", "scenario_voice_mismatch")
+    assert result.counts == {
+        "action.feeding_command": 0,
+        "action.diaper_change_start": 1,
+        "action.diaper_change_complete": 1,
+        "action.burping_start": 1,
+        "action.burping_complete": 0,
+        "steps.total": 7,
+        "vad.speech": 7,
+        "responses.total": 5,
+        "outcome.listen_only_acknowledged": 3,
+        "outcome.listen_only_armed": 2,
+        "outcome.listen_only_ignored": 1,
+    }
 
 
 def test_voice_lane_rejects_empty_pcm_before_asr() -> None:

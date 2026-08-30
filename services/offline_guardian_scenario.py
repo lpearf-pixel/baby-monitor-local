@@ -211,12 +211,13 @@ def validate_visual_scenario_bindings(
         raise ValueError("offline_scenario_visual_provenance_invalid")
     by_id = {clip.clip_id: clip for clip in manifest.clips}
     selected: list[VisualCorpusClip] = []
+    selected_identifiers: set[str] = set()
     for scenario in suite.scenarios:
         visual = scenario.visual
         if visual is None:
             continue
         clip = by_id.get(visual.clip_id)
-        if clip is None:
+        if clip is None or clip.clip_id in selected_identifiers:
             raise ValueError("offline_scenario_visual_provenance_invalid")
         if clip.source_type is SourceType.PUBLIC_DATASET:
             valid = visual.provenance == "PUBLIC_VIDEO" and clip.parent_clip_id is None
@@ -235,6 +236,7 @@ def validate_visual_scenario_bindings(
         if not valid:
             raise ValueError("offline_scenario_visual_provenance_invalid")
         selected.append(clip)
+        selected_identifiers.add(clip.clip_id)
     return tuple(selected)
 
 
@@ -258,27 +260,39 @@ def run_voice_lane(
     response_count = 0
     speech_count = 0
     cancelled = threading.Event()
+
+    def failure(reason: str) -> ScenarioLaneResult:
+        return _voice_failure(
+            reason,
+            counts=_voice_counts(
+                step_count=len(voice.steps),
+                speech_count=speech_count,
+                response_count=response_count,
+                outcome_counts=outcome_counts,
+            ),
+        )
+
     for step in voice.steps:
         try:
             pcm = fixture_provider(step.step_id)
         except Exception:
-            return _voice_failure("offline_scenario_voice_fixture_invalid")
+            return failure("offline_scenario_voice_fixture_invalid")
         if (
             not isinstance(pcm, bytes)
             or not pcm
             or len(pcm) > MAX_GENERATED_PCM_BYTES
             or len(pcm) % VOICE_FRAME_BYTES
         ):
-            return _voice_failure("offline_scenario_voice_fixture_invalid")
+            return failure("offline_scenario_voice_fixture_invalid")
 
         speech = False
         for offset in range(0, len(pcm), VOICE_FRAME_BYTES):
             observation = vad.observe(pcm[offset : offset + VOICE_FRAME_BYTES])
             if observation.reason is not None:
-                return _voice_failure(observation.reason)
+                return failure(observation.reason)
             speech = speech or observation.speech
         if speech != step.speech_expected:
-            return _voice_failure("scenario_voice_mismatch")
+            return failure("scenario_voice_mismatch")
         if not speech:
             continue
         speech_count += 1
@@ -289,14 +303,14 @@ def run_voice_lane(
         )
         pcm = b""
         if outcome.reason in {"voice_model_unavailable", "voice_output_unavailable"}:
-            return _voice_failure(outcome.reason)
+            return failure(outcome.reason)
         if (
             outcome.reason != step.expected_reason
             or outcome.response_code != step.expected_response_code
             or outcome.action_code != step.expected_action_code
             or outcome.match_kind != step.expected_match_kind
         ):
-            return _voice_failure("scenario_voice_mismatch")
+            return failure("scenario_voice_mismatch")
         outcome_counts[f"outcome.{outcome.reason}"] += 1
         if (
             outcome.match_kind == "exact"
@@ -305,12 +319,12 @@ def run_voice_lane(
             outcome_counts[f"action.{outcome.action_code}"] += 1
         response_count += int(outcome.response_code is not None)
 
-    counts = {
-        "steps.total": len(voice.steps),
-        "vad.speech": speech_count,
-        "responses.total": response_count,
-        **dict(sorted(outcome_counts.items())),
-    }
+    counts = _voice_counts(
+        step_count=len(voice.steps),
+        speech_count=speech_count,
+        response_count=response_count,
+        outcome_counts=outcome_counts,
+    )
     return ScenarioLaneResult(
         lane="voice_generated",
         status="PASS" if response_count == voice.expected_response_count else "FAIL",
@@ -599,12 +613,38 @@ def _visual_failure(reason: str) -> ScenarioLaneResult:
     )
 
 
-def _voice_failure(reason: str) -> ScenarioLaneResult:
+def _voice_counts(
+    *,
+    step_count: int,
+    speech_count: int,
+    response_count: int,
+    outcome_counts: Counter[str],
+) -> dict[str, int]:
+    return {
+        "steps.total": step_count,
+        "vad.speech": speech_count,
+        "responses.total": response_count,
+        **dict(sorted(outcome_counts.items())),
+    }
+
+
+def _voice_failure(
+    reason: str,
+    *,
+    counts: dict[str, int] | None = None,
+) -> ScenarioLaneResult:
     return ScenarioLaneResult(
         lane="voice_generated",
         status="FAIL",
         reason=reason,
-        counts={f"action.{action_code}": 0 for action_code in SCENARIO_ACTION_CODES},
+        counts=(
+            counts
+            if counts is not None
+            else {
+                f"action.{action_code}": 0
+                for action_code in SCENARIO_ACTION_CODES
+            }
+        ),
     )
 
 
