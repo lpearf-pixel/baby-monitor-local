@@ -17,7 +17,7 @@ from packages.contracts.offline_guardian_scenario import (
     OfflineScenarioSuiteV1,
     ScenarioLaneResult,
 )
-from packages.contracts.visual_corpus import VisualCorpusManifest
+from packages.contracts.visual_corpus import SourceType, VisualCorpusManifest
 from services.vision.corpus_replay import (
     GuardianReplayProjector,
     GuardianReplayReview,
@@ -266,6 +266,16 @@ def run_visual_lane(
     clips = tuple(clip for clip in manifest.clips if clip.clip_id == visual.clip_id)
     if len(clips) != 1:
         return _visual_failure("offline_scenario_clip_missing")
+    clip = clips[0]
+    expected_provenance = (
+        "PUBLIC_VIDEO"
+        if clip.source_type is SourceType.PUBLIC_DATASET
+        else "GENERATED_VISUAL"
+        if clip.source_type is SourceType.SYNTHETIC
+        else None
+    )
+    if visual.provenance != expected_provenance:
+        return _visual_failure("offline_scenario_visual_provenance_mismatch")
 
     profile = ReplayProfile(
         profile_id=visual.profile,
@@ -285,7 +295,7 @@ def run_visual_lane(
 
     aggregate = VisualCorpusReplay(
         prepared_resolver=resolve_prepared,
-    ).run_clip(clips[0], profile=profile)
+    ).run_clip(clip, profile=profile)
     counts = {
         "frames.total": aggregate.frames_total,
         "frames.processed": aggregate.frames_processed,
@@ -314,9 +324,17 @@ def run_visual_lane(
     }
     status = aggregate.status
     reason = aggregate.reason
-    if status == "PASS" and aggregate.frames_processed < visual.minimum_frames_processed:
+    accounting_ok = (
+        aggregate.frames_total == visual.expected_frames_processed
+        and aggregate.frames_processed == visual.expected_frames_processed
+        and aggregate.frames_skipped == 0
+        and aggregate.dropped_frames == 0
+        and aggregate.decode_errors == 0
+        and aggregate.worker_errors == 0
+    )
+    if status == "PASS" and not accounting_ok:
         status = "FAIL"
-        reason = "offline_scenario_visual_insufficient"
+        reason = "offline_scenario_visual_accounting_mismatch"
     elif status != "PASS":
         status = "FAIL"
     return ScenarioLaneResult(

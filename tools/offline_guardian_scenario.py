@@ -43,7 +43,7 @@ SCENARIO_SUITE_PATH = (
 VISUAL_MANIFEST_PATH = REPOSITORY_ROOT / "tests/fixtures/visual_corpus/manifest.json"
 MODEL_ROOT = REPOSITORY_ROOT / "runtime/models/openvino-2025.4.1"
 RUN_PARENT = REPOSITORY_ROOT / "runtime/test-corpus/offline-scenario"
-VISUAL_CLIP_IDS = ("DAY-01", "OCC-02", "NEG-03")
+VISUAL_CLIP_IDS = ("DAY-01", "OCC-02", "NEG-03", "DAY-03", "OCC-03")
 SAFE_REASONS = frozenset(
     {
         "offline_scenario_runtime_unsafe",
@@ -100,6 +100,19 @@ def _validate() -> int:
         if scenario.visual is not None
     )
     if configured != VISUAL_CLIP_IDS:
+        raise RuntimeError("offline_scenario_command_failed")
+    scenario_visuals = tuple(
+        scenario.visual
+        for scenario in suite.scenarios
+        if scenario.visual is not None
+    )
+    expected_provenance = tuple(
+        "PUBLIC_VIDEO"
+        if clip.source_type is SourceType.PUBLIC_DATASET
+        else "GENERATED_VISUAL"
+        for clip in clips
+    )
+    if tuple(visual.provenance for visual in scenario_visuals) != expected_provenance:
         raise RuntimeError("offline_scenario_command_failed")
     _emit(
         result="PASS",
@@ -218,13 +231,14 @@ def _is_public_or_public_derived(
     by_id: dict[str, VisualCorpusClip],
 ) -> bool:
     if clip.source_type is SourceType.PUBLIC_DATASET:
-        return True
+        return clip.parent_clip_id is None
     if clip.source_type is not SourceType.SYNTHETIC or clip.parent_clip_id is None:
         return False
     parent = by_id.get(clip.parent_clip_id)
     return bool(
         parent is not None
         and getattr(parent, "source_type", None) is SourceType.PUBLIC_DATASET
+        and getattr(parent, "parent_clip_id", None) is None
         and getattr(parent, "source_id", None) == clip.source_id
     )
 

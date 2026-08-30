@@ -208,7 +208,9 @@ def test_visual_lane_replays_real_file_through_current_worker(tmp_path: Path) ->
     assert result.status == "PASS"
     assert result.reason == "ok"
     assert result.counts["frames.total"] == 65
-    assert result.counts["frames.processed"] >= 1
+    assert result.counts["frames.processed"] == 65
+    assert result.counts["frames.skipped"] == 0
+    assert result.counts["frames.dropped"] == 0
     assert result.counts["errors.decode"] == 0
     assert result.counts["errors.worker"] == 0
     assert result.counts["observation.pose_count.1"] == 65
@@ -218,6 +220,66 @@ def test_visual_lane_replays_real_file_through_current_worker(tmp_path: Path) ->
     assert result.metrics_ms["model.p95"] >= 0
     assert not (tmp_path / "guardian-events.sqlite3").exists()
     assert not hasattr(result, "frame_observations")
+
+
+def test_visual_lane_rejects_non_exact_frame_accounting(tmp_path: Path) -> None:
+    from services.offline_guardian_scenario import run_visual_lane
+
+    media = tmp_path / "public-fixture.mkv"
+    generated_video(media, duration_seconds=13)
+    value = scenario("SAFE-SLEEP-01")
+    assert value.visual is not None
+    changed = value.model_copy(
+        update={
+            "visual": value.visual.model_copy(
+                update={"expected_frames_processed": 64}
+            )
+        }
+    )
+
+    result = run_visual_lane(
+        changed,
+        load_manifest(VISUAL_MANIFEST),
+        lambda _clip, _profile: media,
+        tmp_path,
+        AvailableVisualBackend(),
+    )
+
+    assert (result.status, result.reason) == (
+        "FAIL",
+        "offline_scenario_visual_accounting_mismatch",
+    )
+    assert result.counts["frames.total"] == 65
+    assert result.counts["frames.processed"] == 65
+
+
+def test_visual_lane_rejects_manifest_provenance_mismatch_before_media() -> None:
+    from services.offline_guardian_scenario import run_visual_lane
+
+    value = scenario("SAFE-SLEEP-01")
+    assert value.visual is not None
+    changed = value.model_copy(
+        update={
+            "visual": value.visual.model_copy(
+                update={"provenance": "GENERATED_VISUAL"}
+            )
+        }
+    )
+    called: list[str] = []
+
+    result = run_visual_lane(
+        changed,
+        load_manifest(VISUAL_MANIFEST),
+        lambda _clip, _profile: called.append("resolver"),
+        Path.cwd(),
+        AvailableVisualBackend(),
+    )
+
+    assert (result.status, result.reason) == (
+        "FAIL",
+        "offline_scenario_visual_provenance_mismatch",
+    )
+    assert called == []
 
 
 def test_visual_lane_rejects_unknown_clip_before_resolving_media() -> None:

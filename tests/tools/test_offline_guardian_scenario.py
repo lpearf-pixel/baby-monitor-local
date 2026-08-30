@@ -35,8 +35,8 @@ def test_validate_checks_tracked_suite_and_visual_clip_references(capsys) -> Non
     assert capsys.readouterr().out == (
         "result=PASS\n"
         "suite_id=offline-guardian-v1\n"
-        "scenario_count=4\n"
-        "visual_clip_count=3\n"
+        "scenario_count=8\n"
+        "visual_clip_count=5\n"
     )
 
 
@@ -120,13 +120,54 @@ def test_fixed_selection_is_exact_and_public() -> None:
     manifest = module().load_manifest(module().VISUAL_MANIFEST_PATH)
     selected = module()._selected_visual_clips(manifest)
 
-    assert tuple(clip.clip_id for clip in selected) == ("DAY-01", "OCC-02", "NEG-03")
+    assert tuple(clip.clip_id for clip in selected) == (
+        "DAY-01",
+        "OCC-02",
+        "NEG-03",
+        "DAY-03",
+        "OCC-03",
+    )
     assert [clip.source_type.value for clip in selected] == [
         "PUBLIC_DATASET",
         "SYNTHETIC",
         "PUBLIC_DATASET",
+        "PUBLIC_DATASET",
+        "SYNTHETIC",
     ]
     assert selected[1].parent_clip_id == "DAY-02"
+    assert selected[4].parent_clip_id == "DAY-01"
+
+
+def test_fixed_selection_rejects_a_synthetic_parent() -> None:
+    manifest = module().load_manifest(module().VISUAL_MANIFEST_PATH)
+    by_id = {clip.clip_id: clip for clip in manifest.clips}
+    changed_occ03 = by_id["OCC-03"].model_copy(update={"parent_clip_id": "OCC-02"})
+    changed_clips = tuple(
+        changed_occ03 if clip.clip_id == "OCC-03" else clip
+        for clip in manifest.clips
+    )
+
+    with pytest.raises(RuntimeError, match="^offline_scenario_command_failed$"):
+        module()._selected_visual_clips(
+            manifest.model_copy(update={"clips": changed_clips})
+        )
+
+
+def test_fixed_selection_rejects_parent_source_mismatch() -> None:
+    manifest = module().load_manifest(module().VISUAL_MANIFEST_PATH)
+    by_id = {clip.clip_id: clip for clip in manifest.clips}
+    changed_occ03 = by_id["OCC-03"].model_copy(
+        update={"source_id": by_id["NEG-03"].source_id}
+    )
+    changed_clips = tuple(
+        changed_occ03 if clip.clip_id == "OCC-03" else clip
+        for clip in manifest.clips
+    )
+
+    with pytest.raises(RuntimeError, match="^offline_scenario_command_failed$"):
+        module()._selected_visual_clips(
+            manifest.model_copy(update={"clips": changed_clips})
+        )
 
 
 def test_cli_source_does_not_initialize_production_clients() -> None:

@@ -162,7 +162,7 @@ git commit -m "feat: define expanded offline scenarios"
 - `_is_public_or_public_derived` accepts public clips or one direct reviewed public parent with identical `source_id` and no parent of its own.
 - `run_visual_lane` passes only when total and processed equal `expected_frames_processed` and skipped/dropped/decode/worker are all zero.
 
-- [ ] **Step 1: Write visual RED tests**
+- [x] **Step 1: Write visual RED tests**
 
 Add tests for the exact five-clip order, `OCC-02` provenance correction, `OCC-03` direct parent, synthetic-parent/deeper/source-mismatch rejection before downloader/preparer calls, and exact frame accounting:
 
@@ -184,7 +184,7 @@ def test_visual_lane_rejects_non_exact_frame_accounting(tmp_path: Path) -> None:
     assert (result.status, result.reason) == ("FAIL", "offline_scenario_visual_accounting_mismatch")
 ```
 
-- [ ] **Step 2: Run RED**
+- [x] **Step 2: Run RED**
 
 ```bash
 ../../.venv-alpha/bin/python -m pytest -q tests/integration/test_offline_guardian_scenario.py -k visual tests/tools/test_offline_guardian_scenario.py -k 'selected or provenance or frame'
@@ -192,7 +192,7 @@ def test_visual_lane_rejects_non_exact_frame_accounting(tmp_path: Path) -> None:
 
 Expected: FAIL because selection has three IDs and the visual lane accepts a minimum.
 
-- [ ] **Step 3: Implement exact visual gates**
+- [x] **Step 3: Implement exact visual gates**
 
 After building the bounded count map, require:
 
@@ -209,7 +209,7 @@ accounting_ok = (
 
 If the replay itself passes but `accounting_ok` is false, return `FAIL` with `offline_scenario_visual_accounting_mismatch`. Keep all observation/candidate counts factual, including zeros; never compare them with scenario labels or Guardian oracle expectations.
 
-- [ ] **Step 4: Run GREEN**
+- [x] **Step 4: Run GREEN**
 
 ```bash
 ../../.venv-alpha/bin/python -m pytest -q tests/integration/test_offline_guardian_scenario.py -k visual tests/tools/test_offline_guardian_scenario.py
@@ -217,7 +217,7 @@ If the replay itself passes but `accounting_ok` is false, return `FAIL` with `of
 git diff --check
 ```
 
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
 
 ```bash
 git add services/offline_guardian_scenario.py tools/offline_guardian_scenario.py tests/integration/test_offline_guardian_scenario.py tests/tools/test_offline_guardian_scenario.py docs/superpowers/plans/2026-08-30-offline-guardian-scenario-expansion.md
