@@ -12,9 +12,9 @@ Updated: 2026-08-30
   eight-scenario software expansion; low-risk Feeding/diaper/burping Voice decision;
   separately designed Camera Reply correction and clean V3E; separately authorized
   public/private visual-readiness work; then deferred device and 72-hour release gates.
-  Only the first software slice is resumed by this checkpoint. Camera Reply, household
-  capture, medication, Baby Care writes, PR/merge and `main/stable` changes remain
-  unauthorized.
+  Stage 1 is closed and Stage 2 Step 1 has reconciled the existing low-risk Voice
+  evidence without accessing household audio. Camera Reply, household capture,
+  medication, Baby Care writes, PR/merge and `main/stable` changes remain unauthorized.
 - Visual regression corpus work is published on `codex/visual-regression-corpus`; the
   public-corpus proposal base is `681edd3c49d0ccca442af064188a4e8b814a4db5`.
   The published branch includes the private-overlay software, four-scenario offline
@@ -111,7 +111,9 @@ Updated: 2026-08-30
   and Voice failures retain already observed bounded action/evidence counters. The local
   branch is ahead of unchanged remote `f05071a`; these review fixes are not pushed. No PR
   or protected-branch change was made. Stage 1 is closed; the next ordered slice is the
-  software-only reconciliation in Stage 2 before any separately authorized household run.
+  adult-supervised Stage 2 gate. Existing evidence carries forward zero observed false
+  accepts and a 4/4 combined diaper/burping recheck, but Feeding remained 8/11 in the
+  original matrix and no single current-candidate run closed all five low-risk actions.
 - Stable Xiaomi line: `stable/xiaomi-alpha` at `0df20ae`.
 - Active Camera Reply review line: `codex/xiaomi-camera-reply-lifecycle-review`, based
   on accepted Voice head `4d479b8`; its published Task 8 checkpoint is `a622a7a`.

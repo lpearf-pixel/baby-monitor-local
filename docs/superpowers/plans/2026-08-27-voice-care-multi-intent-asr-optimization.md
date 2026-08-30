@@ -11,6 +11,10 @@
 > Camera Reply V3E does not resume. Medication remains blocked behind a separate
 > high-risk design. Model installation, Camera Reply activation, Baby Care writes, PRs
 > and protected-branch changes remain unauthorized.
+> The later exact combined-command candidate passed diaper/burping 4/4, but Feeding's
+> original supervised result remained 8/11 and no one current-candidate matrix closed all
+> five low-risk actions. Ordered-delivery Stage 2 therefore remains at its explicit
+> adult-supervised gate; this reconciliation does not authorize another household run.
 
 **Goal:** Make the existing armed listen-only Voice flow safely recognize a closed set
 of feeding, diaper-change and burping commands, classify medication utterances only as

@@ -182,7 +182,7 @@ client was touched.
 - Produces a bounded decision for Feeding, diaper change and burping only; it does not
   write care data or authorize Camera Reply.
 
-- [ ] **Step 1: Reconcile existing Task 8 evidence before any new run**
+- [x] **Step 1: Reconcile existing Task 8 evidence before any new run**
 
 Carry forward the failed original recall matrix, the bounded combined-command fix and
 its 4/4 installed recheck. Do not rerun the rejected ContextualParaformer/hotword A/B,

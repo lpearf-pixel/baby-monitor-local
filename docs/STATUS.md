@@ -99,7 +99,11 @@
   acceptance. Independent review closed at 0 Critical / 0 Important / 0 Minor after
   rejecting duplicate selected clips before runtime and preserving bounded Voice action
   evidence across lane and cleanup failures. Stage 1 is complete; the fixes are local and
-  unpushed, and no PR or protected-branch change occurred.
+  unpushed, and no PR or protected-branch change occurred. Stage 2 Step 1 then confirmed
+  that `44bd855` is in current history, the combined diaper/burping recheck was 4/4 with
+  zero observed false accepts, and the current closed software surface passes 137/137.
+  Feeding's original supervised recall remained 8/11 and no current-candidate matrix has
+  yet closed all five low-risk actions, so the next gate still requires an adult.
 - Environment monitoring design and implementation plan: approved on 2026-08-05.
 - Stable Xiaomi Alpha commit: `0df20ae` on `stable/xiaomi-alpha`.
 - Current visual-corpus worktree branch: `codex/visual-regression-corpus`. The separate

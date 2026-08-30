@@ -2138,3 +2138,38 @@ compatibility or unattended care. Remote `origin/codex/visual-regression-corpus`
 remains `f05071a`; the three review-fix commits are local and unpushed. Stage 2 Step 1
 software-only Voice evidence reconciliation is next; any household test still requires
 separate adult-supervised authority.
+
+## 2026-08-30 Ordered Stage 2 low-risk Voice evidence reconciliation
+
+Stage 2 Step 1 was performed read-only from docs head
+`b983a8aec89bed44129fbce937c5b524781c4869`; no microphone, Xiaomi source, Voice
+worker, Camera Reply, model runtime or household diagnostic was accessed. Candidate
+`44bd85555e51344ce2797a3252e606bd44f452cd` is an ancestor of the current branch, and
+the source still contains only the four approved exact Gate B punctuation-free prefixes
+with the existing closed action and negative guards.
+
+The authoritative Task 8 resolution already distinguishes the evidence correctly:
+
+- the original supervised gate observed Feeding 8/11, diaper single/two-stage 0/2 and
+  2/2, burping single/start/complete 0/2, 1/1 and 0/2, with zero observed false accepts;
+- the bounded follow-up candidate then passed all four combined diaper/burping commands
+  4/4 with one i9 reply each, no rejection/output-failure increment, no duplicate and no
+  observed camera movement;
+- the separate two-stage burping-complete path still produced fixed `far` rejection;
+- medication, Baby Care writes and Camera Reply remain outside this low-risk decision.
+
+Fresh software-only reconciliation evidence was:
+
+```text
+candidate 44bd855 is an ancestor of current HEAD: PASS
+wake/care-action/correction/listen-only/action-benchmark focused: 137 passed
+prohibited Baby Care/outbox/signer/Camera Reply/go2rtc/Xiaomi/PTZ imports: no match
+```
+
+This evidence supports keeping the closed current software and the already accepted
+combined single-sentence form. It does not close the overall low-risk real-device gate:
+Feeding remained 8/11 in the original matrix, and no single current-candidate supervised
+run has closed all five low-risk combined actions. Stage 2 Step 2 is therefore the exact
+next stop and requires separate adult-supervised authority before any household audio is
+used. Rejected contextual/hotword A/B, invalid Whisper artifacts and the two-stage `far`
+path were not rerun or reinterpreted.

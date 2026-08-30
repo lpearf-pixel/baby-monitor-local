@@ -28,10 +28,13 @@ dropped, decode-error or worker-error frames; full Python is 2320 passed / 1 exp
 public-corpus skip and frontend is 73/73. Visual observations remain independent from
 synthetic Guardian oracles, and generated Voice output is checked against exact action
 and match identities. Independent review is clean at 0 Critical / 0 Important / 0 Minor.
-Do not tune models or thresholds to the synthetic labels. The immediate next action is
-Stage 2 Step 1: reconcile the existing low-risk Feeding/diaper/burping Voice evidence
-without a household run. Stage 2 Step 2 still stops for separate adult-supervised
-authority; real-baby accuracy and public baseline promotion remain separate later gates.
+Do not tune models or thresholds to the synthetic labels. Stage 2 Step 1 is complete:
+the current branch contains candidate `44bd855`, carries forward the combined
+diaper/burping 4/4 supervised recheck and passes the closed Voice software surface
+137/137. Feeding's original supervised matrix remained 8/11, and no one current-candidate
+run has closed all five low-risk combined actions. The immediate next action is Stage 2
+Step 2: obtain separate adult-supervised authority. Real-baby accuracy and public
+baseline promotion remain separate later gates.
 
 **Private local visual overlay (deferred by owner):** the contract in
 `docs/superpowers/specs/2026-08-29-private-local-visual-corpus-overlay-design.md` and
