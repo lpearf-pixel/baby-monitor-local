@@ -15,8 +15,14 @@ from packages.contracts.offline_guardian_scenario import (
     OfflineScenarioResultV1,
     OfflineScenarioRunV1,
     ScenarioLaneResult,
+    VoiceScenarioStepV1,
     canonical_offline_run_bytes,
     load_offline_scenario_suite,
+)
+from packages.contracts.visual_corpus import ReplayResult, ReviewState, SourceType
+from packages.contracts.vision import (
+    RealtimeCandidateKind,
+    RealtimeCandidateTransitionKind,
 )
 from services.vision.corpus_manifest import load_manifest
 from services.vision.realtime_models import RealtimeModelError, RealtimeModelSignals
@@ -269,6 +275,22 @@ def test_visual_lane_replays_real_file_through_current_worker(tmp_path: Path) ->
     assert result.counts["observation.pose_count.1"] == 65
     assert result.counts["observation.face_count.1"] == 65
     assert result.counts["candidate.watch_opened.significant_bed_motion"] == 1
+    expected_candidate_keys = {
+        f"candidate.{transition.value}.{candidate.value}"
+        for transition in RealtimeCandidateTransitionKind
+        for candidate in RealtimeCandidateKind
+    }
+    actual_candidate_counts = {
+        key: value
+        for key, value in result.counts.items()
+        if key.startswith("candidate.")
+    }
+    assert set(actual_candidate_counts) == expected_candidate_keys
+    assert all(
+        value == 0
+        for key, value in actual_candidate_counts.items()
+        if key != "candidate.watch_opened.significant_bed_motion"
+    )
     assert result.metrics_ms["pipeline.p95"] >= 0
     assert result.metrics_ms["model.p95"] >= 0
     assert not (tmp_path / "guardian-events.sqlite3").exists()
@@ -300,7 +322,7 @@ def test_visual_lane_rejects_non_exact_frame_accounting(tmp_path: Path) -> None:
 
     assert (result.status, result.reason) == (
         "FAIL",
-        "offline_scenario_visual_accounting_mismatch",
+        "offline_scenario_visual_frame_mismatch",
     )
     assert result.counts["frames.total"] == 65
     assert result.counts["frames.processed"] == 65
@@ -357,6 +379,183 @@ def test_visual_lane_rejects_unknown_clip_before_resolving_media() -> None:
     assert called == []
 
 
+def test_suite_manifest_binding_validator_rejects_every_unsafe_provenance() -> None:
+    from services.offline_guardian_scenario import validate_visual_scenario_bindings
+
+    suite = load_offline_scenario_suite(FIXTURE)
+    manifest = load_manifest(VISUAL_MANIFEST)
+    by_id = {clip.clip_id: clip for clip in manifest.clips}
+
+    def changed_scenario(identifier: str, **visual_updates: object):
+        original = scenario(identifier)
+        assert original.visual is not None
+        replacement = original.model_copy(
+            update={
+                "visual": original.visual.model_copy(update=visual_updates),
+            }
+        )
+        return suite.model_copy(
+            update={
+                "scenarios": tuple(
+                    replacement if item.scenario_id == identifier else item
+                    for item in suite.scenarios
+                )
+            }
+        )
+
+    def changed_manifest(*replacements):
+        replacement_by_id = {clip.clip_id: clip for clip in replacements}
+        return manifest.model_copy(
+            update={
+                "clips": tuple(
+                    replacement_by_id.get(clip.clip_id, clip)
+                    for clip in manifest.clips
+                )
+            }
+        )
+
+    invalid_cases = {
+        "unknown scenario clip": (
+            changed_scenario("SAFE-SLEEP-01", clip_id="DAY-99"),
+            manifest,
+        ),
+        "public declared generated": (
+            changed_scenario("SAFE-SLEEP-01", provenance="GENERATED_VISUAL"),
+            manifest,
+        ),
+        "synthetic declared public": (
+            changed_scenario("OUTSIDE-CANDIDATE-01", provenance="PUBLIC_VIDEO"),
+            manifest,
+        ),
+        "duplicate clip id": (
+            suite,
+            manifest.model_copy(
+                update={"clips": (*manifest.clips, by_id["DAY-01"])}
+            ),
+        ),
+        "missing selected clip": (
+            suite,
+            manifest.model_copy(
+                update={
+                    "clips": tuple(
+                        clip for clip in manifest.clips if clip.clip_id != "DAY-01"
+                    )
+                }
+            ),
+        ),
+        "synthetic missing parent": (
+            suite,
+            changed_manifest(by_id["OCC-03"].model_copy(update={"parent_clip_id": None})),
+        ),
+        "synthetic parent is synthetic": (
+            suite,
+            changed_manifest(
+                by_id["OCC-03"].model_copy(update={"parent_clip_id": "OCC-02"})
+            ),
+        ),
+        "synthetic parent source mismatch": (
+            suite,
+            changed_manifest(
+                by_id["OCC-03"].model_copy(
+                    update={"source_id": by_id["NEG-03"].source_id}
+                )
+            ),
+        ),
+        "synthetic parent unreviewed": (
+            suite,
+            changed_manifest(
+                by_id["DAY-01"].model_copy(update={"review_state": ReviewState.UNREVIEWED})
+            ),
+        ),
+        "synthetic parent has deeper ancestry": (
+            suite,
+            changed_manifest(
+                by_id["DAY-01"].model_copy(update={"parent_clip_id": "DAY-02"})
+            ),
+        ),
+        "synthetic ancestry cycle": (
+            suite,
+            changed_manifest(
+                by_id["DAY-01"].model_copy(
+                    update={
+                        "source_type": SourceType.SYNTHETIC,
+                        "parent_clip_id": "OCC-03",
+                    }
+                ),
+                by_id["OCC-03"].model_copy(update={"parent_clip_id": "DAY-01"}),
+            ),
+        ),
+        "private local source type": (
+            suite,
+            changed_manifest(
+                by_id["DAY-01"].model_copy(update={"source_type": SourceType.REAL})
+            ),
+        ),
+        "public clip has parent": (
+            suite,
+            changed_manifest(
+                by_id["DAY-01"].model_copy(update={"parent_clip_id": "DAY-02"})
+            ),
+        ),
+    }
+
+    for name, (changed_suite, changed_manifest_value) in invalid_cases.items():
+        with pytest.raises(
+            ValueError,
+            match="^offline_scenario_visual_provenance_invalid$",
+        ):
+            validate_visual_scenario_bindings(changed_suite, changed_manifest_value)
+
+    selected = validate_visual_scenario_bindings(suite, manifest)
+    assert tuple(clip.clip_id for clip in selected) == (
+        "DAY-01",
+        "OCC-02",
+        "NEG-03",
+        "DAY-03",
+        "OCC-03",
+    )
+
+
+def test_runner_rejects_invalid_visual_binding_before_runtime_root(tmp_path: Path) -> None:
+    from services.offline_guardian_scenario import OfflineGuardianScenarioRunner
+
+    value = scenario("SAFE-SLEEP-01")
+    assert value.visual is not None
+    visual_only = value.model_copy(
+        update={
+            "required_lanes": ("visual_observation",),
+            "visual": value.visual.model_copy(update={"provenance": "GENERATED_VISUAL"}),
+            "guardian": None,
+            "visual_oracle_relationship": None,
+        }
+    )
+    suite = load_offline_scenario_suite(FIXTURE).model_copy(
+        update={"scenarios": (visual_only,)}
+    )
+    fixtures, asr = voice_fixtures()
+    runtime_root = tmp_path / "scenario-run"
+    runner = OfflineGuardianScenarioRunner(
+        runtime_root=runtime_root,
+        runtime_boundary=tmp_path,
+        visual_manifest=load_manifest(VISUAL_MANIFEST),
+        prepared_resolver=lambda *_args: tmp_path / "unused.mkv",
+        prepared_root=tmp_path,
+        model_backend=AvailableVisualBackend(),
+        voice_fixture_provider=fixtures.__getitem__,
+        voice_vad_factory=speech_vad,
+        voice_asr_factory=lambda: ScenarioAsr(asr.mapping),
+        voice_synthesizer_factory=RecordingScenarioSynth,
+    )
+
+    with pytest.raises(
+        ValueError,
+        match="^offline_scenario_visual_provenance_invalid$",
+    ):
+        runner.run(suite)
+
+    assert not runtime_root.exists()
+
+
 @pytest.mark.parametrize(
     ("backend", "reason"),
     [
@@ -402,6 +601,124 @@ def test_visual_lane_reports_missing_prepared_artifact_without_path(
     assert result.status == "FAIL"
     assert result.reason == "visual_corpus_input_invalid"
     assert "private-household-name" not in repr(result)
+
+
+def replay_aggregate(
+    *,
+    candidate_counts: dict[str, int] | None = None,
+    observation_counts: dict[str, int] | None = None,
+) -> ReplayResult:
+    return ReplayResult(
+        clip_id="DAY-01",
+        status="PASS",
+        reason="ok",
+        frames_total=65,
+        frames_processed=65,
+        frames_skipped=0,
+        decode_errors=0,
+        worker_errors=0,
+        model_state="available",
+        observation_counts=observation_counts or {},
+        candidate_counts=candidate_counts or {},
+        processing_p50_ms=0,
+        processing_p95_ms=0,
+        processing_max_ms=0,
+        pipeline_p50_ms=0,
+        pipeline_p95_ms=0,
+        pipeline_max_ms=0,
+        dropped_frames=0,
+        queue_backlog_max=0,
+    )
+
+
+def stub_visual_replay(monkeypatch: pytest.MonkeyPatch, aggregate: ReplayResult) -> None:
+    import services.offline_guardian_scenario as module
+
+    class StubVisualCorpusReplay:
+        def __init__(self, **_kwargs: object) -> None:
+            pass
+
+        def run_clip(self, *_args: object, **_kwargs: object) -> ReplayResult:
+            return aggregate
+
+    monkeypatch.setattr(module, "VisualCorpusReplay", StubVisualCorpusReplay)
+
+
+def test_visual_lane_emits_fixed_candidate_cartesian_zeros(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    from services.offline_guardian_scenario import run_visual_lane
+
+    stub_visual_replay(monkeypatch, replay_aggregate())
+    result = run_visual_lane(
+        scenario("SAFE-SLEEP-01"),
+        load_manifest(VISUAL_MANIFEST),
+        lambda *_args: tmp_path / "unused.mkv",
+        tmp_path,
+        AvailableVisualBackend(),
+    )
+    expected = {
+        f"candidate.{transition.value}.{candidate.value}"
+        for transition in RealtimeCandidateTransitionKind
+        for candidate in RealtimeCandidateKind
+    }
+
+    assert result.status == "PASS"
+    assert {
+        key for key in result.counts if key.startswith("candidate.")
+    } == expected
+    assert all(result.counts[key] == 0 for key in expected)
+
+
+def test_visual_lane_rejects_unexpected_candidate_key(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    from services.offline_guardian_scenario import run_visual_lane
+
+    stub_visual_replay(
+        monkeypatch,
+        replay_aggregate(candidate_counts={"watch_opened.private_candidate": 1}),
+    )
+    result = run_visual_lane(
+        scenario("SAFE-SLEEP-01"),
+        load_manifest(VISUAL_MANIFEST),
+        lambda *_args: tmp_path / "unused.mkv",
+        tmp_path,
+        AvailableVisualBackend(),
+    )
+
+    assert (result.status, result.reason) == (
+        "FAIL",
+        "offline_scenario_visual_aggregate_invalid",
+    )
+
+
+def test_visual_lane_rejects_bounded_count_overflow(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    from services.offline_guardian_scenario import run_visual_lane
+
+    stub_visual_replay(
+        monkeypatch,
+        replay_aggregate(
+            observation_counts={f"signal_{index}": 1 for index in range(47)}
+        ),
+    )
+    result = run_visual_lane(
+        scenario("SAFE-SLEEP-01"),
+        load_manifest(VISUAL_MANIFEST),
+        lambda *_args: tmp_path / "unused.mkv",
+        tmp_path,
+        AvailableVisualBackend(),
+    )
+
+    assert (result.status, result.reason) == (
+        "FAIL",
+        "offline_scenario_visual_aggregate_overflow",
+    )
 
 
 def test_visual_lane_rejects_prepared_media_below_symlink_ancestor(
@@ -461,14 +778,14 @@ def voice_fixtures() -> tuple[dict[str, bytes], ScenarioAsr]:
         "feeding": "我是爸爸，开始喂奶",
         "no_wake": "今天天气如何",
         "unsupported": "播放音乐",
-        "diaper_wake_start": "小小",
+        "diaper_wake": "小小",
         "diaper_start": "开始换尿布",
         "diaper_wake_complete": "小小",
         "diaper_complete": "换好尿布了",
         "diaper_cross_burping": "小小开始拍嗝",
         "diaper_ambiguous": "小小开始换尿布然后开始拍嗝",
         "diaper_no_wake": "开始换尿布",
-        "burping_wake_start": "小小",
+        "burping_wake": "小小",
         "burping_start": "开始拍嗝",
         "burping_wake_complete": "小小",
         "burping_complete": "拍嗝结束",
@@ -508,6 +825,10 @@ def test_voice_lane_runs_generated_pcm_vad_and_current_controller() -> None:
     assert result.reason == "ok"
     assert result.counts == {
         "action.feeding_command": 1,
+        "action.diaper_change_start": 0,
+        "action.diaper_change_complete": 0,
+        "action.burping_start": 0,
+        "action.burping_complete": 0,
         "steps.total": 4,
         "vad.speech": 4,
         "responses.total": 2,
@@ -526,17 +847,21 @@ def test_voice_lane_runs_generated_pcm_vad_and_current_controller() -> None:
         (
             "VOICE-DIAPER-01",
             {
+                "action.feeding_command": 0,
                 "action.diaper_change_start": 1,
                 "action.diaper_change_complete": 1,
                 "action.burping_start": 1,
+                "action.burping_complete": 0,
             },
         ),
         (
             "VOICE-BURPING-01",
             {
+                "action.feeding_command": 0,
                 "action.burping_start": 1,
                 "action.burping_complete": 1,
                 "action.diaper_change_start": 1,
+                "action.diaper_change_complete": 0,
             },
         ),
     ],
@@ -572,6 +897,75 @@ def test_voice_lane_counts_target_and_cross_action_exactly(
         "listen_only_received",
         "listen_only_received",
     ]
+
+
+def test_voice_lane_emits_five_zero_action_keys_for_closed_controls() -> None:
+    from services.offline_guardian_scenario import run_voice_lane
+
+    base = scenario("VOICE-FEEDING-01")
+    assert base.voice is not None
+    steps = (
+        VoiceScenarioStepV1(
+            step_id="question",
+            speech_expected=True,
+            expected_reason="listen_only_ignored",
+            expected_response_code=None,
+            expected_action_code=None,
+            expected_match_kind=None,
+        ),
+        VoiceScenarioStepV1(
+            step_id="unsupported_control",
+            speech_expected=True,
+            expected_reason="listen_only_ignored",
+            expected_response_code=None,
+            expected_action_code=None,
+            expected_match_kind=None,
+        ),
+        VoiceScenarioStepV1(
+            step_id="medication_control",
+            speech_expected=True,
+            expected_reason="listen_only_high_risk_candidate",
+            expected_response_code=None,
+            expected_action_code="medication_start_candidate",
+            expected_match_kind="high_risk_candidate",
+        ),
+    )
+    changed = base.model_copy(
+        update={
+            "voice": base.voice.model_copy(
+                update={"steps": steps, "expected_response_count": 0}
+            )
+        }
+    )
+    texts = {
+        "question": "小小开始换尿布吗",
+        "unsupported_control": "小小播放音乐",
+        "medication_control": "小小开始喂药",
+    }
+    fixtures = {
+        step_id: generated_pcm(7_000 + index)
+        for index, step_id in enumerate(texts)
+    }
+    asr = ScenarioAsr({fixtures[key]: value for key, value in texts.items()})
+
+    result = run_voice_lane(
+        changed,
+        fixtures.__getitem__,
+        speech_vad(),
+        asr,
+        RecordingScenarioSynth(),
+    )
+
+    assert result.status == "PASS"
+    assert {
+        key: value for key, value in result.counts.items() if key.startswith("action.")
+    } == {
+        "action.feeding_command": 0,
+        "action.diaper_change_start": 0,
+        "action.diaper_change_complete": 0,
+        "action.burping_start": 0,
+        "action.burping_complete": 0,
+    }
 
 
 def test_voice_lane_rejects_right_response_with_wrong_action() -> None:
@@ -988,6 +1382,44 @@ def test_runner_fails_when_voice_component_close_fails(tmp_path: Path) -> None:
     assert result.reason == "offline_scenario_voice_cleanup_failed"
 
 
+def test_runner_preserves_voice_mismatch_when_cleanup_also_fails(tmp_path: Path) -> None:
+    from services.offline_guardian_scenario import OfflineGuardianScenarioRunner
+
+    suite = load_offline_scenario_suite(FIXTURE)
+    value = suite.scenarios[-1]
+    assert value.voice is not None
+    steps = list(value.voice.steps)
+    steps[0] = steps[0].model_copy(update={"expected_reason": "listen_only_ignored"})
+    changed = value.model_copy(
+        update={"voice": value.voice.model_copy(update={"steps": tuple(steps)})}
+    )
+    voice_only = suite.model_copy(update={"scenarios": (changed,)})
+    fixtures, asr = voice_fixtures()
+
+    class FailingSynth(RecordingScenarioSynth):
+        def close(self) -> None:
+            raise RuntimeError("private close failure")
+
+    runner = OfflineGuardianScenarioRunner(
+        runtime_root=tmp_path / "scenario-run",
+        runtime_boundary=tmp_path,
+        visual_manifest=load_manifest(VISUAL_MANIFEST),
+        prepared_resolver=lambda *_args: tmp_path / "unused.mkv",
+        prepared_root=tmp_path,
+        model_backend=AvailableVisualBackend(),
+        voice_fixture_provider=fixtures.__getitem__,
+        voice_vad_factory=speech_vad,
+        voice_asr_factory=lambda: ScenarioAsr(asr.mapping),
+        voice_synthesizer_factory=FailingSynth,
+    )
+
+    result = runner.run(voice_only)
+
+    assert result.status == "FAIL"
+    assert result.reason == "scenario_voice_mismatch"
+    assert result.results[0].reason == "scenario_voice_mismatch"
+
+
 def test_runner_timeout_keeps_voice_cleanup_bounded(
     tmp_path: Path,
     monkeypatch: pytest.MonkeyPatch,
@@ -1084,6 +1516,10 @@ def test_report_publishes_canonical_json_and_static_html(tmp_path: Path) -> None
     assert "http:" not in html.lower()
     assert "https:" not in html.lower()
     assert "does not prove model accuracy" in html
+    assert (
+        "Visual counts are observational; Guardian counts come from independent "
+        "synthetic semantic oracles."
+    ) in html
     assert stat.S_IMODE(json_path.stat().st_mode) == 0o600
     assert stat.S_IMODE(html_path.stat().st_mode) == 0o600
     assert {item.name for item in json_path.parent.iterdir()} == {

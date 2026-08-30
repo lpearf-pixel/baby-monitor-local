@@ -29,6 +29,21 @@ ScenarioActionCode = Literal[
 ]
 ScenarioMatchKind = Literal["exact", "corrected", "high_risk_candidate"]
 _COUNT_KEY = re.compile(r"^[a-z0-9][a-z0-9_.-]{0,95}$")
+_LOW_RISK_ACTION_CODES = frozenset(
+    {
+        "feeding_command",
+        "diaper_change_start",
+        "diaper_change_complete",
+        "burping_start",
+        "burping_complete",
+    }
+)
+_MEDICATION_ACTION_CODES = frozenset(
+    {
+        "medication_start_candidate",
+        "medication_complete_candidate",
+    }
+)
 
 
 class OfflineScenarioContract(BaseModel):
@@ -92,22 +107,25 @@ class VoiceScenarioStepV1(OfflineScenarioContract):
         default=None,
         pattern=r"^[a-z0-9_]+$",
     )
-    expected_action_code: ScenarioActionCode | None = None
-    expected_match_kind: ScenarioMatchKind | None = None
+    expected_action_code: ScenarioActionCode | None
+    expected_match_kind: ScenarioMatchKind | None
 
     @model_validator(mode="after")
     def require_action_identity_pair(self) -> "VoiceScenarioStepV1":
-        if (self.expected_action_code is None) != (self.expected_match_kind is None):
-            raise ValueError("offline_scenario_voice_invalid")
-        if (
-            self.expected_match_kind == "corrected"
-            and self.expected_action_code != "feeding_command"
-        ):
-            raise ValueError("offline_scenario_voice_invalid")
-        if self.expected_match_kind == "high_risk_candidate" and not (
-            self.expected_action_code is not None
-            and self.expected_action_code.startswith("medication_")
-        ):
+        pairing = (self.expected_action_code, self.expected_match_kind)
+        valid = (
+            pairing == (None, None)
+            or (
+                self.expected_action_code in _LOW_RISK_ACTION_CODES
+                and self.expected_match_kind == "exact"
+            )
+            or pairing == ("feeding_command", "corrected")
+            or (
+                self.expected_action_code in _MEDICATION_ACTION_CODES
+                and self.expected_match_kind == "high_risk_candidate"
+            )
+        )
+        if not valid:
             raise ValueError("offline_scenario_voice_invalid")
         return self
 

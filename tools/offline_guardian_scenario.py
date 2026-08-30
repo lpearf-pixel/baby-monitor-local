@@ -15,9 +15,11 @@ REPOSITORY_ROOT = Path(__file__).resolve().parents[1]
 if str(REPOSITORY_ROOT) not in sys.path:
     sys.path.insert(0, str(REPOSITORY_ROOT))
 
-from packages.contracts.offline_guardian_scenario import load_offline_scenario_suite
+from packages.contracts.offline_guardian_scenario import (
+    OfflineScenarioSuiteV1,
+    load_offline_scenario_suite,
+)
 from packages.contracts.visual_corpus import (
-    SourceType,
     VisualCorpusClip,
     VisualCorpusManifest,
 )
@@ -27,6 +29,7 @@ from services.offline_guardian_scenario import (
     OfflineGuardianScenarioRunner,
     OfflineScenarioTimeout,
     offline_scenario_deadline,
+    validate_visual_scenario_bindings,
 )
 from services.vision.corpus_download import CorpusDownloader, MAX_FIRST_STAGE_BYTES
 from services.vision.corpus_manifest import load_manifest
@@ -44,8 +47,30 @@ VISUAL_MANIFEST_PATH = REPOSITORY_ROOT / "tests/fixtures/visual_corpus/manifest.
 MODEL_ROOT = REPOSITORY_ROOT / "runtime/models/openvino-2025.4.1"
 RUN_PARENT = REPOSITORY_ROOT / "runtime/test-corpus/offline-scenario"
 VISUAL_CLIP_IDS = ("DAY-01", "OCC-02", "NEG-03", "DAY-03", "OCC-03")
+EXPECTED_SCENARIO_IDS = (
+    "SAFE-SLEEP-01",
+    "FACE-OCCLUSION-01",
+    "ADULT-INTERVENTION-01",
+    "VOICE-FEEDING-01",
+    "PRONE-CANDIDATE-01",
+    "OUTSIDE-CANDIDATE-01",
+    "VOICE-DIAPER-01",
+    "VOICE-BURPING-01",
+)
+EXPECTED_PUBLIC_SOURCE_IDS = (
+    "cdc-two-month-movement",
+    "cdc-safe-sleep-babies",
+    "wikimedia-infant-active-sleep",
+)
+EXPECTED_SCENARIO_COUNT = 8
+EXPECTED_LANE_COUNT = 13
+EXPECTED_VISUAL_CLIP_COUNT = 5
+EXPECTED_FRAME_COUNT = 330
+EXPECTED_PUBLIC_SOURCE_COUNT = 3
+EXPECTED_DECLARED_SOURCE_BYTES = 25_964_039
 SAFE_REASONS = frozenset(
     {
+        "offline_scenario_visual_provenance_invalid",
         "offline_scenario_runtime_unsafe",
         "offline_scenario_report_unsafe",
         "offline_scenario_report_failed",
@@ -93,32 +118,19 @@ def main(argv: list[str] | None = None) -> int:
 def _validate() -> int:
     suite = load_offline_scenario_suite(SCENARIO_SUITE_PATH)
     manifest = load_manifest(VISUAL_MANIFEST_PATH)
-    clips = _selected_visual_clips(manifest)
-    configured = tuple(
-        scenario.visual.clip_id
-        for scenario in suite.scenarios
-        if scenario.visual is not None
+    clips, lane_count, frame_count, source_ids, declared_bytes = _validate_fixed_suite(
+        suite,
+        manifest,
     )
-    if configured != VISUAL_CLIP_IDS:
-        raise RuntimeError("offline_scenario_command_failed")
-    scenario_visuals = tuple(
-        scenario.visual
-        for scenario in suite.scenarios
-        if scenario.visual is not None
-    )
-    expected_provenance = tuple(
-        "PUBLIC_VIDEO"
-        if clip.source_type is SourceType.PUBLIC_DATASET
-        else "GENERATED_VISUAL"
-        for clip in clips
-    )
-    if tuple(visual.provenance for visual in scenario_visuals) != expected_provenance:
-        raise RuntimeError("offline_scenario_command_failed")
     _emit(
         result="PASS",
         suite_id=suite.suite_id,
         scenario_count=len(suite.scenarios),
+        lane_count=lane_count,
         visual_clip_count=len(clips),
+        expected_frame_count=frame_count,
+        public_source_count=len(source_ids),
+        declared_source_bytes=declared_bytes,
     )
     return 0
 
@@ -127,22 +139,53 @@ def _run() -> int:
     with offline_scenario_deadline(DEFAULT_RUN_TIMEOUT_SECONDS):
         run, report_name = _execute_fixed_flow()
     lanes = tuple(lane for result in run.results for lane in result.lanes)
+    visual_lanes = tuple(lane for lane in lanes if lane.lane == "visual_observation")
+    frame_count = sum(lane.counts.get("frames.processed", 0) for lane in visual_lanes)
+    pass_count = sum(result.status == "PASS" for result in run.results)
+    skip_count = sum(result.status == "SKIP" for result in run.results)
+    fail_count = sum(result.status == "FAIL" for result in run.results)
+    exact_pass = (
+        run.suite_id == "offline-guardian-v1"
+        and run.status == "PASS"
+        and run.reason == "ok"
+        and tuple(result.scenario_id for result in run.results) == EXPECTED_SCENARIO_IDS
+        and len(run.results) == EXPECTED_SCENARIO_COUNT
+        and pass_count == EXPECTED_SCENARIO_COUNT
+        and skip_count == 0
+        and fail_count == 0
+        and len(lanes) == EXPECTED_LANE_COUNT
+        and all(lane.status == "PASS" for lane in lanes)
+        and len(visual_lanes) == EXPECTED_VISUAL_CLIP_COUNT
+        and frame_count == EXPECTED_FRAME_COUNT
+    )
     _emit(
-        result=run.status,
-        reason=run.reason,
+        result="PASS" if exact_pass else "FAIL",
+        reason=(
+            "ok"
+            if exact_pass
+            else run.reason
+            if run.status == "FAIL"
+            else "offline_scenario_command_failed"
+        ),
         scenario_count=len(run.results),
-        pass_count=sum(result.status == "PASS" for result in run.results),
-        skip_count=sum(result.status == "SKIP" for result in run.results),
-        fail_count=sum(result.status == "FAIL" for result in run.results),
+        pass_count=pass_count,
+        skip_count=skip_count,
+        fail_count=fail_count,
         lane_count=len(lanes),
+        visual_clip_count=len(visual_lanes),
+        frame_count=frame_count,
+        public_source_count=EXPECTED_PUBLIC_SOURCE_COUNT,
+        declared_source_bytes=EXPECTED_DECLARED_SOURCE_BYTES,
         report=report_name,
     )
-    return 0 if run.status in {"PASS", "SKIP"} else 2
+    return 0 if exact_pass else 2
 
 
 def _execute_fixed_flow():
     suite = load_offline_scenario_suite(SCENARIO_SUITE_PATH)
-    manifest, prepared, prepared_root = _prepare_selected_visuals()
+    manifest = load_manifest(VISUAL_MANIFEST_PATH)
+    clips, _lanes, _frames, _sources, _bytes = _validate_fixed_suite(suite, manifest)
+    prepared, prepared_root = _prepare_selected_visuals(manifest, clips)
     backend = _build_model_backend_quietly()
     fixture_pcm, asr_factory = _generated_voice_fixture()
     run_root = _new_run_root_path()
@@ -170,13 +213,13 @@ def _execute_fixed_flow():
     return run, f"{run_root.name}/report"
 
 
-def _prepare_selected_visuals() -> tuple[
-    VisualCorpusManifest,
+def _prepare_selected_visuals(
+    manifest: VisualCorpusManifest,
+    clips: tuple[VisualCorpusClip, ...],
+) -> tuple[
     dict[str, dict[str, Path]],
     Path,
 ]:
-    manifest = load_manifest(VISUAL_MANIFEST_PATH)
-    clips = _selected_visual_clips(manifest)
     layout = CorpusLayout.for_repository(REPOSITORY_ROOT)
     sources_by_id = {source.source_id: source for source in manifest.sources}
     selected_source_ids = tuple(dict.fromkeys(clip.source_id for clip in clips))
@@ -204,7 +247,6 @@ def _prepare_selected_visuals() -> tuple[
     )
     prepared = tuple(preparer.prepare_clip(clip) for clip in clips)
     return (
-        manifest,
         {
             item.clip_id: {
                 artifact.profile_id: artifact.path for artifact in item.artifacts
@@ -215,32 +257,42 @@ def _prepare_selected_visuals() -> tuple[
     )
 
 
-def _selected_visual_clips(manifest: VisualCorpusManifest):
-    by_id = {clip.clip_id: clip for clip in manifest.clips}
-    try:
-        selected = tuple(by_id[clip_id] for clip_id in VISUAL_CLIP_IDS)
-    except KeyError:
-        raise RuntimeError("offline_scenario_command_failed") from None
-    if any(not _is_public_or_public_derived(clip, by_id) for clip in selected):
-        raise RuntimeError("offline_scenario_command_failed")
-    return selected
-
-
-def _is_public_or_public_derived(
-    clip: VisualCorpusClip,
-    by_id: dict[str, VisualCorpusClip],
-) -> bool:
-    if clip.source_type is SourceType.PUBLIC_DATASET:
-        return clip.parent_clip_id is None
-    if clip.source_type is not SourceType.SYNTHETIC or clip.parent_clip_id is None:
-        return False
-    parent = by_id.get(clip.parent_clip_id)
-    return bool(
-        parent is not None
-        and getattr(parent, "source_type", None) is SourceType.PUBLIC_DATASET
-        and getattr(parent, "parent_clip_id", None) is None
-        and getattr(parent, "source_id", None) == clip.source_id
+def _validate_fixed_suite(
+    suite: OfflineScenarioSuiteV1,
+    manifest: VisualCorpusManifest,
+) -> tuple[tuple[VisualCorpusClip, ...], int, int, tuple[str, ...], int]:
+    clips = validate_visual_scenario_bindings(suite, manifest)
+    scenario_ids = tuple(scenario.scenario_id for scenario in suite.scenarios)
+    lane_count = sum(len(scenario.required_lanes) for scenario in suite.scenarios)
+    visual_ids = tuple(clip.clip_id for clip in clips)
+    frame_count = sum(
+        scenario.visual.expected_frames_processed
+        for scenario in suite.scenarios
+        if scenario.visual is not None
     )
+    source_ids = tuple(dict.fromkeys(clip.source_id for clip in clips))
+    sources_by_id = {source.source_id: source for source in manifest.sources}
+    try:
+        declared_bytes = sum(
+            sources_by_id[source_id].expected_bytes for source_id in source_ids
+        )
+    except (KeyError, TypeError):
+        raise RuntimeError("offline_scenario_command_failed") from None
+    if (
+        suite.suite_id != "offline-guardian-v1"
+        or scenario_ids != EXPECTED_SCENARIO_IDS
+        or len(suite.scenarios) != EXPECTED_SCENARIO_COUNT
+        or lane_count != EXPECTED_LANE_COUNT
+        or visual_ids != VISUAL_CLIP_IDS
+        or len(clips) != EXPECTED_VISUAL_CLIP_COUNT
+        or frame_count != EXPECTED_FRAME_COUNT
+        or source_ids != EXPECTED_PUBLIC_SOURCE_IDS
+        or len(source_ids) != EXPECTED_PUBLIC_SOURCE_COUNT
+        or declared_bytes != EXPECTED_DECLARED_SOURCE_BYTES
+        or declared_bytes > MAX_FIRST_STAGE_BYTES
+    ):
+        raise RuntimeError("offline_scenario_command_failed")
+    return clips, lane_count, frame_count, source_ids, declared_bytes
 
 
 def _new_run_root_path() -> Path:
@@ -274,14 +326,14 @@ def _generated_voice_fixture():
         "feeding": "\u6211\u662f\u7238\u7238\uff0c\u5f00\u59cb\u5582\u5976",
         "no_wake": "\u4eca\u5929\u5929\u6c14\u5982\u4f55",
         "unsupported": "\u64ad\u653e\u97f3\u4e50",
-        "diaper_wake_start": "\u5c0f\u5c0f",
+        "diaper_wake": "\u5c0f\u5c0f",
         "diaper_start": "\u5f00\u59cb\u6362\u5c3f\u5e03",
         "diaper_wake_complete": "\u5c0f\u5c0f",
         "diaper_complete": "\u6362\u597d\u5c3f\u5e03\u4e86",
         "diaper_cross_burping": "\u5c0f\u5c0f\u5f00\u59cb\u62cd\u55dd",
         "diaper_ambiguous": "\u5c0f\u5c0f\u5f00\u59cb\u6362\u5c3f\u5e03\u7136\u540e\u5f00\u59cb\u62cd\u55dd",
         "diaper_no_wake": "\u5f00\u59cb\u6362\u5c3f\u5e03",
-        "burping_wake_start": "\u5c0f\u5c0f",
+        "burping_wake": "\u5c0f\u5c0f",
         "burping_start": "\u5f00\u59cb\u62cd\u55dd",
         "burping_wake_complete": "\u5c0f\u5c0f",
         "burping_complete": "\u62cd\u55dd\u7ed3\u675f",

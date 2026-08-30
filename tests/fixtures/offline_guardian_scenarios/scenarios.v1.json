@@ -125,7 +125,7 @@
         "provenance": "GENERATED_AUDIO",
         "fixture_id": "generated-voice-diaper-v1",
         "steps": [
-          {"step_id": "diaper_wake_start", "speech_expected": true, "from_replay": false, "expected_reason": "listen_only_armed", "expected_response_code": "listen_only_ready", "expected_action_code": null, "expected_match_kind": null},
+          {"step_id": "diaper_wake", "speech_expected": true, "from_replay": false, "expected_reason": "listen_only_armed", "expected_response_code": "listen_only_ready", "expected_action_code": null, "expected_match_kind": null},
           {"step_id": "diaper_start", "speech_expected": true, "from_replay": false, "expected_reason": "listen_only_acknowledged", "expected_response_code": "listen_only_received", "expected_action_code": "diaper_change_start", "expected_match_kind": "exact"},
           {"step_id": "diaper_wake_complete", "speech_expected": true, "from_replay": false, "expected_reason": "listen_only_armed", "expected_response_code": "listen_only_ready", "expected_action_code": null, "expected_match_kind": null},
           {"step_id": "diaper_complete", "speech_expected": true, "from_replay": false, "expected_reason": "listen_only_acknowledged", "expected_response_code": "listen_only_received", "expected_action_code": "diaper_change_complete", "expected_match_kind": "exact"},
@@ -147,7 +147,7 @@
         "provenance": "GENERATED_AUDIO",
         "fixture_id": "generated-voice-burping-v1",
         "steps": [
-          {"step_id": "burping_wake_start", "speech_expected": true, "from_replay": false, "expected_reason": "listen_only_armed", "expected_response_code": "listen_only_ready", "expected_action_code": null, "expected_match_kind": null},
+          {"step_id": "burping_wake", "speech_expected": true, "from_replay": false, "expected_reason": "listen_only_armed", "expected_response_code": "listen_only_ready", "expected_action_code": null, "expected_match_kind": null},
           {"step_id": "burping_start", "speech_expected": true, "from_replay": false, "expected_reason": "listen_only_acknowledged", "expected_response_code": "listen_only_received", "expected_action_code": "burping_start", "expected_match_kind": "exact"},
           {"step_id": "burping_wake_complete", "speech_expected": true, "from_replay": false, "expected_reason": "listen_only_armed", "expected_response_code": "listen_only_ready", "expected_action_code": null, "expected_match_kind": null},
           {"step_id": "burping_complete", "speech_expected": true, "from_replay": false, "expected_reason": "listen_only_acknowledged", "expected_response_code": "listen_only_received", "expected_action_code": "burping_complete", "expected_match_kind": "exact"},

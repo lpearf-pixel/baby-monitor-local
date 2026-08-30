@@ -17,7 +17,16 @@ from packages.contracts.offline_guardian_scenario import (
     OfflineScenarioSuiteV1,
     ScenarioLaneResult,
 )
-from packages.contracts.visual_corpus import SourceType, VisualCorpusManifest
+from packages.contracts.visual_corpus import (
+    ReviewState,
+    SourceType,
+    VisualCorpusClip,
+    VisualCorpusManifest,
+)
+from packages.contracts.vision import (
+    RealtimeCandidateKind,
+    RealtimeCandidateTransitionKind,
+)
 from services.vision.corpus_replay import (
     GuardianReplayProjector,
     GuardianReplayReview,
@@ -34,15 +43,20 @@ VOICE_FRAME_BYTES = 3_200
 MAX_GENERATED_PCM_BYTES = 1_024 * 1_024
 DEFAULT_RUN_TIMEOUT_SECONDS = 180.0
 SETTLEMENT_TIMEOUT_SECONDS = 1.0
-_COUNTED_EXACT_ACTIONS = frozenset(
-    {
-        "feeding_command",
-        "diaper_change_start",
-        "diaper_change_complete",
-        "burping_start",
-        "burping_complete",
-    }
+SCENARIO_ACTION_CODES = (
+    "feeding_command",
+    "diaper_change_start",
+    "diaper_change_complete",
+    "burping_start",
+    "burping_complete",
 )
+_COUNTED_EXACT_ACTIONS = frozenset(SCENARIO_ACTION_CODES)
+_SCENARIO_CANDIDATE_KEYS = tuple(
+    f"{transition.value}.{candidate.value}"
+    for transition in RealtimeCandidateTransitionKind
+    for candidate in RealtimeCandidateKind
+)
+_SCENARIO_CANDIDATE_KEY_SET = frozenset(_SCENARIO_CANDIDATE_KEYS)
 
 
 class OfflineScenarioTimeout(BaseException):
@@ -84,6 +98,7 @@ class OfflineGuardianScenarioRunner:
             return self._run(suite)
 
     def _run(self, suite: OfflineScenarioSuiteV1) -> OfflineScenarioRunV1:
+        validate_visual_scenario_bindings(suite, self._visual_manifest)
         self._create_runtime_root()
         results: list[OfflineScenarioResultV1] = []
         first_reason: str | None = None
@@ -123,7 +138,7 @@ class OfflineGuardianScenarioRunner:
                     except BaseException:
                         _close_voice_components(components)
                         raise
-                    if not _close_voice_components(components):
+                    if not _close_voice_components(components) and result.status == "PASS":
                         result = _voice_failure(
                             "offline_scenario_voice_cleanup_failed"
                         )
@@ -185,6 +200,44 @@ def _aggregate_status(
     return "PASS"
 
 
+def validate_visual_scenario_bindings(
+    suite: OfflineScenarioSuiteV1,
+    manifest: VisualCorpusManifest,
+) -> tuple[VisualCorpusClip, ...]:
+    """Bind suite visuals to reviewed public roots without performing I/O."""
+
+    identifiers = tuple(clip.clip_id for clip in manifest.clips)
+    if len(set(identifiers)) != len(identifiers):
+        raise ValueError("offline_scenario_visual_provenance_invalid")
+    by_id = {clip.clip_id: clip for clip in manifest.clips}
+    selected: list[VisualCorpusClip] = []
+    for scenario in suite.scenarios:
+        visual = scenario.visual
+        if visual is None:
+            continue
+        clip = by_id.get(visual.clip_id)
+        if clip is None:
+            raise ValueError("offline_scenario_visual_provenance_invalid")
+        if clip.source_type is SourceType.PUBLIC_DATASET:
+            valid = visual.provenance == "PUBLIC_VIDEO" and clip.parent_clip_id is None
+        elif clip.source_type is SourceType.SYNTHETIC:
+            parent = by_id.get(clip.parent_clip_id or "")
+            valid = (
+                visual.provenance == "GENERATED_VISUAL"
+                and parent is not None
+                and parent.review_state is ReviewState.REVIEWED
+                and parent.source_type is SourceType.PUBLIC_DATASET
+                and parent.parent_clip_id is None
+                and parent.source_id == clip.source_id
+            )
+        else:
+            valid = False
+        if not valid:
+            raise ValueError("offline_scenario_visual_provenance_invalid")
+        selected.append(clip)
+    return tuple(selected)
+
+
 def run_voice_lane(
     scenario: OfflineGuardianScenarioV1,
     fixture_provider: Callable[[str], bytes],
@@ -199,7 +252,9 @@ def run_voice_lane(
         return _voice_failure("offline_scenario_lane_unavailable")
 
     controller = ListenOnlyController(asr=asr, synthesizer=synthesizer)
-    outcome_counts: Counter[str] = Counter()
+    outcome_counts: Counter[str] = Counter(
+        {f"action.{action_code}": 0 for action_code in SCENARIO_ACTION_CODES}
+    )
     response_count = 0
     speech_count = 0
     cancelled = threading.Event()
@@ -313,6 +368,8 @@ def run_visual_lane(
     aggregate = VisualCorpusReplay(
         prepared_resolver=resolve_prepared,
     ).run_clip(clip, profile=profile)
+    if not set(aggregate.candidate_counts).issubset(_SCENARIO_CANDIDATE_KEY_SET):
+        return _visual_failure("offline_scenario_visual_aggregate_invalid")
     counts = {
         "frames.total": aggregate.frames_total,
         "frames.processed": aggregate.frames_processed,
@@ -325,8 +382,8 @@ def run_visual_lane(
             for key, count in aggregate.observation_counts.items()
         },
         **{
-            f"candidate.{key}": count
-            for key, count in aggregate.candidate_counts.items()
+            f"candidate.{key}": aggregate.candidate_counts.get(key, 0)
+            for key in _SCENARIO_CANDIDATE_KEYS
         },
     }
     if len(counts) > 64:
@@ -351,7 +408,7 @@ def run_visual_lane(
     )
     if status == "PASS" and not accounting_ok:
         status = "FAIL"
-        reason = "offline_scenario_visual_accounting_mismatch"
+        reason = "offline_scenario_visual_frame_mismatch"
     elif status != "PASS":
         status = "FAIL"
     return ScenarioLaneResult(
@@ -547,6 +604,7 @@ def _voice_failure(reason: str) -> ScenarioLaneResult:
         lane="voice_generated",
         status="FAIL",
         reason=reason,
+        counts={f"action.{action_code}": 0 for action_code in SCENARIO_ACTION_CODES},
     )
 
 
@@ -557,4 +615,5 @@ __all__ = [
     "run_guardian_lane",
     "run_visual_lane",
     "run_voice_lane",
+    "validate_visual_scenario_bindings",
 ]

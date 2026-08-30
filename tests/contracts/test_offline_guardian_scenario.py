@@ -251,6 +251,24 @@ def test_tracked_eight_scenario_fixture_loads_with_exact_identity() -> None:
         for item in suite.scenarios
         if item.visual is not None
     ] == [65, 50, 50, 100, 65]
+    assert [step.step_id for step in suite.scenarios[6].voice.steps] == [
+        "diaper_wake",
+        "diaper_start",
+        "diaper_wake_complete",
+        "diaper_complete",
+        "diaper_cross_burping",
+        "diaper_ambiguous",
+        "diaper_no_wake",
+    ]
+    assert [step.step_id for step in suite.scenarios[7].voice.steps] == [
+        "burping_wake",
+        "burping_start",
+        "burping_wake_complete",
+        "burping_complete",
+        "burping_cross_diaper",
+        "burping_ambiguous",
+        "burping_no_wake",
+    ]
 
 
 def test_visual_guardian_pair_requires_independent_relationship() -> None:
@@ -276,3 +294,66 @@ def test_voice_step_rejects_half_bound_action_identity() -> None:
 
     with pytest.raises(ValidationError):
         module.VoiceScenarioStepV1.model_validate(payload)
+
+
+@pytest.mark.parametrize("missing", ["expected_action_code", "expected_match_kind"])
+def test_voice_step_requires_explicit_nullable_action_identity(missing: str) -> None:
+    module = contracts()
+    payload = {
+        "step_id": "wake",
+        "speech_expected": True,
+        "from_replay": False,
+        "expected_reason": "listen_only_armed",
+        "expected_response_code": "listen_only_ready",
+        "expected_action_code": None,
+        "expected_match_kind": None,
+    }
+    del payload[missing]
+
+    with pytest.raises(ValidationError):
+        module.VoiceScenarioStepV1.model_validate(payload)
+
+
+@pytest.mark.parametrize(
+    ("action_code", "match_kind", "valid"),
+    [
+        (None, None, True),
+        (None, "exact", False),
+        ("diaper_change_start", None, False),
+        ("feeding_command", "exact", True),
+        ("diaper_change_start", "exact", True),
+        ("burping_complete", "exact", True),
+        ("feeding_command", "corrected", True),
+        ("diaper_change_start", "corrected", False),
+        ("medication_start_candidate", "high_risk_candidate", True),
+        ("medication_complete_candidate", "high_risk_candidate", True),
+        ("diaper_change_start", "high_risk_candidate", False),
+        ("medication_start_candidate", "exact", False),
+        ("medication_complete_candidate", "corrected", False),
+    ],
+)
+def test_voice_step_accepts_only_reviewed_action_match_pairings(
+    action_code: str | None,
+    match_kind: str | None,
+    valid: bool,
+) -> None:
+    module = contracts()
+    payload = {
+        "step_id": "action",
+        "speech_expected": True,
+        "from_replay": False,
+        "expected_reason": "listen_only_ignored",
+        "expected_response_code": None,
+        "expected_action_code": action_code,
+        "expected_match_kind": match_kind,
+    }
+
+    if valid:
+        result = module.VoiceScenarioStepV1.model_validate(payload)
+        assert (result.expected_action_code, result.expected_match_kind) == (
+            action_code,
+            match_kind,
+        )
+    else:
+        with pytest.raises(ValidationError):
+            module.VoiceScenarioStepV1.model_validate(payload)
