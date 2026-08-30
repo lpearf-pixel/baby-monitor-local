@@ -209,6 +209,28 @@ def test_run_rejects_duplicate_scenarios_and_invalid_count_keys() -> None:
         module.OfflineScenarioRunV1.model_validate(invalid)
 
 
+def test_paired_result_requires_independent_relationship() -> None:
+    module = contracts()
+    payload = run_payload()["results"][0]  # type: ignore[index]
+    payload["lanes"] = [  # type: ignore[index]
+        {
+            "lane": "visual_observation",
+            "status": "PASS",
+            "reason": "ok",
+            "counts": {"frames.processed": 50},
+            "metrics_ms": {},
+        },
+        lane_result(),
+    ]
+
+    with pytest.raises(ValidationError):
+        module.OfflineScenarioResultV1.model_validate(payload)
+
+    payload["visual_oracle_relationship"] = "INDEPENDENT"  # type: ignore[index]
+    result = module.OfflineScenarioResultV1.model_validate(payload)
+    assert result.visual_oracle_relationship == "INDEPENDENT"
+
+
 def test_tracked_eight_scenario_fixture_loads_with_exact_identity() -> None:
     module = contracts()
     suite = module.load_offline_scenario_suite(FIXTURE)

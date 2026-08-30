@@ -81,6 +81,7 @@ def _render_html(run: OfflineScenarioRunV1) -> str:
                 f"<td>{html.escape(lane.lane)}</td>"
                 f"<td>{html.escape(lane.status)}</td>"
                 f"<td>{html.escape(lane.reason)}</td>"
+                f"<td>{html.escape(result.visual_oracle_relationship or 'none')}</td>"
                 f"<td>{counts}</td>"
                 f"<td>{metrics}</td>"
                 "</tr>"
@@ -98,7 +99,8 @@ def _render_html(run: OfflineScenarioRunV1) -> str:
         "safety. Guardian counts are synthetic-oracle results; PASS means they matched "
         "the tracked expectations.</p>"
         "<table><thead><tr><th>scenario</th><th>lane</th><th>status</th>"
-        "<th>reason</th><th>counts</th><th>metrics</th></tr></thead><tbody>"
+        "<th>reason</th><th>visual/oracle relationship</th><th>counts</th>"
+        "<th>metrics</th></tr></thead><tbody>"
         + "".join(rows)
         + "</tbody></table></body></html>"
     )

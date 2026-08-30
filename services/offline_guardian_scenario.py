@@ -142,6 +142,7 @@ class OfflineGuardianScenarioRunner:
                     status=scenario_status,
                     reason=scenario_reason,
                     lanes=tuple(lanes),
+                    visual_oracle_relationship=scenario.visual_oracle_relationship,
                 )
             )
 

@@ -410,7 +410,7 @@ git commit -m "feat: verify generated care actions"
   exposes `INDEPENDENT` for paired scenarios without adding media, transcript, paths,
   URLs or raw errors.
 
-- [ ] **Step 1: Write orchestration/report RED tests**
+- [x] **Step 1: Write orchestration/report RED tests**
 
 ```python
 def test_expanded_runner_has_eight_scenarios_and_thirteen_lanes(tmp_path: Path) -> None:
@@ -442,7 +442,7 @@ def test_report_keeps_visual_and_oracle_relationship_explicit(tmp_path: Path) ->
 
 If the existing canonical result already contains the relationship in a privacy-safe location, test and reuse it. Otherwise add the smallest closed result field; do not infer it from lane outputs during rendering.
 
-- [ ] **Step 2: Run RED**
+- [x] **Step 2: Run RED**
 
 ```bash
 ../../.venv-alpha/bin/python -m pytest -q tests/integration/test_offline_guardian_scenario.py tests/tools/test_offline_guardian_scenario.py
@@ -450,11 +450,11 @@ If the existing canonical result already contains the relationship in a privacy-
 
 Expected: FAIL on four-scenario/seven-lane assumptions or missing explicit relationship.
 
-- [ ] **Step 3: Implement the minimum orchestration/report closure**
+- [x] **Step 3: Implement the minimum orchestration/report closure**
 
 Retain current order, deadlines, fresh Voice factories, filesystem checks, first-failure behavior and atomic report publication. Change no Guardian rule, model threshold, worker logic or report size cap.
 
-- [ ] **Step 4: Run GREEN and privacy checks**
+- [x] **Step 4: Run GREEN and privacy checks**
 
 ```bash
 ../../.venv-alpha/bin/python -m pytest -q tests/contracts/test_offline_guardian_scenario.py tests/integration/test_offline_guardian_scenario.py tests/tools/test_offline_guardian_scenario.py
@@ -464,7 +464,7 @@ make -n alpha-offline-scenario-run
 git diff --check
 ```
 
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
 
 ```bash
 git add packages/contracts/offline_guardian_scenario.py services/offline_guardian_scenario.py services/offline_guardian_report.py tools/offline_guardian_scenario.py tests/contracts/test_offline_guardian_scenario.py tests/integration/test_offline_guardian_scenario.py tests/tools/test_offline_guardian_scenario.py docs/superpowers/plans/2026-08-30-offline-guardian-scenario-expansion.md

@@ -212,11 +212,15 @@ class OfflineScenarioResultV1(OfflineScenarioContract):
     status: RunStatus
     reason: str = Field(pattern=r"^[a-z0-9_]+$")
     lanes: tuple[ScenarioLaneResult, ...] = Field(min_length=1, max_length=3)
+    visual_oracle_relationship: Literal["INDEPENDENT"] | None = None
 
     @model_validator(mode="after")
     def require_unique_lanes(self) -> "OfflineScenarioResultV1":
         lanes = [lane.lane for lane in self.lanes]
         if len(set(lanes)) != len(lanes):
+            raise ValueError("offline_scenario_lane_invalid")
+        paired = {"visual_observation", "guardian_deterministic"}.issubset(lanes)
+        if paired != (self.visual_oracle_relationship == "INDEPENDENT"):
             raise ValueError("offline_scenario_lane_invalid")
         return self
 

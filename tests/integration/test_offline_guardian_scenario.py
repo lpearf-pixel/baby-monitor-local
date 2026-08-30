@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import json
 import stat
 import subprocess
 import signal
@@ -224,6 +225,22 @@ def generated_video(path: Path, *, duration_seconds: int = 2) -> None:
     )
     assert completed.returncode == 0
     path.chmod(0o600)
+
+
+def generated_visual_media(tmp_path: Path) -> dict[str, Path]:
+    ten_seconds = tmp_path / "ten-seconds.mkv"
+    thirteen_seconds = tmp_path / "thirteen-seconds.mkv"
+    twenty_seconds = tmp_path / "twenty-seconds.mkv"
+    generated_video(ten_seconds, duration_seconds=10)
+    generated_video(thirteen_seconds, duration_seconds=13)
+    generated_video(twenty_seconds, duration_seconds=20)
+    return {
+        "DAY-01": thirteen_seconds,
+        "OCC-02": ten_seconds,
+        "NEG-03": ten_seconds,
+        "DAY-03": twenty_seconds,
+        "OCC-03": thirteen_seconds,
+    }
 
 
 def test_visual_lane_replays_real_file_through_current_worker(tmp_path: Path) -> None:
@@ -652,7 +669,7 @@ def test_voice_lane_fails_closed_when_expectation_changes() -> None:
 
 def build_runner(
     tmp_path: Path,
-    media: Path,
+    media: Path | dict[str, Path],
     *,
     backend: object | None = None,
     timeout_seconds: float = 180.0,
@@ -660,12 +677,19 @@ def build_runner(
     from services.offline_guardian_scenario import OfflineGuardianScenarioRunner
 
     fixtures, asr = voice_fixtures()
+    prepared_root = (
+        next(iter(media.values())).parent if isinstance(media, dict) else media.parent
+    )
     return OfflineGuardianScenarioRunner(
         runtime_root=tmp_path / "scenario-run",
         runtime_boundary=tmp_path,
         visual_manifest=load_manifest(VISUAL_MANIFEST),
-        prepared_resolver=lambda _clip, _profile: media,
-        prepared_root=media.parent,
+        prepared_resolver=(
+            (lambda clip, _profile: media[clip.clip_id])
+            if isinstance(media, dict)
+            else (lambda _clip, _profile: media)
+        ),
+        prepared_root=prepared_root,
         model_backend=backend if backend is not None else AvailableVisualBackend(),
         voice_fixture_provider=fixtures.__getitem__,
         voice_vad_factory=speech_vad,
@@ -676,8 +700,7 @@ def build_runner(
 
 
 def test_runner_executes_all_required_lanes_in_declared_order(tmp_path: Path) -> None:
-    media = tmp_path / "public-fixture.mkv"
-    generated_video(media)
+    media = generated_visual_media(tmp_path)
     suite = load_offline_scenario_suite(FIXTURE)
 
     result = build_runner(tmp_path, media).run(suite)
@@ -691,6 +714,20 @@ def test_runner_executes_all_required_lanes_in_declared_order(tmp_path: Path) ->
         list(item.required_lanes) for item in suite.scenarios
     ]
     assert all(item.status == "PASS" for item in result.results)
+    assert len(result.results) == 8
+    assert sum(len(item.lanes) for item in result.results) == 13
+    assert [
+        item.visual_oracle_relationship for item in result.results
+    ] == [
+        "INDEPENDENT",
+        "INDEPENDENT",
+        "INDEPENDENT",
+        None,
+        "INDEPENDENT",
+        "INDEPENDENT",
+        None,
+        None,
+    ]
     assert result.production_state_touched is False
     assert result.notification_dispatch_attempted is False
     assert result.evidence_persisted is False
@@ -731,7 +768,16 @@ def test_runner_retains_first_failure_and_does_not_retry_lane(tmp_path: Path) ->
     assert result.status == "FAIL"
     assert result.reason == "visual_corpus_model_unavailable"
     assert resolved == []
-    assert [item.status for item in result.results] == ["FAIL", "FAIL", "FAIL", "PASS"]
+    assert [item.status for item in result.results] == [
+        "FAIL",
+        "FAIL",
+        "FAIL",
+        "PASS",
+        "FAIL",
+        "FAIL",
+        "PASS",
+        "PASS",
+    ]
 
 
 @pytest.mark.parametrize("kind", ["directory", "symlink"])
@@ -990,6 +1036,7 @@ def report_run() -> OfflineScenarioRunV1:
                 scenario_id="SAFE-SLEEP-01",
                 status="PASS",
                 reason="ok",
+                visual_oracle_relationship="INDEPENDENT",
                 lanes=(
                     ScenarioLaneResult(
                         lane="visual_observation",
@@ -1032,6 +1079,7 @@ def test_report_publishes_canonical_json_and_static_html(tmp_path: Path) -> None
     assert "frames.processed" in html
     assert "dashboard.event" in html
     assert "pipeline.p95" in html
+    assert "INDEPENDENT" in html
     assert "<script" not in html.lower()
     assert "http:" not in html.lower()
     assert "https:" not in html.lower()
@@ -1042,6 +1090,8 @@ def test_report_publishes_canonical_json_and_static_html(tmp_path: Path) -> None
         "scenario-result.v1.json",
         "scenario-report.html",
     }
+    payload = json.loads(json_path.read_text(encoding="ascii"))
+    assert payload["results"][0]["visual_oracle_relationship"] == "INDEPENDENT"
 
 
 @pytest.mark.parametrize("kind", ["existing", "symlink", "wrong_mode"])
