@@ -1485,6 +1485,19 @@ def test_runner_fails_when_voice_component_close_fails(tmp_path: Path) -> None:
 
     assert result.status == "FAIL"
     assert result.reason == "offline_scenario_voice_cleanup_failed"
+    assert result.results[0].lanes[0].counts == {
+        "action.feeding_command": 0,
+        "action.diaper_change_start": 1,
+        "action.diaper_change_complete": 0,
+        "action.burping_start": 1,
+        "action.burping_complete": 1,
+        "steps.total": 7,
+        "vad.speech": 7,
+        "responses.total": 5,
+        "outcome.listen_only_acknowledged": 3,
+        "outcome.listen_only_armed": 2,
+        "outcome.listen_only_ignored": 2,
+    }
 
 
 def test_runner_preserves_voice_mismatch_when_cleanup_also_fails(tmp_path: Path) -> None:

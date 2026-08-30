@@ -140,7 +140,8 @@ class OfflineGuardianScenarioRunner:
                         raise
                     if not _close_voice_components(components) and result.status == "PASS":
                         result = _voice_failure(
-                            "offline_scenario_voice_cleanup_failed"
+                            "offline_scenario_voice_cleanup_failed",
+                            counts=dict(result.counts),
                         )
                 lanes.append(result)
                 if result.status != "PASS" and first_reason is None:
