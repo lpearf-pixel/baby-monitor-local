@@ -269,17 +269,32 @@ def _path_has_symlink(path: Path) -> bool:
 
 
 def _generated_voice_fixture():
+    text_by_step = {
+        "wake": "\u5c0f\u5c0f",
+        "feeding": "\u6211\u662f\u7238\u7238\uff0c\u5f00\u59cb\u5582\u5976",
+        "no_wake": "\u4eca\u5929\u5929\u6c14\u5982\u4f55",
+        "unsupported": "\u64ad\u653e\u97f3\u4e50",
+        "diaper_wake_start": "\u5c0f\u5c0f",
+        "diaper_start": "\u5f00\u59cb\u6362\u5c3f\u5e03",
+        "diaper_wake_complete": "\u5c0f\u5c0f",
+        "diaper_complete": "\u6362\u597d\u5c3f\u5e03\u4e86",
+        "diaper_cross_burping": "\u5c0f\u5c0f\u5f00\u59cb\u62cd\u55dd",
+        "diaper_ambiguous": "\u5c0f\u5c0f\u5f00\u59cb\u6362\u5c3f\u5e03\u7136\u540e\u5f00\u59cb\u62cd\u55dd",
+        "diaper_no_wake": "\u5f00\u59cb\u6362\u5c3f\u5e03",
+        "burping_wake_start": "\u5c0f\u5c0f",
+        "burping_start": "\u5f00\u59cb\u62cd\u55dd",
+        "burping_wake_complete": "\u5c0f\u5c0f",
+        "burping_complete": "\u62cd\u55dd\u7ed3\u675f",
+        "burping_cross_diaper": "\u5c0f\u5c0f\u5f00\u59cb\u6362\u5c3f\u5e03",
+        "burping_ambiguous": "\u5c0f\u5c0f\u5f00\u59cb\u62cd\u55dd\u7136\u540e\u5f00\u59cb\u6362\u5c3f\u5e03",
+        "burping_no_wake": "\u5f00\u59cb\u62cd\u55dd",
+    }
     values = {
-        "wake": _pcm(4_000),
-        "feeding": _pcm(5_000),
-        "no_wake": _pcm(6_000),
-        "unsupported": _pcm(7_000),
+        step_id: _pcm(4_000 + index)
+        for index, step_id in enumerate(text_by_step)
     }
     mapping = {
-        values["wake"]: "\u5c0f\u5c0f",
-        values["feeding"]: "\u6211\u662f\u7238\u7238\uff0c\u5f00\u59cb\u5582\u5976",
-        values["no_wake"]: "\u4eca\u5929\u5929\u6c14\u5982\u4f55",
-        values["unsupported"]: "\u64ad\u653e\u97f3\u4e50",
+        values[step_id]: text for step_id, text in text_by_step.items()
     }
     return values, lambda: _FixtureAsr(mapping)
 

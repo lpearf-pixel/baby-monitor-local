@@ -299,7 +299,7 @@ git commit -m "test: cover independent Guardian candidates"
 - Lane counts include only bounded keys `action.<ActionCode>` for non-null exact action outcomes.
 - `VOICE-DIAPER-01` and `VOICE-BURPING-01` each contain exactly seven steps and five responses: two ready, two target acknowledgements and one legal cross-action acknowledgement.
 
-- [ ] **Step 1: Write Voice RED tests**
+- [x] **Step 1: Write Voice RED tests**
 
 Cover diaper/burping start and complete, legal cross-action self-classification, ambiguous multi-action silence, no-wake silence, wrong action/match rejection and bounded counters:
 
@@ -357,7 +357,7 @@ def test_diaper_voice_counts_target_and_cross_action_exactly() -> None:
     assert result.counts["responses.total"] == 5
 ```
 
-- [ ] **Step 2: Run RED**
+- [x] **Step 2: Run RED**
 
 ```bash
 ../../.venv-alpha/bin/python -m pytest -q tests/integration/test_offline_guardian_scenario.py -k voice tests/tools/test_offline_guardian_scenario.py -k voice
@@ -365,7 +365,7 @@ def test_diaper_voice_counts_target_and_cross_action_exactly() -> None:
 
 Expected: FAIL because outcomes are not compared by action/match and the two fixtures do not exist.
 
-- [ ] **Step 3: Implement per-step matching and generated fixtures**
+- [x] **Step 3: Implement per-step matching and generated fixtures**
 
 Extend the mismatch predicate:
 
@@ -381,7 +381,7 @@ if (
 
 Increment `action.<code>` only when both action code and match kind are non-null. Generate unique PCM byte strings for every opaque step ID and map them to exact in-memory ASR text. Do not serialize ASR text or PCM. Ambiguous multi-action and no-wake steps expect null action/match and no response.
 
-- [ ] **Step 4: Run GREEN and adjacent Voice gates**
+- [x] **Step 4: Run GREEN and adjacent Voice gates**
 
 ```bash
 ../../.venv-alpha/bin/python -m pytest -q tests/integration/test_offline_guardian_scenario.py -k voice tests/tools/test_offline_guardian_scenario.py tests/voice/test_listen_only.py tests/voice/test_care_action.py
@@ -389,7 +389,7 @@ Increment `action.<code>` only when both action code and match kind are non-null
 git diff --check
 ```
 
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
 
 ```bash
 git add services/offline_guardian_scenario.py tools/offline_guardian_scenario.py tests/fixtures/offline_guardian_scenarios/scenarios.v1.json tests/integration/test_offline_guardian_scenario.py tests/tools/test_offline_guardian_scenario.py docs/superpowers/plans/2026-08-30-offline-guardian-scenario-expansion.md

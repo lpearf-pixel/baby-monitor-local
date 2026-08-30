@@ -439,19 +439,32 @@ class RecordingScenarioSynth:
 
 
 def voice_fixtures() -> tuple[dict[str, bytes], ScenarioAsr]:
+    text_by_step = {
+        "wake": "小小",
+        "feeding": "我是爸爸，开始喂奶",
+        "no_wake": "今天天气如何",
+        "unsupported": "播放音乐",
+        "diaper_wake_start": "小小",
+        "diaper_start": "开始换尿布",
+        "diaper_wake_complete": "小小",
+        "diaper_complete": "换好尿布了",
+        "diaper_cross_burping": "小小开始拍嗝",
+        "diaper_ambiguous": "小小开始换尿布然后开始拍嗝",
+        "diaper_no_wake": "开始换尿布",
+        "burping_wake_start": "小小",
+        "burping_start": "开始拍嗝",
+        "burping_wake_complete": "小小",
+        "burping_complete": "拍嗝结束",
+        "burping_cross_diaper": "小小开始换尿布",
+        "burping_ambiguous": "小小开始拍嗝然后开始换尿布",
+        "burping_no_wake": "开始拍嗝",
+    }
     pcm = {
-        "wake": generated_pcm(4_000),
-        "feeding": generated_pcm(5_000),
-        "no_wake": generated_pcm(6_000),
-        "unsupported": generated_pcm(7_000),
+        step_id: generated_pcm(4_000 + index)
+        for index, step_id in enumerate(text_by_step)
     }
     return pcm, ScenarioAsr(
-        {
-            pcm["wake"]: "小小",
-            pcm["feeding"]: "我是爸爸，开始喂奶",
-            pcm["no_wake"]: "今天天气如何",
-            pcm["unsupported"]: "播放音乐",
-        }
+        {pcm[step_id]: text for step_id, text in text_by_step.items()}
     )
 
 
@@ -477,6 +490,7 @@ def test_voice_lane_runs_generated_pcm_vad_and_current_controller() -> None:
     assert result.status == "PASS"
     assert result.reason == "ok"
     assert result.counts == {
+        "action.feeding_command": 1,
         "steps.total": 4,
         "vad.speech": 4,
         "responses.total": 2,
@@ -487,6 +501,83 @@ def test_voice_lane_runs_generated_pcm_vad_and_current_controller() -> None:
     assert synth.codes == ["listen_only_ready", "listen_only_received"]
     assert "pcm" not in repr(result).lower()
     assert "transcript" not in repr(result).lower()
+
+
+@pytest.mark.parametrize(
+    ("identifier", "expected_actions"),
+    [
+        (
+            "VOICE-DIAPER-01",
+            {
+                "action.diaper_change_start": 1,
+                "action.diaper_change_complete": 1,
+                "action.burping_start": 1,
+            },
+        ),
+        (
+            "VOICE-BURPING-01",
+            {
+                "action.burping_start": 1,
+                "action.burping_complete": 1,
+                "action.diaper_change_start": 1,
+            },
+        ),
+    ],
+)
+def test_voice_lane_counts_target_and_cross_action_exactly(
+    identifier: str,
+    expected_actions: dict[str, int],
+) -> None:
+    from services.offline_guardian_scenario import run_voice_lane
+
+    fixtures, asr = voice_fixtures()
+    synth = RecordingScenarioSynth()
+
+    result = run_voice_lane(
+        scenario(identifier),
+        fixtures.__getitem__,
+        speech_vad(),
+        asr,
+        synth,
+    )
+
+    assert result.status == "PASS"
+    assert result.reason == "ok"
+    assert result.counts["steps.total"] == 7
+    assert result.counts["responses.total"] == 5
+    assert {
+        key: value for key, value in result.counts.items() if key.startswith("action.")
+    } == expected_actions
+    assert synth.codes == [
+        "listen_only_ready",
+        "listen_only_received",
+        "listen_only_ready",
+        "listen_only_received",
+        "listen_only_received",
+    ]
+
+
+def test_voice_lane_rejects_right_response_with_wrong_action() -> None:
+    from services.offline_guardian_scenario import run_voice_lane
+
+    value = scenario("VOICE-FEEDING-01")
+    assert value.voice is not None
+    steps = list(value.voice.steps)
+    steps[1] = steps[1].model_copy(update={"expected_action_code": "burping_start"})
+    changed = value.model_copy(
+        update={"voice": value.voice.model_copy(update={"steps": tuple(steps)})}
+    )
+    fixtures, asr = voice_fixtures()
+
+    result = run_voice_lane(
+        changed,
+        fixtures.__getitem__,
+        speech_vad(),
+        asr,
+        RecordingScenarioSynth(),
+    )
+
+    assert (result.status, result.reason) == ("FAIL", "scenario_voice_mismatch")
 
 
 def test_voice_lane_rejects_empty_pcm_before_asr() -> None:

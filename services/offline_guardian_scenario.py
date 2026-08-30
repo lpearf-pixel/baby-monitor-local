@@ -34,6 +34,15 @@ VOICE_FRAME_BYTES = 3_200
 MAX_GENERATED_PCM_BYTES = 1_024 * 1_024
 DEFAULT_RUN_TIMEOUT_SECONDS = 180.0
 SETTLEMENT_TIMEOUT_SECONDS = 1.0
+_COUNTED_EXACT_ACTIONS = frozenset(
+    {
+        "feeding_command",
+        "diaper_change_start",
+        "diaper_change_complete",
+        "burping_start",
+        "burping_complete",
+    }
+)
 
 
 class OfflineScenarioTimeout(BaseException):
@@ -228,9 +237,16 @@ def run_voice_lane(
         if (
             outcome.reason != step.expected_reason
             or outcome.response_code != step.expected_response_code
+            or outcome.action_code != step.expected_action_code
+            or outcome.match_kind != step.expected_match_kind
         ):
             return _voice_failure("scenario_voice_mismatch")
         outcome_counts[f"outcome.{outcome.reason}"] += 1
+        if (
+            outcome.match_kind == "exact"
+            and outcome.action_code in _COUNTED_EXACT_ACTIONS
+        ):
+            outcome_counts[f"action.{outcome.action_code}"] += 1
         response_count += int(outcome.response_code is not None)
 
     counts = {
