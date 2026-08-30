@@ -1,5 +1,26 @@
 # Hybrid HD Checkpoint
 
+## Ordered delivery planning checkpoint — 2026-08-30
+
+Fresh read-only repository reconciliation used
+`origin/codex/visual-regression-corpus@7cf8d023f706f3a77d0835916854dfd4db450a64`
+as the latest published descendant evidence base. It contains the reviewed visual
+corpus/private-overlay/offline-scenario history and the Camera Reply/multi-action
+checkpoint `0d2588733fc5ab947aaf85df11725c1ba652928a`. The stable release line remains
+`stable/xiaomi-alpha@0df20aed564d358a6a3db370f29490f5a44029b9`.
+
+Two docs-only plans now define continuation:
+
+- `docs/superpowers/plans/2026-08-30-baby-monitor-ordered-delivery.md` fixes the
+  dependency order, review checkpoints and human/device stop lines;
+- `docs/superpowers/plans/2026-08-30-offline-guardian-scenario-expansion.md` provides the
+  complete Task 1-7 RED/GREEN implementation handoff for the first software-only stage.
+
+The first stage is bounded to public/generated fixtures and exact 8-scenario,
+13-lane, 5-clip and 330-frame evidence. This checkpoint does not claim implementation
+or test completion. It did not run a camera, speaker, microphone, PTZ, notification,
+production database, household capture, Baby Care write or baseline operation.
+
 ## Visual regression corpus checkpoint — 2026-08-29
 
 On `codex/visual-regression-corpus`, implementation head `5143f69` establishes a
@@ -2037,3 +2058,32 @@ called no Baby Care service and touched no production state. It did not generate
 compare or promote a baseline. The PASS proves repeatable offline pipeline integration,
 not model accuracy, real baby safety, far-field Voice recall or Xiaomi compatibility.
 No push, PR, merge or protected-branch change occurred.
+
+## 2026-08-30 Remote planning merge verification
+
+Before publication, remote head `daa1d92fc9cf5f3804c10770dfbfdab20af822b8`
+introduced the authoritative ordered-delivery plan and a more detailed Task 1-7
+implementation plan. The ordinary merge preserved those documents, reconciled their
+field names and task state with business head `0688d38`, and retained the local factual
+handoff. The merged plan keeps Task 7 Step 4 independent review open; later Voice,
+Camera Reply, private-capture and release stages remain unauthorized.
+
+Fresh merge-candidate verification:
+
+```text
+exact detailed-plan focused gate: 197 passed
+full Python: 2289 passed, 1 skipped (visual_corpus_first_stage_incomplete)
+frontend: 73 passed
+fixed validate: PASS, 8 scenarios, 5 visual clips
+fixed run: PASS, 8/8 scenarios, 13/13 lanes
+report: run-717e98f5f1ac4c83/report
+frames: 330 total, 330 processed, 0 skipped/dropped/decode/worker errors
+compileall, bash -n, Make dry-runs, conflict-marker and diff checks: PASS
+```
+
+The fresh run's worst per-clip model p50/p95/max was
+85.877/117.110/405.576 ms; pipeline p50/p95/max was
+108.322/142.444/429.669 ms. The report remained ignored with 0700/0600 permissions.
+No camera, microphone, speaker, PTZ, production service, Baby Care writer, notification
+or baseline action ran. This verifies the merged software/offline flow, not real-baby
+accuracy or real-device acceptance.

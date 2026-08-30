@@ -5,11 +5,22 @@ Updated: 2026-08-30
 ## Snapshot
 
 - Repository: `lpearf-pixel/baby-monitor-local` (public).
+- The owner resumed planning on 2026-08-30. The authoritative execution order is now
+  `docs/superpowers/plans/2026-08-30-baby-monitor-ordered-delivery.md`, with the first
+  software-only implementation slice in
+  `docs/superpowers/plans/2026-08-30-offline-guardian-scenario-expansion.md`. The order is:
+  eight-scenario software expansion; low-risk Feeding/diaper/burping Voice decision;
+  separately designed Camera Reply correction and clean V3E; separately authorized
+  public/private visual-readiness work; then deferred device and 72-hour release gates.
+  Only the first software slice is resumed by this checkpoint. Camera Reply, household
+  capture, medication, Baby Care writes, PR/merge and `main/stable` changes remain
+  unauthorized.
 - Visual regression corpus work is published on `codex/visual-regression-corpus`; the
   public-corpus proposal base is `681edd3c49d0ccca442af064188a4e8b814a4db5`.
   The published branch includes the private-overlay software, four-scenario offline
-  flow and expansion-design checkpoint `60af28c`; this docs-only review amendment
-  follows that checkpoint, with no PR, merge or protected-branch change. It includes
+  flow and expansion-design checkpoint `60af28c`. Reviewed remote base `7cf8d02`
+  combines the independent docs amendments `9a3a199` and `f2600ae`, with no PR or
+  protected-branch change. The history includes
   closure implementation `fb3218d`,
   evidence checkpoint `165b0db`, bounded-source review `d01c23d` and final
   government-source review `4c51120`, READY plan `f5c4b34` and the latest bounded
@@ -79,10 +90,10 @@ Updated: 2026-08-30
   business head `0688d38` on the same feature branch. The fixed command now runs eight
   scenarios and thirteen lanes: five visual observations, five independent synthetic
   Guardian oracles and three generated Voice scenarios. Exact local run
-  `run-071b0fdc8adccdc1` passed 8/8 scenarios, 13/13 lanes and 330/330 frames with zero
+  `run-717e98f5f1ac4c83` passed 8/8 scenarios, 13/13 lanes and 330/330 frames with zero
   skipped, dropped, decode-error or worker-error frames. Worst per-clip model p50/p95/max
-  was 82.710/110.079/405.809 ms; pipeline p50/p95/max was
-  105.377/132.837/427.784 ms. Guardian produced recovered face-not-visible,
+  was 85.877/117.110/405.576 ms; pipeline p50/p95/max was
+  108.322/142.444/429.669 ms. Guardian produced recovered face-not-visible,
   prone-candidate and outside-candidate events plus one open adult-intervention event.
   Generated Voice matched exact Feeding, diaper and burping actions, legal cross-action
   steps, ambiguous multi-action silence and no-wake silence. Actual visual observations
@@ -93,8 +104,11 @@ Updated: 2026-08-30
   No camera, speaker, PTZ, notification, production database, Baby Care write or baseline
   operation ran. This proves repeatable offline component integration, not infant
   recognition accuracy, household safety, real Voice recall or Xiaomi compatibility.
-  The local branch is five commits ahead of the remote checkpoint `7cf8d02`; nothing from
-  this expansion has been pushed, merged or applied to a protected branch.
+  The implementation follows the approved expansion design and the reconciled detailed
+  plan at `docs/superpowers/plans/2026-08-30-offline-guardian-scenario-expansion.md`.
+  The implementation commits were local before this ordinary remote merge; neither a PR
+  nor a protected-branch change was made. The merged detailed plan adds one still-open
+  independent-review checkpoint; do not advance to the Voice stage until it is clean.
 - Stable Xiaomi line: `stable/xiaomi-alpha` at `0df20ae`.
 - Active Camera Reply review line: `codex/xiaomi-camera-reply-lifecycle-review`, based
   on accepted Voice head `4d479b8`; its published Task 8 checkpoint is `a622a7a`.

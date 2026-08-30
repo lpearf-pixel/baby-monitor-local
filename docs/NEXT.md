@@ -4,17 +4,35 @@ The repository baseline, environment software and functional Guardian loop are
 complete. Do not restart completed milestones. Execute the following stages in order;
 the detailed approved specs and plans remain authoritative for behavior.
 
+**Authoritative order:** follow
+`docs/superpowers/plans/2026-08-30-baby-monitor-ordered-delivery.md`. The fixed order is:
+
+1. implement and close the eight-scenario software-only expansion;
+2. reconcile and, with separate adult authority, close the low-risk
+   Feeding/diaper/burping Voice decision;
+3. design the bounded remaining Camera Reply correction, then separately authorize a
+   complete clean V3E matrix;
+4. pursue public visual readiness or separately authorized private local capture
+   without combining their readiness states;
+5. complete deferred real-device observations and the final 72-hour release gate.
+
+Stage 1 implementation and software gates are complete; its independent merged-head
+review remains open. Stages 2-5 are queued, not blanket authority for household
+capture, speaker activation, PTZ, medication, Baby Care writes, installation, PR,
+merge, stable changes or release publication.
+
 **Offline Guardian scenario expansion: software-complete locally.** Business head
 `0688d38` expands the fixed flow to eight scenarios, thirteen lanes and exactly 330
-visual frames. Run `run-071b0fdc8adccdc1` passed every scenario/lane with zero skipped,
+visual frames. Run `run-717e98f5f1ac4c83` passed every scenario/lane with zero skipped,
 dropped, decode-error or worker-error frames; full Python is 2289 passed / 1 expected
 public-corpus skip and frontend is 73/73. Visual observations remain independent from
 synthetic Guardian oracles, and generated Voice output is checked against exact action
 and match identities. Do not tune models or thresholds to the synthetic labels. The
-next action for this slice is publication of the reviewed local commit range only if
-the owner explicitly approves push; no PR or merge follows automatically. Later product
-gates remain real-baby accuracy, real far-field Voice recall and public corpus READY /
-baseline promotion, none of which this offline PASS proves.
+immediate next action is the independent review required by Task 7 Step 4. Only a clean
+review (or resolved findings) advances to the separate low-risk Feeding/diaper/burping
+Voice decision in the authoritative delivery plan. That stage still requires its own
+approved scope; real-baby accuracy and public baseline promotion remain separate later
+gates.
 
 **Private local visual overlay (deferred by owner):** the contract in
 `docs/superpowers/specs/2026-08-29-private-local-visual-corpus-overlay-design.md` and

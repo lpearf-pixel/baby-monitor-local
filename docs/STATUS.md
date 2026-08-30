@@ -4,12 +4,21 @@
 
 - Repository: initialized and public.
 - Design: approved.
+- Ordered continuation (2026-08-30): the cross-module delivery order is recorded in
+  `docs/superpowers/plans/2026-08-30-baby-monitor-ordered-delivery.md`. Stage 1 is the
+  only resumed implementation stage and has a complete RED/GREEN plan at
+  `docs/superpowers/plans/2026-08-30-offline-guardian-scenario-expansion.md`. It expands
+  the existing fixed flow to exactly eight scenarios, thirteen lanes, five visual clips
+  and 330 exact frames without camera, household media, model/threshold changes,
+  Camera Reply or Baby Care access. Later Voice, Camera Reply, private capture and
+  release stages preserve their existing human-authorization gates.
 - Visual regression corpus (2026-08-29): the isolated feature branch
   `codex/visual-regression-corpus` has public-corpus proposal base
   `681edd3c49d0ccca442af064188a4e8b814a4db5`. The published branch includes the
   private-overlay software, four-scenario flow and expansion-design checkpoint
-  `60af28c`; this docs-only review amendment follows it, with no PR, merge or
-  protected-branch change. Published closure commits `fb3218d`, `165b0db`, `d01c23d` and
+  `60af28c`; reviewed remote base `7cf8d02` combines the independent docs amendments
+  `9a3a199` and `f2600ae`, with no PR or protected-branch change. Published closure
+  commits `fb3218d`, `165b0db`, `d01c23d` and
   `4c51120` extend the earlier `533399c` gate. Four downloaded public sources,
   13 reviewed clips,
   contact sheets, 26 prepared files and result JSON remain ignored/private.
@@ -76,10 +85,10 @@
 - Offline Guardian scenario expansion: implemented locally through `0688d38`; the
   remote branch remains `7cf8d02`. The fixed CLI selects `DAY-01`, `OCC-02`, `NEG-03`,
   `DAY-03` and `OCC-03`, runs 8 scenarios/13 lanes and publishes a bounded media-free
-  ignored JSON/HTML report. Run `run-071b0fdc8adccdc1` passed 330/330 exact visual
+  ignored JSON/HTML report. Run `run-717e98f5f1ac4c83` passed 330/330 exact visual
   frames with skipped/dropped/decode/worker counts all zero. Worst per-clip model
-  p50/p95/max was 82.710/110.079/405.809 ms and pipeline p50/p95/max was
-  105.377/132.837/427.784 ms. The synthetic Guardian lane produced the expected safe,
+  p50/p95/max was 85.877/117.110/405.576 ms and pipeline p50/p95/max was
+  108.322/142.444/429.669 ms. The synthetic Guardian lane produced the expected safe,
   occlusion, adult-intervention, prone-candidate and outside-candidate lifecycle results;
   every paired visual lane is explicitly `INDEPENDENT`. Generated Voice verified exact
   Feeding, diaper and burping action identities plus legal cross-action, ambiguous and
@@ -87,8 +96,9 @@
   for full Python and 73/73 frontend; compile, shell, Make, diff and privacy checks pass.
   No model/threshold, public manifest, baseline, camera, production state or Baby Care
   boundary changed. This is repeatable integration evidence, not accuracy or real-device
-  acceptance. The expansion commits are local only; no push, PR, merge or protected-branch
-  change occurred.
+  acceptance. The implementation and software gates are complete, while the detailed
+  remote plan's independent-review checkpoint remains open on the merged exact head.
+  No PR or protected-branch change occurred.
 - Environment monitoring design and implementation plan: approved on 2026-08-05.
 - Stable Xiaomi Alpha commit: `0df20ae` on `stable/xiaomi-alpha`.
 - Current visual-corpus worktree branch: `codex/visual-regression-corpus`. The separate
