@@ -236,7 +236,7 @@ git commit -m "test: require exact offline visual replay"
 - `OUTSIDE-CANDIDATE-01`: visual `OCC-03`; separate synthetic `outside_candidate` watch/open/dedup/recovery timeline.
 - Each final Dashboard projection contains one recovered event and zero open events.
 
-- [ ] **Step 1: Write Guardian RED tests**
+- [x] **Step 1: Write Guardian RED tests**
 
 ```python
 @pytest.mark.parametrize(("scenario_id", "risk"), [
@@ -259,7 +259,7 @@ def test_new_guardian_oracle_opens_deduplicates_and_recovers(
 
 Also assert the visual lane result is neither read by nor passed into `run_guardian_lane`, and a visual failure does not rewrite the oracle result.
 
-- [ ] **Step 2: Run RED**
+- [x] **Step 2: Run RED**
 
 ```bash
 ../../.venv-alpha/bin/python -m pytest -q tests/contracts/test_offline_guardian_scenario.py tests/integration/test_offline_guardian_scenario.py -k 'prone or outside or independent'
@@ -267,18 +267,18 @@ Also assert the visual lane result is neither read by nor passed into `run_guard
 
 Expected: FAIL until both exact timelines and counts exist.
 
-- [ ] **Step 3: Add the fixed timelines**
+- [x] **Step 3: Add the fixed timelines**
 
 For each risk, use two qualifying reviews ten seconds apart, one duplicate qualifying review ten seconds later, then two explicit safe reviews ten seconds apart. Use only current `VisualReview` enum values and stable risk/reason codes. Expected counts are exactly one watch, one open, one recovery, no duplicate event, one recovered event and zero open Dashboard events.
 
-- [ ] **Step 4: Run GREEN**
+- [x] **Step 4: Run GREEN**
 
 ```bash
 ../../.venv-alpha/bin/python -m pytest -q tests/contracts/test_offline_guardian_scenario.py tests/integration/test_offline_guardian_scenario.py -k 'guardian or prone or outside or independent' tests/vision/test_corpus_guardian_projection.py tests/vision/test_risk_state.py
 git diff --check
 ```
 
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
 
 ```bash
 git add tests/fixtures/offline_guardian_scenarios/scenarios.v1.json tests/contracts/test_offline_guardian_scenario.py tests/integration/test_offline_guardian_scenario.py docs/superpowers/plans/2026-08-30-offline-guardian-scenario-expansion.md

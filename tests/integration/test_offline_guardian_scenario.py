@@ -73,6 +73,28 @@ def private_root(tmp_path: Path) -> Path:
                 "dashboard.open": 1,
             },
         ),
+        (
+            "PRONE-CANDIDATE-01",
+            {
+                "transition.watch_started.prone_candidate": 1,
+                "transition.alert_opened.prone_candidate": 1,
+                "transition.recovered.prone_candidate": 1,
+                "event.prone_candidate.recovered": 1,
+                "dashboard.event": 1,
+                "dashboard.open": 0,
+            },
+        ),
+        (
+            "OUTSIDE-CANDIDATE-01",
+            {
+                "transition.watch_started.outside_candidate": 1,
+                "transition.alert_opened.outside_candidate": 1,
+                "transition.recovered.outside_candidate": 1,
+                "event.outside_candidate.recovered": 1,
+                "dashboard.event": 1,
+                "dashboard.open": 0,
+            },
+        ),
     ],
 )
 def test_guardian_lane_runs_current_rules_and_dashboard_projection(
@@ -141,6 +163,20 @@ def test_guardian_lane_reports_expectation_mismatch_without_changing_rules(
     assert result.status == "FAIL"
     assert result.reason == "scenario_guardian_mismatch"
     assert result.counts["dashboard.event"] == 0
+
+
+def test_guardian_lane_requires_declared_independence(tmp_path: Path) -> None:
+    from services.offline_guardian_scenario import run_guardian_lane
+
+    value = scenario("PRONE-CANDIDATE-01")
+    changed = value.model_copy(update={"visual_oracle_relationship": None})
+
+    result = run_guardian_lane(changed, private_root(tmp_path))
+
+    assert (result.status, result.reason) == (
+        "FAIL",
+        "offline_scenario_lane_relationship_invalid",
+    )
 
 
 class AvailableVisualBackend:

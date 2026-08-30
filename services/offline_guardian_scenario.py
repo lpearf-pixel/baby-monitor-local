@@ -357,6 +357,11 @@ def run_guardian_lane(
         return _failure("offline_scenario_runtime_unsafe")
     if scenario.guardian is None or "guardian_deterministic" not in scenario.required_lanes:
         return _failure("offline_scenario_lane_unavailable")
+    if (
+        scenario.visual is not None
+        and scenario.visual_oracle_relationship != "INDEPENDENT"
+    ):
+        return _failure("offline_scenario_lane_relationship_invalid")
 
     database = root / "guardian-events.sqlite3"
     if database.exists() or database.is_symlink():
