@@ -2,11 +2,12 @@
 
 **Date:** 2026-08-29
 
-**Status:** Approved design with review amendments incorporated; implementation paused
-by the owner. This document does not authorize implementation while paused, camera or
-household-media access, model or threshold changes, Camera Reply, PTZ, notification
-delivery, Baby Care writes, baseline promotion, PR creation, merge or protected-branch
-changes.
+**Status:** Approved design with review amendments incorporated. On 2026-08-30 the
+owner resumed the software-only implementation through
+`docs/superpowers/plans/2026-08-30-offline-guardian-scenario-expansion.md`. This resume
+does not authorize camera or household-media access, model or threshold changes,
+Camera Reply, PTZ, notification delivery, Baby Care writes, baseline promotion, PR
+creation, merge or protected-branch changes.
 
 ## 1. Goal
 
@@ -279,9 +280,10 @@ Implementation requires RED -> GREEN coverage for:
 
 ## 10. Delivery boundary and later work
 
-Implementation remains paused until the owner resumes it. When resumed, the work stays
-on `codex/visual-regression-corpus`, uses focused commits and receives independent
-review before factual STATUS/CHECKPOINT/NEXT updates.
+Implementation resumed on 2026-08-30 for this software-only expansion. The work stays
+on `codex/visual-regression-corpus`, follows
+`docs/superpowers/plans/2026-08-30-offline-guardian-scenario-expansion.md`, uses focused
+commits and receives independent review before factual STATUS/CHECKPOINT/NEXT updates.
 
 The following remain later and separate:
 

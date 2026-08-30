@@ -1,15 +1,26 @@
 # Baby Monitor Local Project Summary
 
-Updated: 2026-08-29
+Updated: 2026-08-30
 
 ## Snapshot
 
 - Repository: `lpearf-pixel/baby-monitor-local` (public).
+- The owner resumed planning on 2026-08-30. The authoritative execution order is now
+  `docs/superpowers/plans/2026-08-30-baby-monitor-ordered-delivery.md`, with the first
+  software-only implementation slice in
+  `docs/superpowers/plans/2026-08-30-offline-guardian-scenario-expansion.md`. The order is:
+  eight-scenario software expansion; low-risk Feeding/diaper/burping Voice decision;
+  separately designed Camera Reply correction and clean V3E; separately authorized
+  public/private visual-readiness work; then deferred device and 72-hour release gates.
+  Only the first software slice is resumed by this checkpoint. Camera Reply, household
+  capture, medication, Baby Care writes, PR/merge and `main/stable` changes remain
+  unauthorized.
 - Visual regression corpus work is published on `codex/visual-regression-corpus`; the
   public-corpus proposal base is `681edd3c49d0ccca442af064188a4e8b814a4db5`.
   The published branch includes the private-overlay software, four-scenario offline
-  flow and expansion-design checkpoint `60af28c`; this docs-only review amendment
-  follows that checkpoint, with no PR, merge or protected-branch change. It includes
+  flow and expansion-design checkpoint `60af28c`. Reviewed remote base `7cf8d02`
+  combines the independent docs amendments `9a3a199` and `f2600ae`, with no PR or
+  protected-branch change. The history includes
   closure implementation `fb3218d`,
   evidence checkpoint `165b0db`, bounded-source review `d01c23d` and final
   government-source review `4c51120`, READY plan `f5c4b34` and the latest bounded
@@ -99,8 +110,11 @@ Updated: 2026-08-29
   independent `prone_candidate` and `outside_candidate` Guardian oracles, plus
   generated diaper and burping Voice scenarios. It corrects synthetic visual
   provenance, makes visual/oracle lanes explicitly `INDEPENDENT` and keeps actual
-  visual output non-ground-truth. The owner paused before plan or implementation; no
-  expansion code, fixture, report or runtime action has occurred.
+  visual output non-ground-truth. The owner resumed the software-only stage on
+  2026-08-30 and its implementation plan is now
+  `docs/superpowers/plans/2026-08-30-offline-guardian-scenario-expansion.md`; no
+  expansion code, fixture, report or runtime action has occurred at this planning
+  checkpoint.
 - Stable Xiaomi line: `stable/xiaomi-alpha` at `0df20ae`.
 - Active Camera Reply review line: `codex/xiaomi-camera-reply-lifecycle-review`, based
   on accepted Voice head `4d479b8`; its published Task 8 checkpoint is `a622a7a`.

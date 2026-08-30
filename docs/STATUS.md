@@ -4,12 +4,21 @@
 
 - Repository: initialized and public.
 - Design: approved.
+- Ordered continuation (2026-08-30): the cross-module delivery order is recorded in
+  `docs/superpowers/plans/2026-08-30-baby-monitor-ordered-delivery.md`. Stage 1 is the
+  only resumed implementation stage and has a complete RED/GREEN plan at
+  `docs/superpowers/plans/2026-08-30-offline-guardian-scenario-expansion.md`. It expands
+  the existing fixed flow to exactly eight scenarios, thirteen lanes, five visual clips
+  and 330 exact frames without camera, household media, model/threshold changes,
+  Camera Reply or Baby Care access. Later Voice, Camera Reply, private capture and
+  release stages preserve their existing human-authorization gates.
 - Visual regression corpus (2026-08-29): the isolated feature branch
   `codex/visual-regression-corpus` has public-corpus proposal base
   `681edd3c49d0ccca442af064188a4e8b814a4db5`. The published branch includes the
   private-overlay software, four-scenario flow and expansion-design checkpoint
-  `60af28c`; this docs-only review amendment follows it, with no PR, merge or
-  protected-branch change. Published closure commits `fb3218d`, `165b0db`, `d01c23d` and
+  `60af28c`; reviewed remote base `7cf8d02` combines the independent docs amendments
+  `9a3a199` and `f2600ae`, with no PR or protected-branch change. Published closure
+  commits `fb3218d`, `165b0db`, `d01c23d` and
   `4c51120` extend the earlier `533399c` gate. Four downloaded public sources,
   13 reviewed clips,
   contact sheets, 26 prepared files and result JSON remain ignored/private.

@@ -1,5 +1,26 @@
 # Hybrid HD Checkpoint
 
+## Ordered delivery planning checkpoint — 2026-08-30
+
+Fresh read-only repository reconciliation used
+`origin/codex/visual-regression-corpus@7cf8d023f706f3a77d0835916854dfd4db450a64`
+as the latest published descendant evidence base. It contains the reviewed visual
+corpus/private-overlay/offline-scenario history and the Camera Reply/multi-action
+checkpoint `0d2588733fc5ab947aaf85df11725c1ba652928a`. The stable release line remains
+`stable/xiaomi-alpha@0df20aed564d358a6a3db370f29490f5a44029b9`.
+
+Two docs-only plans now define continuation:
+
+- `docs/superpowers/plans/2026-08-30-baby-monitor-ordered-delivery.md` fixes the
+  dependency order, review checkpoints and human/device stop lines;
+- `docs/superpowers/plans/2026-08-30-offline-guardian-scenario-expansion.md` provides the
+  complete Task 1-7 RED/GREEN implementation handoff for the first software-only stage.
+
+The first stage is bounded to public/generated fixtures and exact 8-scenario,
+13-lane, 5-clip and 330-frame evidence. This checkpoint does not claim implementation
+or test completion. It did not run a camera, speaker, microphone, PTZ, notification,
+production database, household capture, Baby Care write or baseline operation.
+
 ## Visual regression corpus checkpoint — 2026-08-29
 
 On `codex/visual-regression-corpus`, implementation head `5143f69` establishes a

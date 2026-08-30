@@ -4,7 +4,23 @@ The repository baseline, environment software and functional Guardian loop are
 complete. Do not restart completed milestones. Execute the following stages in order;
 the detailed approved specs and plans remain authoritative for behavior.
 
-**Offline Guardian scenario flow: software-complete, expansion next.** The approved
+**Authoritative order:** follow
+`docs/superpowers/plans/2026-08-30-baby-monitor-ordered-delivery.md`. The fixed order is:
+
+1. implement and close the eight-scenario software-only expansion;
+2. reconcile and, with separate adult authority, close the low-risk
+   Feeding/diaper/burping Voice decision;
+3. design the bounded remaining Camera Reply correction, then separately authorize a
+   complete clean V3E matrix;
+4. pursue public visual readiness or separately authorized private local capture
+   without combining their readiness states;
+5. complete deferred real-device observations and the final 72-hour release gate.
+
+Only stage 1 is resumed now. Stages 2-5 are queued, not blanket authority for household
+capture, speaker activation, PTZ, medication, Baby Care writes, installation, PR,
+merge, stable changes or release publication.
+
+**Offline Guardian scenario flow: software-complete, expansion implementation next.** The approved
 four-scenario flow is implemented and published through `b174f94`: three public clips,
 one generated Voice scenario, seven independent lanes and one ignored JSON/HTML report.
 The latest run passed 4/4 scenarios, 7/7 lanes and 165/165 frames with no decode,
@@ -16,10 +32,12 @@ It uses existing licensed/generated `DAY-03` and `OCC-03` fixtures only as indep
 pipeline observations, separate from synthetic `prone_candidate` and
 `outside_candidate` Guardian oracles, and uses generated inputs for the approved
 low-risk diaper/burping Voice actions. Visual and Guardian oracle lanes remain
-`INDEPENDENT`. The owner paused before plan and implementation. When explicitly
-resumed, write the implementation plan first; do not change Guardian rules, enable
-Camera Reply or write Baby Care. Real-baby accuracy and public baseline promotion
-remain separate later gates.
+`INDEPENDENT`. The owner has resumed this software-only stage and its detailed plan is
+`docs/superpowers/plans/2026-08-30-offline-guardian-scenario-expansion.md`. Execute that
+plan Task 1 through Task 7 with RED/GREEN and focused commits, then stop after the
+factual closure report. Do not change Guardian rules, enable Camera Reply, access a
+camera or write Baby Care. Real-baby accuracy and public baseline promotion remain
+separate later gates.
 
 **Private local visual overlay (deferred by owner):** the contract in
 `docs/superpowers/specs/2026-08-29-private-local-visual-corpus-overlay-design.md` and
