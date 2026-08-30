@@ -4,22 +4,17 @@ The repository baseline, environment software and functional Guardian loop are
 complete. Do not restart completed milestones. Execute the following stages in order;
 the detailed approved specs and plans remain authoritative for behavior.
 
-**Offline Guardian scenario flow: software-complete, expansion next.** The approved
-four-scenario flow is implemented and published through `b174f94`: three public clips,
-one generated Voice scenario, seven independent lanes and one ignored JSON/HTML report.
-The latest run passed 4/4 scenarios, 7/7 lanes and 165/165 frames with no decode,
-worker or drop errors. Keep visual observations separate from synthetic Guardian
-expectations; in particular, `NEG-03` currently reports adult absent in all 50 frames.
-The next offline product slice is the approved expansion design at
-`docs/superpowers/specs/2026-08-29-offline-guardian-scenario-expansion-design.md`.
-It uses existing licensed/generated `DAY-03` and `OCC-03` fixtures only as independent
-pipeline observations, separate from synthetic `prone_candidate` and
-`outside_candidate` Guardian oracles, and uses generated inputs for the approved
-low-risk diaper/burping Voice actions. Visual and Guardian oracle lanes remain
-`INDEPENDENT`. The owner paused before plan and implementation. When explicitly
-resumed, write the implementation plan first; do not change Guardian rules, enable
-Camera Reply or write Baby Care. Real-baby accuracy and public baseline promotion
-remain separate later gates.
+**Offline Guardian scenario expansion: software-complete locally.** Business head
+`0688d38` expands the fixed flow to eight scenarios, thirteen lanes and exactly 330
+visual frames. Run `run-071b0fdc8adccdc1` passed every scenario/lane with zero skipped,
+dropped, decode-error or worker-error frames; full Python is 2289 passed / 1 expected
+public-corpus skip and frontend is 73/73. Visual observations remain independent from
+synthetic Guardian oracles, and generated Voice output is checked against exact action
+and match identities. Do not tune models or thresholds to the synthetic labels. The
+next action for this slice is publication of the reviewed local commit range only if
+the owner explicitly approves push; no PR or merge follows automatically. Later product
+gates remain real-baby accuracy, real far-field Voice recall and public corpus READY /
+baseline promotion, none of which this offline PASS proves.
 
 **Private local visual overlay (deferred by owner):** the contract in
 `docs/superpowers/specs/2026-08-29-private-local-visual-corpus-overlay-design.md` and

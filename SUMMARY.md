@@ -1,6 +1,6 @@
 # Baby Monitor Local Project Summary
 
-Updated: 2026-08-29
+Updated: 2026-08-30
 
 ## Snapshot
 
@@ -75,32 +75,26 @@ Updated: 2026-08-29
   independent review is clean at 0 Critical / 0 Important / 0 Minor. No household media,
   real descriptor, receipt, `LOCAL_READY`, replay or baseline operation occurred. The
   exact next slice is Task 8 owner-supervised capture, which needs fresh explicit authority.
-- The approved offline Guardian scenario flow is implemented and published through
-  `b174f94` on the same branch. One fixed command replays three admitted public
-  clips through the current visual worker, runs separate synthetic-oracle Guardian and
-  Dashboard projections, and exercises generated Voice wake plus Feeding behavior. The
-  latest exact-head run passed 4/4 scenarios and 7/7 lanes: 165/165 visual frames, zero
-  decode/worker/drop errors, model p95 at most 114.143 ms and pipeline p95 at most
-  134.541 ms. Guardian produced zero safe-sleep events, one recovered face-not-visible
-  event and one open adult-intervention scenario event; generated Voice produced two
-  response codes and two silent negatives. Actual visual observations remain separate:
-  the adult scenario reported `adult_track.absent` for 50/50 frames, so this flow exposes
-  a model gap rather than treating the scenario label or Guardian oracle as ground truth.
-  The ignored report is under `run-74f6b9a00d23b67a/report` with 0700/0600 permissions.
-  Final gates passed 167 focused tests, 2276 full Python tests with one expected
-  incomplete-public-corpus skip, and 73 frontend tests; compile, shell, Make, diff and
-  privacy/media checks passed.
+- The approved offline Guardian scenario expansion is implemented locally through
+  business head `0688d38` on the same feature branch. The fixed command now runs eight
+  scenarios and thirteen lanes: five visual observations, five independent synthetic
+  Guardian oracles and three generated Voice scenarios. Exact local run
+  `run-071b0fdc8adccdc1` passed 8/8 scenarios, 13/13 lanes and 330/330 frames with zero
+  skipped, dropped, decode-error or worker-error frames. Worst per-clip model p50/p95/max
+  was 82.710/110.079/405.809 ms; pipeline p50/p95/max was
+  105.377/132.837/427.784 ms. Guardian produced recovered face-not-visible,
+  prone-candidate and outside-candidate events plus one open adult-intervention event.
+  Generated Voice matched exact Feeding, diaper and burping actions, legal cross-action
+  steps, ambiguous multi-action silence and no-wake silence. Actual visual observations
+  and Guardian oracle results are explicitly `INDEPENDENT`; the suite does not use model
+  output as ground truth. The ignored report is 0700/0600. Fresh gates passed 220 focused
+  tests, 2289 full Python tests with one expected incomplete-public-corpus skip and 73
+  frontend tests; compile, shell, Make, diff and private-literal checks passed.
   No camera, speaker, PTZ, notification, production database, Baby Care write or baseline
-  operation ran. This proves repeatable component integration, not infant-recognition
-  accuracy, household safety, real Voice recall or Xiaomi device compatibility.
-  The eight-scenario expansion design is approved at
-  `docs/superpowers/specs/2026-08-29-offline-guardian-scenario-expansion-design.md`.
-  Its reviewed form adds `PRONE-CANDIDATE-01` and `OUTSIDE-CANDIDATE-01` with
-  independent `prone_candidate` and `outside_candidate` Guardian oracles, plus
-  generated diaper and burping Voice scenarios. It corrects synthetic visual
-  provenance, makes visual/oracle lanes explicitly `INDEPENDENT` and keeps actual
-  visual output non-ground-truth. The owner paused before plan or implementation; no
-  expansion code, fixture, report or runtime action has occurred.
+  operation ran. This proves repeatable offline component integration, not infant
+  recognition accuracy, household safety, real Voice recall or Xiaomi compatibility.
+  The local branch is five commits ahead of the remote checkpoint `7cf8d02`; nothing from
+  this expansion has been pushed, merged or applied to a protected branch.
 - Stable Xiaomi line: `stable/xiaomi-alpha` at `0df20ae`.
 - Active Camera Reply review line: `codex/xiaomi-camera-reply-lifecycle-review`, based
   on accepted Voice head `4d479b8`; its published Task 8 checkpoint is `a622a7a`.

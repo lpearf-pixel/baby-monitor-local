@@ -73,30 +73,22 @@
   No household media, real descriptor, receipt, `LOCAL_READY`, replay or baseline
   operation occurred. Task 8 owner-supervised capture is next and is not authorized by
   the software-only sequence.
-- Offline Guardian scenario flow: approved software Tasks 1-8 are implemented and
-  published through `b174f94`. The fixed CLI selects `DAY-01`, `OCC-02` and
-  `NEG-03`, runs 4 scenarios/7 independent lanes and publishes a bounded media-free
-  ignored JSON/HTML report. Exact-head run `run-74f6b9a00d23b67a` passed 165/165 frames
-  with zero decode, worker or dropped-frame errors; worst model/pipeline p95 was
-  114.143/134.541 ms. Guardian synthetic-oracle results were 0 safe-sleep events, one
-  recovered face-not-visible event and one open adult-intervention scenario event.
-  Generated Voice recorded wake-ready plus one Feeding acknowledgement and kept two
-  negatives silent. The real visual lane did not recognize the adult scenario as adult
-  (`adult_track.absent=50`), which is recorded as an observational model limitation and
-  is not overwritten by the Guardian oracle. The runner has a whole-command deadline,
-  private path/permission gates, fresh Voice components, bounded close settlement and
-  atomic interrupt-safe reporting. Independent review is clean of Critical/Important
-  findings, including closure of its final alarm-ownership Minor. Fresh gates are
-  167 focused, 2276 passed / 1 expected public-corpus skip for full Python and 73/73
-  frontend; compile, shell, Make and diff checks pass. No production or real-device
-  boundary was opened.
-  The follow-up eight-scenario expansion design is approved in
-  `docs/superpowers/specs/2026-08-29-offline-guardian-scenario-expansion-design.md`:
-  `PRONE-CANDIDATE-01` and `OUTSIDE-CANDIDATE-01` use explicit `INDEPENDENT`
-  visual/oracle pairs for `prone_candidate` and `outside_candidate`, plus generated
-  diaper and burping actions. Implementation is owner-paused before an implementation
-  plan; no code, fixture, model, threshold, baseline or runtime state changed for the
-  expansion.
+- Offline Guardian scenario expansion: implemented locally through `0688d38`; the
+  remote branch remains `7cf8d02`. The fixed CLI selects `DAY-01`, `OCC-02`, `NEG-03`,
+  `DAY-03` and `OCC-03`, runs 8 scenarios/13 lanes and publishes a bounded media-free
+  ignored JSON/HTML report. Run `run-071b0fdc8adccdc1` passed 330/330 exact visual
+  frames with skipped/dropped/decode/worker counts all zero. Worst per-clip model
+  p50/p95/max was 82.710/110.079/405.809 ms and pipeline p50/p95/max was
+  105.377/132.837/427.784 ms. The synthetic Guardian lane produced the expected safe,
+  occlusion, adult-intervention, prone-candidate and outside-candidate lifecycle results;
+  every paired visual lane is explicitly `INDEPENDENT`. Generated Voice verified exact
+  Feeding, diaper and burping action identities plus legal cross-action, ambiguous and
+  no-wake cases. Fresh gates are 220 focused, 2289 passed / 1 expected public-corpus skip
+  for full Python and 73/73 frontend; compile, shell, Make, diff and privacy checks pass.
+  No model/threshold, public manifest, baseline, camera, production state or Baby Care
+  boundary changed. This is repeatable integration evidence, not accuracy or real-device
+  acceptance. The expansion commits are local only; no push, PR, merge or protected-branch
+  change occurred.
 - Environment monitoring design and implementation plan: approved on 2026-08-05.
 - Stable Xiaomi Alpha commit: `0df20ae` on `stable/xiaomi-alpha`.
 - Current visual-corpus worktree branch: `codex/visual-regression-corpus`. The separate

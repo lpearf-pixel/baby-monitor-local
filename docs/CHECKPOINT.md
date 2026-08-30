@@ -1992,3 +1992,48 @@ passed `git diff --check`, stale-state/spec-term scans and an added-line private
 scan. It changes no code, fixture, manifest, implementation plan, model, threshold,
 baseline or runtime state and does not authorize camera, household-media, Camera Reply,
 PTZ, notification or Baby Care operations.
+
+## 2026-08-30 Offline Guardian scenario expansion implementation
+
+The approved expansion was implemented locally as five focused commits from remote
+checkpoint `7cf8d023f706f3a77d0835916854dfd4db450a64` through business head
+`0688d3868df41a76cb5d89904dca4b298ac85ffa`. It adds the implementation plan, closes
+the eight-scenario/thirteen-lane contract, enforces one-level public provenance and exact
+frame accounting, keeps visual/oracle pairs `INDEPENDENT`, and binds generated Voice
+steps to exact action and match identities.
+
+Fixed validation and public-media run:
+
+```text
+../../.venv-alpha/bin/python tools/offline_guardian_scenario.py validate
+result=PASS; suite_id=offline-guardian-v1; scenario_count=8; visual_clip_count=5
+
+../../.venv-alpha/bin/python tools/offline_guardian_scenario.py run
+result=PASS; scenario_count=8; lane_count=13
+report=run-071b0fdc8adccdc1/report
+```
+
+The five visual lanes processed exactly 65 + 50 + 50 + 100 + 65 = 330 frames. Skipped,
+dropped, decode-error and worker-error totals were all zero. Worst per-clip model
+p50/p95/max was 82.710/110.079/405.809 ms; worst pipeline p50/p95/max was
+105.377/132.837/427.784 ms. Guardian produced the expected recovered
+face-not-visible, prone-candidate and outside-candidate events plus one open
+adult-intervention event. Generated Voice counted one Feeding action, diaper start and
+complete, burping start and complete, and the two legal cross-action results; ambiguous
+multi-action and no-wake inputs stayed silent. The run and report files were 0700/0600.
+
+Fresh verification:
+
+```text
+focused Python: 220 passed
+full Python: 2289 passed, 1 skipped (visual_corpus_first_stage_incomplete)
+frontend: 73 passed
+compileall, bash -n tools/*.sh, Make dry-runs, git diff --check: PASS
+added-line private-literal scan: no prohibited match
+```
+
+The run opened no camera, persisted no raw audio/evidence, dispatched no notification,
+called no Baby Care service and touched no production state. It did not generate,
+compare or promote a baseline. The PASS proves repeatable offline pipeline integration,
+not model accuracy, real baby safety, far-field Voice recall or Xiaomi compatibility.
+No push, PR, merge or protected-branch change occurred.

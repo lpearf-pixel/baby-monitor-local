@@ -484,7 +484,7 @@ git commit -m "feat: run expanded offline Guardian flow"
 - Records actual eight-scenario/thirteen-lane output, 330-frame accounting, candidate observations and performance aggregates.
 - Records separately what software/public media proves and what remains real-baby, Xiaomi, Voice recall, private corpus and baseline gated.
 
-- [ ] **Step 1: Run the fixed validation and bounded replay**
+- [x] **Step 1: Run the fixed validation and bounded replay**
 
 ```bash
 ../../.venv-alpha/bin/python tools/offline_guardian_scenario.py validate
@@ -493,7 +493,7 @@ git commit -m "feat: run expanded offline Guardian flow"
 
 Require `scenario_count=8`, `visual_clip_count=5`, `pass_count=8`, `fail_count=0`, `skip_count=0`, `lane_count=13`. Inspect only bounded aggregate JSON; require total visual frames 330 and every skipped/dropped/decode/worker count zero. Record factual model observations even when candidate counts are zero.
 
-- [ ] **Step 2: Run complete verification**
+- [x] **Step 2: Run complete verification**
 
 ```bash
 ../../.venv-alpha/bin/python -m pytest -q tests/contracts/test_offline_guardian_scenario.py tests/integration/test_offline_guardian_scenario.py tests/tools/test_offline_guardian_scenario.py tests/vision/test_corpus_replay.py tests/vision/test_corpus_guardian_projection.py tests/vision/test_risk_state.py tests/voice/test_listen_only.py tests/voice/test_care_action.py tests/api/test_alpha_app.py
@@ -508,15 +508,15 @@ git diff --check
 
 Also parse tracked JSON, scan tracked files for media, scan added lines for credentials/private addresses/paths and confirm no camera/go2rtc/Ollama/notification/Baby Care process was initialized by the fixed flow.
 
-- [ ] **Step 3: Perform read-only final review**
+- [x] **Step 3: Perform read-only final review**
 
 Review schema closure, one-level provenance, exact frames, visual/oracle independence, Voice action identity, cancellation/settlement, filesystem publication, report privacy and prohibited client initialization. Resolve every Critical or Important finding with a new RED/GREEN cycle.
 
-- [ ] **Step 4: Update factual handoff documents**
+- [x] **Step 4: Update factual handoff documents**
 
 Record the exact run ID, counts, performance and verification results. Do not claim model accuracy, public corpus READY, baseline approval, Xiaomi compatibility, real Voice recall or unattended safety.
 
-- [ ] **Step 5: Commit the closure**
+- [x] **Step 5: Commit the closure**
 
 ```bash
 git add SUMMARY.md docs/STATUS.md docs/CHECKPOINT.md docs/NEXT.md docs/superpowers/plans/2026-08-30-offline-guardian-scenario-expansion.md
