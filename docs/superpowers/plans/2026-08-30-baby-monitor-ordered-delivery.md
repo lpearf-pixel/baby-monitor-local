@@ -20,11 +20,26 @@ OpenVINO 2025.4.1, go2rtc Xiaomi MISS/CS2, macOS launchd and Git.
 
 **Specs:**
 
+- `docs/superpowers/specs/2026-09-02-offline-application-rehearsal-design.md`
 - `docs/superpowers/specs/2026-08-29-offline-guardian-scenario-expansion-design.md`
 - `docs/superpowers/specs/2026-08-27-voice-care-multi-intent-asr-optimization-design.md`
 - `docs/superpowers/specs/2026-08-26-xiaomi-camera-reply-lifecycle-design.md`
 - `docs/superpowers/specs/2026-08-29-private-local-visual-corpus-overlay-design.md`
 - `docs/superpowers/specs/2026-08-04-baby-monitor-local-design.md`
+
+## 2026-09-02 owner-directed execution amendment
+
+The owner directed the project to stop repeating slow live trials until the joined
+application flow is rehearsed with historical aggregate evidence, public/generated
+fixtures, deterministic failure injection and repeat quotas. The exact design is
+`docs/superpowers/specs/2026-09-02-offline-application-rehearsal-design.md`.
+
+This software-only slice is inserted after the completed Stage 1 and before the
+remaining live Stage 2 Step 3 matrix. It includes the reported no-baby face-cover false
+alert: empty-bed and adult-only scenarios must produce zero face outputs, while a
+baby-present face-occlusion control must still pass. The design text requires owner
+review, followed by a separate RED/GREEN implementation plan. Until both exist, do not
+implement the slice or resume live Voice repetition. Camera Reply remains false.
 
 ## Global Constraints
 
@@ -336,11 +351,12 @@ feature branch is not automatically a stable release.
 
 ## Current execution handoff
 
-This publication resumes **Stage 1 software implementation only**. A local Codex should
-read `AGENTS.md`, the five handoff documents, the approved expansion spec, this ordered
-plan and `docs/superpowers/plans/2026-08-30-offline-guardian-scenario-expansion.md`, then
-execute the detailed plan task-by-task. It must stop after the Stage 1 closure report.
+Stage 1 is complete. The current handoff is **written-design review only** for
+`docs/superpowers/specs/2026-09-02-offline-application-rehearsal-design.md`. After the
+owner accepts that exact text, write a separate detailed RED/GREEN plan; do not infer
+implementation authority from this ordered-plan amendment.
 
-Stages 2-5 remain queued. They are not implicit authority for household capture,
-speaker activation, PTZ, Baby Care writes, installation, PR, merge, stable changes or
-release publication.
+The future software rehearsal remains generated/public and device-free. Stage 2 live
+testing and Stages 3-5 are queued. They are not implicit authority for household
+capture, camera or speaker activation, PTZ, Baby Care writes, installation, PR, merge,
+stable changes or release publication.

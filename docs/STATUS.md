@@ -12,6 +12,18 @@
   and 330 exact frames without camera, household media, model/threshold changes,
   Camera Reply or Baby Care access. Later Voice, Camera Reply, private capture and
   release stages preserve their existing human-authorization gates.
+- Offline application rehearsal amendment (2026-09-02): before the remaining Stage 2
+  live matrix, the owner directed the project to use historical aggregate evidence and
+  public/generated fixtures to rehearse the joined Voice, Guardian, event/projection and
+  recording-output flow, inject failures and repeat it deterministically. The design is
+  `docs/superpowers/specs/2026-09-02-offline-application-rehearsal-design.md`; its exact
+  text still requires owner review before planning or implementation. The owner reports
+  continuous face-cover alerts while no baby is visible. The current `c75d929` software
+  path reproduces the mechanism: a structurally accepted no-baby/outside/high review can
+  open face and outside alerts together because face evidence lacks subject/bed gating.
+  Required regressions make face watch/alert/event/notification counts zero for empty
+  and adult-only scenes while retaining a baby-inside positive face control. No live
+  payload was captured, no private media was read, and Camera Reply remains false.
 - Visual regression corpus (2026-08-29): the isolated feature branch
   `codex/visual-regression-corpus` has public-corpus proposal base
   `681edd3c49d0ccca442af064188a4e8b814a4db5`. The published branch includes the

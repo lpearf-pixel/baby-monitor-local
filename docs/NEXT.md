@@ -5,21 +5,29 @@ complete. Do not restart completed milestones. Execute the following stages in o
 the detailed approved specs and plans remain authoritative for behavior.
 
 **Authoritative order:** follow
-`docs/superpowers/plans/2026-08-30-baby-monitor-ordered-delivery.md`. The fixed order is:
+`docs/superpowers/plans/2026-08-30-baby-monitor-ordered-delivery.md` with its 2026-09-02
+owner-directed amendment. The current order is:
 
-1. implement and close the eight-scenario software-only expansion;
-2. reconcile and, with separate adult authority, close the low-risk
-   Feeding/diaper/burping Voice decision;
-3. design the bounded remaining Camera Reply correction, then separately authorize a
+1. preserve the completed eight-scenario software-only expansion;
+2. review, plan and implement the software-only application rehearsal and the no-baby
+   cross-risk regression;
+3. after that software gate, request one bundled panoramic session to close the
+   low-risk Feeding/diaper/burping Voice decision and visual application observations;
+4. design the bounded remaining Camera Reply correction, then separately authorize a
    complete clean V3E matrix;
-4. pursue public visual readiness or separately authorized private local capture
+5. pursue public visual readiness or separately authorized private local capture
    without combining their readiness states;
-5. complete deferred real-device observations and the final 72-hour release gate.
+6. complete deferred real-device observations and the final 72-hour release gate.
 
 Stage 1 implementation, software gates and independent exact-head review are complete.
 Stage 2 Step 2 adult supervision was authorized and a bounded Step 3 trial was run, but
-the required full action-by-action positive/negative matrix remains incomplete. Stages
-3-5 are queued, not blanket authority for household
+the required full action-by-action positive/negative matrix remains incomplete. Before
+another live run, review the exact written application-rehearsal design at
+`docs/superpowers/specs/2026-09-02-offline-application-rehearsal-design.md`; then write a
+separate RED/GREEN implementation plan. The design covers the owner-reported no-baby
+face-cover false alert with empty-bed, adult-only, adversarial legacy and positive
+face-control scenarios. The current software mechanism is reproduced, but no live model
+payload was captured. Later stages are queued, not blanket authority for household
 capture, speaker activation, PTZ, medication, Baby Care writes, installation, PR,
 merge, stable changes or release publication.
 
@@ -39,10 +47,12 @@ isolated no-action attempt and an earlier no-audible first attempt. Two recorded
 increments in that earlier sequence corresponded to two physical inputs, not a system
 duplicate. This bounded reachability trial did not run the prescribed Feeding positives,
 shared negatives and independently reset action matrix, so it is not Stage 2 PASS.
-The immediate next action is Stage 2 Step 3: with Camera Reply false, Voice healthy/idle,
-one producer and fresh counters, complete the remaining Task 8 positive/negative ASR
-matrix and then publish the Step 4 per-action decision. Real-baby accuracy, Camera Reply
-V3E and public baseline promotion remain separate later gates.
+The immediate next action is owner review of the written rehearsal design. After that
+review, write its detailed implementation plan and execute only the software gate with
+Camera Reply false. Do not resume Stage 2 Step 3 until the software rehearsal, fault
+injection and repeat quotas close. The later panoramic session must still use fresh
+counters and publish Feeding, diaper and burping independently. Real-baby accuracy,
+Camera Reply V3E and public baseline promotion remain separate gates.
 
 **Private local visual overlay (deferred by owner):** the contract in
 `docs/superpowers/specs/2026-08-29-private-local-visual-corpus-overlay-design.md` and

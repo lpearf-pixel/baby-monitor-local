@@ -2240,3 +2240,46 @@ Voice healthy/idle and fresh counters, then complete only the remaining Task 8 l
 positive/negative ASR matrix. After that, publish Feeding, diaper and burping decisions
 independently. Do not start Camera Reply V3E, real-baby acceptance or baseline promotion
 as a substitute for this gate.
+
+## 2026-09-02 Offline application rehearsal design and visual cross-risk diagnosis
+
+The owner changed the immediate strategy to reduce slow and disruptive live testing:
+first use historical aggregate evidence, public/generated fixtures, a software-only
+joined application rehearsal, fault injection and deterministic repeats; then request
+one bundled panoramic device session. The written design is
+`docs/superpowers/specs/2026-09-02-offline-application-rehearsal-design.md`. Its exact
+text remains pending owner review, so no implementation plan or business-code change is
+authorized by this checkpoint.
+
+The owner also reported continuous face-cover alerts while no baby was present, rather
+than only outside-bed and adult-entry behavior. A read-only inspection and deterministic
+reproduction at exact remote head
+`c75d9296d9dc920198075578ffc3429ea3400b21` found:
+
+```text
+input: baby_visibility=not_visible, face_visibility=not_visible,
+       bed_state=outside_candidate, adult_presence=present, risk=high
+t0:    adult_intervention + watch_started(face_not_visible)
+       + watch_started(outside_candidate)
+t+10s: alert_opened(face_not_visible) + alert_opened(outside_candidate)
+```
+
+`VisualReview` accepts that cross-field combination, while
+`VisualRiskStateMachine._evidence_for()` currently requires only face-not-visible and
+high risk for the face candidate. This confirms a software path for the symptom. It
+does not establish the exact live model payload because no household frame, model prose,
+private log, path or device identifier was accessed or retained. The earlier 50-second
+zero-event empty-room sample remains historical and cannot overrule the current report.
+
+The design requires empty-bed, adult-only and the exact adversarial legacy combination
+to produce zero face watch/alert/event/notification; an independent baby-inside positive
+face scenario prevents a blanket disable. Stable outside/no-baby evidence must also
+resolve an already open face lifecycle with an explicit `subject_outside` cause while
+the outside alert owns the continuing safety signal. That face recovery is non-notifying
+because it does not prove that the face became clear. Prompt wording is not treated as
+a safety boundary.
+
+The docs environment did not contain `pytest`, so no Python test count is claimed for
+this checkpoint. The reproduction used the current Python contracts and state machine.
+Camera Reply stayed false; no camera, speaker, PTZ, notification, Baby Care, household
+media, PR, merge or protected branch was touched.
