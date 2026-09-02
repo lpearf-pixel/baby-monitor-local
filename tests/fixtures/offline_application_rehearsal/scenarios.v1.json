@@ -1,0 +1,134 @@
+{
+  "schema_version": 1,
+  "suite_id": "offline-application-rehearsal-v1",
+  "scenarios": [
+    {
+      "scenario_id": "APP-SAFE-SLEEP-01", "lane": "application_oracle",
+      "steps": [
+        {"step_id":"safe_1","offset_ms":0,"visual_review":{"baby_visibility":"visible","face_visibility":"clear","posture":"supine","bed_state":"inside","adult_presence":"absent","image_quality":"usable","risk":"none","reason_codes":[],"confidence":0.9}},
+        {"step_id":"safe_2","offset_ms":10000,"visual_review":{"baby_visibility":"visible","face_visibility":"clear","posture":"supine","bed_state":"inside","adult_presence":"absent","image_quality":"usable","risk":"none","reason_codes":[],"confidence":0.9}}
+      ],
+      "expected_counts": {"dashboard.event":0,"dashboard.open":0,"notification.total":0}
+    },
+    {
+      "scenario_id": "APP-FACE-OCCLUSION-01", "lane": "application_oracle",
+      "steps": [
+        {"step_id":"hidden_1","offset_ms":0,"visual_review":{"baby_visibility":"visible","face_visibility":"not_visible","posture":"supine","bed_state":"inside","adult_presence":"absent","image_quality":"usable","risk":"high","reason_codes":["face_not_visible"],"confidence":0.9}},
+        {"step_id":"hidden_2","offset_ms":10000,"visual_review":{"baby_visibility":"visible","face_visibility":"not_visible","posture":"supine","bed_state":"inside","adult_presence":"absent","image_quality":"usable","risk":"high","reason_codes":["face_not_visible"],"confidence":0.9}},
+        {"step_id":"clear_1","offset_ms":20000,"visual_review":{"baby_visibility":"visible","face_visibility":"clear","posture":"supine","bed_state":"inside","adult_presence":"absent","image_quality":"usable","risk":"none","reason_codes":[],"confidence":0.9}},
+        {"step_id":"clear_2","offset_ms":30000,"visual_review":{"baby_visibility":"visible","face_visibility":"clear","posture":"supine","bed_state":"inside","adult_presence":"absent","image_quality":"usable","risk":"none","reason_codes":[],"confidence":0.9}}
+      ],
+      "expected_counts": {"transition.watch_started.face_not_visible":1,"transition.alert_opened.face_not_visible":1,"transition.recovered.face_not_visible":1,"resolution.explicit_safe":1,"event.face_not_visible.recovered":1,"dashboard.event":1,"dashboard.open":0,"notification.risk_opened":1,"notification.risk_recovered":1}
+    },
+    {
+      "scenario_id": "APP-EMPTY-BED-01", "lane": "application_oracle",
+      "steps": [
+        {"step_id":"outside_1","offset_ms":0,"visual_review":{"baby_visibility":"not_visible","face_visibility":"not_visible","posture":"supine","bed_state":"outside_candidate","adult_presence":"absent","image_quality":"usable","risk":"watch","reason_codes":["outside_candidate"],"confidence":0.9}},
+        {"step_id":"outside_2","offset_ms":10000,"visual_review":{"baby_visibility":"not_visible","face_visibility":"not_visible","posture":"supine","bed_state":"outside_candidate","adult_presence":"absent","image_quality":"usable","risk":"watch","reason_codes":["outside_candidate"],"confidence":0.9}}
+      ],
+      "expected_counts": {"transition.watch_started.outside_candidate":1,"transition.alert_opened.outside_candidate":1,"event.outside_candidate.open":1,"dashboard.event":1,"dashboard.open":1,"notification.risk_opened":1,"face.output":0}
+    },
+    {
+      "scenario_id": "APP-ADULT-ONLY-01", "lane": "application_oracle",
+      "steps": [
+        {"step_id":"adult_1","offset_ms":0,"visual_review":{"baby_visibility":"not_visible","face_visibility":"not_visible","posture":"supine","bed_state":"outside_candidate","adult_presence":"present","image_quality":"usable","risk":"watch","reason_codes":["outside_candidate","adult_intervention"],"confidence":0.9}},
+        {"step_id":"adult_2","offset_ms":10000,"visual_review":{"baby_visibility":"not_visible","face_visibility":"not_visible","posture":"supine","bed_state":"outside_candidate","adult_presence":"present","image_quality":"usable","risk":"watch","reason_codes":["outside_candidate","adult_intervention"],"confidence":0.9}}
+      ],
+      "expected_counts": {"transition.adult_intervention.none":1,"transition.watch_started.outside_candidate":1,"transition.alert_opened.outside_candidate":1,"event.outside_candidate.open":1,"intervention.total":1,"dashboard.event":1,"dashboard.open":1,"notification.risk_opened":1,"face.output":0}
+    },
+    {
+      "scenario_id": "APP-CROSS-RISK-LEGACY-01", "lane": "application_oracle",
+      "steps": [
+        {"step_id":"legacy_1","offset_ms":0,"visual_review":{"baby_visibility":"not_visible","face_visibility":"not_visible","posture":"supine","bed_state":"outside_candidate","adult_presence":"absent","image_quality":"usable","risk":"high","reason_codes":["face_not_visible","outside_candidate"],"confidence":0.9}},
+        {"step_id":"legacy_2","offset_ms":10000,"visual_review":{"baby_visibility":"not_visible","face_visibility":"not_visible","posture":"supine","bed_state":"outside_candidate","adult_presence":"absent","image_quality":"usable","risk":"high","reason_codes":["face_not_visible","outside_candidate"],"confidence":0.9}}
+      ],
+      "expected_counts": {"semantic_conflict.face_without_subject":1,"transition.watch_started.outside_candidate":1,"transition.alert_opened.outside_candidate":1,"event.outside_candidate.open":1,"dashboard.event":1,"dashboard.open":1,"notification.risk_opened":1,"face.output":0}
+    },
+    {
+      "scenario_id": "APP-FACE-TO-OUTSIDE-01", "lane": "application_oracle",
+      "steps": [
+        {"step_id":"hidden_1","offset_ms":0,"visual_review":{"baby_visibility":"visible","face_visibility":"not_visible","posture":"supine","bed_state":"inside","adult_presence":"absent","image_quality":"usable","risk":"high","reason_codes":["face_not_visible"],"confidence":0.9}},
+        {"step_id":"hidden_2","offset_ms":10000,"visual_review":{"baby_visibility":"visible","face_visibility":"not_visible","posture":"supine","bed_state":"inside","adult_presence":"absent","image_quality":"usable","risk":"high","reason_codes":["face_not_visible"],"confidence":0.9}},
+        {"step_id":"outside_1","offset_ms":20000,"visual_review":{"baby_visibility":"not_visible","face_visibility":"not_visible","posture":"supine","bed_state":"outside_candidate","adult_presence":"absent","image_quality":"usable","risk":"watch","reason_codes":["outside_candidate"],"confidence":0.9}},
+        {"step_id":"outside_2","offset_ms":30000,"visual_review":{"baby_visibility":"not_visible","face_visibility":"not_visible","posture":"supine","bed_state":"outside_candidate","adult_presence":"absent","image_quality":"usable","risk":"watch","reason_codes":["outside_candidate"],"confidence":0.9}}
+      ],
+      "expected_counts": {"transition.watch_started.face_not_visible":1,"transition.alert_opened.face_not_visible":1,"transition.recovered.face_not_visible":1,"resolution.subject_outside":1,"transition.watch_started.outside_candidate":1,"transition.alert_opened.outside_candidate":1,"event.face_not_visible.recovered":1,"event.outside_candidate.open":1,"dashboard.event":2,"dashboard.open":1,"notification.risk_opened":2,"notification.risk_recovered":0}
+    },
+    {
+      "scenario_id":"APP-VOICE-FEEDING-01","lane":"voice_application",
+      "steps":[
+        {"step_id":"wake_1","offset_ms":0,"voice_fixture_id":"wake","reply_behavior":"success"},
+        {"step_id":"feeding","offset_ms":1000,"voice_fixture_id":"feeding_exact","expected_action_code":"feeding_command","expected_match_kind":"exact","reply_behavior":"success"},
+        {"step_id":"wake_cross","offset_ms":2000,"voice_fixture_id":"wake","reply_behavior":"success"},
+        {"step_id":"cross","offset_ms":3000,"voice_fixture_id":"burping_start_exact","expected_action_code":"burping_start","expected_match_kind":"exact","reply_behavior":"success"},
+        {"step_id":"ambiguous","offset_ms":4000,"voice_fixture_id":"ambiguous_multi"},
+        {"step_id":"no_wake","offset_ms":5000,"voice_fixture_id":"diaper_start_exact"}
+      ],
+      "expected_counts":{"action.feeding_command":1,"action.burping_start":1,"reply.total":4,"silence.ambiguous":1,"silence.no_wake":1,"medication.output":0,"residual_reply_sessions":0}
+    },
+    {
+      "scenario_id":"APP-VOICE-DIAPER-01","lane":"voice_application",
+      "steps":[
+        {"step_id":"wake_start","offset_ms":0,"voice_fixture_id":"wake","reply_behavior":"success"},
+        {"step_id":"start","offset_ms":1000,"voice_fixture_id":"diaper_start_exact","expected_action_code":"diaper_change_start","expected_match_kind":"exact","reply_behavior":"success"},
+        {"step_id":"wake_complete","offset_ms":2000,"voice_fixture_id":"wake","reply_behavior":"success"},
+        {"step_id":"complete","offset_ms":3000,"voice_fixture_id":"diaper_complete_exact","expected_action_code":"diaper_change_complete","expected_match_kind":"exact","reply_behavior":"success"},
+        {"step_id":"wake_cross","offset_ms":4000,"voice_fixture_id":"wake","reply_behavior":"success"},
+        {"step_id":"cross","offset_ms":5000,"voice_fixture_id":"feeding_exact","expected_action_code":"feeding_command","expected_match_kind":"exact","reply_behavior":"success"},
+        {"step_id":"ambiguous","offset_ms":6000,"voice_fixture_id":"ambiguous_multi"},
+        {"step_id":"no_wake","offset_ms":7000,"voice_fixture_id":"diaper_complete_exact"}
+      ],
+      "expected_counts":{"action.diaper_change_start":1,"action.diaper_change_complete":1,"action.feeding_command":1,"reply.total":6,"silence.ambiguous":1,"silence.no_wake":1,"medication.output":0,"residual_reply_sessions":0}
+    },
+    {
+      "scenario_id":"APP-VOICE-BURPING-01","lane":"voice_application",
+      "steps":[
+        {"step_id":"wake_start","offset_ms":0,"voice_fixture_id":"wake","reply_behavior":"success"},
+        {"step_id":"start","offset_ms":1000,"voice_fixture_id":"burping_start_exact","expected_action_code":"burping_start","expected_match_kind":"exact","reply_behavior":"success"},
+        {"step_id":"wake_complete","offset_ms":2000,"voice_fixture_id":"wake","reply_behavior":"success"},
+        {"step_id":"complete","offset_ms":3000,"voice_fixture_id":"burping_complete_exact","expected_action_code":"burping_complete","expected_match_kind":"exact","reply_behavior":"success"},
+        {"step_id":"wake_cross","offset_ms":4000,"voice_fixture_id":"wake","reply_behavior":"success"},
+        {"step_id":"cross","offset_ms":5000,"voice_fixture_id":"diaper_start_exact","expected_action_code":"diaper_change_start","expected_match_kind":"exact","reply_behavior":"success"},
+        {"step_id":"ambiguous","offset_ms":6000,"voice_fixture_id":"ambiguous_multi"},
+        {"step_id":"no_wake","offset_ms":7000,"voice_fixture_id":"burping_complete_exact"}
+      ],
+      "expected_counts":{"action.burping_start":1,"action.burping_complete":1,"action.diaper_change_start":1,"reply.total":6,"silence.ambiguous":1,"silence.no_wake":1,"medication.output":0,"residual_reply_sessions":0}
+    },
+    {
+      "scenario_id":"APP-JOINED-FEEDING-SAFE-01","lane":"joined_application",
+      "steps":[
+        {"step_id":"safe_1","offset_ms":0,"visual_review":{"baby_visibility":"visible","face_visibility":"clear","posture":"supine","bed_state":"inside","adult_presence":"absent","image_quality":"usable","risk":"none","reason_codes":[],"confidence":0.9}},
+        {"step_id":"wake","offset_ms":1000,"voice_fixture_id":"wake","reply_behavior":"success"},
+        {"step_id":"feeding","offset_ms":2000,"voice_fixture_id":"feeding_exact","expected_action_code":"feeding_command","expected_match_kind":"exact","reply_behavior":"success"},
+        {"step_id":"safe_2","offset_ms":10000,"visual_review":{"baby_visibility":"visible","face_visibility":"clear","posture":"supine","bed_state":"inside","adult_presence":"absent","image_quality":"usable","risk":"none","reason_codes":[],"confidence":0.9}}
+      ],
+      "expected_counts":{"action.feeding_command":1,"reply.total":2,"dashboard.event":0,"notification.total":0,"medication.output":0,"residual_reply_sessions":0}
+    },
+    {
+      "scenario_id":"APP-JOINED-DIAPER-ADULT-ONLY-01","lane":"joined_application",
+      "steps":[
+        {"step_id":"adult_1","offset_ms":0,"visual_review":{"baby_visibility":"not_visible","face_visibility":"not_visible","posture":"supine","bed_state":"outside_candidate","adult_presence":"present","image_quality":"usable","risk":"watch","reason_codes":["outside_candidate","adult_intervention"],"confidence":0.9}},
+        {"step_id":"wake_start","offset_ms":1000,"voice_fixture_id":"wake","reply_behavior":"success"},
+        {"step_id":"start","offset_ms":2000,"voice_fixture_id":"diaper_start_exact","expected_action_code":"diaper_change_start","expected_match_kind":"exact","reply_behavior":"success"},
+        {"step_id":"adult_2","offset_ms":10000,"visual_review":{"baby_visibility":"not_visible","face_visibility":"not_visible","posture":"supine","bed_state":"outside_candidate","adult_presence":"present","image_quality":"usable","risk":"watch","reason_codes":["outside_candidate","adult_intervention"],"confidence":0.9}},
+        {"step_id":"wake_complete","offset_ms":11000,"voice_fixture_id":"wake","reply_behavior":"success"},
+        {"step_id":"complete","offset_ms":12000,"voice_fixture_id":"diaper_complete_exact","expected_action_code":"diaper_change_complete","expected_match_kind":"exact","reply_behavior":"success"}
+      ],
+      "expected_counts":{"action.diaper_change_start":1,"action.diaper_change_complete":1,"reply.total":4,"transition.adult_intervention.none":1,"transition.watch_started.outside_candidate":1,"transition.alert_opened.outside_candidate":1,"event.outside_candidate.open":1,"dashboard.event":1,"dashboard.open":1,"notification.risk_opened":1,"face.output":0,"medication.output":0,"residual_reply_sessions":0}
+    },
+    {
+      "scenario_id":"APP-JOINED-BURPING-FACE-TO-OUTSIDE-01","lane":"joined_application",
+      "steps":[
+        {"step_id":"hidden_1","offset_ms":0,"visual_review":{"baby_visibility":"visible","face_visibility":"not_visible","posture":"supine","bed_state":"inside","adult_presence":"absent","image_quality":"usable","risk":"high","reason_codes":["face_not_visible"],"confidence":0.9}},
+        {"step_id":"wake_start","offset_ms":1000,"voice_fixture_id":"wake","reply_behavior":"success"},
+        {"step_id":"start","offset_ms":2000,"voice_fixture_id":"burping_start_exact","expected_action_code":"burping_start","expected_match_kind":"exact","reply_behavior":"success"},
+        {"step_id":"hidden_2","offset_ms":10000,"visual_review":{"baby_visibility":"visible","face_visibility":"not_visible","posture":"supine","bed_state":"inside","adult_presence":"absent","image_quality":"usable","risk":"high","reason_codes":["face_not_visible"],"confidence":0.9}},
+        {"step_id":"wake_complete","offset_ms":11000,"voice_fixture_id":"wake","reply_behavior":"success"},
+        {"step_id":"complete","offset_ms":12000,"voice_fixture_id":"burping_complete_exact","expected_action_code":"burping_complete","expected_match_kind":"exact","reply_behavior":"success"},
+        {"step_id":"outside_1","offset_ms":20000,"visual_review":{"baby_visibility":"not_visible","face_visibility":"not_visible","posture":"supine","bed_state":"outside_candidate","adult_presence":"absent","image_quality":"usable","risk":"watch","reason_codes":["outside_candidate"],"confidence":0.9}},
+        {"step_id":"outside_2","offset_ms":30000,"visual_review":{"baby_visibility":"not_visible","face_visibility":"not_visible","posture":"supine","bed_state":"outside_candidate","adult_presence":"absent","image_quality":"usable","risk":"watch","reason_codes":["outside_candidate"],"confidence":0.9}}
+      ],
+      "expected_counts":{"action.burping_start":1,"action.burping_complete":1,"reply.total":4,"transition.watch_started.face_not_visible":1,"transition.alert_opened.face_not_visible":1,"transition.recovered.face_not_visible":1,"resolution.subject_outside":1,"transition.watch_started.outside_candidate":1,"transition.alert_opened.outside_candidate":1,"event.face_not_visible.recovered":1,"event.outside_candidate.open":1,"dashboard.event":2,"dashboard.open":1,"notification.risk_opened":2,"notification.risk_recovered":0,"medication.output":0,"residual_reply_sessions":0}
+    }
+  ]
+}

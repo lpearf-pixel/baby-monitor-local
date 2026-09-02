@@ -1,0 +1,29 @@
+[
+  {
+    "evidence_class": "HISTORICAL",
+    "evidence_id": "HIST-VOICE-REACHABILITY-20260902",
+    "source_commit": "c75d9296d9dc920198075578ffc3429ea3400b21",
+    "observed_at": "2026-09-02T00:00:00Z",
+    "scope": "low_risk_voice_reachability",
+    "result": "PARTIAL",
+    "fresh_for_this_run": false
+  },
+  {
+    "evidence_class": "HISTORICAL",
+    "evidence_id": "HIST-EMPTY-ROOM-50S",
+    "source_commit": "c75d9296d9dc920198075578ffc3429ea3400b21",
+    "observed_at": "2026-09-02T00:00:00Z",
+    "scope": "empty_room_zero_event_sample",
+    "result": "PARTIAL",
+    "fresh_for_this_run": false
+  },
+  {
+    "evidence_class": "HISTORICAL",
+    "evidence_id": "HIST-CAMERA-REPLY-V3E",
+    "source_commit": "c75d9296d9dc920198075578ffc3429ea3400b21",
+    "observed_at": "2026-08-26T00:00:00Z",
+    "scope": "camera_reply_v3e",
+    "result": "FAIL",
+    "fresh_for_this_run": false
+  }
+]
