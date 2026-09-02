@@ -29,6 +29,7 @@ class _RiskTrack:
     candidate_count: int = 0
     recovery_first_at: datetime | None = None
     recovery_count: int = 0
+    recovery_cause: RiskResolutionCause | None = None
 
     def clear_candidate_evidence(self) -> None:
         self.candidate_first_at = None
@@ -37,6 +38,7 @@ class _RiskTrack:
     def clear_recovery_evidence(self) -> None:
         self.recovery_first_at = None
         self.recovery_count = 0
+        self.recovery_cause = None
 
 
 class VisualRiskStateMachine:
@@ -143,7 +145,11 @@ class VisualRiskStateMachine:
             if not safe:
                 track.clear_recovery_evidence()
                 return None
-            self._record_recovery_evidence(track, observed_at)
+            self._record_recovery_evidence(
+                track,
+                observed_at,
+                resolution_cause,
+            )
             if not self._evidence_is_confirmed(
                 track.recovery_first_at,
                 track.recovery_count,
@@ -220,7 +226,11 @@ class VisualRiskStateMachine:
             track.clear_recovery_evidence()
             return None
 
-        self._record_recovery_evidence(track, observed_at)
+        self._record_recovery_evidence(
+            track,
+            observed_at,
+            resolution_cause,
+        )
         if not self._evidence_is_confirmed(
             track.recovery_first_at,
             track.recovery_count,
@@ -249,10 +259,18 @@ class VisualRiskStateMachine:
             track.candidate_count += 1
 
     @staticmethod
-    def _record_recovery_evidence(track: _RiskTrack, observed_at: datetime) -> None:
-        if track.recovery_first_at is None:
+    def _record_recovery_evidence(
+        track: _RiskTrack,
+        observed_at: datetime,
+        resolution_cause: RiskResolutionCause | None,
+    ) -> None:
+        if (
+            track.recovery_first_at is None
+            or track.recovery_cause is not resolution_cause
+        ):
             track.recovery_first_at = observed_at
             track.recovery_count = 1
+            track.recovery_cause = resolution_cause
         else:
             track.recovery_count += 1
 

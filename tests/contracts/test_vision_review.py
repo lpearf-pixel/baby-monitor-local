@@ -193,6 +193,14 @@ def test_resolution_transition_accepts_only_closed_valid_causes(
             "notify": False,
             "resolution_cause": RiskResolutionCause.EXPLICIT_SAFE,
         },
+        {
+            "transition_kind": RiskTransitionKind.RECOVERED,
+            "risk_kind": None,
+            "previous_state": VisualRiskState.ALERT,
+            "current_state": VisualRiskState.NORMAL,
+            "notify": True,
+            "resolution_cause": RiskResolutionCause.EXPLICIT_SAFE,
+        },
     ],
 )
 def test_transition_rejects_invalid_resolution_cause_combinations(

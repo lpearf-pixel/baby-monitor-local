@@ -286,6 +286,46 @@ def test_confirmed_subject_outside_recovers_face_without_notification() -> None:
     assert recovered.notify is False
 
 
+@pytest.mark.parametrize(
+    ("first_safe", "second_safe", "expected_cause", "expected_notify"),
+    [
+        (review(), outside(), RiskResolutionCause.SUBJECT_OUTSIDE, False),
+        (outside(), review(), RiskResolutionCause.EXPLICIT_SAFE, True),
+    ],
+)
+def test_face_recovery_requires_two_reviews_with_the_same_resolution_cause(
+    first_safe: VisualReview,
+    second_safe: VisualReview,
+    expected_cause: RiskResolutionCause,
+    expected_notify: bool,
+) -> None:
+    machine = VisualRiskStateMachine()
+    machine.evaluate(face_hidden(), NOW)
+    machine.evaluate(face_hidden(), NOW + timedelta(seconds=10))
+
+    first = machine.evaluate(first_safe, NOW + timedelta(seconds=20))
+    assert all(
+        item.risk_kind is not VisualRiskKind.FACE_NOT_VISIBLE
+        for item in first
+    )
+    mixed = machine.evaluate(second_safe, NOW + timedelta(seconds=30))
+
+    assert all(
+        item.transition_kind is not RiskTransitionKind.RECOVERED
+        for item in mixed
+    )
+    assert machine.state_for(VisualRiskKind.FACE_NOT_VISIBLE) is VisualRiskState.ALERT
+
+    recovered = machine.evaluate(second_safe, NOW + timedelta(seconds=40))
+    face_recovery = next(
+        item
+        for item in recovered
+        if item.transition_kind is RiskTransitionKind.RECOVERED
+    )
+    assert face_recovery.resolution_cause is expected_cause
+    assert face_recovery.notify is expected_notify
+
+
 def test_confirmed_subject_outside_clears_face_watch_without_notification() -> None:
     machine = VisualRiskStateMachine()
     machine.evaluate(face_hidden(), NOW)

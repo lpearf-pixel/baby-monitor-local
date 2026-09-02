@@ -216,6 +216,11 @@ class RiskTransition(VisionContract):
         elif self.resolution_cause is not None:
             raise ValueError("non-resolution transition cannot carry a cause")
 
+        if (
+            self.resolution_cause is RiskResolutionCause.EXPLICIT_SAFE
+            and self.risk_kind is None
+        ):
+            raise ValueError("explicit_safe requires a risk kind")
         if self.resolution_cause is RiskResolutionCause.SUBJECT_OUTSIDE:
             if self.risk_kind is not VisualRiskKind.FACE_NOT_VISIBLE:
                 raise ValueError("subject_outside applies only to face risk")
