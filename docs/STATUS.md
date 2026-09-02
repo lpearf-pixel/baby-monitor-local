@@ -16,14 +16,18 @@
   live matrix, the owner directed the project to use historical aggregate evidence and
   public/generated fixtures to rehearse the joined Voice, Guardian, event/projection and
   recording-output flow, inject failures and repeat it deterministically. The design is
-  `docs/superpowers/specs/2026-09-02-offline-application-rehearsal-design.md`; its exact
-  text still requires owner review before planning or implementation. The owner reports
+  `docs/superpowers/specs/2026-09-02-offline-application-rehearsal-design.md`; the owner
+  approved its exact text and alert semantics on 2026-09-02. Implementation is planned
+  in `docs/superpowers/plans/2026-09-02-visual-cross-risk-correction.md` followed by
+  `docs/superpowers/plans/2026-09-02-offline-application-rehearsal.md`. The owner reports
   continuous face-cover alerts while no baby is visible. The current `c75d929` software
   path reproduces the mechanism: a structurally accepted no-baby/outside/high review can
   open face and outside alerts together because face evidence lacks subject/bed gating.
   Required regressions make face watch/alert/event/notification counts zero for empty
-  and adult-only scenes while retaining a baby-inside positive face control. No live
-  payload was captured, no private media was read, and Camera Reply remains false.
+  and adult-only scenes, retain a baby-inside positive face control, and keep confirmed
+  `subject_outside` face resolution non-notifying while outside remains independently
+  active. No live payload was captured, no private media was read, and Camera Reply
+  remains false. Planning is complete; business-code implementation has not started.
 - Visual regression corpus (2026-08-29): the isolated feature branch
   `codex/visual-regression-corpus` has public-corpus proposal base
   `681edd3c49d0ccca442af064188a4e8b814a4db5`. The published branch includes the

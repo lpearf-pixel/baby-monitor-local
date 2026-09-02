@@ -2283,3 +2283,43 @@ The docs environment did not contain `pytest`, so no Python test count is claime
 this checkpoint. The reproduction used the current Python contracts and state machine.
 Camera Reply stayed false; no camera, speaker, PTZ, notification, Baby Care, household
 media, PR, merge or protected branch was touched.
+
+## 2026-09-02 Owner approval and offline rehearsal implementation planning
+
+The owner approved the exact written alert semantics in
+`docs/superpowers/specs/2026-09-02-offline-application-rehearsal-design.md`:
+
+- an empty bed produces outside evidence only and zero face output;
+- an adult-only scene may produce outside plus one bounded non-notifying adult
+  intervention, but zero face output;
+- a baby attributable inside the bed with a non-visible face retains the existing face
+  lifecycle;
+- an already open face lifecycle ends only after two usable, minimum-confidence
+  outside/no-baby observations spanning the existing ten-second confirmation interval,
+  with `resolution_cause=subject_outside` and `notify=false`; the independent outside
+  signal continues.
+
+Planning used exact remote base
+`a58253a91b527b89641743bf557b04049d6e0b8a` in a clean ignored worktree. The approved
+work is split at the failure-containment boundary:
+
+1. `docs/superpowers/plans/2026-09-02-visual-cross-risk-correction.md` first adds closed
+   resolution/conflict contracts, canonical evidence, state-machine gating,
+   notification suppression and actual store/query regressions;
+2. `docs/superpowers/plans/2026-09-02-offline-application-rehearsal.md` depends on that
+   green gate, then adds the historical ledger, twelve functional scenarios, recording
+   sinks, ten fixed fault cases, ten complete fresh rehearsals, fifty fresh cross-risk
+   instances, private atomic reporting and one command-level gate.
+
+The original eight-scenario, thirteen-lane and 330-frame flow remains a once-per-run
+component prerequisite and is not repeated ten times. Historical items always remain
+`fresh_for_this_run=false` and cannot publish a live PASS. A future software PASS only
+permits requesting one separately authorized panoramic device session; it does not
+change the current live Voice `NOT_PROVEN` decisions, visual corpus `PARTIAL`, Camera
+Reply false state or release state.
+
+This was a docs-only planning checkpoint. The worktree contains no business-code,
+fixture, media, database, configuration or baseline change. The planning environment
+has neither the project `.venv-alpha` nor system `pytest`, so no Python test result is
+claimed. No device/private input was accessed and no PR, merge or protected branch was
+modified.

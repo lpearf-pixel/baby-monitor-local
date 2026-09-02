@@ -37,9 +37,11 @@ fixtures, deterministic failure injection and repeat quotas. The exact design is
 This software-only slice is inserted after the completed Stage 1 and before the
 remaining live Stage 2 Step 3 matrix. It includes the reported no-baby face-cover false
 alert: empty-bed and adult-only scenarios must produce zero face outputs, while a
-baby-present face-occlusion control must still pass. The design text requires owner
-review, followed by a separate RED/GREEN implementation plan. Until both exist, do not
-implement the slice or resume live Voice repetition. Camera Reply remains false.
+baby-present face-occlusion control must still pass. The owner approved the exact
+written semantics on 2026-09-02. Two dependency-ordered RED/GREEN plans now define the
+work: first `2026-09-02-visual-cross-risk-correction.md`, then
+`2026-09-02-offline-application-rehearsal.md`. Do not resume live Voice repetition
+before both software gates close. Camera Reply remains false.
 
 ## Global Constraints
 
@@ -351,12 +353,18 @@ feature branch is not automatically a stable release.
 
 ## Current execution handoff
 
-Stage 1 is complete. The current handoff is **written-design review only** for
-`docs/superpowers/specs/2026-09-02-offline-application-rehearsal-design.md`. After the
-owner accepts that exact text, write a separate detailed RED/GREEN plan; do not infer
-implementation authority from this ordered-plan amendment.
+Stage 1 is complete and the written rehearsal design is owner-approved. The current
+handoff is **software implementation only**, in this exact order:
 
-The future software rehearsal remains generated/public and device-free. Stage 2 live
-testing and Stages 3-5 are queued. They are not implicit authority for household
-capture, camera or speaker activation, PTZ, Baby Care writes, installation, PR, merge,
-stable changes or release publication.
+1. execute
+   `docs/superpowers/plans/2026-09-02-visual-cross-risk-correction.md` completely;
+2. stop if its truth-table/store/query/compatibility gate is not green;
+3. from its clean green descendant, execute
+   `docs/superpowers/plans/2026-09-02-offline-application-rehearsal.md`;
+4. stop after the software report and independent review.
+
+Both plans remain generated/public and device-free. Stage 2 live testing and Stages
+3-5 are queued. They are not implicit authority for household capture, camera or
+speaker activation, PTZ, Baby Care writes, installation, PR, merge, stable changes or
+release publication. A software PASS authorizes only a later request for one bundled
+panoramic gate.

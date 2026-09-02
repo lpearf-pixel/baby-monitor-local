@@ -23,14 +23,17 @@ Updated: 2026-09-02
   live testing: first rehearse the joined application flow with historical aggregate
   evidence plus public/generated fixtures, fault injection and deterministic repeats;
   then run one separately authorized panoramic device session. The written design is
-  `docs/superpowers/specs/2026-09-02-offline-application-rehearsal-design.md` and is
-  pending exact-text owner review before an implementation plan or code change. It also
-  records the current no-baby false-alert report. At `c75d929`, the software path can
-  reproduce simultaneous face and outside alerts because face evidence does not require
-  an attributable baby in the bed. The required regression makes empty-bed and
-  adult-only face outputs exactly zero while retaining a positive baby-present
-  face-occlusion control. Camera Reply remains false and Stage 2 live repetition is
-  paused until the software rehearsal closes.
+  `docs/superpowers/specs/2026-09-02-offline-application-rehearsal-design.md`; the owner
+  approved its exact alert semantics on 2026-09-02. Two implementation plans now make
+  the handoff executable: first
+  `docs/superpowers/plans/2026-09-02-visual-cross-risk-correction.md`, then
+  `docs/superpowers/plans/2026-09-02-offline-application-rehearsal.md`. At `c75d929`,
+  the software path can reproduce simultaneous face and outside alerts because face
+  evidence does not require an attributable baby in the bed. The approved regression
+  makes empty-bed and adult-only face outputs exactly zero, retains a positive
+  baby-present face-occlusion control, and resolves an existing face lifecycle after
+  confirmed outside/no-baby evidence with non-notifying `subject_outside`. Camera Reply
+  remains false and Stage 2 live repetition is paused until both software gates close.
 - Visual regression corpus work is published on `codex/visual-regression-corpus`; the
   public-corpus proposal base is `681edd3c49d0ccca442af064188a4e8b814a4db5`.
   The published branch includes the private-overlay software, four-scenario offline

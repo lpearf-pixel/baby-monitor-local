@@ -2,9 +2,10 @@
 
 **Date:** 2026-09-02
 
-**Status:** The owner approved the architecture and execution-order change in chat.
-This exact written specification is pending owner review. Implementation remains paused
-until that review is accepted and a separate RED/GREEN implementation plan is written.
+**Status:** Approved by the owner on 2026-09-02, including the exact empty-bed,
+adult-only, face-positive and face-to-outside alert semantics. The dependency-ordered
+RED/GREEN plans are published separately; implementation remains paused until an
+executor starts with the cross-risk correction plan.
 
 ## 1. Problem
 
@@ -163,8 +164,9 @@ resolution_cause = explicit_safe | subject_outside | null
 ```
 
 Existing explicit-clear face recovery retains its current notification behavior and
-uses `explicit_safe`. Non-recovery transitions use `null`. The field is bounded event
-evidence, not free text.
+uses `explicit_safe`. Non-resolution transitions use `null`; `WATCH_CLEARED` and
+`RECOVERED` are the only resolution transitions that carry a cause. The field is
+bounded event evidence, not free text.
 
 If baby visibility or bed state is uncertain, the system must not create new face
 evidence and must not claim an outside-based face recovery. It remains fail closed with
@@ -370,13 +372,20 @@ gate. One subsystem PASS cannot mask another subsystem failure.
 This design inserts a software-only rehearsal before the remaining live Stage 2 Step 3
 matrix:
 
-1. owner reviews this exact specification;
-2. write and review one detailed RED/GREEN implementation plan;
-3. implement the application rehearsal and cross-risk correction in small focused
+1. owner approval of this exact specification (complete on 2026-09-02);
+2. write and review two dependency-ordered RED/GREEN plans: first the visual cross-risk
+   correction, then the offline application rehearsal;
+3. execute the cross-risk correction and prove its actual store/query path;
+4. only after that gate passes, implement the application rehearsal in small focused
    commits;
-4. run the fixed software pack, fault injections and repetition quotas;
-5. independently review the diff and report;
-6. only then request authority for one bundled panoramic real-device gate.
+5. run the fixed software pack, fault injections and repetition quotas;
+6. independently review the diff and report;
+7. only then request authority for one bundled panoramic real-device gate.
+
+The implementation handoff is:
+
+- `docs/superpowers/plans/2026-09-02-visual-cross-risk-correction.md`;
+- `docs/superpowers/plans/2026-09-02-offline-application-rehearsal.md`.
 
 Do not resume repeated live Voice tests, enter Camera Reply Stage 3, capture household
 media or run a panoramic test merely because this design document is committed.

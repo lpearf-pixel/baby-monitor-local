@@ -9,8 +9,8 @@ the detailed approved specs and plans remain authoritative for behavior.
 owner-directed amendment. The current order is:
 
 1. preserve the completed eight-scenario software-only expansion;
-2. review, plan and implement the software-only application rehearsal and the no-baby
-   cross-risk regression;
+2. execute the approved no-baby cross-risk correction plan, then the dependent
+   software-only application-rehearsal plan;
 3. after that software gate, request one bundled panoramic session to close the
    low-risk Feeding/diaper/burping Voice decision and visual application observations;
 4. design the bounded remaining Camera Reply correction, then separately authorize a
@@ -22,14 +22,18 @@ owner-directed amendment. The current order is:
 Stage 1 implementation, software gates and independent exact-head review are complete.
 Stage 2 Step 2 adult supervision was authorized and a bounded Step 3 trial was run, but
 the required full action-by-action positive/negative matrix remains incomplete. Before
-another live run, review the exact written application-rehearsal design at
-`docs/superpowers/specs/2026-09-02-offline-application-rehearsal-design.md`; then write a
-separate RED/GREEN implementation plan. The design covers the owner-reported no-baby
-face-cover false alert with empty-bed, adult-only, adversarial legacy and positive
-face-control scenarios. The current software mechanism is reproduced, but no live model
-payload was captured. Later stages are queued, not blanket authority for household
-capture, speaker activation, PTZ, medication, Baby Care writes, installation, PR,
-merge, stable changes or release publication.
+another live run, execute the owner-approved plans in dependency order:
+
+1. `docs/superpowers/plans/2026-09-02-visual-cross-risk-correction.md`;
+2. only after its complete green gate,
+   `docs/superpowers/plans/2026-09-02-offline-application-rehearsal.md`.
+
+The design covers the owner-reported no-baby face-cover false alert with empty-bed,
+adult-only, adversarial legacy and positive face-control scenarios. The current
+software mechanism is reproduced, but no live model payload was captured. Later stages
+are queued, not blanket authority for household capture, speaker activation, PTZ,
+medication, Baby Care writes, installation, PR, merge, stable changes or release
+publication.
 
 **Offline Guardian scenario expansion: review-complete locally.** Business head
 `5d91d8a` expands the fixed flow to eight scenarios, thirteen lanes and exactly 330
@@ -47,12 +51,13 @@ isolated no-action attempt and an earlier no-audible first attempt. Two recorded
 increments in that earlier sequence corresponded to two physical inputs, not a system
 duplicate. This bounded reachability trial did not run the prescribed Feeding positives,
 shared negatives and independently reset action matrix, so it is not Stage 2 PASS.
-The immediate next action is owner review of the written rehearsal design. After that
-review, write its detailed implementation plan and execute only the software gate with
-Camera Reply false. Do not resume Stage 2 Step 3 until the software rehearsal, fault
-injection and repeat quotas close. The later panoramic session must still use fresh
-counters and publish Feeding, diaper and burping independently. Real-baby accuracy,
-Camera Reply V3E and public baseline promotion remain separate gates.
+The immediate next action is Task 1 of the visual cross-risk correction plan, using
+RED/GREEN and focused commits. Do not begin the rehearsal runner until that correction's
+actual store/query and old-suite compatibility gates pass. Then execute the application
+rehearsal plan only, with Camera Reply false. Do not resume Stage 2 Step 3 until its
+fault injection and 10/50 repeat quotas close. The later panoramic session must still
+use fresh counters and publish Feeding, diaper and burping independently. Real-baby
+accuracy, Camera Reply V3E and public baseline promotion remain separate gates.
 
 **Private local visual overlay (deferred by owner):** the contract in
 `docs/superpowers/specs/2026-08-29-private-local-visual-corpus-overlay-design.md` and
