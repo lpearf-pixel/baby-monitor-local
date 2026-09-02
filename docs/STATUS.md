@@ -17,17 +17,19 @@
   public/generated fixtures to rehearse the joined Voice, Guardian, event/projection and
   recording-output flow, inject failures and repeat it deterministically. The design is
   `docs/superpowers/specs/2026-09-02-offline-application-rehearsal-design.md`; the owner
-  approved its exact text and alert semantics on 2026-09-02. Implementation is planned
+  approved its exact text and alert semantics on 2026-09-02. Implementation is ordered
   in `docs/superpowers/plans/2026-09-02-visual-cross-risk-correction.md` followed by
-  `docs/superpowers/plans/2026-09-02-offline-application-rehearsal.md`. The owner reports
-  continuous face-cover alerts while no baby is visible. The current `c75d929` software
-  path reproduces the mechanism: a structurally accepted no-baby/outside/high review can
-  open face and outside alerts together because face evidence lacks subject/bed gating.
-  Required regressions make face watch/alert/event/notification counts zero for empty
-  and adult-only scenes, retain a baby-inside positive face control, and keep confirmed
-  `subject_outside` face resolution non-notifying while outside remains independently
-  active. No live payload was captured, no private media was read, and Camera Reply
-  remains false. Planning is complete; business-code implementation has not started.
+  `docs/superpowers/plans/2026-09-02-offline-application-rehearsal.md`. The first plan is
+  complete at `02fdca1`: a pure canonical-evidence boundary requires an attributable
+  baby for face risk, preserves outside/prone/adult evidence, and distinguishes
+  `explicit_safe` from non-notifying `subject_outside` recovery. Recovery evidence is
+  cause-homogeneous, so one missing frame cannot combine with an explicit-safe frame to
+  close an alert. Fresh evidence is 2353 Python passed / one expected incomplete-public-
+  corpus skip, 73/73 frontend, and 8/8 scenarios, 13/13 lanes, 330/330 frames with zero
+  skip/drop/decode/worker errors. Independent re-review found no findings. This proves
+  deterministic software semantics, not live model or baby accuracy. No live payload or
+  private media was read and Camera Reply stays false. The dependent application-
+  rehearsal plan is now the only active software slice.
 - Visual regression corpus (2026-08-29): the isolated feature branch
   `codex/visual-regression-corpus` has public-corpus proposal base
   `681edd3c49d0ccca442af064188a4e8b814a4db5`. The published branch includes the

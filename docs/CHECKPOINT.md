@@ -2323,3 +2323,35 @@ fixture, media, database, configuration or baseline change. The planning environ
 has neither the project `.venv-alpha` nor system `pytest`, so no Python test result is
 claimed. No device/private input was accessed and no PR, merge or protected branch was
 modified.
+
+## 2026-09-02 Visual cross-risk correction software gate
+
+Execution started from exact remote base
+`cabd4cf10e35a4aa9877a9b3c9a1e8692818948d`. Tasks 1-4 produced focused commits
+`ff6d7e8`, `3f48e53`, `c9b9a95` and `a584f44`. Independent review then found that
+mixed `explicit_safe` and `subject_outside` observations could share one recovery
+counter, and that `explicit_safe` accepted a missing risk identity. Both defects were
+reproduced RED, fixed in `02fdca16cc9f3b58563630bc3b784bf2719a3550`, and covered in
+both cause orders. Re-review found 0 Critical, 0 Important and 0 Minor findings.
+
+Fresh exact-head evidence:
+
+- full Python: 2353 passed, one expected `visual_corpus_first_stage_incomplete` skip;
+- frontend: 73 passed, zero failed;
+- cross-risk re-review focus: 74 passed;
+- fixed offline flow validation and run: 8/8 scenarios, 13/13 lanes, five clips and
+  330/330 frames, with zero skipped, dropped, decode-error or worker-error frames;
+- ignored report `run-9d8fca70f5d82131/report` is owner-private (0700 directories,
+  0600 JSON) and reports camera, notification dispatch, Baby Care, production state,
+  raw audio and evidence persistence all false;
+- `git diff --check` passed; the plan's root `npm test` command is inapplicable because
+  this repository has no root `package.json`, so the authoritative AGENTS frontend
+  command was used instead and passed 73/73;
+- remote `origin/codex/visual-regression-corpus` remained at exact ancestor `cabd4cf`.
+
+This closes only deterministic cross-risk application semantics. It does not prove
+model accuracy, real-baby recognition, household-scene behavior, notification delivery
+or device compatibility. Camera Reply remained false; no camera, microphone, speaker,
+PTZ, household media, real notification, Baby Care, medication or baseline promotion
+was accessed. The next and only active slice is Task 1 of the dependent offline
+application-rehearsal plan; panoramic real-device work remains prohibited.

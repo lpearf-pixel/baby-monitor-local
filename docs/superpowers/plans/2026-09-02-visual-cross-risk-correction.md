@@ -240,7 +240,7 @@ semantics unless a test proves a change is required for the approved truth table
 
 **Interfaces:** The exact enums, transition validator and pure mapper above.
 
-- [ ] **Step 1: Write failing contract tests**
+- [x] **Step 1: Write failing contract tests**
 
 Add parametrized tests proving valid `explicit_safe` and `subject_outside` resolution
 transitions parse, and that each of these fails with `ValidationError`:
@@ -260,7 +260,7 @@ Run:
 Expected RED: imports/field assertions fail because the closed cause contract does not
 exist.
 
-- [ ] **Step 2: Write failing canonical-evidence truth-table tests**
+- [x] **Step 2: Write failing canonical-evidence truth-table tests**
 
 In `tests/vision/test_risk_evidence.py`, use frozen `VisualReview` builders and assert:
 
@@ -285,7 +285,7 @@ Run:
 
 Expected RED: the module does not exist.
 
-- [ ] **Step 3: Implement the minimum contracts and pure mapper**
+- [x] **Step 3: Implement the minimum contracts and pure mapper**
 
 Add the two enums and validator to `packages/contracts/vision.py`. Implement the mapper
 without importing the state machine to avoid a cycle; define the shared confidence
@@ -293,7 +293,7 @@ constant in `risk_evidence.py` and re-export/import it from `risk_state.py` in T
 Deduplicate conflicts by construction so the tuple contains each closed conflict at
 most once per review.
 
-- [ ] **Step 4: Run focused GREEN and compile**
+- [x] **Step 4: Run focused GREEN and compile**
 
 ```bash
 ../../.venv-alpha/bin/python -m pytest \
@@ -306,7 +306,7 @@ git diff --check
 
 Expected: all selected tests pass; compile and diff checks are silent.
 
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
 
 ```bash
 git add packages/contracts/vision.py services/vision/risk_evidence.py \
@@ -325,7 +325,7 @@ git commit -m "fix: canonicalize visual risk evidence"
 continues returning `tuple[RiskTransition, ...]`. Internally it consumes one
 `CanonicalVisualEvidence` per review and passes the evidence cause into track advance.
 
-- [ ] **Step 1: Replace the impossible combined-risk expectation with RED regressions**
+- [x] **Step 1: Replace the impossible combined-risk expectation with RED regressions**
 
 Revise the existing combined-risk test that currently expects face + prone + outside
 from an absent baby. Keep valid independently attributable risks as separate positive
@@ -348,7 +348,7 @@ Run:
 Expected RED: current implementation opens face WATCH/ALERT for absent-baby input and
 still emits a low-confidence face WATCH.
 
-- [ ] **Step 2: Add RED lifecycle tests for an existing face state**
+- [x] **Step 2: Add RED lifecycle tests for an existing face state**
 
 Build a face alert at `t0/t+10s`, then assert:
 
@@ -362,7 +362,7 @@ Build a face alert at `t0/t+10s`, then assert:
 - an intervening uncertain/unusable review resets outside-based recovery evidence and
   cannot claim a cause.
 
-- [ ] **Step 3: Route state evaluation through canonical evidence**
+- [x] **Step 3: Route state evaluation through canonical evidence**
 
 Call `canonicalize_visual_review(review)` once in `evaluate()`. Replace
 `_evidence_for()` with `evidence.for_risk(risk_kind)`. Change `_advance_track()` and
@@ -378,7 +378,7 @@ fails the confidence/quality predicate must not move `NORMAL` to `WATCH`. Preser
 existing prone/outside low-confidence state behavior unless the approved truth-table
 tests prove a necessary compatibility fix.
 
-- [ ] **Step 4: Run focused GREEN and the review-runtime compatibility tests**
+- [x] **Step 4: Run focused GREEN and the review-runtime compatibility tests**
 
 ```bash
 ../../.venv-alpha/bin/python -m pytest \
@@ -392,7 +392,7 @@ git diff --check
 Expected: exact truth-table and lifecycle tests pass without changing public runtime
 signatures.
 
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
 
 ```bash
 git add services/vision/risk_state.py tests/vision/test_risk_state.py
@@ -410,7 +410,7 @@ git commit -m "fix: gate face risk on attributable baby"
 the closed `resolution_cause` value when present. Notification queueing follows the
 transition's `notify` boolean.
 
-- [ ] **Step 1: Write RED pipeline tests**
+- [x] **Step 1: Write RED pipeline tests**
 
 Using an actual temporary `VisualRiskEventStore`, open a face event and handle a
 `RECOVERED` transition with `subject_outside`/`notify=false`. Assert:
@@ -433,7 +433,7 @@ Run:
 Expected RED: current pipeline queues a recovery notification unconditionally and the
 log omits the cause.
 
-- [ ] **Step 2: Implement the minimum pipeline change**
+- [x] **Step 2: Implement the minimum pipeline change**
 
 Include `resolution_cause` in the structured payload only when non-null. Always call
 `recover_event()` for a valid `RECOVERED` transition. Guard only the notification call:
@@ -451,7 +451,7 @@ if transition.notify:
 Do not add a DB column or reinterpret a non-notifying recovery as an ignored
 transition.
 
-- [ ] **Step 3: Run focused GREEN**
+- [x] **Step 3: Run focused GREEN**
 
 ```bash
 ../../.venv-alpha/bin/python -m pytest \
@@ -462,7 +462,7 @@ transition.
 git diff --check
 ```
 
-- [ ] **Step 4: Commit**
+- [x] **Step 4: Commit**
 
 ```bash
 git add services/vision/risk_event_pipeline.py \
@@ -483,7 +483,7 @@ git commit -m "fix: suppress subject-outside recovery notice"
 a recording fake. A wrapper may record calls to `queue_notification` while delegating
 to the actual store.
 
-- [ ] **Step 1: Add six exact end-to-end scenarios**
+- [x] **Step 1: Add six exact end-to-end scenarios**
 
 Create fresh temporary databases and fixed clocks for:
 
@@ -499,7 +499,7 @@ Create fresh temporary databases and fixed clocks for:
 Assert both stored rows and media-free dashboard projection. Explicitly assert that one
 raw semantic conflict does not discard the outside event.
 
-- [ ] **Step 2: Run RED, then add only required integration plumbing**
+- [x] **Step 2: Run RED, then add only required integration plumbing**
 
 ```bash
 ../../.venv-alpha/bin/python -m pytest \
@@ -510,7 +510,7 @@ If Tasks 1-3 are complete, these tests should normally pass without business-cod
 changes. A RED here indicates a real boundary mismatch: fix the smallest production
 boundary, add a focused test beside it, and record why in the commit.
 
-- [ ] **Step 3: Run Guardian and old offline compatibility gates**
+- [x] **Step 3: Run Guardian and old offline compatibility gates**
 
 ```bash
 ../../.venv-alpha/bin/python -m pytest \
@@ -533,7 +533,7 @@ Expected: validation PASS; run PASS with exactly 8 scenarios, 13 lanes, 5 visual
 unavailable, stop and report that environmental blocker; do not convert a SKIP into
 PASS or edit the fixture.
 
-- [ ] **Step 4: Commit**
+- [x] **Step 4: Commit**
 
 ```bash
 git add tests/integration/test_visual_cross_risk.py \
@@ -552,7 +552,7 @@ Do not stage `services/vision/corpus_replay.py` if it did not change.
 - Append after fresh verification only: `docs/CHECKPOINT.md`
 - Modify after fresh verification only: `docs/NEXT.md`
 
-- [ ] **Step 1: Run the complete verification from the exact candidate head**
+- [x] **Step 1: Run the complete verification from the exact candidate head**
 
 ```bash
 git status --short --branch
@@ -568,7 +568,7 @@ Interpret the privacy grep manually: ordinary documentation words such as "token
 not failures; private literal values and absolute user paths are. Record exact fresh
 test counts and the candidate SHA. Never copy older counts into this checkpoint.
 
-- [ ] **Step 2: Review the complete diff against the approved truth table**
+- [x] **Step 2: Review the complete diff against the approved truth table**
 
 Use `superpowers:requesting-code-review`. Required review questions:
 
@@ -582,7 +582,7 @@ Use `superpowers:requesting-code-review`. Required review questions:
 Fix every Critical/Important finding with RED/GREEN and rerun the full gate. Minor
 findings must be fixed or explicitly recorded before handoff.
 
-- [ ] **Step 3: Update factual docs and commit**
+- [x] **Step 3: Update factual docs and commit**
 
 Record only results observed in Steps 1-2. State that this is deterministic application
 semantics, not real-baby/model accuracy. Keep Camera Reply false and Stage 2 device
@@ -593,7 +593,7 @@ git add SUMMARY.md docs/STATUS.md docs/CHECKPOINT.md docs/NEXT.md
 git commit -m "docs: record visual cross-risk correction gate"
 ```
 
-- [ ] **Step 4: Stop line**
+- [x] **Step 4: Stop line**
 
 Fetch and confirm the remote branch has not diverged. Push only a fast-forward after
 explicit delivery authority. Do not run a device, enable Camera Reply, enter the

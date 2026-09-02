@@ -24,9 +24,9 @@ Stage 2 Step 2 adult supervision was authorized and a bounded Step 3 trial was r
 the required full action-by-action positive/negative matrix remains incomplete. Before
 another live run, execute the owner-approved plans in dependency order:
 
-1. `docs/superpowers/plans/2026-09-02-visual-cross-risk-correction.md`;
-2. only after its complete green gate,
-   `docs/superpowers/plans/2026-09-02-offline-application-rehearsal.md`.
+1. `docs/superpowers/plans/2026-09-02-visual-cross-risk-correction.md` — complete at
+   `02fdca1`, full software gate and independent re-review clean;
+2. `docs/superpowers/plans/2026-09-02-offline-application-rehearsal.md` — now active.
 
 The design covers the owner-reported no-baby face-cover false alert with empty-bed,
 adult-only, adversarial legacy and positive face-control scenarios. The current
@@ -51,10 +51,10 @@ isolated no-action attempt and an earlier no-audible first attempt. Two recorded
 increments in that earlier sequence corresponded to two physical inputs, not a system
 duplicate. This bounded reachability trial did not run the prescribed Feeding positives,
 shared negatives and independently reset action matrix, so it is not Stage 2 PASS.
-The immediate next action is Task 1 of the visual cross-risk correction plan, using
-RED/GREEN and focused commits. Do not begin the rehearsal runner until that correction's
-actual store/query and old-suite compatibility gates pass. Then execute the application
-rehearsal plan only, with Camera Reply false. Do not resume Stage 2 Step 3 until its
+The visual cross-risk correction now passes its actual store/query path, old-suite
+compatibility, full Python/frontend gates and independent review. The immediate next
+action is Task 1 of the offline application-rehearsal plan, using RED/GREEN and focused
+commits with Camera Reply false. Do not resume Stage 2 Step 3 until its
 fault injection and 10/50 repeat quotas close. The later panoramic session must still
 use fresh counters and publish Feeding, diaper and burping independently. Real-baby
 accuracy, Camera Reply V3E and public baseline promotion remain separate gates.

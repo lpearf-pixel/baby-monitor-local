@@ -27,13 +27,16 @@ Updated: 2026-09-02
   approved its exact alert semantics on 2026-09-02. Two implementation plans now make
   the handoff executable: first
   `docs/superpowers/plans/2026-09-02-visual-cross-risk-correction.md`, then
-  `docs/superpowers/plans/2026-09-02-offline-application-rehearsal.md`. At `c75d929`,
-  the software path can reproduce simultaneous face and outside alerts because face
-  evidence does not require an attributable baby in the bed. The approved regression
-  makes empty-bed and adult-only face outputs exactly zero, retains a positive
-  baby-present face-occlusion control, and resolves an existing face lifecycle after
-  confirmed outside/no-baby evidence with non-notifying `subject_outside`. Camera Reply
-  remains false and Stage 2 live repetition is paused until both software gates close.
+  `docs/superpowers/plans/2026-09-02-offline-application-rehearsal.md`. The first plan is
+  software-complete and independently review-clean at business head `02fdca1`.
+  Canonical evidence prevents empty-bed and adult-only observations from starting face
+  output, retains the baby-present face control, and requires two same-cause observations
+  across the existing ten-second interval before recovery. Confirmed `subject_outside`
+  is persisted without a recovery notification; `explicit_safe` remains notifying.
+  Fresh gates passed 2353 Python tests with one expected public-corpus skip, 73 frontend
+  tests, and the unchanged 8-scenario/13-lane/330-frame flow. Camera Reply remains false.
+  The exact next slice is Task 1 of the dependent offline application-rehearsal plan;
+  no live Stage 2 repetition or panoramic gate is authorized.
 - Visual regression corpus work is published on `codex/visual-regression-corpus`; the
   public-corpus proposal base is `681edd3c49d0ccca442af064188a4e8b814a4db5`.
   The published branch includes the private-overlay software, four-scenario offline
