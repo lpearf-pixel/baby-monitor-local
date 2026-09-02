@@ -5,11 +5,7 @@ from datetime import datetime
 
 from packages.contracts.vision import (
     AdultPresence,
-    BedState,
-    FaceVisibility,
-    ImageQuality,
-    ModelRisk,
-    Posture,
+    RiskResolutionCause,
     RiskSnapshot,
     RiskTransition,
     RiskTransitionKind,
@@ -17,9 +13,12 @@ from packages.contracts.vision import (
     VisualRiskKind,
     VisualRiskState,
 )
+from services.vision.risk_evidence import (
+    MINIMUM_CONFIDENCE,
+    canonicalize_visual_review,
+)
 
 
-MINIMUM_CONFIDENCE = 0.70
 MINIMUM_CONFIRMATION_SECONDS = 10
 
 
@@ -73,6 +72,7 @@ class VisualRiskStateMachine:
     ) -> tuple[RiskTransition, ...]:
         self._require_monotonic_aware_time(observed_at)
         transitions: list[RiskTransition] = []
+        canonical_evidence = canonicalize_visual_review(review)
 
         adult_present = review.adult_presence is AdultPresence.PRESENT
         if adult_present and not self._adult_present:
@@ -94,16 +94,14 @@ class VisualRiskStateMachine:
             self._adult_present = True
 
         for risk_kind in VisualRiskKind:
-            candidate, safe = self._evidence_for(
-                risk_kind,
-                review,
-            )
+            evidence = canonical_evidence.for_risk(risk_kind)
             transition = self._advance_track(
                 risk_kind=risk_kind,
-                candidate=candidate,
-                valid_candidate=candidate
+                candidate=evidence.candidate,
+                valid_candidate=evidence.candidate
                 and review.confidence >= MINIMUM_CONFIDENCE,
-                safe=safe,
+                safe=evidence.safe,
+                resolution_cause=evidence.resolution_cause,
                 observed_at=observed_at,
                 confidence=review.confidence,
             )
@@ -127,39 +125,6 @@ class VisualRiskStateMachine:
             return VisualRiskState.WATCH
         return VisualRiskState.NORMAL
 
-    @staticmethod
-    def _evidence_for(
-        risk_kind: VisualRiskKind,
-        review: VisualReview,
-    ) -> tuple[bool, bool]:
-        if risk_kind is VisualRiskKind.FACE_NOT_VISIBLE:
-            candidate = (
-                review.face_visibility is FaceVisibility.NOT_VISIBLE
-                and review.risk is ModelRisk.HIGH
-            )
-            explicit_safe = review.face_visibility is FaceVisibility.CLEAR
-        elif risk_kind is VisualRiskKind.PRONE_CANDIDATE:
-            candidate = (
-                review.posture is Posture.PRONE_CANDIDATE
-                and review.risk is ModelRisk.HIGH
-            )
-            explicit_safe = review.posture in {
-                Posture.SUPINE,
-                Posture.SIDE,
-                Posture.UPRIGHT,
-            }
-        else:
-            candidate = review.bed_state is BedState.OUTSIDE_CANDIDATE
-            explicit_safe = review.bed_state is BedState.INSIDE
-
-        safe = (
-            explicit_safe
-            and review.adult_presence is AdultPresence.ABSENT
-            and review.image_quality is ImageQuality.USABLE
-            and review.confidence >= MINIMUM_CONFIDENCE
-        )
-        return candidate, safe
-
     def _advance_track(
         self,
         *,
@@ -167,6 +132,7 @@ class VisualRiskStateMachine:
         candidate: bool,
         valid_candidate: bool,
         safe: bool,
+        resolution_cause: RiskResolutionCause | None,
         observed_at: datetime,
         confidence: float,
     ) -> RiskTransition | None:
@@ -193,7 +159,8 @@ class VisualRiskStateMachine:
                 current=VisualRiskState.NORMAL,
                 observed_at=observed_at,
                 confidence=confidence,
-                notify=True,
+                notify=resolution_cause is RiskResolutionCause.EXPLICIT_SAFE,
+                resolution_cause=resolution_cause,
             )
 
         if candidate:
@@ -270,6 +237,7 @@ class VisualRiskStateMachine:
             observed_at=observed_at,
             confidence=confidence,
             notify=False,
+            resolution_cause=resolution_cause,
         )
 
     @staticmethod
@@ -317,6 +285,7 @@ class VisualRiskStateMachine:
         observed_at: datetime,
         confidence: float,
         notify: bool,
+        resolution_cause: RiskResolutionCause | None = None,
     ) -> RiskTransition:
         return RiskTransition(
             transition_kind=kind,
@@ -326,4 +295,5 @@ class VisualRiskStateMachine:
             observed_at=observed_at,
             confidence=confidence,
             notify=notify,
+            resolution_cause=resolution_cause,
         )

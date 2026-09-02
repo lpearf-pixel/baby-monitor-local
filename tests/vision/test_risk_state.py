@@ -11,6 +11,7 @@ from packages.contracts.vision import (
     ImageQuality,
     ModelRisk,
     Posture,
+    RiskResolutionCause,
     RiskTransitionKind,
     VisualReview,
     VisualRiskKind,
@@ -125,9 +126,9 @@ def test_low_confidence_candidates_remain_watch_without_accumulating() -> None:
         face_hidden(confidence=0.69), NOW + timedelta(seconds=30)
     )
 
-    assert kinds(first) == [RiskTransitionKind.WATCH_STARTED]
+    assert first == ()
     assert second == ()
-    assert machine.state_for(VisualRiskKind.FACE_NOT_VISIBLE) is VisualRiskState.WATCH
+    assert machine.state_for(VisualRiskKind.FACE_NOT_VISIBLE) is VisualRiskState.NORMAL
 
 
 def test_alert_requires_two_explicit_safe_reviews_to_recover() -> None:
@@ -143,6 +144,7 @@ def test_alert_requires_two_explicit_safe_reviews_to_recover() -> None:
     assert recovered[0].previous_state is VisualRiskState.ALERT
     assert recovered[0].current_state is VisualRiskState.NORMAL
     assert recovered[0].notify is True
+    assert recovered[0].resolution_cause is RiskResolutionCause.EXPLICIT_SAFE
 
 
 def test_repeated_candidate_does_not_duplicate_an_open_alert() -> None:
@@ -181,7 +183,7 @@ def test_adult_intervention_is_recorded_once_without_recovering_alert() -> None:
     assert machine.state_for(VisualRiskKind.FACE_NOT_VISIBLE) is VisualRiskState.ALERT
 
 
-def test_all_three_risks_can_progress_without_overwriting_each_other() -> None:
+def test_no_baby_combination_keeps_prone_and_outside_independent_from_face() -> None:
     machine = VisualRiskStateMachine()
     combined = review(
         baby_visibility="not_visible",
@@ -200,14 +202,134 @@ def test_all_three_risks_can_progress_without_overwriting_each_other() -> None:
     first = machine.evaluate(combined, NOW)
     second = machine.evaluate(combined, NOW + timedelta(seconds=10))
 
-    assert {item.risk_kind for item in first} == set(VisualRiskKind)
+    assert {item.risk_kind for item in first} == {
+        VisualRiskKind.PRONE_CANDIDATE,
+        VisualRiskKind.OUTSIDE_CANDIDATE,
+    }
     assert {item.transition_kind for item in first} == {
         RiskTransitionKind.WATCH_STARTED
     }
-    assert {item.risk_kind for item in second} == set(VisualRiskKind)
+    assert {item.risk_kind for item in second} == {
+        VisualRiskKind.PRONE_CANDIDATE,
+        VisualRiskKind.OUTSIDE_CANDIDATE,
+    }
     assert {item.transition_kind for item in second} == {
         RiskTransitionKind.ALERT_OPENED
     }
+    assert machine.state_for(VisualRiskKind.FACE_NOT_VISIBLE) is VisualRiskState.NORMAL
+
+
+def test_empty_bed_opens_only_the_outside_track() -> None:
+    machine = VisualRiskStateMachine()
+    absent = outside()
+
+    first = machine.evaluate(absent, NOW)
+    second = machine.evaluate(absent, NOW + timedelta(seconds=10))
+
+    assert [(item.transition_kind, item.risk_kind) for item in first] == [
+        (RiskTransitionKind.WATCH_STARTED, VisualRiskKind.OUTSIDE_CANDIDATE)
+    ]
+    assert [(item.transition_kind, item.risk_kind) for item in second] == [
+        (RiskTransitionKind.ALERT_OPENED, VisualRiskKind.OUTSIDE_CANDIDATE)
+    ]
+    assert machine.state_for(VisualRiskKind.FACE_NOT_VISIBLE) is VisualRiskState.NORMAL
+
+
+def test_adult_only_outside_emits_one_intervention_and_no_face_output() -> None:
+    machine = VisualRiskStateMachine()
+    adult_only = outside().model_copy(update={"adult_presence": AdultPresence.PRESENT})
+
+    first = machine.evaluate(adult_only, NOW)
+    second = machine.evaluate(adult_only, NOW + timedelta(seconds=10))
+
+    assert [(item.transition_kind, item.risk_kind) for item in first] == [
+        (RiskTransitionKind.ADULT_INTERVENTION, None),
+        (RiskTransitionKind.WATCH_STARTED, VisualRiskKind.OUTSIDE_CANDIDATE),
+    ]
+    assert [(item.transition_kind, item.risk_kind) for item in second] == [
+        (RiskTransitionKind.ALERT_OPENED, VisualRiskKind.OUTSIDE_CANDIDATE)
+    ]
+    assert machine.state_for(VisualRiskKind.FACE_NOT_VISIBLE) is VisualRiskState.NORMAL
+
+
+def test_uncertain_subject_does_not_create_face_or_outside_recovery_evidence() -> None:
+    machine = VisualRiskStateMachine()
+    uncertain = review(
+        baby_visibility="uncertain",
+        face_visibility="not_visible",
+        bed_state="uncertain",
+        risk="high",
+    )
+
+    assert machine.evaluate(uncertain, NOW) == ()
+    assert machine.evaluate(uncertain, NOW + timedelta(seconds=10)) == ()
+    assert machine.state_for(VisualRiskKind.FACE_NOT_VISIBLE) is VisualRiskState.NORMAL
+
+
+def test_confirmed_subject_outside_recovers_face_without_notification() -> None:
+    machine = VisualRiskStateMachine()
+    machine.evaluate(face_hidden(), NOW)
+    machine.evaluate(face_hidden(), NOW + timedelta(seconds=10))
+
+    first = machine.evaluate(outside(), NOW + timedelta(seconds=20))
+    second = machine.evaluate(outside(), NOW + timedelta(seconds=30))
+
+    assert [(item.transition_kind, item.risk_kind) for item in first] == [
+        (RiskTransitionKind.WATCH_STARTED, VisualRiskKind.OUTSIDE_CANDIDATE)
+    ]
+    assert [(item.transition_kind, item.risk_kind) for item in second] == [
+        (RiskTransitionKind.RECOVERED, VisualRiskKind.FACE_NOT_VISIBLE),
+        (RiskTransitionKind.ALERT_OPENED, VisualRiskKind.OUTSIDE_CANDIDATE),
+    ]
+    recovered = second[0]
+    assert recovered.resolution_cause is RiskResolutionCause.SUBJECT_OUTSIDE
+    assert recovered.notify is False
+
+
+def test_confirmed_subject_outside_clears_face_watch_without_notification() -> None:
+    machine = VisualRiskStateMachine()
+    machine.evaluate(face_hidden(), NOW)
+
+    machine.evaluate(outside(), NOW + timedelta(seconds=5))
+    transitions = machine.evaluate(outside(), NOW + timedelta(seconds=15))
+
+    face_clear = next(
+        item
+        for item in transitions
+        if item.risk_kind is VisualRiskKind.FACE_NOT_VISIBLE
+    )
+    assert face_clear.transition_kind is RiskTransitionKind.WATCH_CLEARED
+    assert face_clear.resolution_cause is RiskResolutionCause.SUBJECT_OUTSIDE
+    assert face_clear.notify is False
+
+
+def test_uncertain_review_resets_subject_outside_recovery_confirmation() -> None:
+    machine = VisualRiskStateMachine()
+    machine.evaluate(face_hidden(), NOW)
+    machine.evaluate(face_hidden(), NOW + timedelta(seconds=10))
+    machine.evaluate(outside(), NOW + timedelta(seconds=20))
+    machine.evaluate(
+        review(
+            baby_visibility="uncertain",
+            face_visibility="uncertain",
+            bed_state="uncertain",
+            risk="uncertain",
+        ),
+        NOW + timedelta(seconds=25),
+    )
+
+    not_yet = machine.evaluate(outside(), NOW + timedelta(seconds=30))
+    recovered = machine.evaluate(outside(), NOW + timedelta(seconds=40))
+
+    assert all(
+        item.transition_kind is not RiskTransitionKind.RECOVERED
+        for item in not_yet
+    )
+    assert next(
+        item
+        for item in recovered
+        if item.transition_kind is RiskTransitionKind.RECOVERED
+    ).resolution_cause is RiskResolutionCause.SUBJECT_OUTSIDE
 
 
 def test_uncertain_or_poor_image_is_not_safe_recovery_evidence() -> None:
@@ -257,6 +379,7 @@ def test_watch_clears_only_after_two_safe_reviews_spanning_ten_seconds() -> None
     assert first_safe == ()
     assert kinds(cleared) == [RiskTransitionKind.WATCH_CLEARED]
     assert cleared[0].notify is False
+    assert cleared[0].resolution_cause is RiskResolutionCause.EXPLICIT_SAFE
 
 
 def test_timestamp_rollback_is_rejected_before_state_changes() -> None:
