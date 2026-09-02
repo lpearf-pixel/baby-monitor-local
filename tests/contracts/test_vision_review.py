@@ -14,6 +14,7 @@ from packages.contracts.vision import (
     RealtimeCandidateTransition,
     RealtimeCandidateTransitionKind,
     RealtimeObservation,
+    RiskResolutionCause,
     RiskSnapshot,
     RiskTransition,
     RiskTransitionKind,
@@ -103,6 +104,105 @@ def test_transition_rejects_naive_observation_time() -> None:
             observed_at=datetime(2026, 8, 5, 12, 0),
             confidence=0.82,
             notify=True,
+        )
+
+
+@pytest.mark.parametrize(
+    ("transition_kind", "risk_kind", "notify", "resolution_cause"),
+    [
+        (
+            RiskTransitionKind.WATCH_CLEARED,
+            VisualRiskKind.PRONE_CANDIDATE,
+            False,
+            RiskResolutionCause.EXPLICIT_SAFE,
+        ),
+        (
+            RiskTransitionKind.RECOVERED,
+            VisualRiskKind.FACE_NOT_VISIBLE,
+            True,
+            RiskResolutionCause.EXPLICIT_SAFE,
+        ),
+        (
+            RiskTransitionKind.RECOVERED,
+            VisualRiskKind.FACE_NOT_VISIBLE,
+            False,
+            RiskResolutionCause.SUBJECT_OUTSIDE,
+        ),
+    ],
+)
+def test_resolution_transition_accepts_only_closed_valid_causes(
+    transition_kind: RiskTransitionKind,
+    risk_kind: VisualRiskKind,
+    notify: bool,
+    resolution_cause: RiskResolutionCause,
+) -> None:
+    transition = RiskTransition(
+        transition_kind=transition_kind,
+        risk_kind=risk_kind,
+        previous_state=VisualRiskState.WATCH,
+        current_state=VisualRiskState.NORMAL,
+        observed_at=NOW,
+        confidence=0.82,
+        notify=notify,
+        resolution_cause=resolution_cause,
+    )
+
+    assert transition.resolution_cause is resolution_cause
+
+
+@pytest.mark.parametrize(
+    "overrides",
+    [
+        {
+            "transition_kind": RiskTransitionKind.ALERT_OPENED,
+            "risk_kind": VisualRiskKind.FACE_NOT_VISIBLE,
+            "previous_state": VisualRiskState.WATCH,
+            "current_state": VisualRiskState.ALERT,
+            "notify": True,
+            "resolution_cause": RiskResolutionCause.EXPLICIT_SAFE,
+        },
+        {
+            "transition_kind": RiskTransitionKind.RECOVERED,
+            "risk_kind": VisualRiskKind.FACE_NOT_VISIBLE,
+            "previous_state": VisualRiskState.ALERT,
+            "current_state": VisualRiskState.NORMAL,
+            "notify": True,
+            "resolution_cause": None,
+        },
+        {
+            "transition_kind": RiskTransitionKind.RECOVERED,
+            "risk_kind": VisualRiskKind.OUTSIDE_CANDIDATE,
+            "previous_state": VisualRiskState.ALERT,
+            "current_state": VisualRiskState.NORMAL,
+            "notify": False,
+            "resolution_cause": RiskResolutionCause.SUBJECT_OUTSIDE,
+        },
+        {
+            "transition_kind": RiskTransitionKind.RECOVERED,
+            "risk_kind": VisualRiskKind.FACE_NOT_VISIBLE,
+            "previous_state": VisualRiskState.ALERT,
+            "current_state": VisualRiskState.NORMAL,
+            "notify": True,
+            "resolution_cause": RiskResolutionCause.SUBJECT_OUTSIDE,
+        },
+        {
+            "transition_kind": RiskTransitionKind.ADULT_INTERVENTION,
+            "risk_kind": None,
+            "previous_state": VisualRiskState.NORMAL,
+            "current_state": VisualRiskState.NORMAL,
+            "notify": False,
+            "resolution_cause": RiskResolutionCause.EXPLICIT_SAFE,
+        },
+    ],
+)
+def test_transition_rejects_invalid_resolution_cause_combinations(
+    overrides: dict[str, object],
+) -> None:
+    with pytest.raises(ValidationError):
+        RiskTransition(
+            observed_at=NOW,
+            confidence=0.82,
+            **overrides,
         )
 
 

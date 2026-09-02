@@ -160,6 +160,15 @@ class RiskTransitionKind(StrEnum):
     ADULT_INTERVENTION = "adult_intervention"
 
 
+class RiskResolutionCause(StrEnum):
+    EXPLICIT_SAFE = "explicit_safe"
+    SUBJECT_OUTSIDE = "subject_outside"
+
+
+class VisualSemanticConflict(StrEnum):
+    FACE_WITHOUT_SUBJECT = "face_without_subject"
+
+
 class VisualReview(VisionContract):
     schema_version: Literal[1] = 1
     baby_visibility: BabyVisibility
@@ -191,8 +200,28 @@ class RiskTransition(VisionContract):
     confidence: float | None = Field(default=None, ge=0, le=1)
     rule_version: Literal["visual-risk-v1"] = "visual-risk-v1"
     notify: bool
+    resolution_cause: RiskResolutionCause | None = None
 
     _aware_observed_at = field_validator("observed_at")(_require_aware)
+
+    @model_validator(mode="after")
+    def require_coherent_resolution_cause(self) -> "RiskTransition":
+        resolution_kinds = {
+            RiskTransitionKind.WATCH_CLEARED,
+            RiskTransitionKind.RECOVERED,
+        }
+        if self.transition_kind in resolution_kinds:
+            if self.resolution_cause is None:
+                raise ValueError("resolution transition requires a cause")
+        elif self.resolution_cause is not None:
+            raise ValueError("non-resolution transition cannot carry a cause")
+
+        if self.resolution_cause is RiskResolutionCause.SUBJECT_OUTSIDE:
+            if self.risk_kind is not VisualRiskKind.FACE_NOT_VISIBLE:
+                raise ValueError("subject_outside applies only to face risk")
+            if self.notify:
+                raise ValueError("subject_outside cannot notify")
+        return self
 
 
 class RiskSnapshot(VisionContract):
