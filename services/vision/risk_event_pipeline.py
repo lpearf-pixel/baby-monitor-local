@@ -49,6 +49,8 @@ class _GuardianJsonLog:
             payload["rule_version"] = transition.rule_version
             if transition.risk_kind is not None:
                 payload["risk_kind"] = transition.risk_kind.value
+            if transition.resolution_cause is not None:
+                payload["resolution_cause"] = transition.resolution_cause.value
         if event_id is not None:
             payload["event_id"] = event_id
         if intervention_id is not None:
@@ -215,12 +217,13 @@ class VisualRiskEventPipeline:
                 state=event.state,
                 result="recovered",
             )
-            self._queue_notification(
-                event=event,
-                stage="risk_recovered",
-                queued_at=transition.observed_at,
-                transition=transition,
-            )
+            if transition.notify:
+                self._queue_notification(
+                    event=event,
+                    stage="risk_recovered",
+                    queued_at=transition.observed_at,
+                    transition=transition,
+                )
             return
         if transition.transition_kind is RiskTransitionKind.ADULT_INTERVENTION:
             if transition.confidence is None:

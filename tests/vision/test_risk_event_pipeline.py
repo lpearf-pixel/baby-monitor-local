@@ -6,6 +6,7 @@ from datetime import UTC, datetime, timedelta
 from pathlib import Path
 
 from packages.contracts.vision import (
+    RiskResolutionCause,
     RiskTransition,
     RiskTransitionKind,
     VisualRiskKind,
@@ -23,6 +24,8 @@ def transition(
     *,
     risk_kind: VisualRiskKind | None = VisualRiskKind.FACE_NOT_VISIBLE,
     observed_at: datetime = NOW,
+    notify: bool | None = None,
+    resolution_cause: RiskResolutionCause | None = None,
 ) -> RiskTransition:
     states = {
         RiskTransitionKind.WATCH_STARTED: (
@@ -47,6 +50,11 @@ def transition(
         ),
     }
     previous, current = states[transition_kind]
+    if resolution_cause is None and transition_kind in {
+        RiskTransitionKind.WATCH_CLEARED,
+        RiskTransitionKind.RECOVERED,
+    }:
+        resolution_cause = RiskResolutionCause.EXPLICIT_SAFE
     return RiskTransition(
         transition_kind=transition_kind,
         risk_kind=(
@@ -58,8 +66,13 @@ def transition(
         current_state=current,
         observed_at=observed_at,
         confidence=0.88,
-        notify=transition_kind
-        in {RiskTransitionKind.ALERT_OPENED, RiskTransitionKind.RECOVERED},
+        notify=(
+            transition_kind
+            in {RiskTransitionKind.ALERT_OPENED, RiskTransitionKind.RECOVERED}
+            if notify is None
+            else notify
+        ),
+        resolution_cause=resolution_cause,
     )
 
 
@@ -121,6 +134,83 @@ def test_alert_open_and_recovery_share_one_persisted_event_id(
     assert recovered_notification.stage == "risk_recovered"
 
 
+def test_subject_outside_recovery_persists_without_notification(
+    tmp_path: Path,
+) -> None:
+    store = VisualRiskEventStore(tmp_path / "events.sqlite3")
+    store.migrate()
+    stream = io.StringIO()
+    pipeline = VisualRiskEventPipeline(
+        store=store,
+        stream=stream,
+        event_id_factory=lambda: "event-face",
+    )
+    pipeline.handle(transition(RiskTransitionKind.ALERT_OPENED))
+    opened = store.next_pending_notification(NOW)
+    assert opened is not None
+    store.record_notification_result(
+        notification_id=opened.notification_id,
+        attempted_at=NOW + timedelta(seconds=1),
+        result_code="ok",
+    )
+
+    pipeline.handle(
+        transition(
+            RiskTransitionKind.RECOVERED,
+            observed_at=NOW + timedelta(seconds=10),
+            notify=False,
+            resolution_cause=RiskResolutionCause.SUBJECT_OUTSIDE,
+        )
+    )
+
+    events = store.list_events()
+    assert len(events) == 1
+    assert events[0].event_id == "event-face"
+    assert events[0].state == "recovered"
+    assert store.next_pending_notification(NOW + timedelta(seconds=10)) is None
+    lines = decoded_lines(stream)
+    recovered_lines = [
+        line
+        for line in lines
+        if line.get("transition_kind") == RiskTransitionKind.RECOVERED.value
+    ]
+    assert recovered_lines
+    assert {
+        line.get("resolution_cause") for line in recovered_lines
+    } == {RiskResolutionCause.SUBJECT_OUTSIDE.value}
+    assert "Traceback" not in stream.getvalue()
+    assert "/" not in "".join(
+        str(line.get("event_id", "")) for line in recovered_lines
+    )
+
+
+def test_persist_defensively_respects_non_notifying_recovery(
+    tmp_path: Path,
+) -> None:
+    store = VisualRiskEventStore(tmp_path / "events.sqlite3")
+    store.migrate()
+    store.open_event(
+        event_id="event-face",
+        risk_kind=VisualRiskKind.FACE_NOT_VISIBLE,
+        opened_at=NOW,
+        confidence=0.88,
+        rule_version="visual-risk-v1",
+    )
+    pipeline = VisualRiskEventPipeline(store=store, stream=io.StringIO())
+
+    pipeline._persist(
+        transition(
+            RiskTransitionKind.RECOVERED,
+            observed_at=NOW + timedelta(seconds=10),
+            notify=False,
+            resolution_cause=RiskResolutionCause.SUBJECT_OUTSIDE,
+        )
+    )
+
+    assert store.list_events()[0].state == "recovered"
+    assert store.next_pending_notification(NOW + timedelta(seconds=10)) is None
+
+
 def test_watch_transitions_are_logged_without_creating_long_term_events(
     tmp_path: Path,
 ) -> None:
@@ -160,6 +250,7 @@ def test_recovery_without_open_event_is_ignored_and_does_not_invent_history(
         "component": "baby_guardian",
         "observed_at": NOW.isoformat(),
         "result": "no_open_event",
+        "resolution_cause": "explicit_safe",
         "risk_kind": "face_not_visible",
         "rule_version": "visual-risk-v1",
         "schema_version": 1,
