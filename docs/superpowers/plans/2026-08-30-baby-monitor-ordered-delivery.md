@@ -188,10 +188,16 @@ Carry forward the failed original recall matrix, the bounded combined-command fi
 its 4/4 installed recheck. Do not rerun the rejected ContextualParaformer/hotword A/B,
 load invalid Whisper artifacts or enlarge edit-distance/tail-buffer policy.
 
-- [ ] **Step 2: Stop for explicit adult-supervised authority**
+- [x] **Step 2: Stop for explicit adult-supervised authority**
 
 No household microphone test runs unattended. Require the logged-in i9 owner, Camera
 Reply false, Voice healthy/idle, one Xiaomi producer and fresh fixed counters.
+
+Authority was granted and exercised on 2026-09-02. The bounded continuation established
+reachability for all five approved low-risk action codes, but it did not execute the
+complete prescribed positive/negative matrix. Camera Reply was used only as a separately
+controlled output diagnostic after the closed/inactive i9 speaker failed, then restored
+to false. This does not mark Step 3 complete or authorize Stage 3.
 
 - [ ] **Step 3: Execute only the remaining low-risk acceptance specified by Task 8**
 

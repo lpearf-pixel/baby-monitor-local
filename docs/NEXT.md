@@ -17,7 +17,9 @@ the detailed approved specs and plans remain authoritative for behavior.
 5. complete deferred real-device observations and the final 72-hour release gate.
 
 Stage 1 implementation, software gates and independent exact-head review are complete.
-Stages 2-5 are queued, not blanket authority for household
+Stage 2 Step 2 adult supervision was authorized and a bounded Step 3 trial was run, but
+the required full action-by-action positive/negative matrix remains incomplete. Stages
+3-5 are queued, not blanket authority for household
 capture, speaker activation, PTZ, medication, Baby Care writes, installation, PR,
 merge, stable changes or release publication.
 
@@ -31,10 +33,16 @@ and match identities. Independent review is clean at 0 Critical / 0 Important / 
 Do not tune models or thresholds to the synthetic labels. Stage 2 Step 1 is complete:
 the current branch contains candidate `44bd855`, carries forward the combined
 diaper/burping 4/4 supervised recheck and passes the closed Voice software surface
-137/137. Feeding's original supervised matrix remained 8/11, and no one current-candidate
-run has closed all five low-risk combined actions. The immediate next action is Stage 2
-Step 2: obtain separate adult-supervised authority. Real-baby accuracy and public
-baseline promotion remain separate later gates.
+154/154. The 2026-09-02 owner-supervised continuation then reached all five approved
+low-risk action codes with an adult-audible result at least once, but also observed an
+isolated no-action attempt and an earlier no-audible first attempt. Two recorded action
+increments in that earlier sequence corresponded to two physical inputs, not a system
+duplicate. This bounded reachability trial did not run the prescribed Feeding positives,
+shared negatives and independently reset action matrix, so it is not Stage 2 PASS.
+The immediate next action is Stage 2 Step 3: with Camera Reply false, Voice healthy/idle,
+one producer and fresh counters, complete the remaining Task 8 positive/negative ASR
+matrix and then publish the Step 4 per-action decision. Real-baby accuracy, Camera Reply
+V3E and public baseline promotion remain separate later gates.
 
 **Private local visual overlay (deferred by owner):** the contract in
 `docs/superpowers/specs/2026-08-29-private-local-visual-corpus-overlay-design.md` and

@@ -2173,3 +2173,70 @@ run has closed all five low-risk combined actions. Stage 2 Step 2 is therefore t
 next stop and requires separate adult-supervised authority before any household audio is
 used. Rejected contextual/hotword A/B, invalid Whisper artifacts and the two-stage `far`
 path were not rerun or reinterpreted.
+
+## 2026-09-02 Ordered Stage 2 supervised continuation
+
+The owner explicitly authorized the low-risk Stage 2 adult-supervised continuation on
+the installed i9 candidate `44bd85555e51344ce2797a3252e606bd44f452cd`. The docs branch
+pre-change head was `7d972b7d0fefc518f85f093ba143730294006a74`. No Baby Care writer,
+medication path, PTZ command, model replacement or public/private visual corpus mutation
+was authorized or used.
+
+The installed source remained one long-lived Xiaomi producer with `transport=auto`
+negotiating `cs2+udp`; HEVC video and Opus audio counters advanced without an observed
+producer replacement. A bounded 50-second no-baby room observation reported 10/10 fresh
+visual status samples, model availability throughout and zero new risk events. The
+largest observed visual processing P95 was 126.302 ms and the largest individual sample
+was 271.220 ms. This proves only short empty-scene runtime stability; it does not prove
+bed-zone accuracy, infant detection, posture/face-obstruction accuracy or unattended
+care. A separate visual diagnostic wrapper remained blocked by the known macOS launchctl
+permission boundary without stopping the already healthy visual worker.
+
+The Voice chain was isolated by layer:
+
+- the camera Opus track was present at 48 kHz stereo and decoded in memory to 16 kHz
+  mono; VAD and utterance counters advanced, so missing replies were not evidence of a
+  missing Xiaomi microphone track;
+- the fixed macOS system sound and generated Voice reply both failed on the closed/
+  inactive i9 output with `AudioQueueStart -66680`; restarting only CoreAudio changed
+  its process identity but did not restore the unavailable built-in output device;
+- one controlled one-second Xiaomi speaker probe returned `CAMERA_REPLY_COMPLETE` and
+  was adult-confirmed audible; Camera Reply was then enabled only for bounded output
+  isolation and restored to false after the trial;
+- feeding start, diaper start, diaper complete, burping start and burping complete each
+  reached one adult-audible camera reply at least once, with no observed camera movement,
+  stuck interaction or producer replacement;
+- one isolated burping-start input produced no action before a later input succeeded.
+  An earlier action counter delta of two represented two physical inputs: the first had
+  no audible reply and the second was audible. The owner explicitly corrected the record,
+  so this is not a duplicate-response finding.
+
+The private diagnostic was stopped and remains retained only in ignored owner-private
+runtime; no household PCM, transcript, session identifier, private path, address or
+device credential entered Git or this checkpoint. Deletion remains a separate explicit
+authority.
+
+Decision: this is bounded reachability and output-isolation evidence, not Stage 2 PASS.
+The run did not complete the specification's Feeding positive count, twenty shared
+negatives or independently reset per-action matrix. Stage 2 Step 2 authority is complete,
+Step 3 remains open and Step 4 has no publishable per-action decision yet. The rejected
+Contextual/hotword candidate remains undeployed, current Paraformer and the closed parser
+remain unchanged, medication remains blocked, and Camera Reply is false.
+
+Fresh docs-worktree software baseline before this checkpoint was:
+
+```text
+wake/care-action/correction/listen-only/action-benchmark focused: 154 passed
+git branch: codex/visual-regression-corpus
+pre-change HEAD: 7d972b7d0fefc518f85f093ba143730294006a74
+remote before publication: f05071a75a727696a08140cb7d5cd08aba5c826a
+installed source tail: PASS, cs2+udp, H265, positive bytes
+installed Voice tail: healthy, listen_only, idle, fresh counters
+ignored runtime flag tail: camera_reply_enabled=false
+```
+
+The exact next slice is to keep Camera Reply false, establish one producer plus
+Voice healthy/idle and fresh counters, then complete only the remaining Task 8 low-risk
+positive/negative ASR matrix. After that, publish Feeding, diaper and burping decisions
+independently. Do not start Camera Reply V3E, real-baby acceptance or baseline promotion
+as a substitute for this gate.

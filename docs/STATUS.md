@@ -82,8 +82,8 @@
   No household media, real descriptor, receipt, `LOCAL_READY`, replay or baseline
   operation occurred. Task 8 owner-supervised capture is next and is not authorized by
   the software-only sequence.
-- Offline Guardian scenario expansion: review-complete locally through `5d91d8a`; the
-  remote branch remains `f05071a`. The fixed CLI selects `DAY-01`, `OCC-02`, `NEG-03`,
+- Offline Guardian scenario expansion: review-complete through `5d91d8a` on the current
+  feature-branch history. The fixed CLI selects `DAY-01`, `OCC-02`, `NEG-03`,
   `DAY-03` and `OCC-03`, runs 8 scenarios/13 lanes and publishes a bounded media-free
   ignored JSON/HTML report. Run `run-2d1f9fc9e940abd7` passed 330/330 exact visual
   frames with skipped/dropped/decode/worker counts all zero. Worst per-clip model
@@ -98,12 +98,16 @@
   boundary changed. This is repeatable integration evidence, not accuracy or real-device
   acceptance. Independent review closed at 0 Critical / 0 Important / 0 Minor after
   rejecting duplicate selected clips before runtime and preserving bounded Voice action
-  evidence across lane and cleanup failures. Stage 1 is complete; the fixes are local and
-  unpushed, and no PR or protected-branch change occurred. Stage 2 Step 1 then confirmed
+  evidence across lane and cleanup failures. Stage 1 is complete; the fixes are present
+  on the current feature branch and no PR or protected-branch change occurred. Stage 2
+  Step 1 then confirmed
   that `44bd855` is in current history, the combined diaper/burping recheck was 4/4 with
-  zero observed false accepts, and the current closed software surface passes 137/137.
-  Feeding's original supervised recall remained 8/11 and no current-candidate matrix has
-  yet closed all five low-risk actions, so the next gate still requires an adult.
+  zero observed false accepts. The fresh current-branch closed software surface passes
+  154/154.
+  On 2026-09-02 the owner authorized and supervised Step 2/3. Each of the five approved
+  low-risk action codes reached recognition plus an adult-audible result at least once,
+  but intermittent misses/no-audible-output remained and the complete current-candidate
+  positive/negative matrix was not executed. Stage 2 therefore remains open.
 - Environment monitoring design and implementation plan: approved on 2026-08-05.
 - Stable Xiaomi Alpha commit: `0df20ae` on `stable/xiaomi-alpha`.
 - Current visual-corpus worktree branch: `codex/visual-regression-corpus`. The separate

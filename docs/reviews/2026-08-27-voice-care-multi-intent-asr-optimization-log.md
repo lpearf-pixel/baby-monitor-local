@@ -374,10 +374,12 @@ resolution 必须包含：
 
 ## 9. 当前唯一下一步
 
-软件 Tasks 1–7 已完成，获批的 Task 8 低风险实机门也已执行，但因召回不足而未接受。
-当前唯一下一步是 synthetic/public-first 诊断组合 wake/action 入口和 armed 拍嗝 complete
-的 `far` 拒绝。Camera Reply 保持 false；medication complete 在 generated gate 为 0/3，
-必须先有独立高风险设计，不得放宽纠错、安装未批准模型或无人值守采集家庭音频。
+软件 Tasks 1–7、组合 wake/action 入口修复和 bounded model A/B 已完成；Contextual/hotword
+候选未优于当前 Paraformer，因此未部署。2026-09-02 的成人监督继续测试证明五个获批
+低风险 action code 均至少一次可达，但未完成规定的完整正/负例矩阵，不能发布总体 PASS。
+当前唯一下一步是在 Camera Reply=false、fresh counters、单一 Xiaomi producer 和
+Voice healthy/idle 前置下，补齐 Task 8 剩余正/负例并按动作发布决定。Medication complete
+仍须独立高风险设计；不得放宽纠错、安装未批准模型或无人值守采集家庭音频。
 
 ### R7 — 完整软件与文档门
 
@@ -484,3 +486,33 @@ resolution 必须包含：
 - tail：Voice healthy/memory-only；source PASS；Camera Reply和Baby Care均未调用
 - decision：combined single-sentence保持可用；two-stage继续fail closed
 - next single action：如需提升two-stage，先批准contextual/hotword模型迁移设计
+
+### R13 — Ordered Stage 2 supervised continuation
+
+- 日期：2026-09-02
+- branch / docs pre-change HEAD：`codex/visual-regression-corpus` / `7d972b7`
+- installed candidate：`44bd855`
+- authority：成人监督低风险 Voice；Camera Reply 只在独立受控输出诊断内临时启用
+- source/preflight：`transport=auto` 实际协商 `cs2+udp`；单一 producer；HEVC 视频和 Opus
+  拾音均持续；Voice healthy/listen-only
+- no-baby room observation：50 秒内 10/10 状态新鲜、模型可用、无新增风险事件；该结果
+  只证明空场景稳定，不证明床区或真实婴儿准确率
+- audio-layer evidence：摄像头 Opus 48 kHz stereo 可解码为 16 kHz mono，VAD/utterance
+  counters 增长；家庭 PCM/transcript 未写入 Git、普通日志或本记录
+- i9 output diagnosis：固定系统音也在 closed/inactive Mac 上返回
+  `AudioQueueStart -66680`，因此“无声”不能归因于 ASR；CoreAudio 单组件重启未改变结果
+- camera output isolation：受控 one-second probe 为 `CAMERA_REPLY_COMPLETE`；临时启用后
+  五个低风险 action code 均至少一次产生成人可听回复，未观察到云台移动或 producer
+  replacement；结束后 flag 恢复 false
+- supervised reachability：feeding start、diaper start、diaper complete、burping start、
+  burping complete 各至少一次成功；一个隔离 burping-start 输入未产生 action，后续输入成功
+- duplicate clarification：一次计数增加 2 对应成人实际说了两次，第一次未听到回复、第二次
+  听到；不得记为系统 duplicate
+- failures/limits：存在间歇性无 action/无可听回复；未完成 Feeding 规定正例、20 个共享负例、
+  每动作独立清零矩阵，因此 Stage 2 Step 3 和总体低风险决定仍未完成
+- privacy：仅固定聚合状态；私有诊断已停止但 retained，未经单独删除授权不得清理
+- Baby Care/medication：未构造、未调用、未放宽；medication 仍 blocked
+- decision：keep current Paraformer and closed parser；不部署 rejected contextual/hotword；
+  Camera Reply=false；Stage 2 remains open
+- next single action：在 Camera Reply=false 下从 fresh counters 补齐 Task 8 剩余正/负例，
+  再按 Feeding、diaper、burping 分别发布 keep/rollback 决定

@@ -1,6 +1,6 @@
 # Baby Monitor Local Project Summary
 
-Updated: 2026-08-30
+Updated: 2026-09-02
 
 ## Snapshot
 
@@ -12,9 +12,13 @@ Updated: 2026-08-30
   eight-scenario software expansion; low-risk Feeding/diaper/burping Voice decision;
   separately designed Camera Reply correction and clean V3E; separately authorized
   public/private visual-readiness work; then deferred device and 72-hour release gates.
-  Stage 1 is closed and Stage 2 Step 1 has reconciled the existing low-risk Voice
-  evidence without accessing household audio. Camera Reply, household capture,
-  medication, Baby Care writes, PR/merge and `main/stable` changes remain unauthorized.
+  Stage 1 is closed. Stage 2 Step 1 reconciled the existing low-risk Voice evidence,
+  and the owner subsequently authorized and supervised Step 2/3 on the installed i9.
+  Each of the five approved low-risk action codes was recognized and produced an
+  adult-audible reply at least once, but intermittent misses/no-audible-output remain and
+  the required full positive/negative matrix did not run. Stage 2 therefore remains
+  open. Medication, Baby Care writes, PR/merge and `main/stable` changes remain outside
+  this gate.
 - Visual regression corpus work is published on `codex/visual-regression-corpus`; the
   public-corpus proposal base is `681edd3c49d0ccca442af064188a4e8b814a4db5`.
   The published branch includes the private-overlay software, four-scenario offline
@@ -108,12 +112,20 @@ Updated: 2026-08-30
   plan at `docs/superpowers/plans/2026-08-30-offline-guardian-scenario-expansion.md`.
   Independent review and two scoped follow-ups closed all findings at 0 Critical,
   0 Important and 0 Minor: duplicate visual selection now fails before runtime creation,
-  and Voice failures retain already observed bounded action/evidence counters. The local
-  branch is ahead of unchanged remote `f05071a`; these review fixes are not pushed. No PR
-  or protected-branch change was made. Stage 1 is closed; the next ordered slice is the
-  adult-supervised Stage 2 gate. Existing evidence carries forward zero observed false
-  accepts and a 4/4 combined diaper/burping recheck, but Feeding remained 8/11 in the
-  original matrix and no single current-candidate run closed all five low-risk actions.
+  and Voice failures retain already observed bounded action/evidence counters. No PR or
+  protected-branch change was made. Stage 1 is closed. The 2026-09-02 supervised Stage 2
+  continuation used installed candidate `44bd855`: all five approved low-risk action
+  codes reached an adult-audible result at least once, while one isolated burping-start
+  attempt produced no action and an earlier two-attempt sequence produced one inaudible
+  then one audible reply. The owner confirmed those were two physical inputs, not a
+  duplicate system response. This is useful reachability evidence, not the required
+  full acceptance matrix.
+  The i9 built-in speaker was independently unavailable while the Mac was closed/inactive
+  (`AudioQueueStart -66680`); a controlled Xiaomi speaker probe and bounded action replies
+  were audible without observed camera movement or producer replacement. Camera Reply was
+  restored to false and Voice returned healthy/listen-only. The exact next slice is to
+  finish Stage 2 with Camera Reply false, fresh counters and the remaining prescribed
+  positive/negative ASR matrix before publishing an action-by-action decision.
 - Stable Xiaomi line: `stable/xiaomi-alpha` at `0df20ae`.
 - Active Camera Reply review line: `codex/xiaomi-camera-reply-lifecycle-review`, based
   on accepted Voice head `4d479b8`; its published Task 8 checkpoint is `a622a7a`.
