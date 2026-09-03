@@ -330,6 +330,45 @@ def test_gateway_status_failure_uses_stable_public_code(
     assert "private transport detail" not in repr(result)
 
 
+def test_runtime_dashboard_closes_provider_failure_and_keeps_camera_reply_disabled(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    def failing_urlopen(url: str, timeout: float) -> None:
+        raise OSError(
+            "sqlite path ProviderExplosion known_streams token topic confidence "
+            "rule_version evidence_key"
+        )
+
+    monkeypatch.setattr(runtime_module, "urlopen", failing_urlopen)
+    runtime = runtime_from_env(_environment())
+
+    assert runtime.dashboard is not None
+    payload = runtime.dashboard.system(
+        datetime(2026, 9, 3, tzinfo=UTC)
+    ).model_dump(mode="json")
+
+    components = {
+        component["component_id"]: component for component in payload["components"]
+    }
+    assert components["camera"]["state"] == "unavailable"
+    assert components["camera"]["reason_code"] == "camera_offline"
+    assert components["camera_reply"]["state"] == "disabled"
+    assert components["camera_reply"]["reason_code"] == "camera_reply_disabled"
+    serialized = repr(payload).lower()
+    for forbidden in (
+        "sqlite",
+        "path",
+        "providerexplosion",
+        "known_streams",
+        "token",
+        "topic",
+        "confidence",
+        "rule_version",
+        "evidence_key",
+    ):
+        assert forbidden not in serialized
+
+
 def test_gateway_status_success_preserves_existing_stream_shape(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:

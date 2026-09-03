@@ -926,7 +926,7 @@ test("an alert hash with a deferred response focuses only its exact row after mo
 });
 
 
-test("legacy incident hash remains stable until an exact environment alert is rendered", async () => {
+test("legacy incident hash selects Alerts and highlights only environment:incident-1", async () => {
   const pendingAlerts = deferred();
   const fixture = mountFixture({
     fetch: async (url) => {
@@ -946,8 +946,16 @@ test("legacy incident hash remains stable until an exact environment alert is re
   await fixture.shell.initialRefresh;
 
   const rows = fixture.document.getElementById("alerts-list").children;
+  assert.equal(
+    fixture.document.getElementById("tab-alerts").getAttribute("aria-selected"),
+    "true",
+  );
   assert.equal(rows[0].classList.contains("is-target"), false);
   assert.equal(rows[1].classList.contains("is-target"), true);
+  assert.deepEqual(
+    rows.filter((row) => row.classList.contains("is-target")).map((row) => row.dataset.alertId),
+    ["environment:incident-1"],
+  );
   assert.equal(fixture.document.activeElement, rows[1]);
   assert.equal(fixture.window.location.hash, "#environment-incident=incident-1");
   assert.deepEqual(fixture.calls.map((call) => call.url), [

@@ -11,6 +11,7 @@ from fastapi.testclient import TestClient
 import pytest
 from starlette.websockets import WebSocketDisconnect
 
+import apps.api.alpha as alpha_module
 from apps.api.alpha import AlphaRuntime, SnapshotViewport, create_app
 from apps.api.hd_stream import HdBusyError, HdProfile, HdTicket
 from apps.api.ptz import PtzCode, PtzDirection, StepPtzController
@@ -80,6 +81,12 @@ def parse_dashboard_html(markup: str) -> DashboardHtmlParser:
     parser = DashboardHtmlParser()
     parser.feed(markup)
     return parser
+
+
+def css_declarations(stylesheet: str, selector: str) -> str:
+    match = re.search(rf"{re.escape(selector)}\s*\{{([^}}]*)\}}", stylesheet)
+    assert match is not None
+    return match.group(1)
 
 
 def auth(username: str = "parent", password: str = "secret") -> dict[str, str]:
@@ -317,7 +324,10 @@ class FakeDashboardService:
     def _record(self, method: str, value: object) -> None:
         self.calls.append((method, value))
         if self.unavailable_method == method:
-            raise DashboardServiceUnavailable("private dashboard failure")
+            raise DashboardServiceUnavailable(
+                "sqlite path ProviderExplosion known_streams token topic confidence "
+                "rule_version evidence_key"
+            )
 
     def overview(self, now: datetime) -> DashboardOverviewV1:
         self._record("overview", now)
@@ -381,8 +391,26 @@ DASHBOARD_ROUTES = (
     ("/api/dashboard/overview", "overview"),
     ("/api/dashboard/alerts", "alerts"),
     ("/api/dashboard/analytics/24h", "analytics"),
+    ("/api/dashboard/analytics/7d", "analytics"),
     ("/api/dashboard/system", "system"),
 )
+
+DASHBOARD_ASSETS = (
+    ("/assets/dashboard.css", "_DASHBOARD_STYLE"),
+    ("/assets/dashboard-views.js", "_DASHBOARD_VIEWS_SCRIPT"),
+    ("/assets/dashboard-analytics.js", "_DASHBOARD_ANALYTICS_SCRIPT"),
+    ("/assets/dashboard-shell.js", "_DASHBOARD_SHELL_SCRIPT"),
+)
+
+
+@dataclass
+class RecordingDashboardAsset:
+    reads: int = 0
+
+    def read_text(self, *, encoding: str) -> str:
+        assert encoding == "utf-8"
+        self.reads += 1
+        return "/* authenticated dashboard asset */"
 
 
 @pytest.mark.parametrize(("route", "method"), DASHBOARD_ROUTES)
@@ -516,25 +544,42 @@ def test_dashboard_provider_failures_return_stable_unavailable_response(
     assert response.status_code == 503
     assert response.headers["cache-control"] == "no-store"
     assert response.json() == {"detail": "DASHBOARD_DATA_UNAVAILABLE"}
-    assert "private dashboard failure" not in response.text
+    for forbidden in (
+        "sqlite",
+        "path",
+        "providerexplosion",
+        "known_streams",
+        "token",
+        "topic",
+        "confidence",
+        "rule_version",
+        "evidence_key",
+    ):
+        assert forbidden not in response.text.lower()
     assert dashboard.calls[0][0] == method
 
 
-@pytest.mark.parametrize(
-    "asset",
-    (
-        "dashboard.css",
-        "dashboard-views.js",
-        "dashboard-analytics.js",
-        "dashboard-shell.js",
-    ),
-)
-def test_dashboard_system_future_assets_are_always_no_store(asset: str) -> None:
+@pytest.mark.parametrize(("route", "module_attribute"), DASHBOARD_ASSETS)
+def test_dashboard_assets_authenticate_before_file_access_and_never_cache(
+    route: str,
+    module_attribute: str,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    asset = RecordingDashboardAsset()
+    monkeypatch.setattr(alpha_module, module_attribute, asset)
     app, _ = client()
 
-    response = app.get(f"/assets/{asset}")
+    denied = app.get(route)
 
-    assert response.headers["cache-control"] == "no-store"
+    assert denied.status_code == 401
+    assert denied.headers["cache-control"] == "no-store"
+    assert asset.reads == 0
+
+    allowed = app.get(route, headers=auth())
+
+    assert allowed.status_code == 200
+    assert allowed.headers["cache-control"] == "no-store"
+    assert asset.reads == 1
 
 
 def test_dashboard_views_asset_requires_authentication_and_exposes_only_presenter_code() -> None:
@@ -695,6 +740,48 @@ def test_dashboard_loads_after_authentication() -> None:
     )
 
 
+def test_dashboard_html_is_one_local_four_tab_shell_in_dependency_order() -> None:
+    app, _ = client()
+
+    response = app.get("/", headers=auth())
+
+    assert response.status_code == 200
+    document = parse_dashboard_html(response.text)
+    assert response.text.count('src="/live.mjpeg"') == 1
+    assert len(
+        [
+            attributes
+            for tag, attributes in document.elements
+            if tag == "button" and attributes.get("role") == "tab"
+        ]
+    ) == 4
+    assert "status" not in document.ids
+    assert 'src="/assets/guardian-events.js"' not in response.text
+    assert 'src="/assets/environment-dashboard.js"' not in response.text
+
+    resources = [
+        value
+        for _tag, attributes in document.elements
+        for attribute in ("href", "src")
+        if (value := attributes.get(attribute)) is not None
+    ]
+    assert resources
+    assert all(value.startswith("/") for value in resources)
+    assert not any(value.startswith(("http://", "https://")) for value in resources)
+    assert [
+        attributes["src"]
+        for tag, attributes in document.elements
+        if tag == "script" and attributes.get("src") is not None
+    ] == [
+        "/assets/hd-player.js",
+        "/assets/dashboard-viewer.js",
+        "/assets/gauge-calibration.js",
+        "/assets/dashboard-views.js",
+        "/assets/dashboard-analytics.js",
+        "/assets/dashboard-shell.js",
+    ]
+
+
 def test_dashboard_uses_a_four_tab_shell_that_preserves_the_viewer() -> None:
     app, _ = client()
 
@@ -845,6 +932,39 @@ def test_dashboard_stylesheet_requires_authentication_and_is_compact() -> None:
         response.text,
         re.DOTALL,
     )
+
+
+@pytest.mark.parametrize("viewport_width", (320, 390))
+def test_dashboard_static_mobile_layout_contract(viewport_width: int) -> None:
+    app, _ = client()
+
+    stylesheet = app.get("/assets/dashboard.css", headers=auth()).text
+
+    breakpoint = re.search(r"@media\s*\(max-width:\s*(\d+)px\)", stylesheet)
+    assert breakpoint is not None
+    assert viewport_width <= int(breakpoint.group(1)) == 720
+    assert "grid-template-columns: repeat(4, minmax(0, 1fr))" in css_declarations(
+        stylesheet,
+        ".dashboard-tabs",
+    )
+    assert "min-height: 44px" in css_declarations(stylesheet, "button, a.button")
+    shell = css_declarations(stylesheet, ".dashboard-shell")
+    assert "width: min(1180px, 100%)" in shell
+    assert "box-sizing: border-box" in css_declarations(stylesheet, "*")
+    page_level = " ".join(
+        css_declarations(stylesheet, selector)
+        for selector in (
+            ".dashboard-shell",
+            '[role="tabpanel"]',
+            ".overview-grid",
+            ".card, .kpi-card, .chart-card",
+        )
+    )
+    fixed_page_widths = [
+        int(width)
+        for width in re.findall(r"(?:^|;)\s*width:\s*(\d+)px", page_level)
+    ]
+    assert all(width <= viewport_width for width in fixed_page_widths)
 
 
 def test_dashboard_exposes_guardian_event_list_without_media_access() -> None:

@@ -75,7 +75,7 @@ scripts, which prevents duplicate polling.
 
 ## Execution preflight
 
-- [ ] Verify branch and clean state:
+- [x] Verify branch and clean state:
 
   ```bash
   test "$(git branch --show-current)" = "codex/dashboard-tabs-analytics-alerts"
@@ -84,7 +84,7 @@ scripts, which prevents duplicate polling.
   git log --oneline --decorate -3
   ```
 
-- [ ] Verify the JavaScript baseline:
+- [x] Verify the JavaScript baseline:
 
   ```bash
   node --test tests/frontend/*.test.mjs
@@ -92,7 +92,7 @@ scripts, which prevents duplicate polling.
 
   Expected: the existing 73 tests pass before a frontend file changes.
 
-- [ ] Verify a usable Python environment before starting Task 1:
+- [x] Verify a usable Python environment before starting Task 1:
 
   ```bash
   test -x ./.venv-alpha/bin/python
@@ -124,7 +124,7 @@ scripts, which prevents duplicate polling.
   `DashboardGuardianAnalyticsV1`, `DashboardEnvironmentAnalyticsV1`,
   `DashboardAnalyticsV1`, and `DashboardSystemV1`.
 
-- [ ] **Step 1: Write contract tests that fail because the module does not exist**
+- [x] **Step 1: Write contract tests that fail because the module does not exist**
 
   Add tests with one fixed aware timestamp and prove all three safety properties:
 
@@ -205,7 +205,7 @@ scripts, which prevents duplicate polling.
   later than `opened_at`, and not later than `updated_at`; an open alert cannot contain
   `recovered_at` or `resolution_cause`.
 
-- [ ] **Step 2: Run the contract test and observe RED**
+- [x] **Step 2: Run the contract test and observe RED**
 
   ```bash
   ./.venv-alpha/bin/python -m pytest -q tests/dashboard/test_contracts.py
@@ -213,7 +213,7 @@ scripts, which prevents duplicate polling.
 
   Expected: collection fails with `ModuleNotFoundError: services.dashboard`.
 
-- [ ] **Step 3: Add the exact enums and closed model base**
+- [x] **Step 3: Add the exact enums and closed model base**
 
   In `services/dashboard/contracts.py`, use one frozen/forbid base and the following
   closed values:
@@ -320,7 +320,7 @@ scripts, which prevents duplicate polling.
   ]
   ```
 
-- [ ] **Step 4: Add the complete public models and invariants**
+- [x] **Step 4: Add the complete public models and invariants**
 
   Implement these exact field sets; every timestamp field uses `require_aware` and all
   tuples have the stated maximum:
@@ -422,7 +422,7 @@ scripts, which prevents duplicate polling.
   counts, null rate and no buckets. Require unique alert IDs and component IDs in every
   response tuple.
 
-- [ ] **Step 5: Run contract GREEN and task regression**
+- [x] **Step 5: Run contract GREEN and task regression**
 
   ```bash
   ./.venv-alpha/bin/python -m pytest -q tests/dashboard/test_contracts.py
@@ -432,7 +432,7 @@ scripts, which prevents duplicate polling.
 
   Expected: all contract tests pass and compilation/diff checks return zero.
 
-- [ ] **Step 6: Commit Task 1**
+- [x] **Step 6: Commit Task 1**
 
   ```bash
   git add services/dashboard/__init__.py services/dashboard/contracts.py \
@@ -456,7 +456,7 @@ scripts, which prevents duplicate polling.
   `GuardianDashboardQuery.notification_component(now) -> DashboardComponentV1`, and
   `GuardianDashboardQueryUnavailable`.
 
-- [ ] **Step 1: Write missing/read-only and closed-projection RED tests**
+- [x] **Step 1: Write missing/read-only and closed-projection RED tests**
 
   Use `VisualRiskEventStore(tmp_path / "events.sqlite3").migrate()` only in test setup.
   Insert fixed rows through the store where possible and fixed SQL for notification and
@@ -506,7 +506,7 @@ scripts, which prevents duplicate polling.
   connection factory and asserts no statement begins with `INSERT`, `UPDATE`, `DELETE`,
   `CREATE`, `DROP`, `ALTER`, `REPLACE` or `VACUUM`.
 
-- [ ] **Step 2: Run the Guardian query test and observe RED**
+- [x] **Step 2: Run the Guardian query test and observe RED**
 
   ```bash
   ./.venv-alpha/bin/python -m pytest -q tests/dashboard/test_guardian_query.py
@@ -514,7 +514,7 @@ scripts, which prevents duplicate polling.
 
   Expected: collection fails because `services.dashboard.guardian_query` is absent.
 
-- [ ] **Step 3: Implement the read-only connection and alert selection**
+- [x] **Step 3: Implement the read-only connection and alert selection**
 
   Use one injectable connection factory while production always opens the fixed URI:
 
@@ -556,7 +556,7 @@ scripts, which prevents duplicate polling.
   Sort open first, then priority, `updated_at` descending and stable ID descending before
   truncating to 100. Do not select confidence, rule version, evidence keys or result prose.
 
-- [ ] **Step 4: Add analytics RED tests for exact window boundaries and denominators**
+- [x] **Step 4: Add analytics RED tests for exact window boundaries and denominators**
 
   Insert rows one second before, exactly at, and one second after each boundary. Assert:
 
@@ -594,7 +594,7 @@ scripts, which prevents duplicate polling.
   half-open interval. This method supplies the overview's project-timezone natural-day
   count and must not reuse the rolling 24-hour count.
 
-- [ ] **Step 5: Implement fixed analytics queries and notification health**
+- [x] **Step 5: Implement fixed analytics queries and notification health**
 
   Add one fixed-duration helper and return only the contract model:
 
@@ -620,7 +620,7 @@ scripts, which prevents duplicate polling.
   Implement `recovered_count` with one fixed SQL statement and the same read-only
   connection. Do not accept a timezone name or user-provided SQL at this layer.
 
-- [ ] **Step 6: Run Task 2 GREEN and existing Guardian regression**
+- [x] **Step 6: Run Task 2 GREEN and existing Guardian regression**
 
   ```bash
   ./.venv-alpha/bin/python -m pytest -q \
@@ -631,7 +631,7 @@ scripts, which prevents duplicate polling.
   git diff --check
   ```
 
-- [ ] **Step 7: Commit Task 2**
+- [x] **Step 7: Commit Task 2**
 
   ```bash
   git add services/dashboard/guardian_query.py tests/dashboard/test_guardian_query.py
@@ -656,7 +656,7 @@ scripts, which prevents duplicate polling.
   `analytics(window, now)`, and `system(now)` matching the Task 1 contracts, plus the
   stable aggregate-level `DashboardServiceUnavailable` exception.
 
-- [ ] **Step 1: Write exact environment incident-count RED tests**
+- [x] **Step 1: Write exact environment incident-count RED tests**
 
   In `tests/storage/test_environment_store.py`, save more than 100 incidents and include
   rows immediately before, exactly at and exactly after the requested boundaries. Prove
@@ -686,7 +686,7 @@ scripts, which prevents duplicate polling.
   Expected: `EnvironmentStore` and `LocalEnvironmentDashboardService` do not yet expose
   `incident_counts`.
 
-- [ ] **Step 2: Implement one bounded read method on the existing environment service**
+- [x] **Step 2: Implement one bounded read method on the existing environment service**
 
   Add frozen `EnvironmentIncidentCounts` with non-negative `range_normal`,
   `range_critical` and `unreadable` fields to `services/storage/environment.py`. Add
@@ -707,7 +707,7 @@ scripts, which prevents duplicate polling.
   git diff --check
   ```
 
-- [ ] **Step 3: Write aggregate RED tests with small fakes**
+- [x] **Step 3: Write aggregate RED tests with small fakes**
 
   Define fakes that count calls and return an unavailable current reading plus a separate
   last-valid reading. Add tests for the highest-risk selection, candidate exclusion by
@@ -752,7 +752,7 @@ scripts, which prevents duplicate polling.
   `guardian_open_count is None` and `today_recovered_count is None`, not zero; a successful
   empty Guardian query returns zero for both.
 
-- [ ] **Step 4: Run service tests and observe RED**
+- [x] **Step 4: Run service tests and observe RED**
 
   ```bash
   ./.venv-alpha/bin/python -m pytest -q tests/dashboard/test_service.py
@@ -760,7 +760,7 @@ scripts, which prevents duplicate polling.
 
   Expected: collection fails because `services.dashboard.service` is absent.
 
-- [ ] **Step 5: Implement provider protocols and closed projections**
+- [x] **Step 5: Implement provider protocols and closed projections**
 
   Define protocols with the exact methods used by the constructor and keep them free of
   `apps.api` imports. Import `ZoneInfo` from Python's standard `zoneinfo` module:
@@ -856,7 +856,7 @@ scripts, which prevents duplicate polling.
   into zero; `open_alert_count` remains the count of known unified open rows, including a
   stable Guardian-query system warning.
 
-- [ ] **Step 6: Implement unified environment/system alerts and ordering**
+- [x] **Step 6: Implement unified environment/system alerts and ordering**
 
   Map environment incident IDs to `environment:<incident_id>`, range kind to
   `environment_range`, unreadable kind to `environment_unreadable`, critical range to
@@ -903,7 +903,7 @@ scripts, which prevents duplicate polling.
   item has a later `updated_at` but the older-opened critical item wins attention.
   Overview recent activity is the first 10 unified list items.
 
-- [ ] **Step 7: Add analytics projection RED tests**
+- [x] **Step 7: Add analytics projection RED tests**
 
   Assert weighted environment availability and partial source failure:
 
@@ -922,7 +922,7 @@ scripts, which prevents duplicate polling.
   section available, and a Guardian exception case that leaves environment analytics
   available. No exception string may enter the model.
 
-- [ ] **Step 8: Implement bounded analytics projection**
+- [x] **Step 8: Implement bounded analytics projection**
 
   Convert `DashboardWindow.HOURS_24` to existing `TrendWindow.HOURS_24` and
   `DashboardWindow.DAYS_7` to `TrendWindow.DAYS_7`. Sum sample/available counts across
@@ -934,7 +934,7 @@ scripts, which prevents duplicate polling.
   null rates and an empty bucket tuple when one provider fails; preserve the other
   section.
 
-- [ ] **Step 9: Run Task 3 GREEN and focused existing regressions**
+- [x] **Step 9: Run Task 3 GREEN and focused existing regressions**
 
   ```bash
   ./.venv-alpha/bin/python -m pytest -q \
@@ -949,7 +949,7 @@ scripts, which prevents duplicate polling.
   git diff --check
   ```
 
-- [ ] **Step 10: Commit Task 3**
+- [x] **Step 10: Commit Task 3**
 
   ```bash
   git add services/dashboard/service.py services/environment/dashboard.py \
@@ -973,7 +973,7 @@ scripts, which prevents duplicate polling.
   `/api/dashboard/system`; closes the already-observed `/api/status` transport-exception
   detail without changing its healthy response.
 
-- [ ] **Step 1: Add API RED tests with a recording fake provider**
+- [x] **Step 1: Add API RED tests with a recording fake provider**
 
   Extend the existing `client()` helper with a `dashboard` keyword and add:
 
@@ -1009,7 +1009,7 @@ scripts, which prevents duplicate polling.
   assert the same stable 503 body. Check `Cache-Control: no-store` on 401, 422 and both
   503 paths as well as on 200.
 
-- [ ] **Step 2: Run API tests and observe RED**
+- [x] **Step 2: Run API tests and observe RED**
 
   ```bash
   ./.venv-alpha/bin/python -m pytest -q \
@@ -1018,7 +1018,7 @@ scripts, which prevents duplicate polling.
 
   Expected: route requests return 404 or the helper rejects the unknown runtime field.
 
-- [ ] **Step 3: Add one runtime protocol/field and four routes**
+- [x] **Step 3: Add one runtime protocol/field and four routes**
 
   In `apps/api/alpha.py`, define an `AlphaDashboard` protocol with the four exact method
   signatures, add `dashboard: AlphaDashboard | None = None` to `AlphaRuntime`, and a
@@ -1048,7 +1048,7 @@ scripts, which prevents duplicate polling.
   unrelated routes. Successful routes still return explicit `JSONResponse` objects with
   no-store, so the policy remains visible at each endpoint.
 
-- [ ] **Step 4: Add runtime wiring RED test**
+- [x] **Step 4: Add runtime wiring RED test**
 
   Monkeypatch `GuardianDashboardQuery` and `LocalDashboardService` with recording
   factories. Load a settings file whose relative `app.data_dir` is `relative-runtime`.
@@ -1075,7 +1075,7 @@ scripts, which prevents duplicate polling.
   Expected: the Dashboard recording factories have not been called and the failure
   detail still contains the exception type.
 
-- [ ] **Step 5: Wire the production service without constructing a writable store**
+- [x] **Step 5: Wire the production service without constructing a writable store**
 
   Import `GuardianDashboardQuery` and `LocalDashboardService` in `apps/api/runtime.py`.
   Preserve a nullable `settings` variable. When settings load, resolve `data_dir` once
@@ -1100,7 +1100,7 @@ scripts, which prevents duplicate polling.
   legacy status shape. The new Dashboard projection still ignores `detail`, `stream` and
   `known_streams` completely.
 
-- [ ] **Step 6: Run Task 4 GREEN and full API/runtime regression**
+- [x] **Step 6: Run Task 4 GREEN and full API/runtime regression**
 
   ```bash
   ./.venv-alpha/bin/python -m pytest -q \
@@ -1111,7 +1111,7 @@ scripts, which prevents duplicate polling.
   git diff --check
   ```
 
-- [ ] **Step 7: Commit Task 4**
+- [x] **Step 7: Commit Task 4**
 
   ```bash
   git add apps/api/alpha.py apps/api/runtime.py \
@@ -1132,7 +1132,7 @@ scripts, which prevents duplicate polling.
 - Produces: semantic panel IDs `dashboard-overview`, `dashboard-alerts`,
   `dashboard-analytics`, `dashboard-system` and protected `/assets/dashboard.css`.
 
-- [ ] **Step 1: Write structural and CSS asset RED tests**
+- [x] **Step 1: Write structural and CSS asset RED tests**
 
   Add assertions that the authenticated HTML contains one `role="tablist"`, four tabs,
   four matching panels, default overview selection, one live MJPEG source and the existing
@@ -1151,7 +1151,7 @@ scripts, which prevents duplicate polling.
   assert 'href="/assets/dashboard.css"' in response.text
   ```
 
-- [ ] **Step 2: Run HTML/CSS tests and observe RED**
+- [x] **Step 2: Run HTML/CSS tests and observe RED**
 
   ```bash
   ./.venv-alpha/bin/python -m pytest -q tests/api/test_alpha_app.py \
@@ -1160,7 +1160,7 @@ scripts, which prevents duplicate polling.
 
   Expected: new tab IDs and CSS asset are absent.
 
-- [ ] **Step 3: Write the semantic HTML shell while preserving media IDs**
+- [x] **Step 3: Write the semantic HTML shell while preserving media IDs**
 
   Replace only `_DASHBOARD`. Keep `<img id="live-image" src="/live.mjpeg">`,
   `<video id="hd-video">`, `viewer`, `media-plane`, zoom/fullscreen/PTZ status,
@@ -1207,7 +1207,7 @@ scripts, which prevents duplicate polling.
   System contains `system-components`, `system-updated`/`system-stale`,
   `system-refresh` and the existing maintenance controls.
 
-- [ ] **Step 4: Add compact local CSS and protected asset route**
+- [x] **Step 4: Add compact local CSS and protected asset route**
 
   Use these fixed layout tokens, then cover every state class referenced by the HTML or
   upcoming presenters:
@@ -1255,7 +1255,7 @@ scripts, which prevents duplicate polling.
   Add `_DASHBOARD_STYLE = Path(__file__).with_name("dashboard.css")` and a protected
   `/assets/dashboard.css` route with `media_type="text/css"` and no-store.
 
-- [ ] **Step 5: Run Task 5 GREEN and viewer structure regression**
+- [x] **Step 5: Run Task 5 GREEN and viewer structure regression**
 
   ```bash
   ./.venv-alpha/bin/python -m pytest -q tests/api/test_alpha_app.py
@@ -1265,7 +1265,7 @@ scripts, which prevents duplicate polling.
   git diff --check
   ```
 
-- [ ] **Step 6: Commit Task 5**
+- [x] **Step 6: Commit Task 5**
 
   ```bash
   git add apps/api/alpha.py apps/api/dashboard.css tests/api/test_alpha_app.py
@@ -1287,7 +1287,7 @@ scripts, which prevents duplicate polling.
   `presentSystem`, `filterAlerts`, `applyAlertFilters`, `renderOverview`,
   `renderAlerts`, `renderSystem`, `markStale` and `markUnavailable`.
 
-- [ ] **Step 1: Write presenter and safe-DOM RED tests**
+- [x] **Step 1: Write presenter and safe-DOM RED tests**
 
   Follow the existing UMD test style and fake elements. Cover closed-key rejection,
   last-valid separation, priority labels and no `innerHTML` writes:
@@ -1327,7 +1327,7 @@ scripts, which prevents duplicate polling.
   `open` and `recovered` are the only accepted values and that filtering never changes
   the server order.
 
-- [ ] **Step 2: Run view tests and observe RED**
+- [x] **Step 2: Run view tests and observe RED**
 
   ```bash
   node --test tests/frontend/dashboard_views.test.mjs
@@ -1335,7 +1335,7 @@ scripts, which prevents duplicate polling.
 
   Expected: module-not-found failure.
 
-- [ ] **Step 3: Implement strict UMD presenters**
+- [x] **Step 3: Implement strict UMD presenters**
 
   Use the established wrapper:
 
@@ -1394,7 +1394,7 @@ scripts, which prevents duplicate polling.
   `data-alert-source` and `data-alert-state` attributes. `renderSystem` renders component,
   state label, reason label and localized update time.
 
-- [ ] **Step 4: Add and verify the protected view asset**
+- [x] **Step 4: Add and verify the protected view asset**
 
   Add `_DASHBOARD_VIEWS_SCRIPT`, its authenticated/no-store route, and an API test that
   verifies the response contains `BabyMonitorDashboardViews` but not media/path literals.
@@ -1406,7 +1406,7 @@ scripts, which prevents duplicate polling.
   git diff --check
   ```
 
-- [ ] **Step 5: Commit Task 6**
+- [x] **Step 5: Commit Task 6**
 
   ```bash
   git add apps/api/alpha.py apps/api/dashboard_views.js \
@@ -1428,7 +1428,7 @@ scripts, which prevents duplicate polling.
 - Produces: `BabyMonitorDashboardShell` with `parseDashboardHash`, `selectTab`,
   `createResourceController` and `mountDashboardShell`.
 
-- [ ] **Step 1: Write tab/hash RED tests**
+- [x] **Step 1: Write tab/hash RED tests**
 
   Test the exact mappings:
 
@@ -1454,7 +1454,7 @@ scripts, which prevents duplicate polling.
   `aria-selected`, roving `tabIndex`, panel `hidden`, focus and the hash. Selecting a Tab
   must leave the same `live-image` object in the document.
 
-- [ ] **Step 2: Write scheduler RED tests**
+- [x] **Step 2: Write scheduler RED tests**
 
   Use deferred promises to prove:
 
@@ -1477,7 +1477,7 @@ scripts, which prevents duplicate polling.
   source/state filter and `system-refresh`; prove filters do not fetch, survive the next
   render and the manual control requests only `/api/dashboard/system`.
 
-- [ ] **Step 3: Run shell tests and observe RED**
+- [x] **Step 3: Run shell tests and observe RED**
 
   ```bash
   node --test tests/frontend/dashboard_shell.test.mjs
@@ -1485,7 +1485,7 @@ scripts, which prevents duplicate polling.
 
   Expected: module-not-found failure.
 
-- [ ] **Step 4: Implement closed hash parsing and accessible selection**
+- [x] **Step 4: Implement closed hash parsing and accessible selection**
 
   Decode only `tab`, `alert` and the legacy `environment-incident` key. Catch malformed
   percent encoding and return overview. Bound a new alert ID to 160 characters and a
@@ -1508,7 +1508,7 @@ scripts, which prevents duplicate polling.
   pending-target mechanism for `#tab=alerts&alert=<id>` and attention-button clicks so a
   slower alerts response cannot lose the requested focus.
 
-- [ ] **Step 5: Implement a generation-safe resource controller and shared scheduler**
+- [x] **Step 5: Implement a generation-safe resource controller and shared scheduler**
 
   Use one controller per URL with these state fields:
 
@@ -1542,7 +1542,7 @@ scripts, which prevents duplicate polling.
   filters across 15-second alert renders. The `system-refresh` button invokes only the
   system resource controller.
 
-- [ ] **Step 6: Add the protected shell asset and load it after its dependencies**
+- [x] **Step 6: Add the protected shell asset and load it after its dependencies**
 
   Add the route and include scripts in this order:
 
@@ -1561,7 +1561,7 @@ scripts, which prevents duplicate polling.
   it posts only to fixed `/api/test-notification` and presents a closed success/failure
   phrase.
 
-- [ ] **Step 7: Run Task 7 GREEN and media lifecycle regression**
+- [x] **Step 7: Run Task 7 GREEN and media lifecycle regression**
 
   ```bash
   node --test \
@@ -1574,7 +1574,7 @@ scripts, which prevents duplicate polling.
   git diff --check
   ```
 
-- [ ] **Step 8: Commit Task 7**
+- [x] **Step 8: Commit Task 7**
 
   ```bash
   git add apps/api/alpha.py apps/api/dashboard_shell.js \
@@ -1597,7 +1597,7 @@ scripts, which prevents duplicate polling.
   `drawAnalyticsTrend`, and `mountDashboardAnalytics`; the mounted controller exposes
   `activate()`, `refresh()` and `selectWindow(windowName)`.
 
-- [ ] **Step 1: Write closed path and metric RED tests**
+- [x] **Step 1: Write closed path and metric RED tests**
 
   ```javascript
   assert.equal(analyticsPath("24h"), "/api/dashboard/analytics/24h");
@@ -1625,7 +1625,7 @@ scripts, which prevents duplicate polling.
   KPI says “不可用”, plus the symmetrical environment case; source failure must not be
   presented as a real zero.
 
-- [ ] **Step 2: Write chart and lazy-loading RED tests**
+- [x] **Step 2: Write chart and lazy-loading RED tests**
 
   Provide three buckets with a null middle bucket. Record Canvas calls and assert each
   series begins a new subpath after the gap rather than drawing across it. Assert:
@@ -1638,7 +1638,7 @@ scripts, which prevents duplicate polling.
   - failed refresh retains previous metrics/chart and marks stale;
   - a pending request is not duplicated.
 
-- [ ] **Step 3: Run analytics tests and observe RED**
+- [x] **Step 3: Run analytics tests and observe RED**
 
   ```bash
   node --test tests/frontend/dashboard_analytics.test.mjs
@@ -1646,7 +1646,7 @@ scripts, which prevents duplicate polling.
 
   Expected: module-not-found failure.
 
-- [ ] **Step 4: Implement strict presentation and Canvas drawing**
+- [x] **Step 4: Implement strict presentation and Canvas drawing**
 
   Use a UMD wrapper without auto-fetch. Validate exact top-level and section fields.
   `drawAnalyticsTrend` clears the canvas, draws axes, and for each temperature/humidity
@@ -1660,7 +1660,7 @@ scripts, which prevents duplicate polling.
   availability, temperature median and humidity median. Cap rendered rows to the response
   bound and use `textContent` for every cell.
 
-- [ ] **Step 5: Implement lazy controller and integrate with the shell**
+- [x] **Step 5: Implement lazy controller and integrate with the shell**
 
   `mountDashboardAnalytics(environment)` owns `currentWindow="24h"`, one cached payload
   per window, one in-flight promise per window and generation numbers. `activate()` loads
@@ -1675,7 +1675,7 @@ scripts, which prevents duplicate polling.
   tab selection. Add one API test for auth/no-store and one shell test proving analytics
   is not part of the interval refresh.
 
-- [ ] **Step 6: Run Task 8 GREEN and every frontend test**
+- [x] **Step 6: Run Task 8 GREEN and every frontend test**
 
   ```bash
   node --test tests/frontend/*.test.mjs
@@ -1686,7 +1686,7 @@ scripts, which prevents duplicate polling.
   Expected: all old 73 frontend tests plus the new Dashboard tests pass; report the exact
   new total from Node output rather than copying an estimate into evidence.
 
-- [ ] **Step 7: Commit Task 8**
+- [x] **Step 7: Commit Task 8**
 
   ```bash
   git add apps/api/alpha.py apps/api/dashboard_analytics.js \
@@ -1709,7 +1709,7 @@ scripts, which prevents duplicate polling.
   calibration and HD compatibility suites.
 - Produces: fresh aggregate software evidence and a merge-ready, no-push handoff.
 
-- [ ] **Step 1: Add final cross-boundary regression tests and require GREEN**
+- [x] **Step 1: Add final cross-boundary regression tests and require GREEN**
 
   Add exact tests that were not owned by a single component:
 
@@ -1735,7 +1735,15 @@ scripts, which prevents duplicate polling.
   node --test tests/frontend/*.test.mjs
   ```
 
-- [ ] **Step 2: Run compilation and the full software gate**
+- [ ] **Step 2: Run compilation and the full software gate — accepted infrastructure exception**
+
+  Owner accepted the sole non-zero result on 2026-09-03 as an executor-policy
+  exception: `2412 passed`, `1 expected skip`, and
+  `test_policy_acknowledgement_rejects_unix_socket` failed before project code when
+  this executor denied `socket(AF_UNIX)` with `EPERM`. Compilation, the complete
+  frontend suite, diff checks, and all Dashboard-focused Python tests returned zero.
+  This checkbox intentionally remains open because the exact full-Python-zero
+  assertion was not observed.
 
   ```bash
   ./.venv-alpha/bin/python -m compileall -q apps packages services tools
@@ -1747,7 +1755,7 @@ scripts, which prevents duplicate polling.
   All four commands must return zero. A missing interpreter/dependency is BLOCKED, not a
   pass and not permission to skip Python evidence.
 
-- [ ] **Step 3: Scan the tracked branch delta for private or unrelated material**
+- [x] **Step 3: Scan the tracked branch delta for private or unrelated material**
 
   ```bash
   git diff --name-status cabd4cf10e35a4aa9877a9b3c9a1e8692818948d..HEAD
@@ -1768,7 +1776,7 @@ scripts, which prevents duplicate polling.
   the production scan before rerunning; do not declare a command that exited non-zero
   clean.
 
-- [ ] **Step 4: Perform a read-only future-merge preview**
+- [x] **Step 4: Perform a read-only future-merge preview**
 
   ```bash
   git fetch origin
@@ -1787,7 +1795,7 @@ scripts, which prevents duplicate polling.
   documents. If the owner later names a different Codex integration ref, repeat the same
   merge-base/log/merge-tree preview against that exact ref before any integration action.
 
-- [ ] **Step 5: Write the bounded review record**
+- [x] **Step 5: Write the bounded review record**
 
   Create `docs/reviews/2026-09-03-dashboard-tabs-analytics-alerts-review.md` with:
 
@@ -1799,14 +1807,15 @@ scripts, which prevents duplicate polling.
   - responsive/accessibility behaviors proven by software and the remaining real iPhone
     visual smoke gate;
   - target branch merge-base, advance state and conflict paths;
-  - explicit `push=false`, `pr=false`, `merge=false`, `main_changed=false`,
-    `stable_changed=false`.
+  - explicit evidence-commit-time flags: `owner_exception_accepted=true`,
+    `push_authorized=true`, `push_performed=false`, `pr=false`,
+    `merge_performed=false`, `main_changed=false`, `stable_changed=false`.
 
-  Mark all completed plan checkboxes only after their evidence exists. If Python remains
-  blocked, leave Task 9 incomplete and write a blocker note rather than a completion
-  record.
+  Mark all completed plan checkboxes only after their evidence exists. A non-zero Python
+  gate remains non-green. If the owner explicitly accepts a documented infrastructure
+  exception, record that acceptance without checking the exact full-Python-zero step.
 
-- [ ] **Step 6: Commit the verified handoff**
+- [x] **Step 6: Commit the accepted-exception handoff**
 
   ```bash
   git add tests/api/test_alpha_app.py tests/api/test_runtime.py \
