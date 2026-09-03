@@ -904,9 +904,14 @@ git add SUMMARY.md docs/STATUS.md docs/CHECKPOINT.md docs/NEXT.md \
 git commit -m "docs: record offline application rehearsal gate"
 ```
 
-- [ ] **Step 6: Final stop line**
+- [x] **Step 6: Final stop line**
 
 Use `superpowers:verification-before-completion`, fetch the remote, prove a
 fast-forward, and push only with explicit delivery authority. Stop after reporting.
 Do not execute the panoramic checklist, resume live Stage 2 Step 3, enable Camera Reply,
 capture household media, create/merge a PR or modify `main/stable`.
+
+Final stop evidence: factual documentation was committed at `929bebe`; a fresh fetch
+showed `origin/codex/visual-regression-corpus` still at `cabd4cf`, and the remote was an
+ancestor of the local branch. No push, PR, merge or panoramic real-device gate was
+performed.
