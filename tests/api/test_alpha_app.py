@@ -556,6 +556,29 @@ def test_dashboard_views_asset_requires_authentication_and_exposes_only_presente
     assert "/users/" not in response.text.lower()
 
 
+def test_dashboard_shell_asset_requires_authentication_and_exposes_only_orchestration_code() -> None:
+    app, _ = client()
+
+    assert app.get("/assets/dashboard-shell.js").status_code == 401
+    response = app.get("/assets/dashboard-shell.js", headers=auth())
+
+    assert response.status_code == 200
+    assert response.headers["content-type"].startswith("text/javascript")
+    assert response.headers["cache-control"] == "no-store"
+    assert "BabyMonitorDashboardShell" in response.text
+    assert "/api/dashboard/overview" in response.text
+    assert "/api/dashboard/alerts" in response.text
+    assert "/api/dashboard/system" in response.text
+    assert "/api/test-notification" in response.text
+    assert "/live.mjpeg" not in response.text
+    assert "/snapshot.jpeg" not in response.text
+    assert "sqlite" not in response.text.lower()
+    assert "database" not in response.text.lower()
+    assert "/evidence" not in response.text.lower()
+    assert "file://" not in response.text.lower()
+    assert "/users/" not in response.text.lower()
+
+
 def test_dashboard_no_store_middleware_leaves_unrelated_routes_unchanged() -> None:
     app, _ = client()
 
@@ -633,8 +656,20 @@ def test_dashboard_loads_after_authentication() -> None:
     assert "/live.mjpeg" in response.text
     assert "/snapshot.jpeg" in response.text
     assert 'id="environment-current"' in response.text
-    assert 'src="/assets/environment-dashboard.js"' in response.text
     assert 'src="/assets/gauge-calibration.js"' in response.text
+    assert 'src="/assets/environment-dashboard.js"' not in response.text
+    assert 'src="/assets/guardian-events.js"' not in response.text
+    assert "document.getElementById('notify').onclick" not in response.text
+    scripts = (
+        'src="/assets/hd-player.js"',
+        'src="/assets/dashboard-viewer.js"',
+        'src="/assets/gauge-calibration.js"',
+        'src="/assets/dashboard-views.js"',
+        'src="/assets/dashboard-shell.js"',
+    )
+    assert [response.text.index(script) for script in scripts] == sorted(
+        response.text.index(script) for script in scripts
+    )
 
 
 def test_dashboard_uses_a_four_tab_shell_that_preserves_the_viewer() -> None:
@@ -766,8 +801,7 @@ def test_dashboard_uses_a_four_tab_shell_that_preserves_the_viewer() -> None:
     assert state_filters == {"all": "true", "open": "false", "recovered": "false"}
     assert document.ids["alerts-announcement"][0].get("aria-live") == "polite"
     assert document.ids["environment-trend"][0].get("width") == "900"
-    assert "document.getElementById('notify').onclick" in "".join(document.scripts)
-    assert "/api/test-notification" in "".join(document.scripts)
+    assert "".join(document.scripts).strip() == ""
     assert "refreshStatus" not in "".join(document.scripts)
 
 
@@ -798,7 +832,7 @@ def test_dashboard_exposes_guardian_event_list_without_media_access() -> None:
     assert response.status_code == 200
     assert 'id="guardian-events"' in response.text
     assert 'id="guardian-events-stale"' in response.text
-    assert 'src="/assets/guardian-events.js"' in response.text
+    assert 'src="/assets/guardian-events.js"' not in response.text
     assert 'href="/assets/dashboard.css"' in response.text
     assert "不提供图片或视频访问" in response.text
 
