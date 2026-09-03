@@ -6,7 +6,7 @@ from datetime import UTC, datetime, timedelta
 from typing import Protocol, get_args
 from zoneinfo import ZoneInfo
 
-from pydantic import ValidationError
+from pydantic import BaseModel, ValidationError
 
 from packages.contracts.events import ReadingState
 from services.dashboard.contracts import (
@@ -271,7 +271,7 @@ class LocalDashboardService:
                 for component in components
                 if (alert := _system_alert(component)) is not None
             )
-            if snapshot is not None and any(
+            if incident_query_available and snapshot is not None and any(
                 item.state == "open" and item.kind == "unreadable"
                 for item in snapshot.open_incidents
             ):
@@ -347,7 +347,7 @@ class LocalDashboardService:
             return _unavailable_environment(now)
         try:
             snapshot = EnvironmentSnapshot.model_validate(
-                self._environment.current(now)
+                _provider_payload(self._environment.current(now))
             )
             current = _environment_current(snapshot)
             component = DashboardComponentV1(
@@ -373,7 +373,10 @@ class LocalDashboardService:
         if self._environment is not None:
             try:
                 incidents_by_id.update(
-                    (item.incident_id, EnvironmentIncident.model_validate(item))
+                    (
+                        item.incident_id,
+                        EnvironmentIncident.model_validate(_provider_payload(item)),
+                    )
                     for item in self._environment.incidents()
                 )
             except Exception:
@@ -419,7 +422,7 @@ class LocalDashboardService:
         if self._guardian is not None:
             try:
                 upstream = DashboardComponentV1.model_validate(
-                    self._guardian.notification_component(now)
+                    _provider_payload(self._guardian.notification_component(now))
                 )
                 if (
                     upstream.component_id == "notification_queue"
@@ -483,12 +486,14 @@ class LocalDashboardService:
         )
         try:
             trend = EnvironmentTrend.model_validate(
-                self._environment.trend(trend_window, ended_at)
+                _provider_payload(self._environment.trend(trend_window, ended_at))
             )
             counts = EnvironmentIncidentCounts.model_validate(
-                self._environment.incident_counts(
-                    started_at=started_at,
-                    ended_at=ended_at,
+                _provider_payload(
+                    self._environment.incident_counts(
+                        started_at=started_at,
+                        ended_at=ended_at,
+                    )
                 )
             )
             _require_expected_trend(
@@ -526,7 +531,7 @@ class LocalDashboardService:
             return _unavailable_guardian_analytics()
         try:
             return DashboardGuardianAnalyticsV1.model_validate(
-                self._guardian.analytics(window, now)
+                _provider_payload(self._guardian.analytics(window, now))
             )
         except Exception:
             return _unavailable_guardian_analytics()
@@ -650,18 +655,24 @@ def _environment_alert(item: EnvironmentIncident) -> DashboardAlertV1:
 
 
 def _guardian_alert(item: object) -> DashboardAlertV1:
-    alert = DashboardAlertV1.model_validate(item)
-    return alert.model_copy(
-        update={
-            "opened_at": alert.opened_at.astimezone(UTC),
-            "updated_at": alert.updated_at.astimezone(UTC),
-            "recovered_at": (
-                alert.recovered_at.astimezone(UTC)
-                if alert.recovered_at is not None
-                else None
-            ),
-        }
-    )
+    payload = _provider_payload(item)
+    if isinstance(payload, dict):
+        payload = dict(payload)
+        for field in ("opened_at", "updated_at", "recovered_at"):
+            value = payload.get(field)
+            if (
+                isinstance(value, datetime)
+                and value.tzinfo is not None
+                and value.utcoffset() is not None
+            ):
+                payload[field] = value.astimezone(UTC)
+    return DashboardAlertV1.model_validate(payload)
+
+
+def _provider_payload(item: object) -> object:
+    if isinstance(item, BaseModel):
+        return item.model_dump(mode="python")
+    return item
 
 
 def _system_alert(component: DashboardComponentV1) -> DashboardAlertV1 | None:

@@ -303,6 +303,7 @@ class FakeEnvironment:
         counts: EnvironmentIncidentCounts | None = None,
         calibration_state: str = "available",
         fail_current: bool = False,
+        fail_incidents: bool = False,
         fail_trend: bool = False,
     ) -> None:
         self._snapshot = snapshot or available_snapshot()
@@ -315,6 +316,7 @@ class FakeEnvironment:
         )
         self._calibration_state = calibration_state
         self._fail_current = fail_current
+        self._fail_incidents = fail_incidents
         self._fail_trend = fail_trend
         self.count_boundaries: list[tuple[datetime, datetime]] = []
 
@@ -329,7 +331,7 @@ class FakeEnvironment:
         return self._trend
 
     def incidents(self) -> tuple[EnvironmentIncident, ...]:
-        if self._fail_current:
+        if self._fail_current or self._fail_incidents:
             raise RuntimeError("sqlite incidents failure")
         return self._incidents
 
@@ -644,6 +646,42 @@ def test_historical_unreadable_does_not_hide_a_distinct_current_failure() -> Non
     assert any(item.alert_id == "system:environment" for item in result.alerts)
 
 
+def test_incident_query_failure_keeps_current_unreadable_and_system_warning() -> None:
+    unreadable = incident(
+        "current-unreadable",
+        kind="unreadable",
+        reasons=("too_dark",),
+    )
+    result = dashboard(
+        environment=FakeEnvironment(
+            snapshot=unavailable_snapshot(open_incidents=(unreadable,)),
+            fail_incidents=True,
+        )
+    ).alerts(NOW)
+
+    assert any(item.alert_id == "environment:current-unreadable" for item in result.alerts)
+    assert any(item.alert_id == "system:environment" for item in result.alerts)
+
+
+def test_invalid_guardian_alert_model_degrades_only_guardian_projection() -> None:
+    malformed = guardian_alert("guardian:malformed").model_copy(
+        update={"priority": "not-a-dashboard-priority"}
+    )
+
+    result = dashboard(
+        guardian=FakeGuardian(alerts=(malformed,)),
+        environment=FakeEnvironment(
+            snapshot=available_snapshot(
+                open_incidents=(incident("room-warning"),)
+            )
+        ),
+    ).alerts(NOW)
+
+    assert not any(item.alert_id == "guardian:malformed" for item in result.alerts)
+    assert any(item.alert_id == "system:guardian_query" for item in result.alerts)
+    assert any(item.alert_id == "environment:room-warning" for item in result.alerts)
+
+
 def test_attention_uses_priority_then_earliest_open_time_not_list_order() -> None:
     older = guardian_alert(
         "guardian:older",
@@ -777,3 +815,15 @@ def test_guardian_analytics_failure_preserves_environment_section() -> None:
     assert result.guardian.confirmed_count == 0
     assert result.environment.state == "available"
     assert "sqlite" not in str(result.model_dump()).lower()
+
+
+def test_invalid_guardian_analytics_model_degrades_only_guardian_section() -> None:
+    malformed = guardian_analytics().model_copy(update={"confirmed_count": -1})
+
+    result = dashboard(
+        guardian=FakeGuardian(analytics_result=malformed)
+    ).analytics(DashboardWindow.HOURS_24, NOW)
+
+    assert result.guardian.state == "unavailable"
+    assert result.guardian.confirmed_count == 0
+    assert result.environment.state == "available"
