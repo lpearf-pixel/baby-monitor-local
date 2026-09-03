@@ -556,6 +556,27 @@ def test_dashboard_views_asset_requires_authentication_and_exposes_only_presente
     assert "/users/" not in response.text.lower()
 
 
+def test_dashboard_analytics_asset_requires_authentication_and_exposes_only_bounded_metrics() -> None:
+    app, _ = client()
+
+    assert app.get("/assets/dashboard-analytics.js").status_code == 401
+    response = app.get("/assets/dashboard-analytics.js", headers=auth())
+
+    assert response.status_code == 200
+    assert response.headers["content-type"].startswith("text/javascript")
+    assert response.headers["cache-control"] == "no-store"
+    assert "BabyMonitorDashboardAnalytics" in response.text
+    assert "/api/dashboard/analytics/24h" not in response.text
+    assert "/api/dashboard/analytics/${windowName}" in response.text
+    assert "/live.mjpeg" not in response.text
+    assert "/snapshot.jpeg" not in response.text
+    assert "sqlite" not in response.text.lower()
+    assert "database" not in response.text.lower()
+    assert "/evidence" not in response.text.lower()
+    assert "file://" not in response.text.lower()
+    assert "/users/" not in response.text.lower()
+
+
 def test_dashboard_shell_asset_requires_authentication_and_exposes_only_orchestration_code() -> None:
     app, _ = client()
 
@@ -570,6 +591,7 @@ def test_dashboard_shell_asset_requires_authentication_and_exposes_only_orchestr
     assert "/api/dashboard/alerts" in response.text
     assert "/api/dashboard/system" in response.text
     assert "/api/test-notification" in response.text
+    assert "mountDashboardAnalytics" in response.text
     assert "/live.mjpeg" not in response.text
     assert "/snapshot.jpeg" not in response.text
     assert "sqlite" not in response.text.lower()
@@ -665,6 +687,7 @@ def test_dashboard_loads_after_authentication() -> None:
         'src="/assets/dashboard-viewer.js"',
         'src="/assets/gauge-calibration.js"',
         'src="/assets/dashboard-views.js"',
+        'src="/assets/dashboard-analytics.js"',
         'src="/assets/dashboard-shell.js"',
     )
     assert [response.text.index(script) for script in scripts] == sorted(

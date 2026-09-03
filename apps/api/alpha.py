@@ -219,6 +219,7 @@ _ENVIRONMENT_SCRIPT = Path(__file__).with_name("environment_dashboard.js")
 _GAUGE_CALIBRATION_SCRIPT = Path(__file__).with_name("gauge_calibration.js")
 _GUARDIAN_EVENTS_SCRIPT = Path(__file__).with_name("guardian_events.js")
 _DASHBOARD_VIEWS_SCRIPT = Path(__file__).with_name("dashboard_views.js")
+_DASHBOARD_ANALYTICS_SCRIPT = Path(__file__).with_name("dashboard_analytics.js")
 _DASHBOARD_SHELL_SCRIPT = Path(__file__).with_name("dashboard_shell.js")
 _DASHBOARD_STYLE = Path(__file__).with_name("dashboard.css")
 _INCIDENT_ID = re.compile(r"^[A-Za-z0-9][A-Za-z0-9._-]{0,127}$")
@@ -334,6 +335,7 @@ _DASHBOARD = """<!doctype html>
 <script defer src="/assets/dashboard-viewer.js"></script>
 <script defer src="/assets/gauge-calibration.js"></script>
 <script defer src="/assets/dashboard-views.js"></script>
+<script defer src="/assets/dashboard-analytics.js"></script>
 <script defer src="/assets/dashboard-shell.js"></script>
 </body>
 </html>
@@ -415,6 +417,16 @@ def create_app(runtime: AlphaRuntime) -> FastAPI:
     ) -> Response:
         return Response(
             content=_DASHBOARD_VIEWS_SCRIPT.read_text(encoding="utf-8"),
+            media_type="text/javascript",
+            headers={"Cache-Control": "no-store"},
+        )
+
+    @app.get("/assets/dashboard-analytics.js")
+    def dashboard_analytics_script(
+        _parent: str = Depends(require_parent),
+    ) -> Response:
+        return Response(
+            content=_DASHBOARD_ANALYTICS_SCRIPT.read_text(encoding="utf-8"),
             media_type="text/javascript",
             headers={"Cache-Control": "no-store"},
         )

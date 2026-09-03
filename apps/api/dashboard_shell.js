@@ -7,7 +7,7 @@
     const mount = () => {
       if (!root.BabyMonitorDashboardViews) return;
       api.mountDashboardShell({
-        analyticsController: root.BabyMonitorDashboardAnalytics ?? null,
+        analytics: root.BabyMonitorDashboardAnalytics ?? null,
         clearInterval: root.clearInterval.bind(root),
         document: root.document,
         fetch: root.fetch.bind(root),
@@ -206,6 +206,15 @@
         typeof environment.clearInterval !== "function") {
       return null;
     }
+    const analyticsController = environment.analyticsController ?? (
+      typeof environment.analytics?.mountDashboardAnalytics === "function"
+        ? environment.analytics.mountDashboardAnalytics({
+          dateFormatter: environment.dateFormatter,
+          document,
+          fetch: environment.fetch,
+        })
+        : null
+    );
 
     const parsed = parseDashboardHash(window.location?.hash ?? "");
     let sourceFilter = "all";
@@ -218,7 +227,7 @@
     let paused = Boolean(document.hidden);
 
     const selectionOptions = (extra = {}) => ({
-      analyticsController: environment.analyticsController,
+      analyticsController,
       history: window.history,
       location: window.location,
       ...extra,

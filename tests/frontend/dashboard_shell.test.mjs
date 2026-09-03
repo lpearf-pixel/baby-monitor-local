@@ -284,6 +284,7 @@ function mountFixture({
   hidden = false,
   overview = overviewPayload(),
   system = systemPayload(),
+  analytics = null,
   analyticsController = {activate() {}},
 } = {}) {
   const document = new FakeDocument();
@@ -302,6 +303,7 @@ function mountFixture({
     return response(payloads.get(url));
   });
   const environment = {
+    analytics,
     analyticsController,
     clearInterval(id) {
       cleared.push(id);
@@ -674,6 +676,48 @@ test("scheduler never activates analytics and lifecycle restores only one timer 
   assert.equal(fixture.calls.length, callsAfterTick + 6);
   fixture.document.dispatch("visibilitychange");
   assert.equal(fixture.timers.length, 3);
+});
+
+
+test("shell mounts one lazy analytics controller that remains outside interval refresh", async () => {
+  const mounts = [];
+  const activations = [];
+  const refreshes = [];
+  const analytics = {
+    mountDashboardAnalytics(environment) {
+      mounts.push(environment);
+      return {
+        activate() {
+          activations.push("activate");
+        },
+        refresh() {
+          refreshes.push("refresh");
+        },
+      };
+    },
+  };
+  const fixture = mountFixture({analytics, analyticsController: null});
+  await fixture.shell.initialRefresh;
+
+  assert.equal(mounts.length, 1);
+  assert.equal(mounts[0].document, fixture.document);
+  assert.equal(typeof mounts[0].fetch, "function");
+  assert.deepEqual(activations, []);
+  assert.deepEqual(refreshes, []);
+
+  fixture.document.getElementById("tab-analytics").dispatch("click");
+  assert.deepEqual(activations, ["activate"]);
+  await fixture.timers[0].callback();
+  assert.deepEqual(activations, ["activate"]);
+  assert.deepEqual(refreshes, []);
+  assert.deepEqual(fixture.calls.map((call) => call.url), [
+    "/api/dashboard/overview",
+    "/api/dashboard/alerts",
+    "/api/dashboard/system",
+    "/api/dashboard/overview",
+    "/api/dashboard/alerts",
+    "/api/dashboard/system",
+  ]);
 });
 
 
