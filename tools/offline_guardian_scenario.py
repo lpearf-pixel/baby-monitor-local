@@ -213,6 +213,11 @@ def _execute_fixed_flow():
     return run, f"{run_root.name}/report"
 
 
+def execute_fixed_flow():
+    """Execute the accepted component flow for a higher-level offline gate."""
+    return _execute_fixed_flow()
+
+
 def _prepare_selected_visuals(
     manifest: VisualCorpusManifest,
     clips: tuple[VisualCorpusClip, ...],
