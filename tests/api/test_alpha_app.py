@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import base64
 from datetime import UTC, datetime, timedelta
+from html.parser import HTMLParser
 import re
 from dataclasses import dataclass, field
 from typing import Iterator
@@ -44,6 +45,41 @@ from tests.gauge.synthetic_dial import calibration as synthetic_calibration
 
 
 NOW = datetime(2026, 8, 5, 12, 0, tzinfo=UTC)
+
+
+class DashboardHtmlParser(HTMLParser):
+    def __init__(self) -> None:
+        super().__init__()
+        self.elements: list[tuple[str, dict[str, str | None]]] = []
+        self.ids: dict[str, list[dict[str, str | None]]] = {}
+        self.scripts: list[str] = []
+        self._in_script = False
+
+    def handle_starttag(
+        self,
+        tag: str,
+        attrs: list[tuple[str, str | None]],
+    ) -> None:
+        attributes = dict(attrs)
+        self.elements.append((tag, attributes))
+        if element_id := attributes.get("id"):
+            self.ids.setdefault(element_id, []).append(attributes)
+        if tag == "script":
+            self._in_script = True
+
+    def handle_endtag(self, tag: str) -> None:
+        if tag == "script":
+            self._in_script = False
+
+    def handle_data(self, data: str) -> None:
+        if self._in_script:
+            self.scripts.append(data)
+
+
+def parse_dashboard_html(markup: str) -> DashboardHtmlParser:
+    parser = DashboardHtmlParser()
+    parser.feed(markup)
+    return parser
 
 
 def auth(username: str = "parent", password: str = "secret") -> dict[str, str]:
@@ -588,25 +624,132 @@ def test_dashboard_uses_a_four_tab_shell_that_preserves_the_viewer() -> None:
     response = app.get("/", headers=auth())
 
     assert response.status_code == 200
-    assert response.text.count('role="tab"') == 4
-    assert response.text.count('role="tabpanel"') == 4
-    assert 'role="tablist"' in response.text
-    assert (
-        '<button id="tab-overview" type="button" role="tab" tabindex="0" '
-        'aria-controls="dashboard-overview" aria-selected="true">总览</button>'
-    ) in response.text
+    document = parse_dashboard_html(response.text)
+    required_ids = (
+        "dashboard-health",
+        "tab-overview",
+        "tab-alerts",
+        "tab-analytics",
+        "tab-system",
+        "alert-count",
+        "global-attention",
+        "dashboard-overview",
+        "dashboard-alerts",
+        "dashboard-analytics",
+        "dashboard-system",
+        "viewer",
+        "media-plane",
+        "live-image",
+        "hd-video",
+        "fullscreen",
+        "fullscreen-help",
+        "ptz-status",
+        "hd-status",
+        "snapshot-link",
+        "notify",
+        "gauge-calibration",
+        "overview-environment",
+        "overview-guardian",
+        "overview-components",
+        "overview-recent",
+        "overview-updated",
+        "overview-stale",
+        "environment-current",
+        "environment-detail",
+        "environment-last-valid",
+        "environment-trend-24h",
+        "environment-trend-7d",
+        "environment-trend",
+        "environment-incidents",
+        "guardian-events",
+        "guardian-events-stale",
+        "alerts-list",
+        "alerts-announcement",
+        "alerts-updated",
+        "alerts-stale",
+        "analytics-refresh",
+        "analytics-environment-kpi",
+        "analytics-guardian-kpi",
+        "analytics-notification-kpi",
+        "analytics-coverage-kpi",
+        "analytics-trend",
+        "analytics-summary",
+        "analytics-table",
+        "analytics-updated",
+        "analytics-stale",
+        "system-components",
+        "system-refresh",
+        "system-updated",
+        "system-stale",
+    )
+    assert all(len(document.ids.get(element_id, ())) == 1 for element_id in required_ids)
+    tablists = [
+        attributes
+        for tag, attributes in document.elements
+        if tag == "nav" and attributes.get("role") == "tablist"
+    ]
+    assert tablists == [{"class": "dashboard-tabs", "role": "tablist", "aria-label": "监控页面"}]
+    tabs = {
+        attributes["id"]: attributes
+        for tag, attributes in document.elements
+        if tag == "button" and attributes.get("role") == "tab"
+    }
+    assert set(tabs) == {"tab-overview", "tab-alerts", "tab-analytics", "tab-system"}
+    panels = [
+        attributes
+        for tag, attributes in document.elements
+        if tag == "section" and attributes.get("role") == "tabpanel"
+    ]
+    assert {attributes.get("id") for attributes in panels} == {
+        "dashboard-overview",
+        "dashboard-alerts",
+        "dashboard-analytics",
+        "dashboard-system",
+    }
+    assert tabs["tab-overview"].get("tabindex") == "0"
+    assert tabs["tab-overview"].get("aria-selected") == "true"
     for panel_id, tab_id in (
         ("dashboard-overview", "tab-overview"),
         ("dashboard-alerts", "tab-alerts"),
         ("dashboard-analytics", "tab-analytics"),
         ("dashboard-system", "tab-system"),
     ):
-        assert f'id="{panel_id}" role="tabpanel" aria-labelledby="{tab_id}"' in response.text
-    assert response.text.count('src="/live.mjpeg"') == 1
-    assert 'id="media-plane"' in response.text
-    assert 'id="status"' not in response.text
-    assert "refreshStatus" not in response.text
-    assert 'href="/assets/dashboard.css"' in response.text
+        tab = tabs[tab_id]
+        panel = document.ids[panel_id][0]
+        assert tab.get("aria-controls") == panel_id
+        assert tab.get("aria-selected") == ("true" if tab_id == "tab-overview" else "false")
+        assert tab.get("tabindex") == ("0" if tab_id == "tab-overview" else "-1")
+        assert panel.get("role") == "tabpanel"
+        assert panel.get("aria-labelledby") == tab_id
+        assert ("hidden" in panel) is (panel_id != "dashboard-overview")
+    assert [
+        attributes
+        for tag, attributes in document.elements
+        if tag == "img" and attributes.get("src") == "/live.mjpeg"
+    ] == [document.ids["live-image"][0]]
+    assert "status" not in document.ids
+    source_filters = {
+        attributes["data-alert-source"]: attributes.get("aria-pressed")
+        for tag, attributes in document.elements
+        if tag == "button" and "data-alert-source" in attributes
+    }
+    assert source_filters == {
+        "all": "true",
+        "guardian": "false",
+        "environment": "false",
+        "system": "false",
+    }
+    state_filters = {
+        attributes["data-alert-state"]: attributes.get("aria-pressed")
+        for tag, attributes in document.elements
+        if tag == "button" and "data-alert-state" in attributes
+    }
+    assert state_filters == {"all": "true", "open": "false", "recovered": "false"}
+    assert document.ids["alerts-announcement"][0].get("aria-live") == "polite"
+    assert document.ids["environment-trend"][0].get("width") == "900"
+    assert "document.getElementById('notify').onclick" in "".join(document.scripts)
+    assert "/api/test-notification" in "".join(document.scripts)
+    assert "refreshStatus" not in "".join(document.scripts)
 
 
 def test_dashboard_stylesheet_requires_authentication_and_is_compact() -> None:
@@ -621,6 +764,11 @@ def test_dashboard_stylesheet_requires_authentication_and_is_compact() -> None:
     assert "@media (max-width: 720px)" in response.text
     assert ":focus-visible" in response.text
     assert "@media (prefers-reduced-motion: reduce)" in response.text
+    assert re.search(
+        r"#environment-trend\s*\{[^}]*max-width:\s*100%\s*;[^}]*height:\s*auto\s*;",
+        response.text,
+        re.DOTALL,
+    )
 
 
 def test_dashboard_exposes_guardian_event_list_without_media_access() -> None:
