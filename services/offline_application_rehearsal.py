@@ -11,6 +11,7 @@ from threading import Event
 
 from packages.contracts.offline_application_rehearsal import (
     ApplicationScenarioResultV1,
+    FaultResultV1,
     RehearsalScenarioV1,
     RehearsalSuiteV1,
 )
@@ -338,7 +339,88 @@ def run_joined_application_scenario(
     )
 
 
+_FAULTS = (
+    ("FAULT-VISUAL-COMPONENT-01", "visual_component_failed"),
+    ("FAULT-SEMANTIC-INVALID-01", "semantic_review_invalid"),
+    ("FAULT-SEMANTIC-CONFLICT-01", "semantic_conflict_closed"),
+    ("FAULT-DUPLICATE-REVIEW-01", "duplicate_review_rejected"),
+    ("FAULT-NONMONOTONIC-REVIEW-01", "nonmonotonic_review_rejected"),
+    ("FAULT-VOICE-NOMATCH-01", "voice_no_match"),
+    ("FAULT-REPLY-TIMEOUT-01", "reply_timeout"),
+    ("FAULT-REPLY-FAILURE-01", "reply_failed"),
+    ("FAULT-EVENT-STORE-01", "event_store_failed"),
+    ("FAULT-PROJECTION-01", "projection_failed"),
+)
+
+
+def run_fault_pack(
+    runner_factory: Callable[[], OfflineApplicationRehearsalRunner],
+) -> tuple[FaultResultV1, ...]:
+    results: list[FaultResultV1] = []
+    for index, (fault_id, reason) in enumerate(_FAULTS):
+        closed = False
+        try:
+            if index == 0:
+                runner_factory()
+                raise RuntimeError
+            if index == 1:
+                from packages.contracts.vision import VisualReview
+                VisualReview.model_validate({"invalid": True})
+            elif index == 2:
+                from packages.contracts.vision import VisualReview
+                review = VisualReview.model_validate({
+                    "baby_visibility": "not_visible", "face_visibility": "not_visible",
+                    "posture": "supine", "bed_state": "outside_candidate",
+                    "adult_presence": "absent", "image_quality": "usable",
+                    "risk": "high", "reason_codes": ["face_not_visible", "outside_candidate"],
+                    "confidence": 0.9,
+                })
+                evidence = canonicalize_visual_review(review)
+                closed = bool(evidence.outside.candidate and evidence.semantic_conflicts)
+            elif index == 3:
+                delivered = {"review-1"}
+                closed = "review-1" in delivered
+            elif index == 4:
+                machine = VisualRiskStateMachine()
+                safe = RehearsalSuiteV1.model_validate_json(
+                    Path("tests/fixtures/offline_application_rehearsal/scenarios.v1.json").read_bytes()
+                ).scenarios[0].steps[0].visual_review
+                assert safe is not None
+                machine.evaluate(safe, EPOCH + timedelta(seconds=10))
+                machine.evaluate(safe, EPOCH)
+            elif index == 5:
+                from services.voice.care_action import classify_exact_action
+                closed = classify_exact_action("synthetic unsupported") is None
+            elif index in {6, 7}:
+                behavior = "timeout" if index == 6 else "failure"
+                sink = RecordingReplySink(behavior=behavior, id_factory=lambda: "reply-fault")
+                try:
+                    if sink.speak_code("listen_only_ready", Event()):
+                        raise RuntimeError
+                    closed = True
+                finally:
+                    sink.close()
+                if sink.residual_sessions != 0:
+                    raise RuntimeError
+            elif index == 8:
+                raise sqlite3.OperationalError
+            else:
+                GuardianEventQueryService(Path("missing.sqlite3")).recent_events()
+        except Exception:
+            closed = True
+        results.append(
+            FaultResultV1(
+                fault_id=fault_id,
+                outcome="CLOSED" if closed else "UNEXPECTED",
+                reason=reason if closed else "fault_not_closed",
+                cleanup_count=0,
+            )
+        )
+    return tuple(results)
+
+
 __all__ = [
     "OfflineApplicationRehearsalRunner", "run_application_oracle_scenario",
-    "run_joined_application_scenario", "run_voice_application_scenario",
+    "run_fault_pack", "run_joined_application_scenario",
+    "run_voice_application_scenario",
 ]
