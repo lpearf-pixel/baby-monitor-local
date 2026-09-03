@@ -153,18 +153,6 @@
     validateCountObject(value.risk_counts, riskKeys, "closed dashboard risk counts required");
     validateEvidence(value.evidence_counts);
     validateNotifications(value.notification_counts);
-    if (value.state === "unavailable") {
-      const countValues = [
-        value.confirmed_count, value.recovered_count, value.intervention_count,
-        ...riskKeys.map((key) => value.risk_counts[key]),
-        ...evidenceKeys.slice(0, 6).map((key) => value.evidence_counts[key]),
-        ...notificationKeys.slice(0, 4).map((key) => value.notification_counts[key]),
-      ];
-      if (countValues.some((item) => item !== 0) || value.recovery_median_seconds !== null ||
-          value.evidence_counts.ready_rate !== null || value.notification_counts.success_rate !== null) {
-        throw new TypeError(message);
-      }
-    }
     return value;
   }
 
@@ -378,6 +366,19 @@
     if (element) element.replaceChildren(...createLabeledValue(document, label, value));
   }
 
+  function replaceAnalyticsContent(document, value, detail) {
+    renderKpi(document, "analytics-environment-kpi", "环境数据可用率", value);
+    renderKpi(document, "analytics-guardian-kpi", "已确认 Guardian 事件", value);
+    renderKpi(document, "analytics-notification-kpi", "恢复时长中位数", value);
+    renderKpi(document, "analytics-coverage-kpi", "成人介入次数", value);
+    for (const id of ["analytics-trend", "analytics-summary", "analytics-table"]) {
+      const element = document.getElementById(id);
+      if (!element) continue;
+      element.replaceChildren();
+      element.textContent = detail;
+    }
+  }
+
   function appendCell(document, row, tagName, text) {
     const cell = document.createElement(tagName);
     cell.textContent = text;
@@ -434,22 +435,29 @@
 
     const updated = document.getElementById("analytics-updated");
     if (updated) updated.textContent = view.generatedText;
-    const stale = document.getElementById("analytics-stale");
-    if (stale) {
-      stale.hidden = true;
-      stale.textContent = "";
-    }
     return view;
   }
 
-  function markUnavailable(document) {
-    const updated = document.getElementById("analytics-updated");
-    if (updated) updated.textContent = "数据不可用";
+  function clearStale(document) {
     const stale = document.getElementById("analytics-stale");
     if (stale) {
       stale.hidden = true;
       stale.textContent = "";
     }
+  }
+
+  function markUnavailable(document) {
+    replaceAnalyticsContent(document, "不可用", "数据不可用");
+    const updated = document.getElementById("analytics-updated");
+    if (updated) updated.textContent = "数据不可用";
+    clearStale(document);
+  }
+
+  function markLoading(document) {
+    replaceAnalyticsContent(document, "正在读取…", "正在读取…");
+    const updated = document.getElementById("analytics-updated");
+    if (updated) updated.textContent = "正在读取…";
+    clearStale(document);
   }
 
   function markStale(document, generatedAt, options) {
@@ -468,6 +476,7 @@
       generation: 0,
       inFlight: null,
       lastSuccessAt: null,
+      stale: false,
     }]));
     const renderOptions = {dateFormatter: environment.dateFormatter};
 
@@ -479,7 +488,10 @@
 
     function renderCached(windowName) {
       const windowState = state.get(windowName);
-      return renderAnalytics(document, windowState.cache, renderOptions);
+      const view = renderAnalytics(document, windowState.cache, renderOptions);
+      if (windowState.stale) markStale(document, windowState.lastSuccessAt, renderOptions);
+      else clearStale(document);
+      return view;
     }
 
     function request(windowName) {
@@ -498,12 +510,16 @@
           if (generation !== windowState.generation) return {ok: false, superseded: true};
           windowState.cache = payload;
           windowState.lastSuccessAt = payload.generated_at;
-          if (currentWindow === windowName) renderAnalytics(document, payload, renderOptions);
+          windowState.stale = false;
+          if (currentWindow === windowName) renderCached(windowName);
           return {ok: true, payload};
         } catch (_error) {
           if (generation === windowState.generation && currentWindow === windowName) {
             if (windowState.cache === null) markUnavailable(document);
-            else markStale(document, windowState.lastSuccessAt, renderOptions);
+            else {
+              windowState.stale = true;
+              markStale(document, windowState.lastSuccessAt, renderOptions);
+            }
           }
           return {ok: false, error: unavailableCode};
         } finally {
@@ -520,6 +536,7 @@
         renderCached(currentWindow);
         return Promise.resolve({ok: true, cached: true, payload: windowState.cache});
       }
+      markLoading(document);
       return request(currentWindow);
     }
 
@@ -536,6 +553,7 @@
         renderCached(windowName);
         return Promise.resolve({ok: true, cached: true, payload: windowState.cache});
       }
+      markLoading(document);
       return request(windowName);
     }
 

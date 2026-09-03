@@ -394,6 +394,26 @@ test("presenter distinguishes real zero, null denominators, and unavailable sour
 });
 
 
+test("contract-valid unavailable Guardian masks stored metrics while environment remains renderable", () => {
+  const view = presentAnalytics(analyticsPayload({
+    guardian: {
+      state: "unavailable",
+      confirmed_count: 7,
+      recovered_count: 2,
+      intervention_count: 3,
+      recovery_median_seconds: 90,
+    },
+  }));
+
+  assert.equal(view.availabilityText, "75.0%");
+  assert.equal(view.buckets.length, 288);
+  for (const field of [
+    "confirmedText", "recoveredText", "recoveryMedianText", "interventionText",
+    "riskText", "evidenceText", "notificationSuccessText", "notificationText",
+  ]) assert.equal(view[field], "不可用");
+});
+
+
 test("available zero denominators display no-data without replacing count zero", () => {
   const view = presentAnalytics(analyticsPayload({
     environment: {
@@ -612,7 +632,7 @@ test("controller deduplicates one pending request per window and ignores inactiv
   assert.equal(fixture.calls.length, 2);
   pending24h.resolve(response(analyticsPayload()));
   await Promise.all([first, duplicate]);
-  assert.equal(fixture.document.getElementById("analytics-updated").textContent, "");
+  assert.equal(fixture.document.getElementById("analytics-updated").textContent, "正在读取…");
 
   pending7d.resolve(response(analyticsPayload({window: "7d", generated_at: "2026-09-03T01:03:00Z"})));
   await sevenDay;
@@ -643,6 +663,96 @@ test("failed refresh retains metrics, chart, and generated time while marking st
     fixture.document.getElementById("analytics-stale").textContent,
     "数据可能已过期 · 上次更新：fmt:2026-09-03T01:02:00.000Z",
   );
+});
+
+
+test("stale state belongs to each window and only a successful response clears it", async () => {
+  let twentyFourHourCalls = 0;
+  const fixture = mountFixture({fetch: async (url) => {
+    if (url.endsWith("/7d")) {
+      return response(analyticsPayload({
+        window: "7d",
+        generated_at: "2026-09-03T01:03:00Z",
+      }));
+    }
+    twentyFourHourCalls += 1;
+    if (twentyFourHourCalls === 2) return {ok: false};
+    return response(analyticsPayload({
+      generated_at: twentyFourHourCalls === 1
+        ? "2026-09-03T01:02:00Z"
+        : "2026-09-03T01:05:00Z",
+    }));
+  }});
+  await fixture.controller.activate();
+  await fixture.controller.refresh();
+  assert.equal(fixture.document.getElementById("analytics-stale").hidden, false);
+  assert.equal(fixture.calls.length, 2);
+
+  await fixture.controller.activate();
+  assert.equal(fixture.calls.length, 2);
+  assert.equal(fixture.document.getElementById("analytics-stale").hidden, false);
+  assert.equal(
+    fixture.document.getElementById("analytics-stale").textContent,
+    "数据可能已过期 · 上次更新：fmt:2026-09-03T01:02:00.000Z",
+  );
+
+  await fixture.controller.selectWindow("7d");
+  assert.equal(fixture.document.getElementById("analytics-stale").hidden, true);
+  assert.equal(fixture.document.getElementById("analytics-updated").textContent, "fmt:2026-09-03T01:03:00.000Z");
+  assert.equal(fixture.calls.length, 3);
+
+  await fixture.controller.selectWindow("24h");
+  assert.equal(fixture.calls.length, 3);
+  assert.equal(fixture.document.getElementById("analytics-stale").hidden, false);
+  assert.equal(
+    fixture.document.getElementById("analytics-stale").textContent,
+    "数据可能已过期 · 上次更新：fmt:2026-09-03T01:02:00.000Z",
+  );
+
+  await fixture.controller.refresh();
+  assert.equal(fixture.calls.length, 4);
+  assert.equal(fixture.document.getElementById("analytics-stale").hidden, true);
+  assert.equal(fixture.document.getElementById("analytics-updated").textContent, "fmt:2026-09-03T01:05:00.000Z");
+});
+
+
+test("uncached window loading and failure never display another window and can recover", async () => {
+  const firstSevenDay = deferred();
+  let sevenDayCalls = 0;
+  const fixture = mountFixture({fetch: async (url) => {
+    if (url.endsWith("/24h")) return response(analyticsPayload());
+    sevenDayCalls += 1;
+    if (sevenDayCalls === 1) return firstSevenDay.promise;
+    return response(analyticsPayload({
+      window: "7d",
+      generated_at: "2026-09-03T01:04:00Z",
+      guardian: {confirmed_count: 5},
+    }));
+  }});
+  await fixture.controller.activate();
+  assert.equal(fixture.document.getElementById("analytics-environment-kpi").children[1].textContent, "75.0%");
+
+  const firstSelection = fixture.controller.selectWindow("7d");
+  assert.equal(fixture.document.getElementById("analytics-environment-kpi").children[1].textContent, "正在读取…");
+  assert.equal(fixture.document.getElementById("analytics-trend").children.length, 0);
+  assert.equal(fixture.document.getElementById("analytics-summary").textContent, "正在读取…");
+  assert.equal(fixture.document.getElementById("analytics-table").children.length, 0);
+
+  firstSevenDay.resolve({ok: false});
+  assert.deepEqual(await firstSelection, {ok: false, error: "DASHBOARD_DATA_UNAVAILABLE"});
+  assert.equal(fixture.document.getElementById("analytics-environment-kpi").children[1].textContent, "不可用");
+  assert.equal(fixture.document.getElementById("analytics-trend").children.length, 0);
+  assert.equal(fixture.document.getElementById("analytics-trend").textContent, "数据不可用");
+  assert.equal(fixture.document.getElementById("analytics-summary").textContent, "数据不可用");
+  assert.equal(fixture.document.getElementById("analytics-table").children.length, 0);
+  assert.equal(fixture.document.getElementById("analytics-table").textContent, "数据不可用");
+
+  assert.deepEqual((await fixture.controller.refresh()).ok, true);
+  assert.equal(fixture.document.getElementById("analytics-guardian-kpi").children[1].textContent, "5");
+  assert.equal(fixture.document.getElementById("analytics-trend").children[1].tagName, "canvas");
+  assert.equal(fixture.document.getElementById("analytics-table").children[0].children[1].children.length, 168);
+  assert.equal(fixture.document.getElementById("analytics-updated").textContent, "fmt:2026-09-03T01:04:00.000Z");
+  assert.equal(fixture.document.getElementById("analytics-stale").hidden, true);
 });
 
 
