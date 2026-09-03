@@ -2480,3 +2480,39 @@ passed 46/46 in 3.04 seconds; the fixed validation target returned `result=PASS`
 `missing_scenarios=2`. One public duplicate-candidate thumbnail inspected before the
 tracked exact-ID match remains ignored and owner-private; no full media was downloaded.
 `git diff --check` passed after this record was added.
+
+## 2026-09-04 READY/baseline bounded public-source batch 2 — REJECT
+
+After the preceding REJECT was published, a second independently bounded G0 search ran
+from clean local/remote head `001716b6ce7f90c803be06d5112c1081770c3b09`.
+Exact public IDs were checked against tracked documentation and corpus metadata before
+review. Four new primary pages were examined; zero thumbnails and zero full media files
+were downloaded, and no known-source stop-ledger entry was retried.
+
+- Public Domain Pictures `725380` is a CC0 nursery-room still image, not a video.
+  Decision: `REJECT media_type_not_video`. Primary page:
+  `https://www.publicdomainpictures.net/en/view-image.php?image=725380&picture=baby-nursery-room`.
+- Pond5 `96680685` describes an 11-second empty crib, but the only listed full file is
+  a paid 147.5 MB PhotoJPEG MOV. It exceeds the 128 MiB per-file ceiling and has no
+  stable non-interactive public full-file URL. Decision:
+  `REJECT file_too_large_and_purchase_required`. Primary page:
+  `https://www.pond5.com/stock-footage/item/96680685-empty-crib-infants`.
+- Videezy `48793` describes a generic kids-room picture-frame mock-up. The primary
+  description does not establish a real crib, an empty crib/room monitoring domain or
+  authentic camera footage. Decision: `REJECT domain_and_authenticity_mismatch`.
+  Primary page:
+  `https://www.videezy.com/backgrounds/48793-mock-up-kids-room-interior-decoration`.
+- Videezy `52435` is explicitly a 3D-rendered tropical empty room with no crib.
+  Decision: `REJECT synthetic_and_no_crib`. Primary page:
+  `https://www.videezy.com/archive-footage/52435-large-room-with-two-large-boards-on-the-sides`.
+
+No candidate reached the complete-file gate, so checksum and 500 ms interval review
+were not applicable. Aggregate decision remains
+`REJECT visual_corpus_real_empty_wide_source_unavailable`; public readiness stays
+`PARTIAL` at 13 clips with `WIDE-02` and `NEG-01` missing. No manifest, code, baseline,
+replay, camera, household-media or protected-branch operation was performed.
+
+Fresh batch-2 closure evidence: the three prescribed corpus contract/tool/baseline test
+files passed 46/46 in 2.96 seconds. The fixed validator returned `result=PASS`,
+`readiness=PARTIAL`, `clip_count=13`, `admission=SKIP` and
+`missing_scenarios=2`. `git diff --check` passed after this result was recorded.
