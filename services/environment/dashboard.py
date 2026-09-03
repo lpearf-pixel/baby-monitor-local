@@ -18,6 +18,7 @@ from services.gauge.calibration import (
     Ws2021Calibration,
 )
 from services.storage.environment import (
+    EnvironmentIncidentCounts,
     EnvironmentStore,
     EnvironmentTrend,
     TrendWindow,
@@ -71,6 +72,14 @@ class LocalEnvironmentDashboardService:
             )
             for item in self._store.incidents()
         )
+
+    def incident_counts(
+        self,
+        *,
+        started_at: datetime,
+        ended_at: datetime,
+    ) -> EnvironmentIncidentCounts:
+        return self._store.incident_counts(started_at=started_at, ended_at=ended_at)
 
     def calibration_status(self) -> dict[str, object]:
         try:

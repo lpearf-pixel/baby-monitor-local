@@ -216,3 +216,97 @@ def test_open_incident_query_is_not_starved_by_newer_recovered_history(
         )
 
     assert [item.incident_id for item in store.open_incidents()] == ["old-open"]
+
+
+def test_incident_counts_use_the_full_half_open_window(tmp_path: Path) -> None:
+    module = storage_module()
+    store = module.EnvironmentStore(tmp_path / "events.sqlite3")
+    started_at = NOW - timedelta(days=7)
+
+    incidents = [
+        module.StoredEnvironmentIncident(
+            incident_id="before-window",
+            kind="range",
+            state="recovered",
+            severity="normal",
+            opened_at=started_at - timedelta(microseconds=1),
+            updated_at=started_at,
+            recovered_at=started_at,
+            reasons=(),
+        ),
+        module.StoredEnvironmentIncident(
+            incident_id="at-window-end",
+            kind="range",
+            state="open",
+            severity="critical",
+            opened_at=NOW,
+            updated_at=NOW,
+            reasons=("temperature_critical_high",),
+        ),
+    ]
+    incidents.extend(
+        module.StoredEnvironmentIncident(
+            incident_id=f"normal-{index}",
+            kind="range",
+            state="recovered",
+            severity="normal",
+            opened_at=started_at + timedelta(minutes=index),
+            updated_at=started_at + timedelta(minutes=index, seconds=1),
+            recovered_at=started_at + timedelta(minutes=index, seconds=1),
+            reasons=(),
+        )
+        for index in range(101)
+    )
+    incidents.extend(
+        module.StoredEnvironmentIncident(
+            incident_id=f"critical-{index}",
+            kind="range",
+            state="open",
+            severity="critical",
+            opened_at=started_at + timedelta(days=1, minutes=index),
+            updated_at=started_at + timedelta(days=1, minutes=index),
+            reasons=("temperature_critical_high",),
+        )
+        for index in range(2)
+    )
+    incidents.extend(
+        module.StoredEnvironmentIncident(
+            incident_id=f"unreadable-{index}",
+            kind="unreadable",
+            state="open",
+            severity="normal",
+            opened_at=started_at + timedelta(days=2, minutes=index),
+            updated_at=started_at + timedelta(days=2, minutes=index),
+            reasons=("reading_unavailable",),
+        )
+        for index in range(3)
+    )
+    for incident in incidents:
+        store.save_incident(incident)
+
+    counts = store.incident_counts(started_at=started_at, ended_at=NOW)
+
+    assert counts.range_normal == 101
+    assert counts.range_critical == 2
+    assert counts.unreadable == 3
+
+
+@pytest.mark.parametrize(
+    ("started_at", "ended_at"),
+    [
+        (NOW.replace(tzinfo=None), NOW),
+        (NOW - timedelta(days=1), NOW.replace(tzinfo=None)),
+        (NOW, NOW),
+        (NOW, NOW - timedelta(seconds=1)),
+    ],
+)
+def test_incident_counts_reject_invalid_boundaries(
+    tmp_path: Path,
+    started_at: datetime,
+    ended_at: datetime,
+) -> None:
+    module = storage_module()
+    store = module.EnvironmentStore(tmp_path / "events.sqlite3")
+
+    with pytest.raises(ValueError):
+        store.incident_counts(started_at=started_at, ended_at=ended_at)

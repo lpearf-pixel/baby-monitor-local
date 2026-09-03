@@ -15,6 +15,8 @@ from apps.api.alpha import AlphaRuntime, SnapshotViewport
 from apps.api.hd_stream import HdStreamService
 from apps.api.ptz import DisabledPtzAdapter, StepPtzController
 from packages.contracts.settings import AppSettings
+from services.dashboard.guardian_query import GuardianDashboardQuery
+from services.dashboard.service import LocalDashboardService
 from services.environment.bootstrap import build_dashboard_service
 from services.events.guardian_query import GuardianEventQueryService
 
@@ -59,11 +61,11 @@ class Go2RTCAlphaGateway:
                 f"{self._base_url}/api/streams", timeout=self._timeout_seconds
             ) as response:
                 payload = json.loads(response.read().decode("utf-8"))
-        except Exception as exc:
+        except Exception:
             return {
                 "camera": "offline",
                 "stream": self._stream_name,
-                "detail": type(exc).__name__,
+                "detail": "camera_status_unavailable",
             }
 
         streams = payload if isinstance(payload, dict) else {}
@@ -183,6 +185,8 @@ def runtime_from_env(environ: dict[str, str] | None = None) -> AlphaRuntime:
     gateway = notification_gateway_from_env(env)
     environment = None
     guardian_events = None
+    dashboard_guardian = None
+    settings: AppSettings | None = None
     settings_path_value = env.get("BABY_MONITOR_SETTINGS_PATH", "").strip()
     if settings_path_value:
         settings_path = Path(settings_path_value)
@@ -190,9 +194,20 @@ def runtime_from_env(environ: dict[str, str] | None = None) -> AlphaRuntime:
         data_dir = settings.app.data_dir
         if not data_dir.is_absolute():
             data_dir = Path.cwd() / data_dir
-        guardian_events = GuardianEventQueryService(data_dir / "events.sqlite3")
+        events_database = data_dir / "events.sqlite3"
+        guardian_events = GuardianEventQueryService(events_database)
+        dashboard_guardian = GuardianDashboardQuery(events_database)
         if settings.environment.enabled:
             environment = build_dashboard_service(settings, Path.cwd())
+    dashboard = LocalDashboardService(
+        camera=gateway,
+        guardian=dashboard_guardian,
+        environment=environment,
+        camera_reply_enabled=(
+            settings.voice_care.camera_reply_enabled if settings else False
+        ),
+        timezone_name=settings.app.timezone if settings else "Asia/Shanghai",
+    )
     return AlphaRuntime(
         username=username,
         password=password,
@@ -206,4 +221,5 @@ def runtime_from_env(environ: dict[str, str] | None = None) -> AlphaRuntime:
         ),
         environment=environment,
         guardian_events=guardian_events,
+        dashboard=dashboard,
     )
