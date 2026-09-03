@@ -814,19 +814,19 @@ def test_dashboard_uses_a_four_tab_shell_that_preserves_the_viewer() -> None:
         "gauge-calibration",
         "overview-environment",
         "overview-guardian",
+        "overview-guardian-title",
+        "overview-guardian-counts",
         "overview-components",
+        "overview-components-title",
+        "overview-components-list",
         "overview-recent",
+        "overview-recent-title",
+        "overview-recent-list",
         "overview-updated",
         "overview-stale",
         "environment-current",
         "environment-detail",
         "environment-last-valid",
-        "environment-trend-24h",
-        "environment-trend-7d",
-        "environment-trend",
-        "environment-incidents",
-        "guardian-events",
-        "guardian-events-stale",
         "alerts-list",
         "alerts-announcement",
         "alerts-updated",
@@ -910,7 +910,42 @@ def test_dashboard_uses_a_four_tab_shell_that_preserves_the_viewer() -> None:
     }
     assert state_filters == {"all": "true", "open": "false", "recovered": "false"}
     assert document.ids["alerts-announcement"][0].get("aria-live") == "polite"
-    assert document.ids["environment-trend"][0].get("width") == "900"
+    tagged_ids = {
+        attributes["id"]: tag
+        for tag, attributes in document.elements
+        if attributes.get("id")
+    }
+    assert tagged_ids["overview-guardian"] == "section"
+    assert tagged_ids["overview-guardian-counts"] == "p"
+    assert tagged_ids["overview-components"] == "section"
+    assert tagged_ids["overview-components-list"] == "div"
+    assert tagged_ids["overview-recent"] == "section"
+    assert tagged_ids["overview-recent-list"] == "ol"
+    for section_id, title_id in (
+        ("overview-guardian", "overview-guardian-title"),
+        ("overview-components", "overview-components-title"),
+        ("overview-recent", "overview-recent-title"),
+    ):
+        assert document.ids[section_id][0].get("aria-labelledby") == title_id
+        assert tagged_ids[title_id] == "h2"
+    assert re.search(
+        r'<section id="overview-guardian"[^>]*aria-labelledby="overview-guardian-title"[^>]*>'
+        r'.*?<h2 id="overview-guardian-title">.*?<p id="overview-guardian-counts"',
+        response.text,
+        re.DOTALL,
+    )
+    assert re.search(
+        r'<section id="overview-components"[^>]*aria-labelledby="overview-components-title"[^>]*>'
+        r'.*?<h2 id="overview-components-title">.*?<div id="overview-components-list"',
+        response.text,
+        re.DOTALL,
+    )
+    assert re.search(
+        r'<section id="overview-recent"[^>]*aria-labelledby="overview-recent-title"[^>]*>'
+        r'.*?<h2 id="overview-recent-title">.*?<ol id="overview-recent-list"',
+        response.text,
+        re.DOTALL,
+    )
     assert "".join(document.scripts).strip() == ""
     assert "refreshStatus" not in "".join(document.scripts)
 
@@ -927,11 +962,17 @@ def test_dashboard_stylesheet_requires_authentication_and_is_compact() -> None:
     assert "@media (max-width: 720px)" in response.text
     assert ":focus-visible" in response.text
     assert "@media (prefers-reduced-motion: reduce)" in response.text
-    assert re.search(
-        r"#environment-trend\s*\{[^}]*max-width:\s*100%\s*;[^}]*height:\s*auto\s*;",
+    assert ".dashboard-header h1, h2, h3" not in response.text
+    assert "outline:" in css_declarations(response.text, ".dashboard-alert.is-target")
+    assert 'content: "当前定位"' in css_declarations(
         response.text,
-        re.DOTALL,
+        ".dashboard-alert.is-target::before",
     )
+    for state in ("healthy", "degraded", "unavailable", "disabled"):
+        assert "border-color:" in css_declarations(
+            response.text,
+            f".component-{state}",
+        )
 
 
 @pytest.mark.parametrize("viewport_width", (320, 390))
@@ -967,17 +1008,27 @@ def test_dashboard_static_mobile_layout_contract(viewport_width: int) -> None:
     assert all(width <= viewport_width for width in fixed_page_widths)
 
 
-def test_dashboard_exposes_guardian_event_list_without_media_access() -> None:
+def test_dashboard_overview_has_no_orphan_legacy_widgets_or_media_access() -> None:
     app, _ = client()
 
     response = app.get("/", headers=auth())
 
     assert response.status_code == 200
-    assert 'id="guardian-events"' in response.text
-    assert 'id="guardian-events-stale"' in response.text
+    assert 'id="environment-current"' in response.text
+    assert 'id="environment-last-valid"' in response.text
+    for orphan_id in (
+        "environment-trend-24h",
+        "environment-trend-7d",
+        "environment-trend",
+        "environment-incidents",
+        "guardian-events",
+        "guardian-events-stale",
+    ):
+        assert f'id="{orphan_id}"' not in response.text
     assert 'src="/assets/guardian-events.js"' not in response.text
+    assert 'src="/assets/environment-dashboard.js"' not in response.text
     assert 'href="/assets/dashboard.css"' in response.text
-    assert "不提供图片或视频访问" in response.text
+    assert "图片或视频访问" not in response.text
 
 
 def test_dashboard_exposes_accessible_viewer_controls() -> None:

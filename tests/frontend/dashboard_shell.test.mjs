@@ -90,6 +90,7 @@ class FakeElement extends FakeEventTarget {
 
   set textContent(value) {
     this._textContent = String(value);
+    this.children = [];
     this.textWrites += 1;
   }
 
@@ -152,12 +153,30 @@ class FakeDocument extends FakeEventTarget {
     for (const id of [
       "live-image", "global-attention", "alert-count", "dashboard-health",
       "environment-current", "environment-detail", "environment-last-valid",
-      "overview-components", "overview-recent", "overview-updated", "overview-stale",
-      "alerts-list", "alerts-announcement", "alerts-updated", "alerts-stale",
+      "overview-guardian-counts", "overview-updated", "overview-stale",
+      "alerts-announcement", "alerts-updated", "alerts-stale",
       "system-components", "system-refresh", "system-updated", "system-stale", "notify",
     ]) {
       this.add(id);
     }
+    this.add("alerts-list", {tagName: "ol"});
+
+    const guardian = this.add("overview-guardian", {tagName: "section"});
+    const guardianTitle = this.add("overview-guardian-title", {tagName: "h2"});
+    guardian.setAttribute("aria-labelledby", guardianTitle.id);
+    guardian.append(guardianTitle, this.getElementById("overview-guardian-counts"));
+
+    const overviewComponents = this.add("overview-components", {tagName: "section"});
+    const overviewComponentsTitle = this.add("overview-components-title", {tagName: "h2"});
+    const overviewComponentsList = this.add("overview-components-list");
+    overviewComponents.setAttribute("aria-labelledby", overviewComponentsTitle.id);
+    overviewComponents.append(overviewComponentsTitle, overviewComponentsList);
+
+    const overviewRecent = this.add("overview-recent", {tagName: "section"});
+    const overviewRecentTitle = this.add("overview-recent-title", {tagName: "h2"});
+    const overviewRecentList = this.add("overview-recent-list", {tagName: "ol"});
+    overviewRecent.setAttribute("aria-labelledby", overviewRecentTitle.id);
+    overviewRecent.append(overviewRecentTitle, overviewRecentList);
     for (const section of ["overview", "alerts", "system"]) {
       this.getElementById(`${section}-stale`).hidden = true;
     }
@@ -490,6 +509,44 @@ test("first resource failure is unavailable and later failure marks retained con
   assert.equal(stale[0][1], "overview");
   assert.equal(stale[0][2].toISOString(), "2026-09-03T01:00:30.000Z");
   assert.doesNotMatch(stale[0].slice(1).map(String).join(" "), /private/);
+});
+
+
+test("first mounted failures close every section body and a later refresh restores rendered content", async () => {
+  let unavailable = true;
+  const fixture = mountFixture({fetch: async (url) => {
+    if (unavailable) throw new Error("private provider details");
+    if (url === "/api/dashboard/overview") return response(overviewPayload());
+    if (url === "/api/dashboard/alerts") return response(alertsPayload([closedAlert()]));
+    return response(systemPayload());
+  }});
+
+  assert.deepEqual(await fixture.shell.initialRefresh, [
+    {ok: false, error: "DASHBOARD_DATA_UNAVAILABLE"},
+    {ok: false, error: "DASHBOARD_DATA_UNAVAILABLE"},
+    {ok: false, error: "DASHBOARD_DATA_UNAVAILABLE"},
+  ]);
+  assert.equal(fixture.document.getElementById("dashboard-health").textContent, "总览数据不可用");
+  assert.equal(fixture.document.getElementById("environment-current").textContent, "不可用");
+  assert.equal(fixture.document.getElementById("overview-components-list").textContent, "组件状态不可用");
+  assert.equal(fixture.document.getElementById("overview-recent-list").children[0].textContent, "最近活动不可用");
+  assert.equal(fixture.document.getElementById("alerts-list").children[0].textContent, "警报数据不可用");
+  assert.equal(fixture.document.getElementById("system-components").textContent, "系统状态不可用");
+  assert.equal(fixture.document.getElementById("global-attention").hidden, true);
+  assert.doesNotMatch(
+    ["dashboard-health", "environment-current", "overview-components-list", "system-components"]
+      .map((id) => fixture.document.getElementById(id).textContent).join(" "),
+    /private provider details/,
+  );
+
+  unavailable = false;
+  const recovered = await fixture.shell.refresh();
+  assert.equal(recovered.every((result) => result.ok), true);
+  assert.equal(fixture.document.getElementById("dashboard-health").textContent, "当前未发现未恢复警报");
+  assert.equal(fixture.document.getElementById("overview-components-list").textContent, "暂无组件状态");
+  assert.equal(fixture.document.getElementById("overview-recent-list").children[0].textContent, "暂无警报");
+  assert.equal(fixture.document.getElementById("alerts-list").children[0].dataset.alertId, "guardian:event-1");
+  assert.equal(fixture.document.getElementById("system-components").textContent, "暂无组件状态");
 });
 
 

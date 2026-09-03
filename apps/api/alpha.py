@@ -285,20 +285,21 @@ _DASHBOARD = """<!doctype html>
           <p id="environment-current" aria-live="polite">正在读取…</p>
           <p id="environment-detail" class="muted"></p>
           <p class="environment-last-valid"><span>最近一次有效：</span><span id="environment-last-valid">无</span></p>
-          <p class="row"><button id="environment-trend-24h" type="button">24小时</button><button id="environment-trend-7d" type="button">7天</button></p>
-          <canvas id="environment-trend" width="900" height="220" aria-label="24小时温湿度趋势"></canvas>
-          <pre id="environment-incidents" aria-label="环境事件">无环境事件</pre>
         </section>
-        <section id="overview-guardian" class="card" aria-labelledby="guardian-events-title">
-          <div class="row"><h2 id="guardian-events-title">Guardian 事件</h2><span class="muted">最近 20 条</span></div>
-          <p id="guardian-events-stale" class="stale-warning" role="status" hidden></p>
-          <ol id="guardian-events" class="guardian-events" aria-live="polite"><li>正在读取…</li></ol>
-          <p class="muted">本页面仅显示事件与证据状态，不提供图片或视频访问。</p>
+        <section id="overview-guardian" class="card" aria-labelledby="overview-guardian-title">
+          <h2 id="overview-guardian-title">Guardian 摘要</h2>
+          <p id="overview-guardian-counts" aria-live="polite">正在读取…</p>
         </section>
       </div>
     </div>
-    <section id="overview-components" class="card compact-card"><h2>组件状态</h2><p class="muted">正在读取组件状态…</p></section>
-    <section id="overview-recent" class="card compact-card"><h2>最近活动</h2><p class="muted">正在读取最近活动…</p></section>
+    <section id="overview-components" class="card compact-card" aria-labelledby="overview-components-title">
+      <h2 id="overview-components-title">组件状态</h2>
+      <div id="overview-components-list" class="component-grid" aria-live="polite">正在读取组件状态…</div>
+    </section>
+    <section id="overview-recent" class="card compact-card" aria-labelledby="overview-recent-title">
+      <h2 id="overview-recent-title">最近活动</h2>
+      <ol id="overview-recent-list" class="dashboard-list" aria-live="polite"><li>正在读取最近活动…</li></ol>
+    </section>
     <p class="panel-meta"><span id="overview-updated">尚未更新</span><span id="overview-stale" class="is-stale" hidden>数据可能已过期</span></p>
   </section>
   <section id="dashboard-alerts" role="tabpanel" aria-labelledby="tab-alerts" hidden>

@@ -333,7 +333,7 @@
 
   function appendComponentRow(document, componentView, options) {
     const row = document.createElement("article");
-    row.className = `component component-${componentView.state}`;
+    row.className = `component-card component-${componentView.state}`;
     row.dataset.componentId = componentView.componentId;
     const title = document.createElement("strong");
     title.textContent = `${componentView.componentLabel} · ${componentView.stateLabel}`;
@@ -369,9 +369,9 @@
       ? view.environment.lastValidText
       : `${view.environment.lastValidText} · ${formatTimestamp(view.environment.lastValidCapturedAt, options)}`);
     setText(document, "dashboard-health", view.healthText);
-    setText(document, "overview-guardian", `未恢复：${view.guardianOpenCount === null ? "不可用" : view.guardianOpenCount} · 今日已恢复：${view.todayRecoveredCount === null ? "不可用" : view.todayRecoveredCount}`);
-    renderComponentCollection(document, "overview-components", view.components, options);
-    renderAlertCollection(document, "overview-recent", view.recentActivity, null);
+    setText(document, "overview-guardian-counts", `未恢复：${view.guardianOpenCount === null ? "不可用" : view.guardianOpenCount} · 今日已恢复：${view.todayRecoveredCount === null ? "不可用" : view.todayRecoveredCount}`);
+    renderComponentCollection(document, "overview-components-list", view.components, options);
+    renderAlertCollection(document, "overview-recent-list", view.recentActivity, null);
     setText(document, "overview-updated", formatTimestamp(view.generatedAt, options));
     clearStale(document, "overview");
     return view;
@@ -403,8 +403,7 @@
     const list = document.getElementById(elementId);
     if (!list) return;
     if (alerts.length === 0) {
-      list.replaceChildren();
-      list.textContent = "暂无警报";
+      renderListStatus(document, list, "暂无警报");
       return;
     }
     list.replaceChildren(...alerts.map((item) => appendAlertRow(document, item, {
@@ -421,6 +420,20 @@
       return;
     }
     container.replaceChildren(...components.map((item) => appendComponentRow(document, item, options)));
+  }
+
+  function renderListStatus(document, list, text) {
+    const item = document.createElement("li");
+    item.className = "collection-status muted";
+    item.textContent = text;
+    list.replaceChildren(item);
+  }
+
+  function renderTextStatus(document, elementId, text) {
+    const element = document.getElementById(elementId);
+    if (!element) return;
+    element.replaceChildren();
+    element.textContent = text;
   }
 
   function filterAlerts(alerts, sourceFilter = "all", stateFilter = "all") {
@@ -472,6 +485,29 @@
   }
 
   function markUnavailable(document, section) {
+    if (section === "overview") {
+      const attention = document.getElementById("global-attention");
+      if (attention) {
+        attention.replaceChildren();
+        attention.hidden = true;
+      }
+      const count = setText(document, "alert-count", "");
+      if (count) count.hidden = true;
+      setText(document, "dashboard-health", "总览数据不可用");
+      setText(document, "environment-current", "不可用");
+      setText(document, "environment-detail", "当前环境读数不可用");
+      setText(document, "environment-last-valid", "无最近有效读数");
+      setText(document, "overview-guardian-counts", "未恢复：不可用 · 今日已恢复：不可用");
+      renderTextStatus(document, "overview-components-list", "组件状态不可用");
+      const recent = document.getElementById("overview-recent-list");
+      if (recent) renderListStatus(document, recent, "最近活动不可用");
+    } else if (section === "alerts") {
+      const alerts = document.getElementById("alerts-list");
+      if (alerts) renderListStatus(document, alerts, "警报数据不可用");
+      setText(document, "alerts-announcement", "警报数据不可用");
+    } else if (section === "system") {
+      renderTextStatus(document, "system-components", "系统状态不可用");
+    }
     const target = document.getElementById(`${section}-updated`);
     if (target) target.textContent = "数据不可用";
     clearStale(document, section);

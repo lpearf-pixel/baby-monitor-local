@@ -82,15 +82,25 @@ function systemPayload(components = [component()]) {
 }
 
 class FakeElement {
-  constructor(id = '') {
+  constructor(id = '', tagName = 'div') {
     this.id = id;
+    this.tagName = tagName;
     this.children = [];
     this.className = '';
     this.dataset = {};
     this.attributes = new Map();
     this.hidden = false;
-    this.textContent = '';
+    this._textContent = '';
     this._innerHTMLWrites = 0;
+  }
+
+  get textContent() {
+    return this._textContent;
+  }
+
+  set textContent(value) {
+    this._textContent = String(value);
+    this.children = [];
   }
 
   set innerHTML(_value) {
@@ -104,7 +114,7 @@ class FakeElement {
 
   replaceChildren(...children) {
     this.children = children;
-    this.textContent = '';
+    this._textContent = '';
   }
 
   setAttribute(name, value) {
@@ -121,15 +131,39 @@ class FakeDocument {
     this.elements = new Map();
     for (const id of [
       'global-attention', 'alert-count', 'environment-current', 'environment-detail',
-      'environment-last-valid', 'guardian-events', 'overview-components',
-      'overview-recent', 'overview-guardian', 'dashboard-health', 'overview-updated', 'alerts-list',
+      'environment-last-valid', 'overview-guardian-counts', 'dashboard-health', 'overview-updated', 'alerts-list',
       'overview-stale', 'alerts-updated', 'alerts-stale', 'alerts-announcement',
       'system-components', 'system-updated', 'system-stale',
     ]) this.elements.set(id, new FakeElement(id));
+
+    const guardian = new FakeElement('overview-guardian', 'section');
+    const guardianTitle = new FakeElement('overview-guardian-title', 'h2');
+    guardian.setAttribute('aria-labelledby', guardianTitle.id);
+    guardian.append(guardianTitle, this.elements.get('overview-guardian-counts'));
+    this.elements.set(guardian.id, guardian);
+    this.elements.set(guardianTitle.id, guardianTitle);
+
+    const components = new FakeElement('overview-components', 'section');
+    const componentsTitle = new FakeElement('overview-components-title', 'h2');
+    const componentList = new FakeElement('overview-components-list', 'div');
+    components.setAttribute('aria-labelledby', componentsTitle.id);
+    components.append(componentsTitle, componentList);
+    this.elements.set(components.id, components);
+    this.elements.set(componentsTitle.id, componentsTitle);
+    this.elements.set(componentList.id, componentList);
+
+    const recent = new FakeElement('overview-recent', 'section');
+    const recentTitle = new FakeElement('overview-recent-title', 'h2');
+    const recentList = new FakeElement('overview-recent-list', 'ol');
+    recent.setAttribute('aria-labelledby', recentTitle.id);
+    recent.append(recentTitle, recentList);
+    this.elements.set(recent.id, recent);
+    this.elements.set(recentTitle.id, recentTitle);
+    this.elements.set(recentList.id, recentList);
   }
 
-  createElement() {
-    return new FakeElement();
+  createElement(tagName) {
+    return new FakeElement('', tagName);
   }
 
   getElementById(id) {
@@ -370,7 +404,7 @@ test('rendered overview retains last-valid time and rendered components use the 
     '22.0°C · 48.0%RH · 本地 2026-09-03T00:55:00.000Z',
   );
   assert.match(
-    document.getElementById('overview-components').children[0].children[1].textContent,
+    document.getElementById('overview-components-list').children[0].children[1].textContent,
     /本地 2026-09-03T01:00:00.000Z/,
   );
   assert.match(
@@ -379,18 +413,72 @@ test('rendered overview retains last-valid time and rendered components use the 
   );
 });
 
+test('overview rendering preserves labelled section headings and uses dedicated valid collection containers', () => {
+  const document = new FakeDocument();
+  const guardian = document.getElementById('overview-guardian');
+  const components = document.getElementById('overview-components');
+  const recent = document.getElementById('overview-recent');
+  const guardianHeading = guardian.children[0];
+  const componentsHeading = components.children[0];
+  const recentHeading = recent.children[0];
+
+  renderOverview(document, overviewPayload(), {dateFormatter: {format: () => '本地时间'}});
+
+  assert.equal(guardian.getAttribute('aria-labelledby'), guardianHeading.id);
+  assert.equal(components.getAttribute('aria-labelledby'), componentsHeading.id);
+  assert.equal(recent.getAttribute('aria-labelledby'), recentHeading.id);
+  assert.equal(guardian.children[0], guardianHeading);
+  assert.equal(components.children[0], componentsHeading);
+  assert.equal(recent.children[0], recentHeading);
+  assert.match(document.getElementById('overview-guardian-counts').textContent, /未恢复：0/);
+  assert.equal(document.getElementById('overview-components-list').tagName, 'div');
+  assert.equal(document.getElementById('overview-components-list').children[0].tagName, 'article');
+  assert.match(document.getElementById('overview-components-list').children[0].className, /component-card/);
+  assert.match(document.getElementById('overview-components-list').children[0].className, /component-healthy/);
+  assert.equal(document.getElementById('overview-recent-list').tagName, 'ol');
+  assert.equal(document.getElementById('overview-recent-list').children[0].tagName, 'li');
+});
+
 test('first unavailable, later stale, and recovered renders preserve last valid content and transition state', () => {
   const document = new FakeDocument();
   const formatter = {format: (date) => `本地 ${date.toISOString()}`};
 
+  document.getElementById('global-attention').append(new FakeElement('', 'button'));
+  document.getElementById('alert-count').hidden = false;
+
   markUnavailable(document, 'overview');
   assert.equal(document.getElementById('overview-updated').textContent, '数据不可用');
   assert.equal(document.getElementById('overview-stale').hidden, true);
+  assert.equal(document.getElementById('dashboard-health').textContent, '总览数据不可用');
+  assert.equal(document.getElementById('environment-current').textContent, '不可用');
+  assert.equal(document.getElementById('environment-detail').textContent, '当前环境读数不可用');
+  assert.equal(document.getElementById('environment-last-valid').textContent, '无最近有效读数');
+  assert.match(document.getElementById('overview-guardian-counts').textContent, /未恢复：不可用/);
+  assert.match(document.getElementById('overview-guardian-counts').textContent, /今日已恢复：不可用/);
+  assert.equal(document.getElementById('overview-components-list').textContent, '组件状态不可用');
+  assert.equal(document.getElementById('overview-recent-list').children[0].tagName, 'li');
+  assert.equal(document.getElementById('overview-recent-list').children[0].textContent, '最近活动不可用');
+  assert.equal(document.getElementById('global-attention').hidden, true);
+  assert.equal(document.getElementById('global-attention').children.length, 0);
+  assert.equal(document.getElementById('alert-count').hidden, true);
+
+  markUnavailable(document, 'alerts');
+  assert.equal(document.getElementById('alerts-list').children[0].tagName, 'li');
+  assert.equal(document.getElementById('alerts-list').children[0].textContent, '警报数据不可用');
+
+  markUnavailable(document, 'system');
+  assert.equal(document.getElementById('system-components').textContent, '系统状态不可用');
 
   renderOverview(document, overviewPayload(), {dateFormatter: formatter});
+  renderAlerts(document, alertPayload(), {dateFormatter: formatter});
+  renderSystem(document, systemPayload(), {dateFormatter: formatter});
   assert.equal(document.getElementById('overview-stale').hidden, true);
   assert.equal(document.getElementById('overview-updated').textContent, '本地 2026-09-03T01:00:00.000Z');
   assert.equal(document.getElementById('environment-current').textContent, '22.3°C · 48.5%RH');
+  assert.equal(document.getElementById('overview-components-list').children[0].tagName, 'article');
+  assert.equal(document.getElementById('overview-recent-list').children[0].dataset.alertId, 'guardian:event-1');
+  assert.equal(document.getElementById('alerts-list').children[0].dataset.alertId, 'guardian:event-1');
+  assert.equal(document.getElementById('system-components').children[0].dataset.componentId, 'camera');
 
   markStale(document, 'overview', NOW, {dateFormatter: formatter});
   assert.equal(document.getElementById('overview-stale').hidden, false);
@@ -408,6 +496,6 @@ test('nullable guardian counters stay unavailable while zero remains zero', () =
   renderOverview(document, overviewPayload({guardian_open_count: null, today_recovered_count: 0}), {
     dateFormatter: {format: () => '本地时间'},
   });
-  assert.match(document.getElementById('overview-guardian').textContent, /未恢复：不可用/);
-  assert.match(document.getElementById('overview-guardian').textContent, /今日已恢复：0/);
+  assert.match(document.getElementById('overview-guardian-counts').textContent, /未恢复：不可用/);
+  assert.match(document.getElementById('overview-guardian-counts').textContent, /今日已恢复：0/);
 });
