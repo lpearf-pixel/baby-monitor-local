@@ -327,6 +327,51 @@ def test_analytics_uses_half_open_windows_and_fixed_denominators(
     assert metrics.notification_counts.success_rate == 0.5
 
 
+def test_analytics_maps_malformed_persisted_timestamp_to_unavailable(
+    tmp_path: Path,
+) -> None:
+    database = create_database(tmp_path)
+    insert_event(
+        database,
+        event_id="event-1",
+        state="recovered",
+        opened_at=NOW - timedelta(minutes=2),
+        recovered_at=NOW - timedelta(minutes=1),
+        updated_at=NOW - timedelta(minutes=1),
+    )
+    with sqlite3.connect(database) as connection:
+        connection.execute(
+            "UPDATE visual_risk_events SET opened_at = 'not-a-timestamp' "
+            "WHERE event_id = 'event-1'"
+        )
+
+    with pytest.raises(GuardianDashboardQueryUnavailable):
+        GuardianDashboardQuery(database).analytics(DashboardWindow.HOURS_24, NOW)
+
+
+def test_analytics_maps_invalid_recovery_duration_to_unavailable(
+    tmp_path: Path,
+) -> None:
+    database = create_database(tmp_path)
+    recovered_at = NOW - timedelta(minutes=1)
+    insert_event(
+        database,
+        event_id="event-1",
+        state="recovered",
+        opened_at=NOW - timedelta(minutes=2),
+        recovered_at=recovered_at,
+        updated_at=recovered_at,
+    )
+    with sqlite3.connect(database) as connection:
+        connection.execute(
+            "UPDATE visual_risk_events SET opened_at = ? WHERE event_id = 'event-1'",
+            ((recovered_at + timedelta(seconds=1)).isoformat(),),
+        )
+
+    with pytest.raises(GuardianDashboardQueryUnavailable):
+        GuardianDashboardQuery(database).analytics(DashboardWindow.HOURS_24, NOW)
+
+
 def test_recovered_count_has_half_open_boundaries_and_requires_aware_times(
     tmp_path: Path,
 ) -> None:

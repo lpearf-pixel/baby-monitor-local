@@ -129,45 +129,48 @@ class GuardianDashboardQuery:
         now: datetime,
     ) -> DashboardGuardianAnalyticsV1:
         started_at = window_start(window, now)
-        summary = self._event_summary(started_at, now)
-        recovered_rows = self._recovered_rows(started_at, now)
-        intervention_count = self._intervention_count(started_at, now)
-        notification_counts = self._notification_counts(started_at, now)
-        recovery_durations = [
-            (
-                datetime.fromisoformat(row["recovered_at"])
-                - datetime.fromisoformat(row["opened_at"])
-            ).total_seconds()
-            for row in recovered_rows
-        ]
-        return DashboardGuardianAnalyticsV1(
-            state="available",
-            confirmed_count=int(summary["confirmed_count"]),
-            recovered_count=len(recovered_rows),
-            intervention_count=intervention_count,
-            recovery_median_seconds=(
-                float(median(recovery_durations)) if recovery_durations else None
-            ),
-            risk_counts=DashboardRiskCountsV1(
-                face_not_visible=int(summary["face_not_visible"]),
-                prone_candidate=int(summary["prone_candidate"]),
-                outside_candidate=int(summary["outside_candidate"]),
-            ),
-            evidence_counts=DashboardEvidenceCountsV1(
-                collecting=int(summary["collecting"]),
-                ready=int(summary["ready"]),
-                failed=int(summary["failed"]),
-                interrupted=int(summary["interrupted"]),
-                retained_total=int(summary["retained_total"]),
-                missing=int(summary["missing"]),
-                ready_rate=(
-                    int(summary["ready"]) / int(summary["retained_total"])
-                    if int(summary["retained_total"])
-                    else None
+        try:
+            summary = self._event_summary(started_at, now)
+            recovered_rows = self._recovered_rows(started_at, now)
+            intervention_count = self._intervention_count(started_at, now)
+            notification_counts = self._notification_counts(started_at, now)
+            recovery_durations = [
+                (
+                    datetime.fromisoformat(row["recovered_at"])
+                    - datetime.fromisoformat(row["opened_at"])
+                ).total_seconds()
+                for row in recovered_rows
+            ]
+            return DashboardGuardianAnalyticsV1(
+                state="available",
+                confirmed_count=int(summary["confirmed_count"]),
+                recovered_count=len(recovered_rows),
+                intervention_count=intervention_count,
+                recovery_median_seconds=(
+                    float(median(recovery_durations)) if recovery_durations else None
                 ),
-            ),
-            notification_counts=notification_counts,
-        )
+                risk_counts=DashboardRiskCountsV1(
+                    face_not_visible=int(summary["face_not_visible"]),
+                    prone_candidate=int(summary["prone_candidate"]),
+                    outside_candidate=int(summary["outside_candidate"]),
+                ),
+                evidence_counts=DashboardEvidenceCountsV1(
+                    collecting=int(summary["collecting"]),
+                    ready=int(summary["ready"]),
+                    failed=int(summary["failed"]),
+                    interrupted=int(summary["interrupted"]),
+                    retained_total=int(summary["retained_total"]),
+                    missing=int(summary["missing"]),
+                    ready_rate=(
+                        int(summary["ready"]) / int(summary["retained_total"])
+                        if int(summary["retained_total"])
+                        else None
+                    ),
+                ),
+                notification_counts=notification_counts,
+            )
+        except (ValueError, ValidationError) as exc:
+            raise GuardianDashboardQueryUnavailable from exc
 
     def recovered_count(self, started_at: datetime, ended_at: datetime) -> int:
         self._require_window(started_at, ended_at)
