@@ -2439,3 +2439,44 @@ and diff checks. The formal ordered queue has no approved unfinished software-on
 product slice after those results. No camera, microphone, speaker, PTZ, private media,
 notification, Baby Care database, medication path, long-running test, PR, merge or
 protected branch was accessed for this scheduling checkpoint.
+
+## 2026-09-04 READY/baseline bounded public-source batch — REJECT
+
+One new bounded G0 source batch started from clean local head
+`2ee824b8a7f5950b41e1e05bee5683f7dc302e76`; the published remote remained at its
+ancestor `a64ea743d6ccc84a47cc4f49e3a1f8c5f82c2f5b`. The batch reviewed three new
+primary candidate pages and downloaded zero full media files. The known-source stop
+ledger had no changed re-open fact.
+
+- Coverr `a-babys-room-9rwsdhjffh` describes a 12.0-second, 24 FPS, 16:9 zooming
+  shot and exposes a stable public HTTPS 1080p MP4. Its current primary license permits
+  commercial and non-commercial use but explicitly prohibits using Coverr media for AI
+  training or as a dataset in any form. Decision: `REJECT license_dataset_prohibited`.
+  Primary pages: `https://coverr.co/videos/a-babys-room-9rwsdhjffh` and
+  `https://coverr.co/license`.
+- Storyblocks `SBV-347630567` describes a 16-second no-people nursery-wide shot and
+  lists a 3.7 MB HD H.264 option, but the primary page requires sign-up/subscription to
+  download the full file. It provides no stable non-interactive public full-file URL.
+  Decision: `REJECT account_or_purchase_required`. Primary page:
+  `https://www.storyblocks.com/video/stock/zoom-in-shot-of-spacious-nursery-room-with-cozy-interior-and-no-people-during-day-there-is-teepee-baby-bed-carpet-with-toys-shelves-with-home-decor-pillows-and-plaid-on-window-sill-347630567`.
+- Pikwizard `8d2b157fab7b78951ca8b0d0968c6c77` is explicitly AI-generated and depicts a
+  father feeding an infant next to a crib. It therefore fails the real-footage,
+  adult-absent and baby-not-visible gates before any media retrieval. Decision:
+  `REJECT synthetic_and_people_present`. Primary page:
+  `https://pikwizard.com/video/father-bottle-feeding-infant-in-cozy-nursery-at-night-rocking-chair-bedtime-routine-video/8d2b157fab7b78951ca8b0d0968c6c77/`.
+
+Pixabay `nursery-toys-baby-mobile-child-567` was discovered in the search results but
+was already present in the tracked corpus source/license inventory, so it was removed
+as a duplicate and not counted as a new candidate. No candidate reached the complete-
+file gate; byte length, SHA-256 and 500 ms full-interval sampling were therefore not
+fabricated. Aggregate decision:
+`REJECT visual_corpus_real_empty_wide_source_unavailable`. The manifest stays
+`PARTIAL` at 13 clips with `WIDE-02` and `NEG-01` missing. No manifest, code, baseline,
+replay, camera, household-media or protected-branch operation was performed.
+
+Fresh closure evidence: the three prescribed corpus contract/tool/baseline test files
+passed 46/46 in 3.04 seconds; the fixed validation target returned `result=PASS`,
+`readiness=PARTIAL`, `clip_count=13`, `admission=SKIP` and
+`missing_scenarios=2`. One public duplicate-candidate thumbnail inspected before the
+tracked exact-ID match remains ignored and owner-private; no full media was downloaded.
+`git diff --check` passed after this record was added.
