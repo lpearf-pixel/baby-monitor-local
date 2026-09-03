@@ -514,11 +514,11 @@
           if (currentWindow === windowName) renderCached(windowName);
           return {ok: true, payload};
         } catch (_error) {
-          if (generation === windowState.generation && currentWindow === windowName) {
-            if (windowState.cache === null) markUnavailable(document);
-            else {
-              windowState.stale = true;
-              markStale(document, windowState.lastSuccessAt, renderOptions);
+          if (generation === windowState.generation) {
+            if (windowState.cache !== null) windowState.stale = true;
+            if (currentWindow === windowName) {
+              if (windowState.cache === null) markUnavailable(document);
+              else markStale(document, windowState.lastSuccessAt, renderOptions);
             }
           }
           return {ok: false, error: unavailableCode};

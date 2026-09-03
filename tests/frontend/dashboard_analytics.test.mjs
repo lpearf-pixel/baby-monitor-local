@@ -716,6 +716,51 @@ test("stale state belongs to each window and only a successful response clears i
 });
 
 
+test("a cached window records refresh failure while inactive until its next success", async () => {
+  const pendingTwentyFourHourRefresh = deferred();
+  let twentyFourHourCalls = 0;
+  const fixture = mountFixture({fetch: async (url) => {
+    if (url.endsWith("/7d")) {
+      return response(analyticsPayload({
+        window: "7d",
+        generated_at: "2026-09-03T01:03:00Z",
+      }));
+    }
+    twentyFourHourCalls += 1;
+    if (twentyFourHourCalls === 2) return pendingTwentyFourHourRefresh.promise;
+    return response(analyticsPayload({
+      generated_at: twentyFourHourCalls === 1
+        ? "2026-09-03T01:02:00Z"
+        : "2026-09-03T01:06:00Z",
+    }));
+  }});
+  await fixture.controller.activate();
+  const failedRefresh = fixture.controller.refresh();
+  await fixture.controller.selectWindow("7d");
+  assert.equal(fixture.document.getElementById("analytics-updated").textContent, "fmt:2026-09-03T01:03:00.000Z");
+  assert.equal(fixture.document.getElementById("analytics-stale").hidden, true);
+
+  pendingTwentyFourHourRefresh.resolve({ok: false});
+  assert.deepEqual(await failedRefresh, {ok: false, error: "DASHBOARD_DATA_UNAVAILABLE"});
+  assert.equal(fixture.document.getElementById("analytics-updated").textContent, "fmt:2026-09-03T01:03:00.000Z");
+  assert.equal(fixture.document.getElementById("analytics-stale").hidden, true);
+
+  await fixture.controller.selectWindow("24h");
+  assert.equal(fixture.calls.length, 3);
+  assert.equal(fixture.document.getElementById("analytics-updated").textContent, "fmt:2026-09-03T01:02:00.000Z");
+  assert.equal(fixture.document.getElementById("analytics-stale").hidden, false);
+  assert.equal(
+    fixture.document.getElementById("analytics-stale").textContent,
+    "数据可能已过期 · 上次更新：fmt:2026-09-03T01:02:00.000Z",
+  );
+
+  await fixture.controller.refresh();
+  assert.equal(fixture.calls.length, 4);
+  assert.equal(fixture.document.getElementById("analytics-updated").textContent, "fmt:2026-09-03T01:06:00.000Z");
+  assert.equal(fixture.document.getElementById("analytics-stale").hidden, true);
+});
+
+
 test("uncached window loading and failure never display another window and can recover", async () => {
   const firstSevenDay = deferred();
   let sevenDayCalls = 0;
