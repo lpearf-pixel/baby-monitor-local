@@ -1,12 +1,11 @@
 # Dashboard tabs, analytics and alerts pre-integration review
 
-**Status: accepted with explicit infrastructure exception.** The Dashboard-focused
-gates, complete frontend gate, compilation, diff/privacy/artifact scans and merge preview
-passed. The owner explicitly accepted the sole non-zero full-Python result after this
-executor denied Unix-domain socket creation before the unrelated affected test reached
-project code. The failing test was neither changed nor skipped. Task 9 is finalized by
-the commit containing this record, while the exact full-Python-zero plan assertion
-remains visibly unchecked.
+**Status: integrated and full-gate closed.** The Dashboard-focused gates, complete
+frontend gate, compilation, diff/privacy/artifact scans and merge preview passed. The
+pre-integration executor denied Unix-domain socket creation before the unrelated test
+reached project code; that accepted exception remains documented below as historical
+evidence. A post-integration run on exact merged head `2d0f2cc6` permitted the fixture
+and returned a zero-exit full Python gate, so the plan assertion is now checked.
 
 ## Exact state
 
@@ -175,3 +174,14 @@ has not advanced, merge into `codex/visual-regression-corpus`, rerun the availab
 on the integrated tree, and push the owner-authorized target ref. A future run in an
 executor that permits Unix-domain sockets should close the one deliberately unchecked
 full-Python-zero plan assertion.
+
+## Post-integration closure
+
+The Dashboard line, including final review fix `5271449`, was merged with target
+`fd7af067` as `2d0f2cc6d0b934ba4a81067133f7a823dfa6ec5e` and pushed by ordinary
+fast-forward to `origin/codex/visual-regression-corpus`. A fresh exact-head run in a
+macOS context that permits AF_UNIX fixtures closed the earlier infrastructure
+exception: full Python passed `2497` tests with one expected
+`visual_corpus_first_stage_incomplete` skip; frontend passed `132`; compilation and
+`git diff --check` also passed. The worktree and remote were clean and equal. No PR,
+protected-branch change or real-device access was performed by this closure.

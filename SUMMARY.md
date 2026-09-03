@@ -5,6 +5,14 @@ Updated: 2026-09-03
 ## Snapshot
 
 - Repository: `lpearf-pixel/baby-monitor-local` (public).
+- Compact Dashboard integration is complete on
+  `codex/visual-regression-corpus` at merged and published head `2d0f2cc6`. It adds the
+  authenticated four-tab Overview/Alerts/Analytics/System shell, read-only Guardian
+  and environment projections, bounded 24h/7d analytics, stale-data behavior and local
+  responsive assets. The merged exact-head gate passed 2497 Python tests with one
+  expected incomplete-public-corpus skip, 132 frontend tests, compilation and diff
+  checks. The earlier AF_UNIX executor failure is closed; physical iPhone rendering,
+  installed-i9 readiness and household accuracy remain separate real-device gates.
 - The owner resumed planning on 2026-08-30. The authoritative execution order is now
   `docs/superpowers/plans/2026-08-30-baby-monitor-ordered-delivery.md`, with the first
   software-only implementation slice in
@@ -564,7 +572,7 @@ window, not 24/72-hour stability or unattended-care safety.
 |---|---|
 | Protected default branch | `main`; unchanged by guardian work |
 | Stable Xiaomi branch | `stable/xiaomi-alpha` at `0df20ae` |
-| Active feature branch | `codex/voice-care-v1-gate-v1` at listen-only implementation `4590489` |
+| Active integrated feature branch | `codex/visual-regression-corpus`; Dashboard integration point `2d0f2cc6`, followed by this docs checkpoint |
 | Guardian evidence-retention runtime implementation | `718af9a` |
 | Guardian evidence-retention safety closure | `e3cd69c` |
 | Guardian live-notification helper | `d862f2a` |
@@ -576,11 +584,12 @@ window, not 24/72-hour stability or unattended-care safety.
 | Published Dashboard base | `69e2d5b` |
 | Published pre-Dashboard checkpoint | `checkpoint/guardian-r4-pre-dashboard-20260813` → `08dbc90` |
 | Preserved legacy remote branch | `codex/baby-guardian-event-loop` at `27274d8` |
-| PR/merge | No guardian PR; not merged |
+| Dashboard integration | merged on the feature branch at `2d0f2cc6`; no PR and no protected-branch merge |
 | Protected branches | `main` and `stable/xiaomi-alpha`; unchanged |
 
-The current Voice accuracy work remains local on `codex/voice-care-v1-gate-v1` and has
-not been pushed, merged or opened as a PR. Protected branches remain unchanged.
+The Dashboard and visual/offline rehearsal histories are integrated and published only
+on `codex/visual-regression-corpus`. Protected branches remain unchanged and no PR was
+created. Voice real-device decisions remain independent of this software integration.
 
 ## Latest Installed-i9 Runtime Evidence
 

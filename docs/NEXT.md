@@ -4,6 +4,12 @@ The repository baseline, environment software and functional Guardian loop are
 complete. Do not restart completed milestones. Execute the following stages in order;
 the detailed approved specs and plans remain authoritative for behavior.
 
+The compact Dashboard software line is also complete and merged into this branch at
+`2d0f2cc6`. Its former AF_UNIX infrastructure exception is closed by the exact merged-
+head 2497-pass Python gate; frontend is 132/132. Do not restart Dashboard implementation.
+Its remaining work is only the separately supervised installed-i9 and physical-iPhone
+visual smoke, which can be bundled with the next panoramic real-device session.
+
 **Authoritative order:** follow
 `docs/superpowers/plans/2026-08-30-baby-monitor-ordered-delivery.md` with its 2026-09-02
 owner-directed amendment. The current order is:

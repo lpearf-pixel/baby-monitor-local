@@ -4,6 +4,13 @@
 
 - Repository: initialized and public.
 - Design: approved.
+- Compact Dashboard: software-complete, independently reviewed, merged and published on
+  the current feature branch at `2d0f2cc6`. The final merged-head gate passed 2497
+  Python tests with one expected incomplete-public-corpus skip, 132 frontend tests,
+  compilation and diff checks. The former AF_UNIX executor exception is closed. This
+  proves authenticated APIs, four-tab behavior, read-only projections, bounded
+  analytics and failure handling in software; installed-i9 and physical-iPhone visual
+  smoke remain outstanding real-device evidence.
 - Ordered continuation (2026-08-30): the cross-module delivery order is recorded in
   `docs/superpowers/plans/2026-08-30-baby-monitor-ordered-delivery.md`. Stage 1 is the
   only resumed implementation stage and has a complete RED/GREEN plan at

@@ -2397,3 +2397,27 @@ Camera Reply, notification delivery, Baby Care integration or safe unattended ca
 Camera Reply remained false and camera, microphone, speaker, PTZ, household media,
 private overlay, real notification, Baby Care, medication and baseline promotion were
 not accessed. The separately authorized panoramic real-device gate was not entered.
+
+## 2026-09-03 Dashboard integration and full-gate closure
+
+The reviewed Dashboard line was integrated with visual/offline target `fd7af067` as
+merge commit `2d0f2cc6d0b934ba4a81067133f7a823dfa6ec5e`. The merge includes Dashboard
+implementation head `d8e7a09` and final review fix `5271449`, was published by ordinary
+fast-forward to `origin/codex/visual-regression-corpus`, and left local and remote refs
+equal with a clean worktree. No PR or protected branch was changed.
+
+Fresh evidence on the exact merged head:
+
+- full Python in a macOS context permitting Unix-domain socket fixtures: 2497 passed,
+  one expected `visual_corpus_first_stage_incomplete` skip, zero failures;
+- frontend: 132 passed, zero failed or skipped;
+- `compileall` and `git diff --check`: exit zero;
+- the pre-integration AF_UNIX failure did not reproduce, closing the only unchecked
+  Dashboard Task 9 software assertion.
+
+This evidence covers four-tab behavior, authenticated closed APIs, read-only Guardian
+and environment projections, bounded analytics, stale-data handling and software
+responsive/accessibility contracts. It does not prove installed-i9 readiness, physical
+iPhone rendering, household accuracy, real notification delivery or safe unattended
+care. No camera, microphone, speaker, PTZ, household media, real notification or Baby
+Care path was accessed during this closure.

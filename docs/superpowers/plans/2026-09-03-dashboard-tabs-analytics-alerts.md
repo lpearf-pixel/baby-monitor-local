@@ -1735,15 +1735,14 @@ scripts, which prevents duplicate polling.
   node --test tests/frontend/*.test.mjs
   ```
 
-- [ ] **Step 2: Run compilation and the full software gate — accepted infrastructure exception**
+- [x] **Step 2: Run compilation and the full software gate**
 
-  Owner accepted the sole non-zero result on 2026-09-03 as an executor-policy
-  exception: `2412 passed`, `1 expected skip`, and
-  `test_policy_acknowledgement_rejects_unix_socket` failed before project code when
-  this executor denied `socket(AF_UNIX)` with `EPERM`. Compilation, the complete
-  frontend suite, diff checks, and all Dashboard-focused Python tests returned zero.
-  This checkbox intentionally remains open because the exact full-Python-zero
-  assertion was not observed.
+  The pre-integration executor-policy exception is retained in the review record as
+  historical evidence. After integration, the exact merged head was rerun in a macOS
+  execution context that permits Unix-domain socket fixtures: full Python returned
+  zero with `2497 passed` and one expected public-corpus skip, frontend returned zero
+  with `132 passed`, and compilation plus `git diff --check` returned zero. The prior
+  AF_UNIX failure did not reproduce.
 
   ```bash
   ./.venv-alpha/bin/python -m compileall -q apps packages services tools
