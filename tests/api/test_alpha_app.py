@@ -550,6 +550,10 @@ def test_dashboard_views_asset_requires_authentication_and_exposes_only_presente
     assert "/live.mjpeg" not in response.text
     assert "/snapshot.jpeg" not in response.text
     assert "sqlite" not in response.text.lower()
+    assert "database" not in response.text.lower()
+    assert "/evidence" not in response.text.lower()
+    assert "file://" not in response.text.lower()
+    assert "/users/" not in response.text.lower()
 
 
 def test_dashboard_no_store_middleware_leaves_unrelated_routes_unchanged() -> None:

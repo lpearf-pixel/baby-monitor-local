@@ -208,10 +208,11 @@
       throw new TypeError("closed dashboard overview required");
     }
     const currentValues = [value.temperature_c, value.humidity_rh, value.captured_at, value.fresh_until];
+    const currentMeasurements = [value.temperature_c, value.humidity_rh];
     const lastValues = [value.last_valid_temperature_c, value.last_valid_humidity_rh, value.last_valid_captured_at];
     if ((value.state === "available" && (currentValues.some((item) => item === null) ||
         value.failure_reason !== null || Date.parse(value.fresh_until) <= Date.parse(value.captured_at))) ||
-        (value.state === "unavailable" && currentValues.some((item) => item !== null)) ||
+        (value.state === "unavailable" && currentMeasurements.some((item) => item !== null)) ||
         (lastValues.some((item) => item === null) && lastValues.some((item) => item !== null))) {
       throw new TypeError("closed dashboard overview required");
     }
@@ -225,6 +226,7 @@
       detailText: value.state === "available" ? "当前读数有效" : reasonLabels.get(value.failure_reason),
       lastValidText: value.last_valid_temperature_c === null ? "无最近有效读数"
         : formatValues(value.last_valid_temperature_c, value.last_valid_humidity_rh),
+      lastValidCapturedAt: value.last_valid_captured_at,
     };
   }
 
@@ -329,7 +331,7 @@
     return row;
   }
 
-  function appendComponentRow(document, componentView) {
+  function appendComponentRow(document, componentView, options) {
     const row = document.createElement("article");
     row.className = `component component-${componentView.state}`;
     row.dataset.componentId = componentView.componentId;
@@ -337,7 +339,7 @@
     title.textContent = `${componentView.componentLabel} · ${componentView.stateLabel}`;
     const detail = document.createElement("p");
     detail.className = "muted";
-    detail.textContent = componentView.reasonLabel;
+    detail.textContent = `${componentView.reasonLabel} · 更新时间：${formatTimestamp(componentView.updatedAt, options)}`;
     row.append(title, detail);
     return row;
   }
@@ -353,7 +355,9 @@
         button.type = "button";
         button.className = "attention-button";
         button.dataset.alertTarget = view.attention.alert.alertId;
-        button.textContent = `${view.attention.alert.priorityLabel}：${view.attention.alert.kindLabel}`;
+        button.textContent = `${view.attention.alert.priorityLabel}：${view.attention.alert.kindLabel}` +
+          (view.attention.additionalOpenCount > 0
+            ? ` · 另有 ${view.attention.additionalOpenCount} 项未恢复警报` : "");
         attention.append(button);
       }
     }
@@ -361,12 +365,15 @@
     if (count) count.hidden = view.openAlertCount === 0;
     setText(document, "environment-current", view.environment.currentText);
     setText(document, "environment-detail", view.environment.detailText);
-    setText(document, "environment-last-valid", view.environment.lastValidText);
+    setText(document, "environment-last-valid", view.environment.lastValidCapturedAt === null
+      ? view.environment.lastValidText
+      : `${view.environment.lastValidText} · ${formatTimestamp(view.environment.lastValidCapturedAt, options)}`);
     setText(document, "dashboard-health", view.healthText);
     setText(document, "overview-guardian", `未恢复：${view.guardianOpenCount === null ? "不可用" : view.guardianOpenCount} · 今日已恢复：${view.todayRecoveredCount === null ? "不可用" : view.todayRecoveredCount}`);
-    renderComponentCollection(document, "overview-components", view.components);
+    renderComponentCollection(document, "overview-components", view.components, options);
     renderAlertCollection(document, "overview-recent", view.recentActivity, null);
     setText(document, "overview-updated", formatTimestamp(view.generatedAt, options));
+    clearStale(document, "overview");
     return view;
   }
 
@@ -380,13 +387,15 @@
     renderAlertCollection(document, "alerts-list", view.alerts, options.highlightAlertId ?? null);
     applyAlertFilters(document, sourceFilter, stateFilter);
     setText(document, "alerts-updated", formatTimestamp(view.generatedAt, options));
+    clearStale(document, "alerts");
     return view;
   }
 
   function renderSystem(document, payload, options = {}) {
     const view = presentSystem(payload);
-    renderComponentCollection(document, "system-components", view.components);
+    renderComponentCollection(document, "system-components", view.components, options);
     setText(document, "system-updated", formatTimestamp(view.generatedAt, options));
+    clearStale(document, "system");
     return view;
   }
 
@@ -403,7 +412,7 @@
     })));
   }
 
-  function renderComponentCollection(document, elementId, components) {
+  function renderComponentCollection(document, elementId, components, options) {
     const container = document.getElementById(elementId);
     if (!container) return;
     if (components.length === 0) {
@@ -411,7 +420,7 @@
       container.textContent = "暂无组件状态";
       return;
     }
-    container.replaceChildren(...components.map((item) => appendComponentRow(document, item)));
+    container.replaceChildren(...components.map((item) => appendComponentRow(document, item, options)));
   }
 
   function filterAlerts(alerts, sourceFilter = "all", stateFilter = "all") {
@@ -445,18 +454,27 @@
     return visibleCount;
   }
 
-  function markStale(document, section) {
+  function clearStale(document, section) {
+    const stale = document.getElementById(`${section}-stale`);
+    if (stale) {
+      stale.hidden = true;
+      stale.textContent = "";
+    }
+  }
+
+  function markStale(document, section, lastSuccessAt = null, options = {}) {
     const stale = document.getElementById(`${section}-stale`);
     if (stale) {
       stale.hidden = false;
-      stale.textContent = "数据可能已过期";
+      stale.textContent = lastSuccessAt === null ? "数据可能已过期"
+        : `数据可能已过期 · 上次更新：${formatTimestamp(lastSuccessAt, options)}`;
     }
   }
 
   function markUnavailable(document, section) {
     const target = document.getElementById(`${section}-updated`);
     if (target) target.textContent = "数据不可用";
-    markStale(document, section);
+    clearStale(document, section);
   }
 
   return {

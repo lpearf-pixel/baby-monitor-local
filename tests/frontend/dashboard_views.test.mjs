@@ -6,6 +6,8 @@ const require = createRequire(import.meta.url);
 const {
   applyAlertFilters,
   filterAlerts,
+  markStale,
+  markUnavailable,
   presentAlerts,
   presentOverview,
   presentSystem,
@@ -121,7 +123,8 @@ class FakeDocument {
       'global-attention', 'alert-count', 'environment-current', 'environment-detail',
       'environment-last-valid', 'guardian-events', 'overview-components',
       'overview-recent', 'overview-guardian', 'dashboard-health', 'overview-updated', 'alerts-list',
-      'alerts-updated', 'alerts-announcement', 'system-components', 'system-updated',
+      'overview-stale', 'alerts-updated', 'alerts-stale', 'alerts-announcement',
+      'system-components', 'system-updated', 'system-stale',
     ]) this.elements.set(id, new FakeElement(id));
   }
 
@@ -151,6 +154,26 @@ test('unavailable current never becomes the main reading', () => {
 
   assert.equal(view.environment.currentText, '不可用');
   assert.equal(view.environment.lastValidText, '22.0°C · 48.0%RH');
+  assert.doesNotMatch(view.environment.currentText, /22/);
+});
+
+test('production-shaped unavailable environment keeps timestamps separate from current values', () => {
+  const view = presentOverview(overviewPayload({
+    environment: {
+      state: 'unavailable',
+      temperature_c: null,
+      humidity_rh: null,
+      captured_at: '2026-09-03T00:59:00Z',
+      fresh_until: '2026-09-03T01:00:00Z',
+      failure_reason: 'reading_unavailable',
+      last_valid_temperature_c: 22,
+      last_valid_humidity_rh: 48,
+      last_valid_captured_at: '2026-09-03T00:55:00Z',
+    },
+  }));
+
+  assert.equal(view.environment.currentText, '不可用');
+  assert.equal(view.environment.lastValidCapturedAt, '2026-09-03T00:55:00Z');
   assert.doesNotMatch(view.environment.currentText, /22/);
 });
 
@@ -215,6 +238,18 @@ test('closed alert and component enum values receive labels', () => {
   assert.deepEqual(labels.map((item) => item.evidenceLabel).filter(Boolean).length, kinds.length);
   assert.deepEqual(labels.map((item) => item.notificationLabel).filter(Boolean).length, kinds.length);
   assert.deepEqual(labels.filter((item) => item.resolutionLabel).length, kinds.length / 2);
+  assert.equal(
+    presentAlerts(alertPayload([alert({
+      state: 'recovered', recovered_at: NOW, resolution_cause: 'explicit_safe',
+    })])).alerts[0].resolutionLabel,
+    '已确认安全',
+  );
+  assert.equal(
+    presentAlerts(alertPayload([alert({
+      state: 'recovered', recovered_at: NOW, resolution_cause: 'subject_outside',
+    })])).alerts[0].resolutionLabel,
+    '目标已离开',
+  );
   assert.deepEqual(
     presentSystem(systemPayload(componentStates.map((state, index) => component({
       component_id: ['camera', 'guardian_query', 'environment', 'gauge_calibration'][index],
@@ -245,7 +280,7 @@ test('filters accept only closed values and preserve server order', () => {
   assert.throws(() => filterAlerts(alerts, 'all', 'watch'), /closed dashboard alert filter/);
 });
 
-test('rendering keeps malicious IDs in textContent and applies filters from trusted datasets', () => {
+test('rendering keeps malicious IDs in textContent, highlights only an exact ID, and applies filters from trusted datasets', () => {
   const document = new FakeDocument();
   const maliciousId = '<img src=x onerror=alert(1)>';
   renderOverview(document, overviewPayload({
@@ -255,7 +290,11 @@ test('rendering keeps malicious IDs in textContent and applies filters from trus
   renderAlerts(document, alertPayload([
     alert({alert_id: maliciousId}),
     alert({alert_id: 'environment-1', source: 'environment'}),
-  ]), {dateFormatter: {format: () => '本地时间'}, sourceFilter: 'guardian', stateFilter: 'all'});
+    alert({alert_id: 'environment-10', source: 'system'}),
+  ]), {
+    dateFormatter: {format: () => '本地时间'}, sourceFilter: 'guardian', stateFilter: 'all',
+    highlightAlertId: 'environment-1',
+  });
   renderSystem(document, systemPayload(), {dateFormatter: {format: () => '本地时间'}});
 
   const attentionButton = document.getElementById('global-attention').children[0];
@@ -266,12 +305,102 @@ test('rendering keeps malicious IDs in textContent and applies filters from trus
   assert.equal(firstAlert._innerHTMLWrites, 0);
   assert.equal(firstAlert.hidden, false);
   assert.equal(document.getElementById('alerts-list').children[1].hidden, true);
+  assert.equal(document.getElementById('alerts-list').children[1].className.includes('is-target'), true);
+  assert.equal(document.getElementById('alerts-list').children[2].className.includes('is-target'), false);
   assert.equal(document.getElementById('overview-updated').textContent, '本地时间');
   assert.equal(document.getElementById('alerts-updated').textContent, '本地时间');
   assert.equal(document.getElementById('system-updated').textContent, '本地时间');
 
   applyAlertFilters(document, 'all', 'all');
   assert.equal(document.getElementById('alerts-list').children[1].hidden, false);
+});
+
+test('overview attention includes only a nonzero additional open count', () => {
+  const document = new FakeDocument();
+  renderOverview(document, overviewPayload({
+    attention: {alert: alert(), additional_open_count: 0}, open_alert_count: 1,
+  }), {dateFormatter: {format: () => '本地时间'}});
+  assert.doesNotMatch(document.getElementById('global-attention').children[0].textContent, /另有/);
+
+  renderOverview(document, overviewPayload({
+    attention: {alert: alert(), additional_open_count: 2}, open_alert_count: 3,
+  }), {dateFormatter: {format: () => '本地时间'}});
+  assert.match(document.getElementById('global-attention').children[0].textContent, /另有 2 项未恢复警报/);
+});
+
+test('overview health summary gives confirmed critical then warning then component degradation precedence', () => {
+  assert.equal(
+    presentOverview(overviewPayload({
+      attention: {alert: alert({priority: 'critical'}), additional_open_count: 0},
+      components: [component({state: 'unavailable', reason_code: 'camera_unavailable'})],
+    })).healthText,
+    '存在已确认高风险警报',
+  );
+  assert.equal(
+    presentOverview(overviewPayload({
+      attention: {alert: alert({priority: 'warning'}), additional_open_count: 0},
+      components: [component({state: 'unavailable', reason_code: 'camera_unavailable'})],
+    })).healthText,
+    '存在需检查的警报',
+  );
+  assert.equal(
+    presentOverview(overviewPayload({
+      components: [component({state: 'degraded', reason_code: 'camera_offline'})],
+    })).healthText,
+    '系统组件需要检查',
+  );
+  assert.equal(presentOverview(overviewPayload()).healthText, '当前未发现未恢复警报');
+});
+
+test('rendered overview retains last-valid time and rendered components use the injected formatter', () => {
+  const document = new FakeDocument();
+  const formatter = {format: (date) => `本地 ${date.toISOString()}`};
+  renderOverview(document, overviewPayload({
+    environment: {
+      state: 'unavailable', temperature_c: null, humidity_rh: null,
+      captured_at: '2026-09-03T00:59:00Z', fresh_until: NOW,
+      failure_reason: 'reading_unavailable', last_valid_temperature_c: 22,
+      last_valid_humidity_rh: 48, last_valid_captured_at: '2026-09-03T00:55:00Z',
+    },
+  }), {dateFormatter: formatter});
+  renderSystem(document, systemPayload(), {dateFormatter: formatter});
+
+  assert.equal(
+    document.getElementById('environment-last-valid').textContent,
+    '22.0°C · 48.0%RH · 本地 2026-09-03T00:55:00.000Z',
+  );
+  assert.match(
+    document.getElementById('overview-components').children[0].children[1].textContent,
+    /本地 2026-09-03T01:00:00.000Z/,
+  );
+  assert.match(
+    document.getElementById('system-components').children[0].children[1].textContent,
+    /本地 2026-09-03T01:00:00.000Z/,
+  );
+});
+
+test('first unavailable, later stale, and recovered renders preserve last valid content and transition state', () => {
+  const document = new FakeDocument();
+  const formatter = {format: (date) => `本地 ${date.toISOString()}`};
+
+  markUnavailable(document, 'overview');
+  assert.equal(document.getElementById('overview-updated').textContent, '数据不可用');
+  assert.equal(document.getElementById('overview-stale').hidden, true);
+
+  renderOverview(document, overviewPayload(), {dateFormatter: formatter});
+  assert.equal(document.getElementById('overview-stale').hidden, true);
+  assert.equal(document.getElementById('overview-updated').textContent, '本地 2026-09-03T01:00:00.000Z');
+  assert.equal(document.getElementById('environment-current').textContent, '22.3°C · 48.5%RH');
+
+  markStale(document, 'overview', NOW, {dateFormatter: formatter});
+  assert.equal(document.getElementById('overview-stale').hidden, false);
+  assert.equal(document.getElementById('overview-stale').textContent, '数据可能已过期 · 上次更新：本地 2026-09-03T01:00:00.000Z');
+  assert.equal(document.getElementById('environment-current').textContent, '22.3°C · 48.5%RH');
+
+  renderOverview(document, overviewPayload({generated_at: '2026-09-03T01:01:00Z'}), {dateFormatter: formatter});
+  assert.equal(document.getElementById('overview-stale').hidden, true);
+  assert.equal(document.getElementById('overview-stale').textContent, '');
+  assert.equal(document.getElementById('overview-updated').textContent, '本地 2026-09-03T01:01:00.000Z');
 });
 
 test('nullable guardian counters stay unavailable while zero remains zero', () => {
