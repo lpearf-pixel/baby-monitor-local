@@ -226,17 +226,26 @@
 
     function focusPendingAlert() {
       if (pendingAlertId === null) return false;
+      const panel = document.getElementById("dashboard-alerts");
+      if (!panel || panel.hidden) return false;
       const list = document.getElementById("alerts-list");
       if (!list) return false;
       const row = Array.from(list.children).find(
         (candidate) => candidate.dataset?.alertId === pendingAlertId,
       );
-      if (!row) return false;
+      if (!row || row.hidden) return false;
       row.classList?.add("is-target");
       row.setAttribute?.("tabindex", "-1");
       if (typeof row.focus === "function") row.focus();
+      if (document.activeElement !== row) return false;
       pendingAlertId = null;
       return true;
+    }
+
+    function selectShellTab(tab, options = {}) {
+      const selected = selectTab(document, tab, selectionOptions(options));
+      if (tab === "alerts") focusPendingAlert();
+      return selected;
     }
 
     function renderAlerts(documentObject, payload) {
@@ -312,7 +321,6 @@
     function pause() {
       paused = true;
       stopTimer();
-      for (const controller of Object.values(controllers)) controller.invalidate();
     }
 
     function resume() {
@@ -323,12 +331,26 @@
       return refreshed;
     }
 
+    function setAlertFilters(nextSource, nextState) {
+      if (!alertSources.has(nextSource) || !alertStates.has(nextState)) return false;
+      sourceFilter = nextSource;
+      stateFilter = nextState;
+      for (const candidate of document.querySelectorAll("[data-alert-source]")) {
+        candidate.setAttribute("aria-pressed", String(candidate.dataset.alertSource === sourceFilter));
+      }
+      for (const candidate of document.querySelectorAll("[data-alert-state]")) {
+        candidate.setAttribute("aria-pressed", String(candidate.dataset.alertState === stateFilter));
+      }
+      views.applyAlertFilters(document, sourceFilter, stateFilter);
+      return true;
+    }
+
     const tabNames = [...tabs.keys()];
     for (const [index, tab] of tabNames.entries()) {
       const button = document.getElementById(`tab-${tab}`);
       if (!button) continue;
       button.addEventListener("click", () => {
-        selectTab(document, tab, selectionOptions());
+        selectShellTab(tab);
       });
       button.addEventListener("keydown", (event) => {
         let nextIndex = null;
@@ -338,30 +360,20 @@
         if (event.key === "End") nextIndex = tabNames.length - 1;
         if (nextIndex === null) return;
         event.preventDefault();
-        selectTab(document, tabNames[nextIndex], selectionOptions({focus: true}));
+        selectShellTab(tabNames[nextIndex], {focus: true});
       });
     }
 
     for (const button of document.querySelectorAll("[data-alert-source]")) {
       button.addEventListener("click", () => {
         const next = button.dataset.alertSource;
-        if (!alertSources.has(next)) return;
-        sourceFilter = next;
-        for (const candidate of document.querySelectorAll("[data-alert-source]")) {
-          candidate.setAttribute("aria-pressed", String(candidate.dataset.alertSource === sourceFilter));
-        }
-        views.applyAlertFilters(document, sourceFilter, stateFilter);
+        setAlertFilters(next, stateFilter);
       });
     }
     for (const button of document.querySelectorAll("[data-alert-state]")) {
       button.addEventListener("click", () => {
         const next = button.dataset.alertState;
-        if (!alertStates.has(next)) return;
-        stateFilter = next;
-        for (const candidate of document.querySelectorAll("[data-alert-state]")) {
-          candidate.setAttribute("aria-pressed", String(candidate.dataset.alertState === stateFilter));
-        }
-        views.applyAlertFilters(document, sourceFilter, stateFilter);
+        setAlertFilters(sourceFilter, next);
       });
     }
 
@@ -372,6 +384,7 @@
         if (!validAlertId(alertId)) return;
         highlightAlertId = alertId;
         pendingAlertId = alertId;
+        setAlertFilters("all", "all");
         selectTab(document, "alerts", selectionOptions({
           hash: `#tab=alerts&alert=${encodeURIComponent(alertId)}`,
         }));
@@ -411,9 +424,9 @@
       else resume();
     });
 
-    selectTab(document, parsed.tab, selectionOptions({
+    selectShellTab(parsed.tab, {
       writeHash: parsed.alertId === null,
-    }));
+    });
     const initialRefresh = refreshAll();
     startTimer();
 
@@ -421,7 +434,7 @@
       controllers,
       initialRefresh,
       refresh: refreshAll,
-      selectTab: (tab, options = {}) => selectTab(document, tab, selectionOptions(options)),
+      selectTab: selectShellTab,
     };
   }
 

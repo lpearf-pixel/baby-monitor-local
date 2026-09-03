@@ -112,7 +112,16 @@ class FakeElement extends FakeEventTarget {
   }
 
   focus() {
+    if (this.hidden) return false;
+    if (this.dataset.alertId && this.document.getElementById("dashboard-alerts").hidden) {
+      return false;
+    }
+    const naturallyFocusable = new Set(["button", "a", "input", "select", "textarea"]);
+    if (!naturallyFocusable.has(this.tagName) && this.getAttribute("tabindex") === null) {
+      return false;
+    }
     this.document.activeElement = this;
+    return true;
   }
 }
 
@@ -522,6 +531,119 @@ test("alert announcements ignore display timestamps but include closed semantic 
 });
 
 
+test("every closed alert semantic field and server order independently triggers an announcement", async (context) => {
+  const first = closedAlert("guardian:matrix-a", {
+    recovered_at: "2026-09-03T01:00:00Z",
+    state: "recovered",
+  });
+  const second = closedAlert("guardian:matrix-b", {
+    recovered_at: "2026-09-03T01:00:00Z",
+    state: "recovered",
+  });
+  const cases = [
+    ["id", () => [{...first, alert_id: "guardian:matrix-changed"}, second]],
+    ["source", () => [{...first, source: "environment"}, second]],
+    ["kind", () => [{...first, kind: "prone_candidate"}, second]],
+    ["state", () => [{...first, recovered_at: null, state: "open"}, second]],
+    ["priority", () => [{...first, priority: "warning"}, second]],
+    ["reasons", () => [{...first, reason_codes: ["too_dark"]}, second]],
+    ["intervention count", () => [{...first, adult_intervention_count: 1}, second]],
+    ["evidence", () => [{...first, evidence_state: "ready"}, second]],
+    ["notification", () => [{...first, notification_state: "delivered"}, second]],
+    ["resolution", () => [{...first, resolution_cause: "explicit_safe"}, second]],
+    ["server order", () => [second, first]],
+  ];
+
+  for (const [name, changedAlerts] of cases) {
+    await context.test(name, async () => {
+      let alertsGeneration = 0;
+      const fixture = mountFixture({fetch: async (url) => {
+        if (url === "/api/dashboard/alerts") {
+          alertsGeneration += 1;
+          return response(alertsPayload(
+            alertsGeneration === 1 ? [first, second] : changedAlerts(),
+            alertsGeneration === 1 ? "2026-09-03T01:00:00Z" : "2026-09-03T01:00:15Z",
+          ));
+        }
+        if (url === "/api/dashboard/overview") return response(overviewPayload());
+        return response(systemPayload());
+      }});
+      await fixture.shell.initialRefresh;
+      const announcement = fixture.document.getElementById("alerts-announcement");
+      const initialWrites = announcement.textWrites;
+
+      await fixture.timers[0].callback();
+
+      assert.equal(announcement.textWrites, initialWrites + 1);
+    });
+  }
+});
+
+
+test("every closed alert filter avoids fetch and preserves selection and server order", async () => {
+  const orderedAlerts = [
+    closedAlert("guardian:open"),
+    closedAlert("environment:recovered", {
+      recovered_at: "2026-09-03T01:00:00Z",
+      state: "recovered",
+    }),
+    closedAlert("system:recovered", {
+      kind: "camera_status",
+      priority: "warning",
+      reason_codes: ["camera_offline"],
+      recovered_at: "2026-09-03T01:00:00Z",
+      source: "system",
+      state: "recovered",
+    }),
+  ];
+  let alertGeneration = 0;
+  const fixture = mountFixture({fetch: async (url) => {
+    if (url === "/api/dashboard/alerts") {
+      alertGeneration += 1;
+      return response(alertsPayload(
+        orderedAlerts,
+        alertGeneration === 1 ? "2026-09-03T01:00:00Z" : "2026-09-03T01:00:15Z",
+      ));
+    }
+    if (url === "/api/dashboard/overview") return response(overviewPayload());
+    return response(systemPayload());
+  }});
+  await fixture.shell.initialRefresh;
+  const initialCalls = fixture.calls.length;
+  const alertIds = () => fixture.document.getElementById("alerts-list").children.map(
+    (row) => row.dataset.alertId,
+  );
+
+  for (const button of fixture.document.sourceButtons) {
+    button.dispatch("click");
+    assert.equal(fixture.calls.length, initialCalls);
+    assert.deepEqual(alertIds(), orderedAlerts.map((alert) => alert.alert_id));
+    for (const candidate of fixture.document.sourceButtons) {
+      assert.equal(
+        candidate.getAttribute("aria-pressed"),
+        String(candidate === button),
+      );
+    }
+  }
+  for (const button of fixture.document.stateButtons) {
+    button.dispatch("click");
+    assert.equal(fixture.calls.length, initialCalls);
+    assert.deepEqual(alertIds(), orderedAlerts.map((alert) => alert.alert_id));
+    for (const candidate of fixture.document.stateButtons) {
+      assert.equal(
+        candidate.getAttribute("aria-pressed"),
+        String(candidate === button),
+      );
+    }
+  }
+
+  await fixture.timers[0].callback();
+  assert.equal(fixture.document.sourceButtons.at(-1).getAttribute("aria-pressed"), "true");
+  assert.equal(fixture.document.stateButtons.at(-1).getAttribute("aria-pressed"), "true");
+  assert.deepEqual(alertIds(), orderedAlerts.map((alert) => alert.alert_id));
+});
+
+
 test("scheduler never activates analytics and lifecycle restores only one timer with one refresh", async () => {
   const activations = [];
   const fixture = mountFixture({analyticsController: {activate: () => activations.push("analytics")}});
@@ -552,6 +674,57 @@ test("scheduler never activates analytics and lifecycle restores only one timer 
   assert.equal(fixture.calls.length, callsAfterTick + 6);
   fixture.document.dispatch("visibilitychange");
   assert.equal(fixture.timers.length, 3);
+});
+
+
+test("hide and BFCache resume reuse pending resource requests before the next generation", async () => {
+  const urls = [
+    "/api/dashboard/overview",
+    "/api/dashboard/alerts",
+    "/api/dashboard/system",
+  ];
+  const first = new Map(urls.map((url) => [url, deferred()]));
+  const second = new Map(urls.map((url) => [url, deferred()]));
+  const active = new Map(urls.map((url) => [url, 0]));
+  const maximumActive = new Map(urls.map((url) => [url, 0]));
+  const generation = new Map(urls.map((url) => [url, 0]));
+  const fixture = mountFixture({fetch: (url) => {
+    const nextGeneration = generation.get(url) + 1;
+    generation.set(url, nextGeneration);
+    const activeCount = active.get(url) + 1;
+    active.set(url, activeCount);
+    maximumActive.set(url, Math.max(maximumActive.get(url), activeCount));
+    const request = nextGeneration === 1 ? first.get(url) : second.get(url);
+    return request.promise.finally(() => active.set(url, active.get(url) - 1));
+  }});
+
+  fixture.document.hidden = true;
+  fixture.document.dispatch("visibilitychange");
+  fixture.window.dispatch("pagehide", {persisted: true});
+  fixture.document.hidden = false;
+  fixture.window.dispatch("pageshow", {persisted: true});
+
+  assert.equal(fixture.calls.length, 3);
+  assert.deepEqual(Object.fromEntries(maximumActive), Object.fromEntries(urls.map((url) => [url, 1])));
+  assert.equal(fixture.timers.length, 2);
+
+  first.get("/api/dashboard/overview").resolve(response(overviewPayload()));
+  first.get("/api/dashboard/alerts").resolve(response(alertsPayload()));
+  first.get("/api/dashboard/system").resolve(response(systemPayload()));
+  await fixture.shell.initialRefresh;
+  assert.deepEqual(Object.fromEntries(active), Object.fromEntries(urls.map((url) => [url, 0])));
+
+  const nextTick = fixture.timers.at(-1).callback();
+  assert.equal(fixture.calls.length, 6);
+  assert.deepEqual(Object.fromEntries(maximumActive), Object.fromEntries(urls.map((url) => [url, 1])));
+  second.get("/api/dashboard/overview").resolve(response(overviewPayload(null, "2026-09-03T01:01:00Z")));
+  second.get("/api/dashboard/alerts").resolve(response(alertsPayload([], "2026-09-03T01:01:00Z")));
+  second.get("/api/dashboard/system").resolve(response(systemPayload("2026-09-03T01:01:00Z")));
+  await nextTick;
+
+  assert.equal(fixture.shell.controllers.overview.state.generation, 2);
+  assert.equal(fixture.shell.controllers.overview.state.lastPayload.generated_at, "2026-09-03T01:01:00Z");
+  assert.deepEqual(Object.fromEntries(active), Object.fromEntries(urls.map((url) => [url, 0])));
 });
 
 
@@ -623,6 +796,89 @@ test("pending attention target focuses one exact alert while filters persist and
     ["/api/dashboard/system"],
   );
   assert.equal(fixture.calls.some((call) => call.url.includes("guardian:event")), false);
+});
+
+
+test("attention clears incompatible filters so its exact alert becomes visible and focusable", async () => {
+  const target = closedAlert("guardian:target");
+  const fixture = mountFixture({
+    alertPayload: alertsPayload([target]),
+    overview: overviewPayload(target),
+  });
+  await fixture.shell.initialRefresh;
+  const targetRow = fixture.document.getElementById("alerts-list").children[0];
+
+  fixture.document.sourceButtons.find(
+    (button) => button.dataset.alertSource === "environment",
+  ).dispatch("click");
+  fixture.document.stateButtons.find(
+    (button) => button.dataset.alertState === "recovered",
+  ).dispatch("click");
+  assert.equal(targetRow.hidden, true);
+
+  const attention = fixture.document.getElementById("global-attention");
+  attention.dispatch("click", {target: attention.children[0]});
+  const focusedRow = fixture.document.getElementById("alerts-list").children[0];
+
+  assert.equal(focusedRow.hidden, false);
+  assert.equal(focusedRow.classList.contains("is-target"), true);
+  assert.equal(fixture.document.activeElement, focusedRow);
+  assert.equal(fixture.document.sourceButtons[0].getAttribute("aria-pressed"), "true");
+  assert.equal(fixture.document.stateButtons[0].getAttribute("aria-pressed"), "true");
+});
+
+
+test("a slow target stays pending while Alerts is hidden and focuses after returning", async () => {
+  const target = closedAlert("guardian:slow-target");
+  const pendingAlerts = deferred();
+  const fixture = mountFixture({
+    fetch: async (url) => {
+      if (url === "/api/dashboard/alerts") return pendingAlerts.promise;
+      if (url === "/api/dashboard/overview") return response(overviewPayload(target));
+      return response(systemPayload());
+    },
+  });
+  await settle();
+  const attention = fixture.document.getElementById("global-attention");
+  attention.dispatch("click", {target: attention.children[0]});
+  fixture.document.getElementById("tab-system").dispatch("click");
+
+  pendingAlerts.resolve(response(alertsPayload([target])));
+  await fixture.shell.initialRefresh;
+  const targetRow = fixture.document.getElementById("alerts-list").children[0];
+  assert.equal(fixture.document.activeElement, null);
+  assert.equal(fixture.document.getElementById("dashboard-alerts").hidden, true);
+
+  fixture.document.getElementById("tab-alerts").dispatch("click");
+  assert.equal(fixture.document.activeElement, targetRow);
+  assert.equal(targetRow.classList.contains("is-target"), true);
+});
+
+
+test("an alert hash with a deferred response focuses only its exact row after mount", async () => {
+  const target = closedAlert("guardian:hash-target");
+  const pendingAlerts = deferred();
+  const fixture = mountFixture({
+    fetch: async (url) => {
+      if (url === "/api/dashboard/alerts") return pendingAlerts.promise;
+      if (url === "/api/dashboard/overview") return response(overviewPayload());
+      return response(systemPayload());
+    },
+    hash: "#tab=alerts&alert=guardian%3Ahash-target",
+  });
+  assert.equal(fixture.document.activeElement, null);
+
+  pendingAlerts.resolve(response(alertsPayload([
+    closedAlert("guardian:hash-target-more"),
+    target,
+  ])));
+  await fixture.shell.initialRefresh;
+  const rows = fixture.document.getElementById("alerts-list").children;
+
+  assert.equal(rows[0].classList.contains("is-target"), false);
+  assert.equal(rows[1].classList.contains("is-target"), true);
+  assert.equal(fixture.document.activeElement, rows[1]);
+  assert.equal(fixture.window.location.hash, "#tab=alerts&alert=guardian%3Ahash-target");
 });
 
 
