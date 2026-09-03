@@ -1,6 +1,8 @@
 from __future__ import annotations
 
 import io
+import hashlib
+import json
 import os
 import sqlite3
 from collections import Counter
@@ -14,6 +16,8 @@ from packages.contracts.offline_application_rehearsal import (
     FaultResultV1,
     RehearsalScenarioV1,
     RehearsalSuiteV1,
+    RepetitionIterationV1,
+    RepetitionResultV1,
 )
 from packages.contracts.vision import VisualRiskKind
 from services.events.guardian_query import GuardianEventQueryService
@@ -126,24 +130,55 @@ def run_application_oracle_scenario(
 
 
 class OfflineApplicationRehearsalRunner:
-    def __init__(self, root: Path) -> None:
+    def __init__(
+        self,
+        root: Path,
+        *,
+        voice_fixture_provider: Callable[[str], bytes] | None = None,
+        asr_factory: Callable[[], object] | None = None,
+        reply_sink_factory: Callable[[str], RecordingReplySink] | None = None,
+    ) -> None:
         self._root = Path(root)
+        self._voice_fixture_provider = voice_fixture_provider
+        self._asr_factory = asr_factory
+        self._reply_sink_factory = reply_sink_factory
 
     def run_functional_pack(
         self, suite: RehearsalSuiteV1
     ) -> tuple[ApplicationScenarioResultV1, ...]:
         event_number = iter(range(1, 10_000))
         notification_number = iter(range(1, 10_000))
-        return tuple(
-            run_application_oracle_scenario(
-                scenario,
-                self._root / scenario.scenario_id,
-                event_id_factory=lambda: f"event-{next(event_number):08d}",
-                notification_id_factory=lambda: f"notification-{next(notification_number):08d}",
-            )
-            for scenario in suite.scenarios
-            if scenario.lane == "application_oracle"
-        )
+        results: list[ApplicationScenarioResultV1] = []
+        namespace = hashlib.sha256(self._root.name.encode("utf-8")).hexdigest()[:8]
+        event_factory = lambda: f"event-{namespace}-{next(event_number):08d}"
+        notification_factory = lambda: f"notification-{namespace}-{next(notification_number):08d}"
+        for scenario in suite.scenarios:
+            root = self._root / scenario.scenario_id
+            if scenario.lane == "application_oracle":
+                result = run_application_oracle_scenario(
+                    scenario, root, event_id_factory=event_factory,
+                    notification_id_factory=notification_factory,
+                )
+            elif self._voice_fixture_provider is None or self._asr_factory is None or self._reply_sink_factory is None:
+                continue
+            elif scenario.lane == "voice_application":
+                result = run_voice_application_scenario(
+                    scenario, root,
+                    voice_fixture_provider=self._voice_fixture_provider,
+                    asr_factory=self._asr_factory,
+                    reply_sink_factory=self._reply_sink_factory,
+                )
+            else:
+                result = run_joined_application_scenario(
+                    scenario, root,
+                    voice_fixture_provider=self._voice_fixture_provider,
+                    asr_factory=self._asr_factory,
+                    reply_sink_factory=self._reply_sink_factory,
+                    event_id_factory=event_factory,
+                    notification_id_factory=notification_factory,
+                )
+            results.append(result)
+        return tuple(results)
 
 
 class _ReplyRouter:
@@ -419,8 +454,106 @@ def run_fault_pack(
     return tuple(results)
 
 
+def _stable_functional_digest(
+    results: tuple[ApplicationScenarioResultV1, ...],
+) -> str:
+    payload = [item.model_dump(mode="json") for item in results]
+    next_event = 0
+    next_reply = 0
+    for item in payload:
+        normalized_events = []
+        for _value in item["event_ids"]:
+            next_event += 1
+            normalized_events.append(f"event-{next_event:04d}")
+        item["event_ids"] = normalized_events
+        normalized_replies = []
+        for _value in item["reply_ids"]:
+            next_reply += 1
+            normalized_replies.append(f"reply-{next_reply:04d}")
+        item["reply_ids"] = normalized_replies
+    canonical = json.dumps(payload, ensure_ascii=True, sort_keys=True, separators=(",", ":")).encode("ascii")
+    return hashlib.sha256(canonical).hexdigest()
+
+
+def _cross_risk_instance_pass(index: int, suite: RehearsalSuiteV1) -> bool:
+    machine = VisualRiskStateMachine()
+    if index % 2 == 0:
+        scenario = suite.scenarios[2]
+        transitions = tuple(
+            transition
+            for step in scenario.steps
+            for transition in machine.evaluate(
+                step.visual_review, EPOCH + timedelta(milliseconds=step.offset_ms)
+            )
+            if step.visual_review is not None
+        )
+        return all(item.risk_kind is not VisualRiskKind.FACE_NOT_VISIBLE for item in transitions)
+    scenario = suite.scenarios[5]
+    transitions = tuple(
+        transition
+        for step in scenario.steps
+        for transition in machine.evaluate(
+            step.visual_review, EPOCH + timedelta(milliseconds=step.offset_ms)
+        )
+        if step.visual_review is not None
+    )
+    recoveries = [
+        item for item in transitions
+        if item.risk_kind is VisualRiskKind.FACE_NOT_VISIBLE
+        and item.transition_kind.value == "recovered"
+    ]
+    return len(recoveries) == 1 and recoveries[0].notify is False
+
+
+def run_repetition_gate(
+    runner_factory: Callable[[int], OfflineApplicationRehearsalRunner],
+    suite: RehearsalSuiteV1,
+    *,
+    full_run_count: int = 10,
+    cross_risk_count: int = 50,
+) -> RepetitionResultV1:
+    if full_run_count != 10 or cross_risk_count != 50:
+        raise ValueError("repetition_quota_invalid")
+    iterations: list[RepetitionIterationV1] = []
+    seen_ids: set[str] = set()
+    expected_digest: str | None = None
+    first_failure: str | None = None
+    for iteration in range(1, 11):
+        results = runner_factory(iteration).run_functional_pack(suite)
+        digest = _stable_functional_digest(results)
+        identifiers = [value for item in results for value in (*item.event_ids, *item.reply_ids)]
+        if len(results) != 12 or any(item.status != "PASS" for item in results):
+            first_failure = first_failure or "functional_iteration_failed"
+        elif any(value in seen_ids for value in identifiers) or len(identifiers) != len(set(identifiers)):
+            first_failure = first_failure or "duplicate_generated_id"
+        elif any(item.counts.get("residual_reply_sessions", 0) != 0 for item in results):
+            first_failure = first_failure or "residual_reply_session"
+        elif any(item.counts.get("face.output", 0) != 0 for item in results if "EMPTY-BED" in item.scenario_id or "ADULT-ONLY" in item.scenario_id or "CROSS-RISK-LEGACY" in item.scenario_id):
+            first_failure = first_failure or "no_baby_face_output"
+        elif expected_digest is not None and digest != expected_digest:
+            first_failure = first_failure or "stable_digest_mismatch"
+        expected_digest = expected_digest or digest
+        seen_ids.update(identifiers)
+        iterations.append(RepetitionIterationV1(
+            iteration=iteration,
+            status="PASS" if first_failure is None else "FAIL",
+            stable_digest=digest,
+            counts={"functional_pass": sum(item.status == "PASS" for item in results)},
+        ))
+    cross_pass = sum(_cross_risk_instance_pass(index, suite) for index in range(50))
+    if cross_pass != 50:
+        first_failure = first_failure or "cross_risk_failed"
+    return RepetitionResultV1(
+        status="PASS" if first_failure is None else "FAIL",
+        reason=first_failure or "ok",
+        iterations=tuple(iterations),
+        cross_risk_instances=50,
+        cross_risk_pass=cross_pass,
+    )
+
+
 __all__ = [
     "OfflineApplicationRehearsalRunner", "run_application_oracle_scenario",
     "run_fault_pack", "run_joined_application_scenario",
-    "run_voice_application_scenario",
+    "run_repetition_gate", "run_voice_application_scenario",
 ]
