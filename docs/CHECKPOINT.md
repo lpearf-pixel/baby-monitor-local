@@ -2355,3 +2355,45 @@ or device compatibility. Camera Reply remained false; no camera, microphone, spe
 PTZ, household media, real notification, Baby Care, medication or baseline promotion
 was accessed. The next and only active slice is Task 1 of the dependent offline
 application-rehearsal plan; panoramic real-device work remains prohibited.
+
+## 2026-09-03 Offline application rehearsal software gate
+
+The dependent plan ran only after the cross-risk plan and its independent re-review
+were green. Tasks 1-9 produced focused commits from `0443aca` through `7380e7e`.
+The first independent review found three Important and two Minor issues: fault cases
+could self-classify unexpected exceptions as CLOSED, the fixed Voice pack omitted
+controller-level negative lifecycles, report IDs accepted prose/path values, the CLI
+reported a relative path rather than a basename, and HTML omitted mandatory zeroes.
+All were reproduced RED and fixed in exact implementation head
+`908e46d3038fa1bdf14962555f30e27e25b1492f`.
+
+Fresh final evidence at that head:
+
+- nine-path application focus: 57 passed in 11.69 seconds;
+- full Python: 2404 passed, one expected
+  `visual_corpus_first_stage_incomplete` skip, in 277.54 seconds;
+- authoritative frontend command `node --test tests/frontend/*.test.mjs`: 73 passed;
+- `make PYTHON=../../.venv-alpha/bin/python alpha-offline-application-validate`:
+  PASS with 12 scenarios split 6 application / 3 Voice / 3 joined and three historical
+  items, with Camera Reply false;
+- `make PYTHON=../../.venv-alpha/bin/python alpha-offline-application-run`: PASS with
+  12/12 functional scenarios, 10/10 full iterations, 50/50 cross-risk instances and ten
+  CLOSED fault cases. Its once-only imported prerequisite passed 8 scenarios, 13 lanes,
+  five clips and 330 frames with zero skipped, dropped, decode-error or worker-error
+  frames;
+- ignored report `run-8ca28b6fbfb77d8e` has 0700 run/report directories and 0600
+  JSON/HTML. All forbidden side-effect and no-baby face/residual counters are zero;
+  the ten normalized iteration digests are identical at
+  `8f04d13c1fb2a3085dc6a04b8d3f065bc7b00bcecd5b8776b47efe217330c757`;
+- compile checks, Make dry-runs, `git diff --check`, tracked-media inventory and bounded
+  privacy scans passed. Privacy matches outside the candidate were existing synthetic
+  canaries or documented scan commands, not household data;
+- independent final review of `9bb2ad4..908e46d` found 0 Critical, 0 Important and
+  0 Minor. It separately reran all nine focused paths: 57 passed.
+
+This is deterministic software application/control-flow evidence. It does not prove
+live Voice recall, real-baby or household visual accuracy, installed performance,
+Camera Reply, notification delivery, Baby Care integration or safe unattended care.
+Camera Reply remained false and camera, microphone, speaker, PTZ, household media,
+private overlay, real notification, Baby Care, medication and baseline promotion were
+not accessed. The separately authorized panoramic real-device gate was not entered.

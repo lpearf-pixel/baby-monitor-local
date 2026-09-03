@@ -1,6 +1,6 @@
 # Baby Monitor Local Project Summary
 
-Updated: 2026-09-02
+Updated: 2026-09-03
 
 ## Snapshot
 
@@ -27,16 +27,24 @@ Updated: 2026-09-02
   approved its exact alert semantics on 2026-09-02. Two implementation plans now make
   the handoff executable: first
   `docs/superpowers/plans/2026-09-02-visual-cross-risk-correction.md`, then
-  `docs/superpowers/plans/2026-09-02-offline-application-rehearsal.md`. The first plan is
-  software-complete and independently review-clean at business head `02fdca1`.
+  `docs/superpowers/plans/2026-09-02-offline-application-rehearsal.md`. Both plans are
+  software-complete and independently review-clean. Cross-risk behavior is fixed at
+  `02fdca1`; the application-rehearsal implementation and review fixes end at
+  `908e46d`.
   Canonical evidence prevents empty-bed and adult-only observations from starting face
   output, retains the baby-present face control, and requires two same-cause observations
   across the existing ten-second interval before recovery. Confirmed `subject_outside`
   is persisted without a recovery notification; `explicit_safe` remains notifying.
-  Fresh gates passed 2353 Python tests with one expected public-corpus skip, 73 frontend
-  tests, and the unchanged 8-scenario/13-lane/330-frame flow. Camera Reply remains false.
-  The exact next slice is Task 1 of the dependent offline application-rehearsal plan;
-  no live Stage 2 repetition or panoramic gate is authorized.
+  The final software gate passed 57 focused tests, 2404 Python tests with one expected
+  incomplete-public-corpus skip, 73 frontend tests, and an actual application run with
+  12/12 functional scenarios, 10/10 fresh repetitions, 50/50 cross-risk instances and
+  ten CLOSED fault cases. The imported 8-scenario/13-lane/5-clip/330-frame prerequisite
+  had zero skip/drop/decode/worker errors. Report `run-8ca28b6fbfb77d8e` is ignored and
+  owner-private; its stable repetition digest is
+  `8f04d13c1fb2a3085dc6a04b8d3f065bc7b00bcecd5b8776b47efe217330c757`.
+  Camera Reply remained false and every forbidden side effect was zero. This is
+  software control-flow evidence only. The next product gate is a separately authorized
+  panoramic real-device session; it was not entered by this work.
 - Visual regression corpus work is published on `codex/visual-regression-corpus`; the
   public-corpus proposal base is `681edd3c49d0ccca442af064188a4e8b814a4db5`.
   The published branch includes the private-overlay software, four-scenario offline

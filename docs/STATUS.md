@@ -26,10 +26,16 @@
   cause-homogeneous, so one missing frame cannot combine with an explicit-safe frame to
   close an alert. Fresh evidence is 2353 Python passed / one expected incomplete-public-
   corpus skip, 73/73 frontend, and 8/8 scenarios, 13/13 lanes, 330/330 frames with zero
-  skip/drop/decode/worker errors. Independent re-review found no findings. This proves
-  deterministic software semantics, not live model or baby accuracy. No live payload or
-  private media was read and Camera Reply stays false. The dependent application-
-  rehearsal plan is now the only active software slice.
+  skip/drop/decode/worker errors. Independent re-review found no findings. The dependent
+  application rehearsal is also complete at `908e46d`: its actual fixed run passed
+  12/12 functional scenarios, 10/10 fresh repetitions, 50/50 cross-risk instances and
+  ten injected CLOSED fault cases while importing the old 330-frame flow once. Fresh
+  final gates are 57 focused, 2404 Python passed / one expected incomplete-public-corpus
+  skip and 73/73 frontend. Independent final review found 0 Critical, 0 Important and
+  0 Minor after the fault-boundary, Voice lifecycle and report-contract fixes. This
+  proves deterministic software semantics, not live model or baby accuracy. No live
+  payload or private media was read; all forbidden side effects were zero and Camera
+  Reply stayed false. A panoramic real-device gate requires separate owner authority.
 - Visual regression corpus (2026-08-29): the isolated feature branch
   `codex/visual-regression-corpus` has public-corpus proposal base
   `681edd3c49d0ccca442af064188a4e8b814a4db5`. The published branch includes the

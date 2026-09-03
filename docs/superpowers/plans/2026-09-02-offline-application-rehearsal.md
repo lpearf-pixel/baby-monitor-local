@@ -250,7 +250,7 @@ claim real concurrency.
 - Create: `tests/fixtures/offline_application_rehearsal/history.v1.json`
 - Create: `tests/contracts/test_offline_application_rehearsal.py`
 
-- [ ] **Step 1: Write RED contract tests**
+- [x] **Step 1: Write RED contract tests**
 
 Tests must reject: unknown keys; more/fewer than twelve scenarios; any changed/missing
 ID; wrong 6/3/3 lane split; duplicate/out-of-order steps; a step with zero or two input
@@ -270,7 +270,7 @@ Run:
 
 Expected RED: import/module and fixture loading fail.
 
-- [ ] **Step 2: Add the exact fixture contents**
+- [x] **Step 2: Add the exact fixture contents**
 
 Use generated fixture IDs only; never embed a speech transcript. The three history
 entries are exactly:
@@ -284,13 +284,13 @@ entries are exactly:
 Use source commit `c75d9296d9dc920198075578ffc3429ea3400b21` and the already documented UTC
 observation date; the ledger must contain no denominator reconstruction or live PASS.
 
-- [ ] **Step 3: Implement minimum strict models/loaders/digest**
+- [x] **Step 3: Implement minimum strict models/loaders/digest**
 
 Use `Path.lstat()`, `O_NOFOLLOW` where available, maximum-byte checks before parsing,
 strict Pydantic validation and canonical ASCII JSON. The stable digest must operate on a
 documented normalized model dump rather than string replacement.
 
-- [ ] **Step 4: Run focused GREEN and commit**
+- [x] **Step 4: Run focused GREEN and commit**
 
 ```bash
 ../../.venv-alpha/bin/python -m pytest \
@@ -331,14 +331,14 @@ def summarize_historical_evidence(
     return HistoricalEvidenceSummary(items=items, counts=MappingProxyType(counts))
 ```
 
-- [ ] **Step 1: Write RED separation tests**
+- [x] **Step 1: Write RED separation tests**
 
 Assert ledger counts remain in the historical section, the summary cannot produce a
 fresh scenario result, all items retain `fresh_for_this_run=false`, and a historical
 FAIL/PARTIAL does not make a deterministic software scenario pass or fail. Assert no
 transcript/path/prose field exists on the models.
 
-- [ ] **Step 2: Implement the pure summary and run GREEN**
+- [x] **Step 2: Implement the pure summary and run GREEN**
 
 ```bash
 ../../.venv-alpha/bin/python -m pytest \
@@ -403,14 +403,14 @@ codes; every mode ends with zero residual sessions after `close()`. It must reje
 duplicate completion and use a caller-provided ID factory so repeat tests can prove
 global uniqueness.
 
-- [ ] **Step 1: Write RED lifecycle and adapter-isolation tests**
+- [x] **Step 1: Write RED lifecycle and adapter-isolation tests**
 
 Assert success/timeout/failure/close/duplicate-call behavior, exact IDs, cleanup after an
 exception, notification decision recording, and delegation to a real temporary event
 store. Use a source scan to assert this module does not import `camera_reply`, Xiaomi,
 go2rtc, notification dispatch or Baby Care.
 
-- [ ] **Step 2: Implement and run GREEN**
+- [x] **Step 2: Implement and run GREEN**
 
 ```bash
 ../../.venv-alpha/bin/python -m pytest \
@@ -449,7 +449,7 @@ def run_application_oracle_scenario(
     """Run one deterministic Guardian scenario through the actual local store."""
 ```
 
-- [ ] **Step 1: Write RED for the exact application truth table**
+- [x] **Step 1: Write RED for the exact application truth table**
 
 Run only the six `application_oracle` fixture entries. Assert every transition kind,
 risk kind, resolution cause, event state, dashboard count, notification stage,
@@ -461,7 +461,7 @@ semantic-conflict count and final open risk against the table above. In particul
 - face-to-outside has face recovery cause `subject_outside`, no face recovery
   notification, and an open outside event.
 
-- [ ] **Step 2: Implement through actual production-safe boundaries**
+- [x] **Step 2: Implement through actual production-safe boundaries**
 
 For each scenario create a fresh 0700 root and SQLite store. Instantiate the real state
 machine, event pipeline and query service, plus the recording notification wrapper.
@@ -469,7 +469,7 @@ Count a semantic conflict once per closed conflict kind per scenario, not once p
 repeated review. Compare actual counters to the exact fixture dictionary and fail with
 the first closed reason `application_oracle_mismatch`.
 
-- [ ] **Step 3: Run GREEN and commit**
+- [x] **Step 3: Run GREEN and commit**
 
 ```bash
 ../../.venv-alpha/bin/python -m pytest \
@@ -521,7 +521,7 @@ Use the current `ListenOnlyController` directly with fixed ASR result objects an
 generated non-household PCM. Every voice step compares exact `reason`, response code,
 action code, match kind, controller phase and recording reply lifecycle.
 
-- [ ] **Step 1: Write RED for three Voice scenarios**
+- [x] **Step 1: Write RED for three Voice scenarios**
 
 Feeding must produce exactly one `feeding_command/exact`. Diaper and burping must each
 produce exact start and complete codes once. Across declared controls assert:
@@ -533,7 +533,7 @@ produce exact start and complete codes once. Across declared controls assert:
 - reply success/timeout/failure each has one terminal lifecycle and cleanup;
 - medication action/output counts remain zero.
 
-- [ ] **Step 2: Write RED for three joined scenarios**
+- [x] **Step 2: Write RED for three joined scenarios**
 
 Execute the ordered step offsets, not two unrelated post-hoc results. Assert visual
 progress counters continue across Voice steps, IDs are unique across visual/reply
@@ -541,7 +541,7 @@ domains, one domain failure cannot alter the other domain's state, and final rep
 sessions are zero. Repeat the adult-only and face-to-outside zero/notification
 assertions inside joined lanes.
 
-- [ ] **Step 3: Implement minimum Voice/joined routing and run GREEN**
+- [x] **Step 3: Implement minimum Voice/joined routing and run GREEN**
 
 ```bash
 ../../.venv-alpha/bin/python -m pytest \
@@ -593,7 +593,7 @@ and again as the leaked-session negative in Task 7. Report publication failure i
 atomic rollback case in Task 8. Together those tests cover every design fault boundary
 without inflating the fixed ten-case runner summary.
 
-- [ ] **Step 1: Write RED exact-fault tests**
+- [x] **Step 1: Write RED exact-fault tests**
 
 Assert all ten results are returned in fixture order, expected fail-closed cases never
 report functional PASS, the first reason remains stable, all cleanup counters are zero,
@@ -601,13 +601,13 @@ and failure of one case does not prevent later independent cases from running.
 `FAULT-SEMANTIC-CONFLICT-01` is an expected closed conflict result and must still retain
 independent outside evidence; it does not become an unhandled exception.
 
-- [ ] **Step 2: Implement explicit injected doubles only**
+- [x] **Step 2: Implement explicit injected doubles only**
 
 Do not monkeypatch production globals. Pass boundary doubles/factories into the runner.
 Catch only at the scenario/fault boundary, map known outcomes to closed reasons, discard
 exception strings, and run cleanup in `finally`.
 
-- [ ] **Step 3: Run GREEN and commit**
+- [x] **Step 3: Run GREEN and commit**
 
 ```bash
 ../../.venv-alpha/bin/python -m pytest \
@@ -641,7 +641,7 @@ def run_repetition_gate(
     """Run fresh application packs and cross-risk instances to fixed quotas."""
 ```
 
-- [ ] **Step 1: Write RED freshness/uniqueness/digest tests**
+- [x] **Step 1: Write RED freshness/uniqueness/digest tests**
 
 Assert exactly ten complete packs run from ten new roots and fifty state machines run
 from fifty new instances. Collect every event and reply ID across all iterations and
@@ -650,13 +650,13 @@ IDs/timestamps/IDs differ. Inject one leaked reply session, duplicate ID and no-
 face output separately; each must fail the repetition result with its exact closed
 reason.
 
-- [ ] **Step 2: Implement bounded summaries**
+- [x] **Step 2: Implement bounded summaries**
 
 Store one representative set of twelve functional results plus ten compact iteration
 summaries (`iteration`, `status`, stable digest, bounded counters). Do not retain 120
 duplicated result trees. The fifty-instance result stores aggregate exact counts only.
 
-- [ ] **Step 3: Run GREEN and commit**
+- [x] **Step 3: Run GREEN and commit**
 
 ```bash
 ../../.venv-alpha/bin/python -m pytest \
@@ -691,7 +691,7 @@ Use the established no-replace, fsync and same-inode cleanup design from
 `application-result.v1.json` and `application-report.html` and bounded sizes 512 KiB /
 1 MiB.
 
-- [ ] **Step 1: Write RED privacy/atomicity/report tests**
+- [x] **Step 1: Write RED privacy/atomicity/report tests**
 
 Assert 0700 root, 0600 final files, canonical JSON, ASCII HTML, no overwrite, symlink
 rejection, partial-publication rollback, fsync/cleanup failure behavior and exact report
@@ -702,13 +702,13 @@ private absolute path, token and media fields.
 Assert a forced report-publication failure returns/raises only
 `offline_application_report_failed` and cannot leave a final PASS file or temp file.
 
-- [ ] **Step 2: Implement by adapting, not mutating, the old publisher**
+- [x] **Step 2: Implement by adapting, not mutating, the old publisher**
 
 Do not relax the old report's behavior. Render the mandatory zero fields and explicit
 disclaimer: software PASS is control-flow evidence only and does not publish live Voice,
 visual accuracy or Camera Reply PASS.
 
-- [ ] **Step 3: Run GREEN and commit**
+- [x] **Step 3: Run GREEN and commit**
 
 ```bash
 ../../.venv-alpha/bin/python -m pytest \
@@ -746,7 +746,7 @@ make alpha-offline-application-validate
 make alpha-offline-application-run
 ```
 
-- [ ] **Step 1: Write RED CLI/source-boundary tests**
+- [x] **Step 1: Write RED CLI/source-boundary tests**
 
 Assert validate is I/O-bounded to tracked JSON and returns exact scenario/history
 counts. Assert run invokes the old fixed flow exactly once and refuses application PASS
@@ -759,14 +759,14 @@ Assert the final emitted closed JSON summary contains: 12/12 functional scenario
 8/13/330 component counts, zero forbidden side effects, report basename only, and no
 absolute path.
 
-- [ ] **Step 2: Implement strict commands and Make targets**
+- [x] **Step 2: Implement strict commands and Make targets**
 
 Use a private ignored run root below the existing runtime boundary, fixed 180-second
 whole-run timeout, first stable failure reason and exit codes 0 PASS / 2 FAIL. The old
 suite is a prerequisite executed once before the ten application iterations; do not
 re-download/re-run its 330 frames ten times.
 
-- [ ] **Step 3: Run tool GREEN, source scans and dry runs**
+- [x] **Step 3: Run tool GREEN, source scans and dry runs**
 
 ```bash
 ../../.venv-alpha/bin/python -m pytest \
@@ -779,7 +779,7 @@ make -n PYTHON=../../.venv-alpha/bin/python alpha-offline-application-run
 git diff --check
 ```
 
-- [ ] **Step 4: Commit**
+- [x] **Step 4: Commit**
 
 ```bash
 git add tools/offline_guardian_scenario.py \
@@ -799,7 +799,7 @@ git commit -m "feat: add offline application rehearsal command"
 - Modify after fresh evidence only:
   `docs/superpowers/plans/2026-08-30-baby-monitor-ordered-delivery.md`
 
-- [ ] **Step 1: Run contract, focused and full tests**
+- [x] **Step 1: Run contract, focused and full tests**
 
 ```bash
 ../../.venv-alpha/bin/python -m pytest \
@@ -819,7 +819,7 @@ npm test
 Record exact fresh counts. A public-corpus dependency skip remains a skip and blocks the
 fixed command's exact PASS; do not relabel it.
 
-- [ ] **Step 2: Execute the actual fixed commands**
+- [x] **Step 2: Execute the actual fixed commands**
 
 ```bash
 make PYTHON=../../.venv-alpha/bin/python alpha-offline-application-validate
@@ -858,7 +858,7 @@ no_baby_face_notification=0
 residual_reply_sessions=0
 ```
 
-- [ ] **Step 3: Inspect privacy, scope and reproducibility**
+- [x] **Step 3: Inspect privacy, scope and reproducibility**
 
 ```bash
 git diff --check
@@ -873,7 +873,7 @@ Inspect the ignored report directly: permissions 0700/0600, no private strings/m
 all mandatory zero values and equivalent stable digests across ten iterations. Never
 stage the report or runtime root.
 
-- [ ] **Step 4: Request independent review**
+- [x] **Step 4: Request independent review**
 
 Use `superpowers:requesting-code-review` over the exact candidate diff. Review must
 answer:
@@ -890,7 +890,7 @@ answer:
 Fix all Critical/Important findings with RED/GREEN, rerun Steps 1-3, and record the
 final review result.
 
-- [ ] **Step 5: Update factual docs and commit**
+- [x] **Step 5: Update factual docs and commit**
 
 Record the exact candidate SHA, command output, test counts, report digest and review
 result. Keep these states unchanged: live Feeding/diaper/burping `NOT_PROVEN`, visual

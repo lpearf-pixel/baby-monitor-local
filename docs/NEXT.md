@@ -9,9 +9,9 @@ the detailed approved specs and plans remain authoritative for behavior.
 owner-directed amendment. The current order is:
 
 1. preserve the completed eight-scenario software-only expansion;
-2. execute the approved no-baby cross-risk correction plan, then the dependent
-   software-only application-rehearsal plan;
-3. after that software gate, request one bundled panoramic session to close the
+2. preserve the completed no-baby cross-risk correction and software-only
+   application-rehearsal gates;
+3. request separate authority for one bundled panoramic session to close the
    low-risk Feeding/diaper/burping Voice decision and visual application observations;
 4. design the bounded remaining Camera Reply correction, then separately authorize a
    complete clean V3E matrix;
@@ -26,7 +26,8 @@ another live run, execute the owner-approved plans in dependency order:
 
 1. `docs/superpowers/plans/2026-09-02-visual-cross-risk-correction.md` — complete at
    `02fdca1`, full software gate and independent re-review clean;
-2. `docs/superpowers/plans/2026-09-02-offline-application-rehearsal.md` — now active.
+2. `docs/superpowers/plans/2026-09-02-offline-application-rehearsal.md` — complete at
+   `908e46d`, actual report and independent review clean.
 
 The design covers the owner-reported no-baby face-cover false alert with empty-bed,
 adult-only, adversarial legacy and positive face-control scenarios. The current
@@ -51,13 +52,13 @@ isolated no-action attempt and an earlier no-audible first attempt. Two recorded
 increments in that earlier sequence corresponded to two physical inputs, not a system
 duplicate. This bounded reachability trial did not run the prescribed Feeding positives,
 shared negatives and independently reset action matrix, so it is not Stage 2 PASS.
-The visual cross-risk correction now passes its actual store/query path, old-suite
-compatibility, full Python/frontend gates and independent review. The immediate next
-action is Task 1 of the offline application-rehearsal plan, using RED/GREEN and focused
-commits with Camera Reply false. Do not resume Stage 2 Step 3 until its
-fault injection and 10/50 repeat quotas close. The later panoramic session must still
-use fresh counters and publish Feeding, diaper and burping independently. Real-baby
-accuracy, Camera Reply V3E and public baseline promotion remain separate gates.
+The visual cross-risk correction and offline application rehearsal now pass their
+actual state/store/query and generated Voice paths, the imported old-suite component,
+fault injection, 10/50 repeat quotas, full Python/frontend gates and independent review.
+No further software task is authorized by this slice. The next product action is to
+request separate authority for the panoramic session; that session must use fresh
+counters and publish Feeding, diaper and burping independently. Real-baby accuracy,
+Camera Reply V3E and public baseline promotion remain separate gates.
 
 **Private local visual overlay (deferred by owner):** the contract in
 `docs/superpowers/specs/2026-08-29-private-local-visual-corpus-overlay-design.md` and

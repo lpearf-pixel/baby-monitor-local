@@ -353,18 +353,21 @@ feature branch is not automatically a stable release.
 
 ## Current execution handoff
 
-Stage 1 is complete and the written rehearsal design is owner-approved. The current
-handoff is **software implementation only**, in this exact order:
+Stage 1 and both owner-approved software rehearsal plans are complete. The completed
+order was:
 
 1. execute
    `docs/superpowers/plans/2026-09-02-visual-cross-risk-correction.md` completely;
 2. stop if its truth-table/store/query/compatibility gate is not green;
 3. from its clean green descendant, execute
    `docs/superpowers/plans/2026-09-02-offline-application-rehearsal.md`;
-4. stop after the software report and independent review.
+4. stop after the software report and independent review — complete at `908e46d` with
+   final review 0 Critical / 0 Important / 0 Minor.
 
-Both plans remain generated/public and device-free. Stage 2 live testing and Stages
-3-5 are queued. They are not implicit authority for household capture, camera or
+Both plans remained generated/public and device-free. The actual software report passed
+12/12 functional scenarios, 10/10 repetitions, 50/50 cross-risk instances and ten
+CLOSED fault cases while importing the old 330-frame flow once. Stage 2 live testing
+and Stages 3-5 are queued. They are not implicit authority for household capture, camera or
 speaker activation, PTZ, Baby Care writes, installation, PR, merge, stable changes or
 release publication. A software PASS authorizes only a later request for one bundled
 panoramic gate.
