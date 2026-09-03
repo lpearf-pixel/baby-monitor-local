@@ -2421,3 +2421,21 @@ responsive/accessibility contracts. It does not prove installed-i9 readiness, ph
 iPhone rendering, household accuracy, real notification delivery or safe unattended
 care. No camera, microphone, speaker, PTZ, household media, real notification or Baby
 Care path was accessed during this closure.
+
+## 2026-09-04 Human-gate deferral and autonomous-queue reconciliation
+
+The owner accepted the completed Dashboard software result for current use and directed
+the project to defer every remaining task that requires human participation. The
+installed-i9/iPhone Dashboard smoke, full low-risk Voice positive/negative matrix,
+Camera Reply V3E, private visual capture/review, WS2021 physical special-scene checks,
+real-Baby observation and supervised final release gate therefore remain unverified;
+none is recorded as physical PASS.
+
+Read-only reconciliation on branch `codex/visual-regression-corpus` at exact head
+`a64ea743d6ccc84a47cc4f49e3a1f8c5f82c2f5b` confirmed a clean tracked worktree before
+this documentation update. The latest completed software gate remains 2497 Python
+passes plus one expected incomplete-public-corpus skip, 132 frontend passes, compilation
+and diff checks. The formal ordered queue has no approved unfinished software-only
+product slice after those results. No camera, microphone, speaker, PTZ, private media,
+notification, Baby Care database, medication path, long-running test, PR, merge or
+protected branch was accessed for this scheduling checkpoint.

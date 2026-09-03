@@ -1,10 +1,18 @@
 # Baby Monitor Local Project Summary
 
-Updated: 2026-09-03
+Updated: 2026-09-04
 
 ## Snapshot
 
 - Repository: `lpearf-pixel/baby-monitor-local` (public).
+- Owner scheduling decision (2026-09-04): all remaining gates that require live speech,
+  physical iPhone inspection, household-scene judgment, gauge placement, private capture,
+  real-Baby observation or supervised long-running release operation are deferred. They
+  remain explicitly unverified rather than being converted to physical PASS. The owner
+  accepts the completed Dashboard software gate for current use; its installed-i9/iPhone
+  smoke remains deferred evidence. No additional approved software-only product slice is
+  open after the exact-head gate below, so future autonomous work must begin from a new
+  approved software scope rather than repeating a human gate.
 - Compact Dashboard integration is complete on
   `codex/visual-regression-corpus` at merged and published head `2d0f2cc6`. It adds the
   authenticated four-tab Overview/Alerts/Analytics/System shell, read-only Guardian
@@ -51,8 +59,9 @@ Updated: 2026-09-03
   owner-private; its stable repetition digest is
   `8f04d13c1fb2a3085dc6a04b8d3f065bc7b00bcecd5b8776b47efe217330c757`.
   Camera Reply remained false and every forbidden side effect was zero. This is
-  software control-flow evidence only. The next product gate is a separately authorized
-  panoramic real-device session; it was not entered by this work.
+  software control-flow evidence only. The next product gate would be a separately
+  authorized panoramic real-device session, but it is deferred by the 2026-09-04 owner
+  decision and was not entered by this work.
 - Visual regression corpus work is published on `codex/visual-regression-corpus`; the
   public-corpus proposal base is `681edd3c49d0ccca442af064188a4e8b814a4db5`.
   The published branch includes the private-overlay software, four-scenario offline
@@ -123,7 +132,8 @@ Updated: 2026-09-03
   214/214 focused and 2209 passed / 1 expected public-corpus skip for the full suite;
   independent review is clean at 0 Critical / 0 Important / 0 Minor. No household media,
   real descriptor, receipt, `LOCAL_READY`, replay or baseline operation occurred. The
-  exact next slice is Task 8 owner-supervised capture, which needs fresh explicit authority.
+  former next slice, Task 8 owner-supervised capture, is deferred and still needs fresh
+  explicit authority before it can resume.
 - The approved offline Guardian scenario expansion is review-complete locally through
   business head `5d91d8a` on the same feature branch. The fixed command runs eight
   scenarios and thirteen lanes: five visual observations, five independent synthetic
@@ -157,9 +167,9 @@ Updated: 2026-09-03
   The i9 built-in speaker was independently unavailable while the Mac was closed/inactive
   (`AudioQueueStart -66680`); a controlled Xiaomi speaker probe and bounded action replies
   were audible without observed camera movement or producer replacement. Camera Reply was
-  restored to false and Voice returned healthy/listen-only. The exact next slice is to
-  finish Stage 2 with Camera Reply false, fresh counters and the remaining prescribed
-  positive/negative ASR matrix before publishing an action-by-action decision.
+  restored to false and Voice returned healthy/listen-only. Finishing Stage 2 with
+  Camera Reply false, fresh counters and the remaining prescribed positive/negative ASR
+  matrix remains required, but is deferred under the 2026-09-04 owner decision.
 - Stable Xiaomi line: `stable/xiaomi-alpha` at `0df20ae`.
 - Active Camera Reply review line: `codex/xiaomi-camera-reply-lifecycle-review`, based
   on accepted Voice head `4d479b8`; its published Task 8 checkpoint is `a622a7a`.

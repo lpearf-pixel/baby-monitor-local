@@ -43,6 +43,18 @@ work: first `2026-09-02-visual-cross-risk-correction.md`, then
 `2026-09-02-offline-application-rehearsal.md`. Do not resume live Voice repetition
 before both software gates close. Camera Reply remains false.
 
+## 2026-09-04 owner deferral of human-required gates
+
+The owner directed the project not to start work that requires live speech, physical
+iPhone inspection, household-scene or gauge manipulation, private-media review,
+real-Baby observation or supervised long-running release operation. These gates remain
+unchecked and unverified; the direction changes scheduling, not acceptance criteria.
+The completed Dashboard software gate is accepted for current use, while its physical
+i9/iPhone smoke remains deferred rather than being declared PASS. At this checkpoint no
+approved unfinished software-only product slice remains in this ordered plan. Agents
+must not repeat completed software work or invent a replacement scope merely to bypass
+the human stop lines.
+
 ## Global Constraints
 
 - Start from `origin/codex/visual-regression-corpus` at or after exact reviewed base

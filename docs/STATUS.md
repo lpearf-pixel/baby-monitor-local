@@ -3,6 +3,12 @@
 ## Current phase
 
 - Repository: initialized and public.
+- Human-required acceptance is deferred by owner direction as of 2026-09-04. This covers
+  the remaining Voice matrix, Camera Reply V3E, private visual capture/review, WS2021
+  special-scene checks, installed Dashboard/iPhone visual smoke, real-Baby observation
+  and the supervised final release gate. Existing software results remain valid, but no
+  deferred item is relabelled as a real-device PASS. There is currently no approved,
+  unfinished software-only product task in the ordered queue.
 - Design: approved.
 - Compact Dashboard: software-complete, independently reviewed, merged and published on
   the current feature branch at `2d0f2cc6`. The final merged-head gate passed 2497

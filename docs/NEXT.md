@@ -4,11 +4,21 @@ The repository baseline, environment software and functional Guardian loop are
 complete. Do not restart completed milestones. Execute the following stages in order;
 the detailed approved specs and plans remain authoritative for behavior.
 
+**Owner deferral — 2026-09-04:** do not initiate any task that needs the owner to speak,
+inspect an iPhone, arrange a physical scene or gauge, review private media, supervise a
+real Baby, or supervise a long-running release gate. Keep those items unchecked and
+unverified. The owner accepts the completed Dashboard software result for current use,
+but this does not fabricate installed-i9 or iPhone evidence. The current ordered queue
+contains no approved unfinished software-only product slice; do not repeat completed
+software gates or silently design a new feature. Resume only when the owner supplies a
+new software scope or explicitly reopens one deferred gate.
+
 The compact Dashboard software line is also complete and merged into this branch at
 `2d0f2cc6`. Its former AF_UNIX infrastructure exception is closed by the exact merged-
 head 2497-pass Python gate; frontend is 132/132. Do not restart Dashboard implementation.
 Its remaining work is only the separately supervised installed-i9 and physical-iPhone
-visual smoke, which can be bundled with the next panoramic real-device session.
+visual smoke, which is deferred under the 2026-09-04 owner decision and may later be
+bundled with a separately reopened panoramic real-device session.
 
 **Authoritative order:** follow
 `docs/superpowers/plans/2026-08-30-baby-monitor-ordered-delivery.md` with its 2026-09-02
@@ -61,10 +71,10 @@ shared negatives and independently reset action matrix, so it is not Stage 2 PAS
 The visual cross-risk correction and offline application rehearsal now pass their
 actual state/store/query and generated Voice paths, the imported old-suite component,
 fault injection, 10/50 repeat quotas, full Python/frontend gates and independent review.
-No further software task is authorized by this slice. The next product action is to
-request separate authority for the panoramic session; that session must use fresh
-counters and publish Feeding, diaper and burping independently. Real-baby accuracy,
-Camera Reply V3E and public baseline promotion remain separate gates.
+No further software task is authorized by this slice. When human-required gates are
+reopened, the next product action is the panoramic session with fresh counters and an
+independent Feeding/diaper/burping decision. It is currently deferred. Real-baby
+accuracy, Camera Reply V3E and public baseline promotion remain separate gates.
 
 **Private local visual overlay (deferred by owner):** the contract in
 `docs/superpowers/specs/2026-08-29-private-local-visual-corpus-overlay-design.md` and
