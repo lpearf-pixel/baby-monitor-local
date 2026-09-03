@@ -5,10 +5,10 @@ import re
 from dataclasses import dataclass, field
 from datetime import UTC, datetime
 from pathlib import Path
-from collections.abc import Mapping
+from collections.abc import Awaitable, Callable, Mapping
 from typing import Annotated, Iterator, Literal, Protocol
 
-from fastapi import Depends, FastAPI, HTTPException, Query, WebSocket, status
+from fastapi import Depends, FastAPI, HTTPException, Query, Request, WebSocket, status
 from fastapi.encoders import jsonable_encoder
 from fastapi.responses import (
     HTMLResponse,
@@ -36,6 +36,14 @@ from apps.api.ptz import (
     PtzDirection,
     StepPtzController,
 )
+from services.dashboard.contracts import (
+    DashboardAlertListV1,
+    DashboardAnalyticsV1,
+    DashboardOverviewV1,
+    DashboardSystemV1,
+    DashboardWindow,
+)
+from services.dashboard.service import DashboardServiceUnavailable
 from services.events.environment_state import EnvironmentIncident, EnvironmentSnapshot
 from services.events.guardian_query import (
     GuardianEventList,
@@ -84,6 +92,20 @@ class AlphaEnvironment(Protocol):
 
 class AlphaGuardianEvents(Protocol):
     def recent_events(self) -> GuardianEventList: ...
+
+
+class AlphaDashboard(Protocol):
+    def overview(self, now: datetime) -> DashboardOverviewV1: ...
+
+    def alerts(self, now: datetime) -> DashboardAlertListV1: ...
+
+    def analytics(
+        self,
+        window: DashboardWindow,
+        now: datetime,
+    ) -> DashboardAnalyticsV1: ...
+
+    def system(self, now: datetime) -> DashboardSystemV1: ...
 
 
 class StarletteHdSocket:
@@ -153,6 +175,7 @@ class AlphaRuntime:
     hd_stream: AlphaHdStream = field(default_factory=HdStreamService)
     environment: AlphaEnvironment | None = None
     guardian_events: AlphaGuardianEvents | None = None
+    dashboard: AlphaDashboard | None = None
 
 
 class SnapshotViewport(BaseModel):
@@ -196,6 +219,14 @@ _ENVIRONMENT_SCRIPT = Path(__file__).with_name("environment_dashboard.js")
 _GAUGE_CALIBRATION_SCRIPT = Path(__file__).with_name("gauge_calibration.js")
 _GUARDIAN_EVENTS_SCRIPT = Path(__file__).with_name("guardian_events.js")
 _INCIDENT_ID = re.compile(r"^[A-Za-z0-9][A-Za-z0-9._-]{0,127}$")
+_DASHBOARD_NO_STORE_ASSETS = frozenset(
+    {
+        "/assets/dashboard.css",
+        "/assets/dashboard-views.js",
+        "/assets/dashboard-analytics.js",
+        "/assets/dashboard-shell.js",
+    }
+)
 
 
 _DASHBOARD = """<!doctype html>
@@ -329,6 +360,19 @@ def create_app(runtime: AlphaRuntime) -> FastAPI:
     app = FastAPI(title="Baby Monitor Local Alpha", docs_url=None, redoc_url=None)
     security = HTTPBasic(auto_error=False)
 
+    @app.middleware("http")
+    async def dashboard_no_store(
+        request: Request,
+        call_next: Callable[[Request], Awaitable[Response]],
+    ) -> Response:
+        response = await call_next(request)
+        if (
+            request.url.path.startswith("/api/dashboard/")
+            or request.url.path in _DASHBOARD_NO_STORE_ASSETS
+        ):
+            response.headers["Cache-Control"] = "no-store"
+        return response
+
     def require_parent(
         credentials: HTTPBasicCredentials | None = Depends(security),
     ) -> str:
@@ -426,6 +470,82 @@ def create_app(runtime: AlphaRuntime) -> FastAPI:
                 detail="GUARDIAN_EVENTS_UNAVAILABLE",
             )
         return runtime.guardian_events
+
+    def dashboard_service() -> AlphaDashboard:
+        if runtime.dashboard is None:
+            raise HTTPException(
+                status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+                detail="DASHBOARD_DATA_UNAVAILABLE",
+            )
+        return runtime.dashboard
+
+    @app.get("/api/dashboard/overview")
+    def dashboard_overview(
+        _parent: str = Depends(require_parent),
+    ) -> JSONResponse:
+        try:
+            result = dashboard_service().overview(datetime.now(UTC))
+        except DashboardServiceUnavailable:
+            raise HTTPException(
+                status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+                detail="DASHBOARD_DATA_UNAVAILABLE",
+            ) from None
+        return JSONResponse(
+            content=jsonable_encoder(result),
+            headers={"Cache-Control": "no-store"},
+        )
+
+    @app.get("/api/dashboard/alerts")
+    def dashboard_alerts(
+        _parent: str = Depends(require_parent),
+    ) -> JSONResponse:
+        try:
+            result = dashboard_service().alerts(datetime.now(UTC))
+        except DashboardServiceUnavailable:
+            raise HTTPException(
+                status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+                detail="DASHBOARD_DATA_UNAVAILABLE",
+            ) from None
+        return JSONResponse(
+            content=jsonable_encoder(result),
+            headers={"Cache-Control": "no-store"},
+        )
+
+    @app.get("/api/dashboard/analytics/{window}")
+    def dashboard_analytics(
+        window: Literal["24h", "7d"],
+        _parent: str = Depends(require_parent),
+    ) -> JSONResponse:
+        try:
+            result = dashboard_service().analytics(
+                DashboardWindow(window),
+                datetime.now(UTC),
+            )
+        except DashboardServiceUnavailable:
+            raise HTTPException(
+                status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+                detail="DASHBOARD_DATA_UNAVAILABLE",
+            ) from None
+        return JSONResponse(
+            content=jsonable_encoder(result),
+            headers={"Cache-Control": "no-store"},
+        )
+
+    @app.get("/api/dashboard/system")
+    def dashboard_system(
+        _parent: str = Depends(require_parent),
+    ) -> JSONResponse:
+        try:
+            result = dashboard_service().system(datetime.now(UTC))
+        except DashboardServiceUnavailable:
+            raise HTTPException(
+                status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+                detail="DASHBOARD_DATA_UNAVAILABLE",
+            ) from None
+        return JSONResponse(
+            content=jsonable_encoder(result),
+            headers={"Cache-Control": "no-store"},
+        )
 
     @app.get("/api/guardian/events")
     def guardian_events(

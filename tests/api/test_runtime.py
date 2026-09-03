@@ -185,3 +185,179 @@ security:
 
     assert captured == [tmp_path / "relative-runtime" / "events.sqlite3"]
     assert isinstance(runtime.guardian_events, RecordingGuardianQuery)
+
+
+def test_runtime_wires_dashboard_from_existing_services_and_central_data_dir(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    settings = tmp_path / "settings.yaml"
+    settings.write_text(
+        """
+app:
+  data_dir: relative-runtime
+camera:
+  identifier: nursery-main
+  model: MJSXJ17CM
+  account_secret_env: MI_ACCOUNT_SECRET_REF
+notifications:
+  ntfy_topic: private-topic
+  ntfy_token_env: NTFY_TOKEN_SECRET_REF
+  enable_wecom: false
+security:
+  session_secret_env: SESSION_SECRET_REF
+""",
+        encoding="utf-8",
+    )
+    gateway = object()
+    environment = object()
+    guardian = object()
+    dashboard = object()
+    guardian_paths: list[Path] = []
+    dashboard_options: list[dict[str, Any]] = []
+
+    def recording_guardian(database_path: Path) -> object:
+        guardian_paths.append(database_path)
+        return guardian
+
+    def recording_dashboard(**options: Any) -> object:
+        dashboard_options.append(options)
+        return dashboard
+
+    monkeypatch.chdir(tmp_path)
+    monkeypatch.setattr(
+        runtime_module,
+        "notification_gateway_from_env",
+        lambda environ: gateway,
+    )
+    monkeypatch.setattr(
+        runtime_module,
+        "build_dashboard_service",
+        lambda loaded_settings, root: environment,
+    )
+    monkeypatch.setattr(
+        runtime_module,
+        "GuardianDashboardQuery",
+        recording_guardian,
+        raising=False,
+    )
+    monkeypatch.setattr(
+        runtime_module,
+        "LocalDashboardService",
+        recording_dashboard,
+        raising=False,
+    )
+
+    runtime = runtime_from_env(
+        _environment(BABY_MONITOR_SETTINGS_PATH=str(settings))
+    )
+
+    assert guardian_paths == [tmp_path / "relative-runtime" / "events.sqlite3"]
+    assert dashboard_options == [
+        {
+            "camera": gateway,
+            "guardian": guardian,
+            "environment": environment,
+            "camera_reply_enabled": False,
+            "timezone_name": "Asia/Shanghai",
+        }
+    ]
+    assert runtime.gateway is gateway
+    assert runtime.environment is environment
+    assert runtime.dashboard is dashboard
+
+
+def test_runtime_without_settings_still_wires_honest_degraded_dashboard(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    gateway = object()
+    dashboard = object()
+    dashboard_options: list[dict[str, Any]] = []
+
+    def recording_dashboard(**options: Any) -> object:
+        dashboard_options.append(options)
+        return dashboard
+
+    monkeypatch.setattr(
+        runtime_module,
+        "notification_gateway_from_env",
+        lambda environ: gateway,
+    )
+    monkeypatch.setattr(
+        runtime_module,
+        "LocalDashboardService",
+        recording_dashboard,
+        raising=False,
+    )
+
+    runtime = runtime_from_env(_environment())
+
+    assert dashboard_options == [
+        {
+            "camera": gateway,
+            "guardian": None,
+            "environment": None,
+            "camera_reply_enabled": False,
+            "timezone_name": "Asia/Shanghai",
+        }
+    ]
+    assert runtime.dashboard is dashboard
+
+
+def test_gateway_status_failure_uses_stable_public_code(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    def failing_urlopen(url: str, timeout: float) -> None:
+        raise OSError("private transport detail")
+
+    monkeypatch.setattr(runtime_module, "urlopen", failing_urlopen)
+    gateway = runtime_module.Go2RTCAlphaGateway(
+        base_url="http://127.0.0.1:1984",
+        stream_name="live",
+        ntfy_base_url="https://ntfy.example.test",
+        ntfy_topic="",
+        ntfy_token=None,
+    )
+
+    result = gateway.status()
+
+    assert result == {
+        "camera": "offline",
+        "stream": "live",
+        "detail": "camera_status_unavailable",
+    }
+    assert "OSError" not in repr(result)
+    assert "private transport detail" not in repr(result)
+
+
+def test_gateway_status_success_preserves_existing_stream_shape(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    class StreamsResponse:
+        def __enter__(self) -> "StreamsResponse":
+            return self
+
+        def __exit__(self, *args: object) -> None:
+            return None
+
+        def read(self) -> bytes:
+            return b'{"other": {}, "live": {}}'
+
+    monkeypatch.setattr(
+        runtime_module,
+        "urlopen",
+        lambda url, timeout: StreamsResponse(),
+    )
+    gateway = runtime_module.Go2RTCAlphaGateway(
+        base_url="http://127.0.0.1:1984",
+        stream_name="live",
+        ntfy_base_url="https://ntfy.example.test",
+        ntfy_topic="",
+        ntfy_token=None,
+    )
+
+    assert gateway.status() == {
+        "camera": "online",
+        "stream": "live",
+        "known_streams": ["live", "other"],
+    }

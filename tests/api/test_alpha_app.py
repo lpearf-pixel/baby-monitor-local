@@ -18,6 +18,21 @@ from packages.contracts.events import (
     EnvironmentSourceKind,
     ReadingFailureReason,
 )
+from services.dashboard.contracts import (
+    DashboardAlertListV1,
+    DashboardAnalyticsV1,
+    DashboardEnvironmentAnalyticsV1,
+    DashboardEnvironmentCurrentV1,
+    DashboardEnvironmentIncidentCountsV1,
+    DashboardEvidenceCountsV1,
+    DashboardGuardianAnalyticsV1,
+    DashboardNotificationCountsV1,
+    DashboardOverviewV1,
+    DashboardRiskCountsV1,
+    DashboardSystemV1,
+    DashboardWindow,
+)
+from services.dashboard.service import DashboardServiceUnavailable
 from services.events.environment_state import EnvironmentSnapshot
 from services.events.guardian_query import (
     GuardianEventList,
@@ -187,6 +202,108 @@ class FakeGuardianEventService:
         )
 
 
+def dashboard_overview(now: datetime) -> DashboardOverviewV1:
+    return DashboardOverviewV1(
+        schema_version=1,
+        generated_at=now,
+        open_alert_count=0,
+        environment=DashboardEnvironmentCurrentV1(state="unavailable"),
+        components=(),
+        recent_activity=(),
+    )
+
+
+def dashboard_alert_list(now: datetime) -> DashboardAlertListV1:
+    return DashboardAlertListV1(schema_version=1, generated_at=now, alerts=())
+
+
+def dashboard_analytics(
+    window: DashboardWindow,
+    now: datetime,
+) -> DashboardAnalyticsV1:
+    duration = timedelta(
+        hours=24 if window is DashboardWindow.HOURS_24 else 24 * 7
+    )
+    return DashboardAnalyticsV1(
+        schema_version=1,
+        generated_at=now,
+        window=window,
+        started_at=now - duration,
+        ended_at=now,
+        environment=DashboardEnvironmentAnalyticsV1(
+            state="unavailable",
+            sample_count=0,
+            available_count=0,
+            incident_counts=DashboardEnvironmentIncidentCountsV1(
+                range_normal=0,
+                range_critical=0,
+                unreadable=0,
+            ),
+            buckets=(),
+        ),
+        guardian=DashboardGuardianAnalyticsV1(
+            state="unavailable",
+            confirmed_count=0,
+            recovered_count=0,
+            intervention_count=0,
+            risk_counts=DashboardRiskCountsV1(
+                face_not_visible=0,
+                prone_candidate=0,
+                outside_candidate=0,
+            ),
+            evidence_counts=DashboardEvidenceCountsV1(
+                collecting=0,
+                ready=0,
+                failed=0,
+                interrupted=0,
+                retained_total=0,
+                missing=0,
+            ),
+            notification_counts=DashboardNotificationCountsV1(
+                pending=0,
+                delivered=0,
+                rejected=0,
+                terminal_total=0,
+            ),
+        ),
+    )
+
+
+def dashboard_system(now: datetime) -> DashboardSystemV1:
+    return DashboardSystemV1(schema_version=1, generated_at=now, components=())
+
+
+@dataclass
+class FakeDashboardService:
+    unavailable_method: str | None = None
+    calls: list[tuple[str, object]] = field(default_factory=list)
+
+    def _record(self, method: str, value: object) -> None:
+        self.calls.append((method, value))
+        if self.unavailable_method == method:
+            raise DashboardServiceUnavailable("private dashboard failure")
+
+    def overview(self, now: datetime) -> DashboardOverviewV1:
+        self._record("overview", now)
+        return dashboard_overview(now)
+
+    def alerts(self, now: datetime) -> DashboardAlertListV1:
+        self._record("alerts", now)
+        return dashboard_alert_list(now)
+
+    def analytics(
+        self,
+        window: DashboardWindow,
+        now: datetime,
+    ) -> DashboardAnalyticsV1:
+        self._record("analytics", window)
+        return dashboard_analytics(window, now)
+
+    def system(self, now: datetime) -> DashboardSystemV1:
+        self._record("system", now)
+        return dashboard_system(now)
+
+
 def calibration_draft() -> dict[str, object]:
     payload = synthetic_calibration().model_dump(mode="json")
     for server_field in ("schema_version", "calibration_id", "created_at", "reference_version"):
@@ -201,6 +318,7 @@ def client(
     hd_stream: FakeHdStream | None = None,
     environment: FakeEnvironmentService | None = None,
     guardian_events: FakeGuardianEventService | None = None,
+    dashboard: FakeDashboardService | None = None,
 ) -> tuple[TestClient, FakeGateway]:
     fake = gateway or FakeGateway()
     runtime_kwargs: dict[str, object] = dict(
@@ -217,8 +335,179 @@ def client(
         runtime_kwargs["environment"] = environment
     if guardian_events is not None:
         runtime_kwargs["guardian_events"] = guardian_events
+    if dashboard is not None:
+        runtime_kwargs["dashboard"] = dashboard
     runtime = AlphaRuntime(**runtime_kwargs)
     return TestClient(create_app(runtime)), fake
+
+
+DASHBOARD_ROUTES = (
+    ("/api/dashboard/overview", "overview"),
+    ("/api/dashboard/alerts", "alerts"),
+    ("/api/dashboard/analytics/24h", "analytics"),
+    ("/api/dashboard/system", "system"),
+)
+
+
+@pytest.mark.parametrize(("route", "method"), DASHBOARD_ROUTES)
+def test_dashboard_routes_require_authentication_before_provider_access(
+    route: str,
+    method: str,
+) -> None:
+    dashboard = FakeDashboardService()
+    app, _ = client(dashboard=dashboard)
+
+    response = app.get(route)
+
+    assert response.status_code == 401
+    assert response.headers["cache-control"] == "no-store"
+    assert dashboard.calls == []
+
+
+@pytest.mark.parametrize(
+    ("route", "method", "expected_keys"),
+    (
+        (
+            "/api/dashboard/overview",
+            "overview",
+            {
+                "schema_version",
+                "generated_at",
+                "attention",
+                "open_alert_count",
+                "guardian_open_count",
+                "today_recovered_count",
+                "environment",
+                "components",
+                "recent_activity",
+            },
+        ),
+        (
+            "/api/dashboard/alerts",
+            "alerts",
+            {"schema_version", "generated_at", "alerts"},
+        ),
+        (
+            "/api/dashboard/analytics/24h",
+            "analytics",
+            {
+                "schema_version",
+                "generated_at",
+                "window",
+                "started_at",
+                "ended_at",
+                "environment",
+                "guardian",
+            },
+        ),
+        (
+            "/api/dashboard/system",
+            "system",
+            {"schema_version", "generated_at", "components"},
+        ),
+    ),
+)
+def test_authenticated_dashboard_routes_return_closed_models(
+    route: str,
+    method: str,
+    expected_keys: set[str],
+) -> None:
+    dashboard = FakeDashboardService()
+    app, _ = client(dashboard=dashboard)
+
+    response = app.get(route, headers=auth())
+
+    assert response.status_code == 200
+    assert response.headers["cache-control"] == "no-store"
+    assert set(response.json()) == expected_keys
+    assert len(dashboard.calls) == 1
+    call_method, call_value = dashboard.calls[0]
+    assert call_method == method
+    if method == "analytics":
+        assert call_value is DashboardWindow.HOURS_24
+    else:
+        assert isinstance(call_value, datetime)
+        assert call_value.tzinfo is UTC
+
+
+def test_dashboard_analytics_rejects_unknown_window_before_provider_access() -> None:
+    dashboard = FakeDashboardService()
+    app, _ = client(dashboard=dashboard)
+
+    response = app.get("/api/dashboard/analytics/30d", headers=auth())
+
+    assert response.status_code == 422
+    assert response.headers["cache-control"] == "no-store"
+    assert dashboard.calls == []
+
+
+def test_dashboard_analytics_accepts_seven_day_window() -> None:
+    dashboard = FakeDashboardService()
+    app, _ = client(dashboard=dashboard)
+
+    response = app.get("/api/dashboard/analytics/7d", headers=auth())
+
+    assert response.status_code == 200
+    assert response.headers["cache-control"] == "no-store"
+    assert response.json()["window"] == "7d"
+    assert dashboard.calls == [("analytics", DashboardWindow.DAYS_7)]
+
+
+@pytest.mark.parametrize(("route", "method"), DASHBOARD_ROUTES)
+def test_dashboard_routes_without_provider_return_stable_unavailable_response(
+    route: str,
+    method: str,
+) -> None:
+    app, _ = client()
+
+    response = app.get(route, headers=auth())
+
+    assert response.status_code == 503
+    assert response.headers["cache-control"] == "no-store"
+    assert response.json() == {"detail": "DASHBOARD_DATA_UNAVAILABLE"}
+
+
+@pytest.mark.parametrize(("route", "method"), DASHBOARD_ROUTES)
+def test_dashboard_provider_failures_return_stable_unavailable_response(
+    route: str,
+    method: str,
+) -> None:
+    dashboard = FakeDashboardService(unavailable_method=method)
+    app, _ = client(dashboard=dashboard)
+
+    response = app.get(route, headers=auth())
+
+    assert response.status_code == 503
+    assert response.headers["cache-control"] == "no-store"
+    assert response.json() == {"detail": "DASHBOARD_DATA_UNAVAILABLE"}
+    assert "private dashboard failure" not in response.text
+    assert dashboard.calls[0][0] == method
+
+
+@pytest.mark.parametrize(
+    "asset",
+    (
+        "dashboard.css",
+        "dashboard-views.js",
+        "dashboard-analytics.js",
+        "dashboard-shell.js",
+    ),
+)
+def test_dashboard_system_future_assets_are_always_no_store(asset: str) -> None:
+    app, _ = client()
+
+    response = app.get(f"/assets/{asset}")
+
+    assert response.headers["cache-control"] == "no-store"
+
+
+def test_dashboard_no_store_middleware_leaves_unrelated_routes_unchanged() -> None:
+    app, _ = client()
+
+    response = app.get("/healthz")
+
+    assert response.status_code == 200
+    assert "cache-control" not in response.headers
 
 
 def test_guardian_events_require_authentication_before_service_access() -> None:
