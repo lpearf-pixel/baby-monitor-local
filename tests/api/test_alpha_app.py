@@ -537,6 +537,21 @@ def test_dashboard_system_future_assets_are_always_no_store(asset: str) -> None:
     assert response.headers["cache-control"] == "no-store"
 
 
+def test_dashboard_views_asset_requires_authentication_and_exposes_only_presenter_code() -> None:
+    app, _ = client()
+
+    assert app.get("/assets/dashboard-views.js").status_code == 401
+    response = app.get("/assets/dashboard-views.js", headers=auth())
+
+    assert response.status_code == 200
+    assert response.headers["content-type"].startswith("text/javascript")
+    assert response.headers["cache-control"] == "no-store"
+    assert "BabyMonitorDashboardViews" in response.text
+    assert "/live.mjpeg" not in response.text
+    assert "/snapshot.jpeg" not in response.text
+    assert "sqlite" not in response.text.lower()
+
+
 def test_dashboard_no_store_middleware_leaves_unrelated_routes_unchanged() -> None:
     app, _ = client()
 
