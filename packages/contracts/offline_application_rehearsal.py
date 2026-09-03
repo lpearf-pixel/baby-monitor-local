@@ -24,6 +24,11 @@ EvidenceResult = Literal["PASS", "FAIL", "PARTIAL", "NOT_PROVEN"]
 ApplicationLane = Literal["application_oracle", "voice_application", "joined_application"]
 RunStatus = Literal["PASS", "FAIL"]
 ReplyBehavior = Literal["success", "timeout", "failure"]
+ExpectedVoiceReason = Literal[
+    "listen_only_armed", "listen_only_acknowledged", "listen_only_ignored",
+    "listen_only_followup_far", "voice_model_unavailable", "voice_output_unavailable",
+]
+ExpectedVoicePhase = Literal["idle", "armed"]
 _SAFE_KEY = re.compile(r"^[a-z0-9][a-z0-9_.-]{0,95}$")
 _ID = re.compile(r"^[A-Z][A-Z0-9-]{2,95}$")
 _HEX40 = re.compile(r"^[0-9a-f]{40}$")
@@ -91,6 +96,8 @@ class ApplicationStepV1(OfflineApplicationContract):
     expected_action_code: ScenarioActionCode | None = None
     expected_match_kind: ScenarioMatchKind | None = None
     reply_behavior: ReplyBehavior | None = None
+    expected_reason: ExpectedVoiceReason | None = None
+    expected_phase: ExpectedVoicePhase | None = None
 
     @model_validator(mode="after")
     def require_one_input_and_coherent_voice(self) -> "ApplicationStepV1":
@@ -98,16 +105,44 @@ class ApplicationStepV1(OfflineApplicationContract):
             raise ValueError("offline_application_step_invalid")
         if self.visual_review is not None:
             if any(value is not None for value in (
-                self.expected_action_code, self.expected_match_kind, self.reply_behavior
+                self.expected_action_code, self.expected_match_kind, self.reply_behavior,
+                self.expected_reason, self.expected_phase,
             )):
                 raise ValueError("offline_application_step_invalid")
             return self
+        if self.expected_reason is None or self.expected_phase is None:
+            raise ValueError("offline_application_voice_invalid")
         if (self.expected_action_code is None) != (self.expected_match_kind is None):
             raise ValueError("offline_application_voice_invalid")
         if self.expected_action_code is not None and (
             self.expected_action_code not in _LOW_RISK
             or self.expected_match_kind != "exact"
         ):
+            raise ValueError("offline_application_voice_invalid")
+        if self.expected_reason == "listen_only_armed":
+            coherent = (
+                self.expected_phase == "armed"
+                and self.reply_behavior == "success"
+                and self.expected_action_code is None
+            )
+        elif self.expected_reason == "listen_only_acknowledged":
+            coherent = (
+                self.expected_phase == "idle"
+                and self.reply_behavior == "success"
+                and self.expected_action_code is not None
+            )
+        elif self.expected_reason == "voice_output_unavailable":
+            coherent = (
+                self.expected_phase == "idle"
+                and self.reply_behavior in {"timeout", "failure"}
+            )
+        else:
+            coherent = (
+                self.expected_phase == "idle"
+                and self.reply_behavior is None
+                and self.expected_action_code is None
+            )
+        if not coherent:
             raise ValueError("offline_application_voice_invalid")
         return self
 
@@ -169,6 +204,26 @@ class ApplicationScenarioResultV1(OfflineApplicationContract):
     reply_ids: tuple[str, ...] = Field(default=(), max_length=32)
 
     _validate_counts = field_validator("counts")(_counts)
+
+    @field_validator("event_ids")
+    @classmethod
+    def require_event_ids(cls, value: tuple[str, ...]) -> tuple[str, ...]:
+        if len(set(value)) != len(value) or any(
+            re.fullmatch(r"event-[a-z0-9][a-z0-9-]{0,88}", item) is None
+            for item in value
+        ):
+            raise ValueError("offline_application_event_id_invalid")
+        return value
+
+    @field_validator("reply_ids")
+    @classmethod
+    def require_reply_ids(cls, value: tuple[str, ...]) -> tuple[str, ...]:
+        if len(set(value)) != len(value) or any(
+            re.fullmatch(r"reply-[a-z0-9][a-z0-9-]{0,88}", item) is None
+            for item in value
+        ):
+            raise ValueError("offline_application_reply_id_invalid")
+        return value
 
 
 class FaultResultV1(OfflineApplicationContract):

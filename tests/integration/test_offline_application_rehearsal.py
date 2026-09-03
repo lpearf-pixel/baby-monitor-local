@@ -63,6 +63,8 @@ TEXT = {
     "burping_start_exact": "开始拍嗝",
     "burping_complete_exact": "拍嗝结束",
     "ambiguous_multi": "小小开始换尿布然后开始拍嗝",
+    "no_match": "不支持的合成命令",
+    "source_failure": "合成故障",
 }
 PCM = {key: (index + 1).to_bytes(2, "little") * 3200 for index, key in enumerate(TEXT)}
 
@@ -70,6 +72,8 @@ PCM = {key: (index + 1).to_bytes(2, "little") * 3200 for index, key in enumerate
 class FixedAsr:
     def transcribe(self, pcm: bytes) -> AsrResult:
         key = next(key for key, value in PCM.items() if value == pcm)
+        if key == "source_failure":
+            raise RuntimeError("synthetic source failure")
         return AsrResult(TEXT[key], "zh", 1)
 
 
@@ -122,6 +126,10 @@ def test_three_voice_and_three_joined_scenarios_match_exact_counts(tmp_path: Pat
     assert all(item.counts["residual_reply_sessions"] == 0 for item in results)
     assert results[4].counts["face.output"] == 0
     assert results[5].counts["notification.risk_recovered"] == 0
+    assert results[0].counts["silence.no_match"] == 1
+    assert results[0].counts["closed.voice_source_failed"] == 1
+    assert results[1].counts["closed.reply_timeout"] == 1
+    assert results[2].counts["closed.reply_failure"] == 1
     all_ids = [value for item in results for value in (*item.event_ids, *item.reply_ids)]
     assert len(all_ids) == len(set(all_ids))
 

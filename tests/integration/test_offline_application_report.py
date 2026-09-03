@@ -36,6 +36,14 @@ def test_report_is_private_canonical_bounded_and_contains_closed_sections(tmp_pa
     for value in ("HISTORICAL", "SOFTWARE_REHEARSAL", "PANORAMIC_DEVICE", "not executed"):
         assert value in html
     assert "control-flow evidence only" in html
+    for value in (
+        "camera_access=0", "camera_reply_enabled=0", "ptz_commands=0",
+        "real_notifications=0", "baby_care_writes=0", "private_media_reads=0",
+        "no_baby_face_watch=0", "no_baby_face_alert=0",
+        "no_baby_face_event=0", "no_baby_face_notification=0",
+        "residual_reply_sessions=0",
+    ):
+        assert value in html
 
 
 def test_report_rejects_nonempty_and_symlink_roots(tmp_path: Path) -> None:

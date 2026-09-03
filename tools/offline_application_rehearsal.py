@@ -44,6 +44,8 @@ _TEXT = {
     "burping_start_exact": "\u5f00\u59cb\u62cd\u55dd",
     "burping_complete_exact": "\u62cd\u55dd\u7ed3\u675f",
     "ambiguous_multi": "\u5c0f\u5c0f\u5f00\u59cb\u6362\u5c3f\u5e03\u7136\u540e\u5f00\u59cb\u62cd\u55dd",
+    "no_match": "\u4e0d\u652f\u6301\u7684\u5408\u6210\u547d\u4ee4",
+    "source_failure": "\u5408\u6210\u6545\u969c",
 }
 _PCM = {
     key: (index + 1).to_bytes(2, "little") * 3200
@@ -54,6 +56,8 @@ _PCM = {
 class _FixedAsr:
     def transcribe(self, pcm: bytes) -> AsrResult:
         key = next(key for key, value in _PCM.items() if value == pcm)
+        if key == "source_failure":
+            raise RuntimeError("synthetic source failure")
         return AsrResult(_TEXT[key], "zh", 1)
 
 
@@ -246,7 +250,7 @@ def _run() -> int:
         no_baby_face_event=result.counts["no_baby_face_event"],
         no_baby_face_notification=result.counts["no_baby_face_notification"],
         residual_reply_sessions=result.counts["residual_reply_sessions"],
-        report=f"{run_id}/report",
+        report=run_id,
     )
     return 0 if result.status == "PASS" else 2
 

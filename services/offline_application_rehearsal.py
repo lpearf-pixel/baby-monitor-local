@@ -11,6 +11,8 @@ from datetime import UTC, datetime, timedelta
 from pathlib import Path
 from threading import Event
 
+from pydantic import ValidationError
+
 from packages.contracts.offline_application_rehearsal import (
     ApplicationScenarioResultV1,
     FaultResultV1,
@@ -19,8 +21,17 @@ from packages.contracts.offline_application_rehearsal import (
     RepetitionIterationV1,
     RepetitionResultV1,
 )
-from packages.contracts.vision import VisualRiskKind
-from services.events.guardian_query import GuardianEventQueryService
+from packages.contracts.vision import (
+    RiskTransition,
+    RiskTransitionKind,
+    VisualReview,
+    VisualRiskKind,
+    VisualRiskState,
+)
+from services.events.guardian_query import (
+    GuardianEventQueryService,
+    GuardianEventQueryUnavailable,
+)
 from services.offline_application_sinks import RecordingNotificationStore
 from services.offline_application_sinks import RecordingReplySink
 from services.storage.visual_risk import VisualRiskEventStore
@@ -28,6 +39,7 @@ from services.vision.risk_evidence import canonicalize_visual_review
 from services.vision.risk_event_pipeline import VisualRiskEventPipeline
 from services.vision.risk_state import VisualRiskStateMachine
 from services.voice.listen_only import ListenOnlyController
+from services.voice.asr import AsrResult
 
 
 EPOCH = datetime(2026, 9, 2, tzinfo=UTC)
@@ -143,6 +155,15 @@ class OfflineApplicationRehearsalRunner:
         self._asr_factory = asr_factory
         self._reply_sink_factory = reply_sink_factory
 
+    def fault_root(self, fault_id: str) -> Path:
+        if not fault_id.startswith("FAULT-"):
+            raise ValueError("offline_application_fault_invalid")
+        return self._root / fault_id.lower()
+
+    @staticmethod
+    def execute_component(component: Callable[[], object]) -> object:
+        return component()
+
     def run_functional_pack(
         self, suite: RehearsalSuiteV1
     ) -> tuple[ApplicationScenarioResultV1, ...]:
@@ -232,7 +253,10 @@ class _VoiceExecution:
             self.failure = "voice_source_failed"
             self._controller.reset()
             return
-        if outcome.reason == "voice_model_unavailable":
+        if (
+            outcome.reason == "voice_model_unavailable"
+            and step.expected_reason != "voice_model_unavailable"
+        ):
             self.failure = "voice_source_failed"
             return
         if (outcome.action_code, outcome.match_kind) != (
@@ -240,27 +264,34 @@ class _VoiceExecution:
         ):
             self.failure = "voice_identity_mismatch"
             return
-        if step.voice_fixture_id == "wake":
-            expected = ("listen_only_armed", "listen_only_ready")
-        elif step.expected_action_code is not None:
-            expected = (
-                "listen_only_acknowledged" if step.reply_behavior == "success" else "voice_output_unavailable",
-                "listen_only_received" if step.reply_behavior == "success" else None,
-            )
-        else:
-            expected = ("listen_only_ignored", None)
-        if (outcome.reason, outcome.response_code) != expected:
+        expected_response = {
+            "listen_only_armed": "listen_only_ready",
+            "listen_only_acknowledged": "listen_only_received",
+        }.get(step.expected_reason)
+        if (outcome.reason, outcome.response_code, outcome.phase) != (
+            step.expected_reason, expected_response, step.expected_phase
+        ):
             self.failure = "voice_outcome_mismatch"
             return
         if outcome.action_code is not None:
             self.counts[f"action.{outcome.action_code}"] += 1
         if step.voice_fixture_id == "ambiguous_multi":
             self.counts["silence.ambiguous"] += 1
+        elif step.voice_fixture_id == "no_match":
+            self.counts["silence.no_match"] += 1
+        elif step.voice_fixture_id == "source_failure":
+            self.counts["closed.voice_source_failed"] += 1
+        elif step.reply_behavior == "timeout":
+            self.counts["closed.reply_timeout"] += 1
+        elif step.reply_behavior == "failure":
+            self.counts["closed.reply_failure"] += 1
         elif step.expected_action_code is None and step.voice_fixture_id != "wake":
             self.counts["silence.no_wake"] += 1
 
     def finish(self) -> tuple[dict[str, int], tuple[str, ...], str | None]:
         self.counts["reply.total"] = len(self._router.recorded)
+        for reply in self._router.recorded:
+            self.counts[f"reply.{reply.terminal_state}"] += 1
         self.counts["medication.output"] = sum(
             key.startswith("action.medication_") for key in self.counts
         )
@@ -388,61 +419,187 @@ _FAULTS = (
 )
 
 
+class _InjectedComponentFailure(Exception):
+    pass
+
+
+class _SequenceAsr:
+    def __init__(self, *texts: str) -> None:
+        self._texts = iter(texts)
+
+    def transcribe(self, _pcm: bytes) -> AsrResult:
+        return AsrResult(next(self._texts), "zh", 1)
+
+
+def _alert_transition() -> RiskTransition:
+    return RiskTransition(
+        transition_kind=RiskTransitionKind.ALERT_OPENED,
+        risk_kind=VisualRiskKind.FACE_NOT_VISIBLE,
+        previous_state=VisualRiskState.WATCH,
+        current_state=VisualRiskState.ALERT,
+        observed_at=EPOCH,
+        confidence=0.9,
+        notify=True,
+    )
+
+
+def _fault_visual_component(runner: OfflineApplicationRehearsalRunner) -> bool:
+    def fail() -> None:
+        raise _InjectedComponentFailure
+
+    try:
+        runner.execute_component(fail)
+    except _InjectedComponentFailure:
+        return True
+    return False
+
+
+def _fault_semantic_invalid(_runner: OfflineApplicationRehearsalRunner) -> bool:
+    try:
+        VisualReview.model_validate({"invalid": True})
+    except ValidationError:
+        return True
+    return False
+
+
+def _fault_semantic_conflict(_runner: OfflineApplicationRehearsalRunner) -> bool:
+    review = VisualReview.model_validate({
+        "baby_visibility": "not_visible", "face_visibility": "not_visible",
+        "posture": "supine", "bed_state": "outside_candidate",
+        "adult_presence": "absent", "image_quality": "usable",
+        "risk": "high", "reason_codes": ["face_not_visible", "outside_candidate"],
+        "confidence": 0.9,
+    })
+    evidence = canonicalize_visual_review(review)
+    return bool(
+        evidence.outside.candidate
+        and evidence.semantic_conflicts
+        and not evidence.face.candidate
+    )
+
+
+def _fault_duplicate_review(runner: OfflineApplicationRehearsalRunner) -> bool:
+    root = _prepare_root(runner.fault_root("FAULT-DUPLICATE-REVIEW-01"))
+    store = VisualRiskEventStore(root / "guardian.sqlite3")
+    store.migrate()
+    stream = io.StringIO()
+    pipeline = VisualRiskEventPipeline(
+        store=store, stream=stream, event_id_factory=lambda: "event-fault-duplicate",
+    )
+    alert = _alert_transition()
+    pipeline.handle(alert)
+    pipeline.handle(alert)
+    return (
+        len(store.list_events()) == 1
+        and stream.getvalue().count('"code":"guardian.notification_queued"') == 1
+    )
+
+
+def _fault_nonmonotonic(_runner: OfflineApplicationRehearsalRunner) -> bool:
+    machine = VisualRiskStateMachine()
+    safe = VisualReview.model_validate({
+        "baby_visibility": "visible", "face_visibility": "clear",
+        "posture": "supine", "bed_state": "inside", "adult_presence": "absent",
+        "image_quality": "usable", "risk": "none", "reason_codes": [],
+        "confidence": 0.9,
+    })
+    machine.evaluate(safe, EPOCH + timedelta(seconds=10))
+    try:
+        machine.evaluate(safe, EPOCH)
+    except ValueError:
+        return True
+    return False
+
+
+def _fault_voice_no_match(_runner: OfflineApplicationRehearsalRunner) -> bool:
+    sink = RecordingReplySink(behavior="success", id_factory=lambda: "reply-fault-nomatch")
+    controller = ListenOnlyController(
+        asr=_SequenceAsr("\u5c0f\u5c0f", "synthetic unsupported"),
+        synthesizer=sink, monotonic_ns=lambda: 0,
+    )
+    try:
+        armed = controller.handle(b"wake", Event())
+        rejected = controller.handle(b"unsupported", Event())
+        return (
+            armed.reason == "listen_only_armed"
+            and rejected.reason == "listen_only_followup_far"
+            and rejected.phase == "idle"
+            and sink.residual_sessions == 0
+        )
+    finally:
+        sink.close()
+
+
+def _fault_reply(
+    _runner: OfflineApplicationRehearsalRunner,
+    behavior: str,
+) -> bool:
+    sink = RecordingReplySink(
+        behavior=behavior,  # type: ignore[arg-type]
+        id_factory=lambda: f"reply-fault-{behavior}",
+    )
+    controller = ListenOnlyController(
+        asr=_SequenceAsr("\u5c0f\u5c0f"), synthesizer=sink, monotonic_ns=lambda: 0,
+    )
+    try:
+        outcome = controller.handle(b"wake", Event())
+        return (
+            outcome.reason == "voice_output_unavailable"
+            and outcome.phase == "idle"
+            and len(sink.recorded) == 1
+            and sink.recorded[0].terminal_state == (
+                "timed_out" if behavior == "timeout" else "failed"
+            )
+            and sink.residual_sessions == 0
+        )
+    finally:
+        sink.close()
+
+
+def _fault_event_store(_runner: OfflineApplicationRehearsalRunner) -> bool:
+    class FailingStore:
+        def load_open(self):
+            raise sqlite3.OperationalError("synthetic store failure")
+
+    stream = io.StringIO()
+    pipeline = VisualRiskEventPipeline(store=FailingStore(), stream=stream)  # type: ignore[arg-type]
+    pipeline.handle(_alert_transition())
+    return '"code":"guardian.persistence_failed"' in stream.getvalue()
+
+
+def _fault_projection(runner: OfflineApplicationRehearsalRunner) -> bool:
+    root = _prepare_root(runner.fault_root("FAULT-PROJECTION-01"))
+    try:
+        GuardianEventQueryService(root / "guardian.sqlite3").recent_events()
+    except GuardianEventQueryUnavailable:
+        return True
+    return False
+
+
+_FAULT_EXERCISES = (
+    _fault_visual_component,
+    _fault_semantic_invalid,
+    _fault_semantic_conflict,
+    _fault_duplicate_review,
+    _fault_nonmonotonic,
+    _fault_voice_no_match,
+    lambda runner: _fault_reply(runner, "timeout"),
+    lambda runner: _fault_reply(runner, "failure"),
+    _fault_event_store,
+    _fault_projection,
+)
+
+
 def run_fault_pack(
     runner_factory: Callable[[], OfflineApplicationRehearsalRunner],
 ) -> tuple[FaultResultV1, ...]:
     results: list[FaultResultV1] = []
-    for index, (fault_id, reason) in enumerate(_FAULTS):
+    for (fault_id, reason), exercise in zip(_FAULTS, _FAULT_EXERCISES, strict=True):
         closed = False
         try:
-            if index == 0:
-                runner_factory()
-                raise RuntimeError
-            if index == 1:
-                from packages.contracts.vision import VisualReview
-                VisualReview.model_validate({"invalid": True})
-            elif index == 2:
-                from packages.contracts.vision import VisualReview
-                review = VisualReview.model_validate({
-                    "baby_visibility": "not_visible", "face_visibility": "not_visible",
-                    "posture": "supine", "bed_state": "outside_candidate",
-                    "adult_presence": "absent", "image_quality": "usable",
-                    "risk": "high", "reason_codes": ["face_not_visible", "outside_candidate"],
-                    "confidence": 0.9,
-                })
-                evidence = canonicalize_visual_review(review)
-                closed = bool(evidence.outside.candidate and evidence.semantic_conflicts)
-            elif index == 3:
-                delivered = {"review-1"}
-                closed = "review-1" in delivered
-            elif index == 4:
-                machine = VisualRiskStateMachine()
-                safe = RehearsalSuiteV1.model_validate_json(
-                    Path("tests/fixtures/offline_application_rehearsal/scenarios.v1.json").read_bytes()
-                ).scenarios[0].steps[0].visual_review
-                assert safe is not None
-                machine.evaluate(safe, EPOCH + timedelta(seconds=10))
-                machine.evaluate(safe, EPOCH)
-            elif index == 5:
-                from services.voice.care_action import classify_exact_action
-                closed = classify_exact_action("synthetic unsupported") is None
-            elif index in {6, 7}:
-                behavior = "timeout" if index == 6 else "failure"
-                sink = RecordingReplySink(behavior=behavior, id_factory=lambda: "reply-fault")
-                try:
-                    if sink.speak_code("listen_only_ready", Event()):
-                        raise RuntimeError
-                    closed = True
-                finally:
-                    sink.close()
-                if sink.residual_sessions != 0:
-                    raise RuntimeError
-            elif index == 8:
-                raise sqlite3.OperationalError
-            else:
-                GuardianEventQueryService(Path("missing.sqlite3")).recent_events()
+            closed = exercise(runner_factory())
         except Exception:
-            closed = True
+            closed = False
         results.append(
             FaultResultV1(
                 fault_id=fault_id,

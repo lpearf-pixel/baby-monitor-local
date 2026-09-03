@@ -187,6 +187,45 @@ def test_counts_and_side_effects_fail_closed() -> None:
             module.OfflineApplicationRunV1.model_validate(payload)
 
 
+@pytest.mark.parametrize(
+    ("field", "value"),
+    [
+        ("event_ids", ["/Users/private/family.jpg"]),
+        ("reply_ids", ["free prose and token=secret"]),
+        ("event_ids", ["event-good", "event-good"]),
+    ],
+)
+def test_result_ids_are_closed_bounded_and_unique(field: str, value: list[str]) -> None:
+    module = contracts()
+    payload = run_payload()["results"][0]  # type: ignore[index]
+    payload[field] = value
+    with pytest.raises(ValidationError):
+        module.ApplicationScenarioResultV1.model_validate(payload)
+
+
+def test_every_voice_step_declares_expected_reason_and_phase() -> None:
+    suite = contracts().load_rehearsal_suite(FIXTURE_ROOT / "scenarios.v1.json")
+    voice_steps = [
+        step for scenario in suite.scenarios for step in scenario.steps
+        if step.voice_fixture_id is not None
+    ]
+    assert voice_steps
+    assert all(step.expected_reason is not None for step in voice_steps)
+    assert all(step.expected_phase is not None for step in voice_steps)
+
+
+@pytest.mark.parametrize("mutation", ["phase", "reply"])
+def test_voice_step_rejects_incoherent_expected_lifecycle(mutation: str) -> None:
+    module = contracts()
+    payload = suite_payload()["scenarios"][6]["steps"][0]  # type: ignore[index]
+    if mutation == "phase":
+        payload["expected_phase"] = "idle"
+    else:
+        payload["reply_behavior"] = "timeout"
+    with pytest.raises(ValidationError):
+        module.ApplicationStepV1.model_validate(payload)
+
+
 def test_loaders_reject_oversize_input(tmp_path: Path) -> None:
     module = contracts()
     candidate = tmp_path / "oversize.json"
@@ -202,8 +241,8 @@ def test_canonical_bytes_and_digest_normalize_only_generated_identity() -> None:
     changed["run_id"] = "run-2222222222222222"
     changed["generated_at"] = "2026-09-03T00:00:00Z"
     for index, result in enumerate(changed["results"], 1):  # type: ignore[union-attr]
-        result["event_ids"] = [f"other-event-{index}"]
-        result["reply_ids"] = [f"other-reply-{index}"]
+        result["event_ids"] = [f"event-other-{index}"]
+        result["reply_ids"] = [f"reply-other-{index}"]
     second = module.OfflineApplicationRunV1.model_validate(changed)
     assert module.stable_application_digest(first) == module.stable_application_digest(second)
     semantic = run_payload()

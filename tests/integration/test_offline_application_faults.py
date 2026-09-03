@@ -41,3 +41,26 @@ def test_fault_results_never_retain_exception_prose(tmp_path: Path) -> None:
     payload = "".join(item.model_dump_json() for item in results)
     assert "secret" not in payload
     assert len(results) == 10
+    assert all(item.outcome == "UNEXPECTED" for item in results)
+
+
+def test_unexpected_fault_does_not_suppress_later_siblings(tmp_path: Path) -> None:
+    from services.offline_application_rehearsal import (
+        OfflineApplicationRehearsalRunner,
+        run_fault_pack,
+    )
+
+    calls = 0
+
+    def factory() -> OfflineApplicationRehearsalRunner:
+        nonlocal calls
+        calls += 1
+        if calls == 2:
+            raise RuntimeError("unexpected private prose")
+        return OfflineApplicationRehearsalRunner(tmp_path / f"runner-{calls}")
+
+    results = run_fault_pack(factory)
+    assert len(results) == 10
+    assert results[1].outcome == "UNEXPECTED"
+    assert results[-1].outcome == "CLOSED"
+    assert "private" not in "".join(item.model_dump_json() for item in results)

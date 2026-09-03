@@ -16,6 +16,7 @@ TEXT = {
     "diaper_start_exact": "开始换尿布", "diaper_complete_exact": "换好尿布了",
     "burping_start_exact": "开始拍嗝", "burping_complete_exact": "拍嗝结束",
     "ambiguous_multi": "小小开始换尿布然后开始拍嗝",
+    "no_match": "不支持的合成命令", "source_failure": "合成故障",
 }
 PCM = {key: (index + 1).to_bytes(2, "little") * 3200 for index, key in enumerate(TEXT)}
 
@@ -23,6 +24,8 @@ PCM = {key: (index + 1).to_bytes(2, "little") * 3200 for index, key in enumerate
 class Asr:
     def transcribe(self, pcm: bytes) -> AsrResult:
         key = next(key for key, value in PCM.items() if value == pcm)
+        if key == "source_failure":
+            raise RuntimeError("synthetic source failure")
         return AsrResult(TEXT[key], "zh", 1)
 
 

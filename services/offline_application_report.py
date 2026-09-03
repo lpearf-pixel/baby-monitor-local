@@ -82,6 +82,17 @@ def _render_html(run: OfflineApplicationRunV1) -> str:
         + "/" + html.escape(item.reason) + "</li>"
         for item in run.faults
     )
+    required_zero_keys = (
+        "no_baby_face_watch", "no_baby_face_alert", "no_baby_face_event",
+        "no_baby_face_notification", "residual_reply_sessions",
+    )
+    zero_values = tuple(run.side_effects.model_dump().items()) + tuple(
+        (key, run.counts[key]) for key in required_zero_keys
+    )
+    zeroes = "".join(
+        "<li>" + html.escape(key) + "=" + str(int(value)) + "</li>"
+        for key, value in zero_values
+    )
     return (
         "<!doctype html><html lang=\"en\"><head><meta charset=\"utf-8\">"
         "<title>Offline Application Rehearsal</title></head><body>"
@@ -92,6 +103,7 @@ def _render_html(run: OfflineApplicationRunV1) -> str:
         "<h2>HISTORICAL</h2><ul>" + historical + "</ul>"
         "<h2>SOFTWARE_REHEARSAL</h2><table><tbody>" + scenarios + "</tbody></table>"
         "<h2>Faults</h2><ul>" + faults + "</ul>"
+        "<h2>Closed side effects</h2><ul>" + zeroes + "</ul>"
         f"<p>iterations={len(run.repetition.iterations)} "
         f"cross_risk={run.repetition.cross_risk_pass}/{run.repetition.cross_risk_instances}</p>"
         "<h2>PANORAMIC_DEVICE</h2><p>not executed</p>"

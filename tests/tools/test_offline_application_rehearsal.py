@@ -88,6 +88,9 @@ def test_run_imports_component_once_and_emits_closed_summary(
     ):
         assert line in output
     assert str(tmp_path) not in output
+    report_line = next(line for line in output.splitlines() if line.startswith("report="))
+    assert report_line.startswith("report=run-")
+    assert "/" not in report_line
 
 
 def test_run_refuses_an_invalid_imported_component(monkeypatch, capsys) -> None:
