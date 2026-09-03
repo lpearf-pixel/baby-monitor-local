@@ -582,6 +582,47 @@ def test_dashboard_loads_after_authentication() -> None:
     assert 'src="/assets/gauge-calibration.js"' in response.text
 
 
+def test_dashboard_uses_a_four_tab_shell_that_preserves_the_viewer() -> None:
+    app, _ = client()
+
+    response = app.get("/", headers=auth())
+
+    assert response.status_code == 200
+    assert response.text.count('role="tab"') == 4
+    assert response.text.count('role="tabpanel"') == 4
+    assert 'role="tablist"' in response.text
+    assert (
+        '<button id="tab-overview" type="button" role="tab" tabindex="0" '
+        'aria-controls="dashboard-overview" aria-selected="true">总览</button>'
+    ) in response.text
+    for panel_id, tab_id in (
+        ("dashboard-overview", "tab-overview"),
+        ("dashboard-alerts", "tab-alerts"),
+        ("dashboard-analytics", "tab-analytics"),
+        ("dashboard-system", "tab-system"),
+    ):
+        assert f'id="{panel_id}" role="tabpanel" aria-labelledby="{tab_id}"' in response.text
+    assert response.text.count('src="/live.mjpeg"') == 1
+    assert 'id="media-plane"' in response.text
+    assert 'id="status"' not in response.text
+    assert "refreshStatus" not in response.text
+    assert 'href="/assets/dashboard.css"' in response.text
+
+
+def test_dashboard_stylesheet_requires_authentication_and_is_compact() -> None:
+    app, _ = client()
+
+    assert app.get("/assets/dashboard.css").status_code == 401
+    response = app.get("/assets/dashboard.css", headers=auth())
+
+    assert response.status_code == 200
+    assert response.headers["content-type"].startswith("text/css")
+    assert response.headers["cache-control"] == "no-store"
+    assert "@media (max-width: 720px)" in response.text
+    assert ":focus-visible" in response.text
+    assert "@media (prefers-reduced-motion: reduce)" in response.text
+
+
 def test_dashboard_exposes_guardian_event_list_without_media_access() -> None:
     app, _ = client()
 
@@ -591,7 +632,7 @@ def test_dashboard_exposes_guardian_event_list_without_media_access() -> None:
     assert 'id="guardian-events"' in response.text
     assert 'id="guardian-events-stale"' in response.text
     assert 'src="/assets/guardian-events.js"' in response.text
-    assert ".guardian-event.is-open" in response.text
+    assert 'href="/assets/dashboard.css"' in response.text
     assert "不提供图片或视频访问" in response.text
 
 
