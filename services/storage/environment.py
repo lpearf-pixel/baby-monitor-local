@@ -85,6 +85,12 @@ class EnvironmentTrend(StorageModel):
     _aware_ended_at = field_validator("ended_at")(_aware)
 
 
+class EnvironmentIncidentCounts(StorageModel):
+    range_normal: int = Field(ge=0)
+    range_critical: int = Field(ge=0)
+    unreadable: int = Field(ge=0)
+
+
 class EnvironmentStore:
     def __init__(self, path: Path) -> None:
         self._path = path
@@ -324,6 +330,48 @@ class EnvironmentStore:
                 (limit,),
             ).fetchall()
         return tuple(self._incident_from_row(row) for row in rows)
+
+    def incident_counts(
+        self,
+        *,
+        started_at: datetime,
+        ended_at: datetime,
+    ) -> EnvironmentIncidentCounts:
+        if (
+            started_at.tzinfo is None
+            or started_at.utcoffset() is None
+            or ended_at.tzinfo is None
+            or ended_at.utcoffset() is None
+        ):
+            raise ValueError("started_at and ended_at must be timezone-aware")
+        if ended_at <= started_at:
+            raise ValueError("ended_at must follow started_at")
+        with self._connect() as connection:
+            connection.execute("PRAGMA query_only = ON")
+            row = connection.execute(
+                """
+                SELECT
+                    COALESCE(SUM(CASE
+                        WHEN kind = 'range' AND severity = 'normal'
+                        THEN 1 ELSE 0 END), 0) AS range_normal,
+                    COALESCE(SUM(CASE
+                        WHEN kind = 'range' AND severity = 'critical'
+                        THEN 1 ELSE 0 END), 0) AS range_critical,
+                    COALESCE(SUM(CASE
+                        WHEN kind = 'unreadable'
+                        THEN 1 ELSE 0 END), 0) AS unreadable
+                FROM environment_incidents
+                WHERE julianday(opened_at) >= julianday(?)
+                    AND julianday(opened_at) < julianday(?)
+                """,
+                (started_at.isoformat(), ended_at.isoformat()),
+            ).fetchone()
+        assert row is not None
+        return EnvironmentIncidentCounts(
+            range_normal=int(row["range_normal"]),
+            range_critical=int(row["range_critical"]),
+            unreadable=int(row["unreadable"]),
+        )
 
     def open_incidents(
         self,
