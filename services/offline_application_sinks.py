@@ -32,8 +32,14 @@ class RecordedReply:
 
 
 class RecordingNotificationStore:
-    def __init__(self, store: VisualRiskEventStore) -> None:
+    def __init__(
+        self,
+        store: VisualRiskEventStore,
+        *,
+        id_factory: Callable[[], str] | None = None,
+    ) -> None:
         self._store = store
+        self._id_factory = id_factory
         self._queued: list[RecordedNotification] = []
 
     @property
@@ -53,7 +59,7 @@ class RecordingNotificationStore:
         intervention_id: str | None = None,
     ) -> StoredVisualRiskNotification:
         value = self._store.queue_notification(
-            notification_id=notification_id,
+            notification_id=(self._id_factory() if self._id_factory else notification_id),
             event_id=event_id,
             stage=stage,
             queued_at=queued_at,
