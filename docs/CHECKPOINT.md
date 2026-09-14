@@ -726,3 +726,28 @@ Make dry-run、diff/privacy scope checks 均通过。该软件证据不证明当
 家庭画面、crop 或坐标，也没有降低 0.75 置信度、1/10 宽度或布局门。当前 installed
 artifact 早于新的来源证明合同，Task 15.4b/15.6b 仍需位置 2–5、夜间/IR 采集以及最终
 80-epoch train/export/check 和确定性读表实机门。
+
+## WS2021 80-epoch intermediate candidate checkpoint
+
+2026-09-14，在 `codex/guardian-live-acceptance` 的 `0c0684e` 上，使用 ignored 私有
+dataset 完成一次全新 80-epoch Intel CPU 训练，最佳 checkpoint 为 epoch 76。checkpoint
+和 provenance sidecar 均为 0600；随后 OpenVINO export 与 exact artifact/provenance
+check 分别返回 `export_ok`、`check_ok`。本节不记录样本 ID、文件路径、摘要值、标定
+坐标、画面或家庭读数。
+
+数据集聚合为 217 条：153 positive、64 background。只读离线推理中，151/153 positive
+达到固定 0.75 门，background 为 0/64，背景最高置信度 0.017908。该数据包含训练样本，
+只证明当前工件具有基本目标/背景分离能力，不能作为 E2 准确率或独立泛化证据。
+
+新鲜软件证据：WS2021 focused `45 passed`；gauge/environment/WS2021 扩大门禁
+`131 passed`。共享 Xiaomi producer 一度为 `SOURCE_OFFLINE`，仅独立重启 go2rtc 后
+恢复，source check 为 H.265、2560x1440、实际协商 `cs2+udp`；没有重启完整 Alpha。
+随后 no-persistence 五帧实机预检得到一个 NMS candidate，置信度 0.880226，但候选以
+`gauge_box_invalid` fail closed。诊断显示只越界一个边，最大越界为画面尺度 0.006334；
+仅用于诊断的内存裁边仍未通过批准的双圆 layout/refinement，因此没有修改生产代码或
+放宽门限，也没有保存任何帧或 crop。
+
+结论：这是位置 1 数据上的中间候选，不是 final private artifact。Task 15.4b、15.6b
+和 E2 保持 OPEN。下一动作是无宝宝、无成人条件下完成位置 2 的 schema-v2 Dashboard
+标定，再运行 calibrated private collection；随后依次完成位置 3-5、夜间/IR、重建
+dataset、最终 80-epoch train/export/check 和实机读表。

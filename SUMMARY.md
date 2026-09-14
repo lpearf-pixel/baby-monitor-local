@@ -1,6 +1,6 @@
 # Baby Monitor Local Project Summary
 
-Updated: 2026-08-25
+Updated: 2026-09-14
 
 ## Snapshot
 
@@ -25,9 +25,9 @@ Updated: 2026-08-25
   training/export tooling and fail-closed gauge-worker integration. Daylight position
   1/5 completed with 60 valid private pairs. A private collection-seed model was trained,
   exported and digest-checked after correcting augmentation to the approved 1/10–1/3
-  deployment scale, but position 2 remains `gauge_not_found`; low-confidence predictions,
+  deployment scale, but at that checkpoint position 2 remained `gauge_not_found`; low-confidence predictions,
   local feature templates and full-frame shape scans did not provide a safe label. The
-  current gate is one local position-2 bounding-box annotation before automatic private
+  gate at that checkpoint was one local position-2 bounding-box annotation before automatic private
   collection can continue; no production threshold is reduced.
   The latest bootstrap rerun fixes the zero CPU learning rate and aliased best-state
   snapshot, adds deterministic generated backgrounds/negatives, and passes training,
@@ -39,10 +39,10 @@ Updated: 2026-08-25
   privacy-rejected with zero persistence; more safe private position diversity is
   still required. The final-artifact tooling now binds configured epochs, exact
   dataset-manifest SHA-256 and best epoch across checkpoint, sidecar and exported
-  metadata, and rejects missing or conflicting provenance. The installed artifact
-  predates that contract. A fresh five-frame no-persistence preflight still returns
-  `gauge_box_invalid`; positions 2–5, night/IR and final training/export/check remain
-  the active gate.
+  metadata, and rejects missing or conflicting provenance. The artifact installed at
+  the 2026-08-25 checkpoint predated that contract; its five-frame no-persistence
+  preflight returned `gauge_box_invalid`. The newer 2026-09-14 evidence below supersedes
+  the artifact status while keeping positions 2–5, night/IR and final training open.
 - 2026-08-17 fixed-ROI follow-up: a schema-v2 lower-right ROI and bounded consecutive-
   frame stabilizer now run before the trained detector when automatic localization is
   enabled. Same-aspect 2560x1440 to 1280x720 scaling is accepted; aspect-ratio drift
@@ -61,6 +61,17 @@ Updated: 2026-08-25
   bounded circle candidate and temperature's nearest center is ~0.393R away. A fresh
   schema-v2 calibration at the current camera view is required; fail-closed limits are
   not widened.
+- 2026-09-14 WS2021 candidate checkpoint: the current private dataset contains 217
+  entries (153 positive and 64 background). A fresh 80-epoch Intel CPU run completed;
+  its best checkpoint is epoch 76, and train, OpenVINO export and exact artifact/
+  provenance checks all passed. Dataset-only inference placed 151/153 positives at or
+  above the unchanged 0.75 threshold and 0/64 backgrounds above it. This is not an
+  independent accuracy result. A no-persistence live five-frame burst then found one
+  NMS candidate at confidence 0.880226, but it was `gauge_box_invalid`; bounded clipping
+  of the 0.006334-frame-fraction overshoot still failed the approved two-dial layout and
+  refinement gates. Task 15.4b/E2 therefore remain open. The next action is a new
+  schema-v2 position-2 calibration with no baby or adult present, followed by calibrated
+  private collection; positions 3-5 and night/IR still follow before final training.
 - The earlier untracked `uv.lock` was never staged or published; the recovered checkout
   does not recreate or claim ownership of it.
 

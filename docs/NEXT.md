@@ -6,24 +6,19 @@ the detailed approved specs and plans remain authoritative for behavior.
 
 ## P0 — Environment real-device acceptance (current)
 
-**Status:** E1 persistence passed on 2026-08-16. The fixed native frame source and
-non-16:9 rectification prerequisites pass, but a fixed private ROI still leaves the
-humidity face fail-closed. Approved Task 15 now inserts i9-local automatic WS2021
-localization before E2; its strict locator/schema-v2 relocation contracts and
-privacy-safe crop persistence, deterministic dataset preparation and pinned Intel CPU
-training/export tooling and model-independent worker integration are complete. The
-first human-confirmed no-baby calibrated collection completed with 60 valid private
-pairs. A 20-epoch private collection seed was exported and verified at the corrected
-deployment scale, but it fails closed as `gauge_not_found` at daylight position 2/5.
-The fixed ROI now stabilizes on the live source. Task 5 adaptive in-memory geometry is
-software-complete and its focused/full gauge gates pass, but the end-to-end reader still
-returns `calibration_invalid` for all five frames: the persisted geometry is outside the
-approved adaptive bounds (humidity has no bounded circle candidate; temperature's nearest
-center is about 0.393R away). A calibrated-center pointer fallback plus grayscale day
-temperature signal now produces an available five-frame smoke reading at the 0.75 gate.
-The next mainline action is E3: run the darkness/infrared, glare, occlusion and gauge
-movement fail-closed acceptance. The 30 daylight manual comparisons are deferred and do
-not block E3/E4/E5; OCR remains deferred.
+**Status:** E1 persistence passed on 2026-08-16. Task 15 software, privacy-safe crop
+persistence, deterministic dataset preparation and pinned Intel CPU train/export
+tooling are complete. Position 1 has 60 valid private pairs. On 2026-09-14 a fresh
+80-epoch intermediate candidate (best epoch 76) trained, exported and passed exact
+artifact/provenance checks plus `131 passed` gauge/environment/WS2021 regression. The
+217-entry dataset separates 151/153 positives above the fixed 0.75 gate from 0/64
+backgrounds, but this is training-inclusive evidence only. A no-persistence live
+five-frame burst produced one 0.880226 NMS candidate that failed `gauge_box_invalid`;
+diagnostic-only bounded clipping still failed the approved two-dial layout/refinement.
+No threshold or production geometry rule was changed. The immediate mainline action is
+position-2 schema-v2 Dashboard calibration and private collection with no baby or adult
+present, then positions 3-5 and night/IR. Only after rebuilding the dataset and training
+the final model may E2 automatic reading and E3 real-scene acceptance resume.
 
 **Prerequisites:** Run from the `kandysmith` login that owns the installed i9 GUI and
 launchd services. Keep calibration files, reference images, databases and runtime
@@ -56,17 +51,19 @@ metrics in ignored local storage.
 **Codex can:** run bounded readiness checks, guide the approved workflow, validate
 closed outputs, diagnose recoverable failures and update redacted documentation.
 
-**Human required:** provide one local bounding-box annotation at position 2, operate the
-authenticated Dashboard, position/read the physical gauge, provide reference comparisons,
-supervise scene changes and keep the i9 running.
+**Human required now:** place the upright, fully visible gauge at position 2 with safe
+frame-edge margin and no baby/adult in view, then save a fresh schema-v2 calibration in
+the authenticated Dashboard. Codex can then run the bounded calibrated collection and
+all aggregate checks without seeing or reporting the household media.
 
 **Acceptance and tests:** Follow environment plan E1–E5 and approved environment spec
 section 18. Every published daylight reading meets the error target; unreliable input
 is `unavailable`; M2 outage does not stop the environment path; 24-hour evidence shows
 no backlog. Run focused software checks only if code changes become separately approved.
 
-**Next:** P1 three-browser HD acceptance. E3 real-scene checks remain queued behind this
-stage and must be completed before the final release gate.
+**Next:** finish Task 15 positions 2-5 and night/IR, rebuild and train the final private
+model, then obtain one automatically localized available reading. E2 manual comparisons
+and E3 real-scene checks remain required before the final release gate.
 
 ## P1 — Three-browser HD real-device acceptance
 

@@ -650,9 +650,14 @@ overlap with persisted crops.
   localization remains the acceptance boundary. On 2026-08-25 the training/export/check
   contract added bounded provenance for configured epochs, the exact dataset-manifest
   SHA-256 and best epoch, bound to both the checkpoint and exported metadata. Missing,
-  conflicting or wrong-dataset provenance now fails closed. The installed artifact
-  predates this contract, so a final post-collection training/export/check run is still
-  required and this checkbox remains open.
+  conflicting or wrong-dataset provenance now fails closed. The artifact installed at
+  that 2026-08-25 checkpoint predated this contract. A final post-collection
+  training/export/check run is still required and this checkbox remains open. On
+  2026-09-14 a fresh 80-epoch intermediate
+  candidate (best epoch 76) trained/exported/checked against the current 217-entry
+  private dataset. It passed exact provenance and artifact checks, but it is not final:
+  a no-persistence live burst still failed `gauge_box_invalid`, and positions 2-5 plus
+  night/IR have not yet been incorporated.
 - [x] **15.5 Gauge-worker integration:** locate on the first frame of each burst, refine
   the box to an outer quadrilateral plus two-circle layout, migrate schema-v2 geometry,
   and apply the same migrated calibration to all five frames. Missing or ambiguous
@@ -676,7 +681,11 @@ overlap with persisted crops.
   position diversity remains required before positions 2–5, night/IR, final training
   and reading acceptance can continue. A fresh no-persistence five-frame preflight on
   2026-08-25 captured the source successfully but rejected the current live candidate
-  as `gauge_box_invalid`; no crop was written and no threshold was changed.
+  as `gauge_box_invalid`; no crop was written and no threshold was changed. The
+  2026-09-14 80-epoch intermediate candidate raised live confidence to 0.880226 with one
+  NMS candidate, but the box remained invalid and diagnostic-only bounded clipping
+  failed the two-dial layout/refinement. Position-2 re-calibration and calibrated
+  collection are therefore still the next installed-i9 step.
 
 **Human work:** first confirm no baby is present and collect the current calibrated
 position, then place the gauge in five upright, front-facing positions for 30 seconds

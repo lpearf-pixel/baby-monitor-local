@@ -22,6 +22,16 @@
   humidity circle candidate is within the approved bounds and the nearest temperature
   center is ~0.393R away (limit 0.25R). Treat the current calibration as stale and
   require a new schema-v2 geometry calibration; do not widen the limits.
+- 2026-09-14 automatic-localization checkpoint: a fresh 80-epoch private candidate
+  (best epoch 76) trained and exported successfully, and exact checkpoint/sidecar/
+  metadata/dataset provenance checks pass. Gauge/environment/WS2021 regression is
+  `131 passed`. Dataset-only inference separates 151/153 positives above the fixed
+  0.75 gate from 0/64 backgrounds, but this is not independent accuracy evidence. A
+  no-persistence live burst captured all five frames and produced one NMS candidate at
+  confidence 0.880226; the candidate was out of bounds and, after diagnostic-only
+  bounded clipping, still failed the two-dial layout and refinement gates. No frame or
+  crop was persisted. Task 15.4b, 15.6b and E2 remain open pending position-2
+  re-calibration/collection, positions 3-5, night/IR and a final post-collection model.
 - Xiaomi-first delivery scope: fixed to MJSXJ17CM for the first usable release;
   the proposed UVC USB source remains deferred behind the existing frame-source
   adapter boundary.
