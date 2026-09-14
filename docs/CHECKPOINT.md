@@ -2516,3 +2516,21 @@ Fresh batch-2 closure evidence: the three prescribed corpus contract/tool/baseli
 files passed 46/46 in 2.96 seconds. The fixed validator returned `result=PASS`,
 `readiness=PARTIAL`, `clip_count=13`, `admission=SKIP` and
 `missing_scenarios=2`. `git diff --check` passed after this result was recorded.
+
+## 2026-09-14 no-baby panoramic plan
+
+Planning base: `90ffa7acbc9f64229a219caa2f92a1b7396090ad`, four docs-only
+commits after the published Dashboard merge. Added the bounded no-baby plan and
+reconciled the current queue. Read the current rules, handoff, Voice Task 8,
+care-action registry and cross-risk specification. No camera was accessed and no
+live scene was inspected; the no-baby premise comes from the owner. No device,
+software regression, installation, notification, care write or capture ran.
+Documentation validation covers file scope, links, whitespace and unchanged prior
+handoff content; no local Git checkout or i9 dirty-state claim is made.
+All new acceptance rows are NOT_RUN or explicitly deferred. Combined-command
+recognition cannot close original armed follow-up or real-baby gates.
+
+The owner additionally requested an i9 Codex handoff. Added the bounded read-only
+preflight prompt as the immediate next step. It requests existing-state evidence,
+a predefined positive/negative trial list and proposed plan corrections, without
+starting a live matrix or claiming that either agent inspected the camera scene.

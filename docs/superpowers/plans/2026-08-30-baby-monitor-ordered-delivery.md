@@ -27,6 +27,24 @@ OpenVINO 2025.4.1, go2rtc Xiaomi MISS/CS2, macOS launchd and Git.
 - `docs/superpowers/specs/2026-08-29-private-local-visual-corpus-overlay-design.md`
 - `docs/superpowers/specs/2026-08-04-baby-monitor-local-design.md`
 
+## 2026-09-14 no-baby panoramic planning update
+
+The owner requested a concrete no-baby acceptance plan and reports an empty scene.
+This is owner-reported context, not a camera observation by the planning agent.
+Follow `docs/superpowers/plans/2026-09-14-no-baby-panoramic-acceptance.md`
+for one bounded Dashboard + combined-command Feeding/diaper/burping + no-baby
+visual session. First run the read-only i9 Codex handoff in
+`docs/superpowers/plans/2026-09-14-i9-codex-preflight-prompt.md`, return its
+sanitized findings, and refine the plan before the supervised matrix.
+This turn is documentation only; all device rows remain NOT_RUN.
+The plan distinguishes ROOM_NO_BED from EMPTY_BED_VIEW and unusable input, retains
+eligible outside/adult signals, and requires zero new or incorrectly extended face
+risk under valid no-baby observations. Camera Reply stays false; care writes and
+private-media capture remain closed. Real-baby positive controls, the original armed
+follow-up matrix, full Stage 2, V3E and release gates are not closed by this subset.
+The 2026-09-04 deferral remains in effect for other human gates; the next local session
+starts only with the logged-in operator ready. Do not restart completed software work.
+
 ## 2026-09-02 owner-directed execution amendment
 
 The owner directed the project to stop repeating slow live trials until the joined
