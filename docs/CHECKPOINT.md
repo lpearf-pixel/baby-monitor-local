@@ -2571,5 +2571,5 @@ performance=PASS mode=5fps
 本轮新增默认关闭、最长 600 秒的内存语义 observer 与 0600 聚合报告入口。它只接收实际
 四帧提交/完成和 runtime transition callback，区分 timeout 与 late response；会话起止、
 部署版本、可归因转换、延迟和 `baby_visibility` 计数均有界。没有来源的 bridge 计数为
-`null`，历史数据库时间窗不作为本会话因果证据。软件聚焦测试 `37 passed`；未启动家庭
+`null`，历史数据库时间窗不作为本会话因果证据。语义 observer/worker 聚焦测试 `38 passed`，视觉目录回归 `387 passed, 1 skipped`；未启动家庭
 语义观察，未保存帧/模型原文/音频/转写，Camera Reply=false，WS2021 隔离。

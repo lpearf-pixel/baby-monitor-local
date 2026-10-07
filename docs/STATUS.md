@@ -949,7 +949,7 @@ runtime callback 实际产生的 Guardian transition 数。bridge 失败/重连/
 `null`，不补零。聚合报告不含图片、模型原文、音频、转写、事件 ID 或私有路径，并以 0600
 原子写入。
 
-本轮软件聚焦测试 37 项通过；此前 10 分钟性能门的真实证据为 60/60 个 5 FPS 样本，P50
+本轮语义 observer/worker 聚焦测试 38 项通过；视觉目录回归为 387 passed、1 skipped。此前 10 分钟性能门的真实证据为 60/60 个 5 FPS 样本，P50
 85.798 ms、P95 130.651 ms、最大 145.869 ms，模型 available。该证据仅证明链路性能，
 `semantic_accuracy=NOT_VERIFIED`。bridge 在窗口末发生一次可见中断/重连后恢复，记为
 `bridge_continuity=INTERRUPTED_RECOVERED`；历史 exit 255 不归因于本窗口新增故障。
