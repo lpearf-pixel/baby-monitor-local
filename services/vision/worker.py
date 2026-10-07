@@ -74,7 +74,11 @@ class FrameHealthLike(Protocol):
 
 
 class ReviewSchedulerLike(Protocol):
-    def poll(self) -> ReviewCompletion | None: ...
+    def poll(
+        self,
+        *,
+        monotonic_now: float | None = None,
+    ) -> ReviewCompletion | None: ...
 
     def try_submit(
         self,
@@ -222,7 +226,7 @@ class VisualWorker:
         monotonic_now: float,
     ) -> PreparedAnalysisFrame | None:
         self._require_monotonic(monotonic_now)
-        completion = self._review_scheduler.poll()
+        completion = self._review_scheduler.poll(monotonic_now=monotonic_now)
         if completion is not None:
             self._on_review_completion(completion)
 

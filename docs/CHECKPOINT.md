@@ -2573,3 +2573,20 @@ performance=PASS mode=5fps
 部署版本、可归因转换、延迟和 `baby_visibility` 计数均有界。没有来源的 bridge 计数为
 `null`，历史数据库时间窗不作为本会话因果证据。语义 observer/worker 聚焦测试 `38 passed`，视觉目录回归 `387 passed, 1 skipped`；未启动家庭
 语义观察，未保存帧/模型原文/音频/转写，Camera Reply=false，WS2021 隔离。
+
+## 2026-10-08 600 秒语义观察零请求诊断
+
+一次 600 秒观察使用 `2ab2407`，报告为 `expired`，但
+`request_count=0`、`success_count=0`、`failure_count=0`、`timeout_count=0`、
+`fresh_frame_requests=0`，`baby_visibility` 各项均为 0；记录为
+`semantic_observation=NO_SAMPLES`、`semantic_accuracy=NOT_EVALUABLE`。
+报告为私有 0600 聚合文件，未保存帧或模型原文。
+
+真实 `VisualWorker -> VisualReviewScheduler -> reviewer -> observer` 合成接线复现的
+首个阻断点是 worker 与 scheduler/observer 的 monotonic 采样不一致：worker 先调用
+`poll()`，observer 可能先看到略晚时间，随后较早的 `try_submit()` 请求被 observer
+时间校验静默拒绝。最小修正是将 worker 的同一 `monotonic_now` 传给 scheduler poll；
+不改变周期、紧急触发、冷却或四帧合同。修正后的接线回归已通过。
+
+报告中的 `guardian_transition_count=4` 仅命名为“会话窗口内转换回调”，无法证明由
+语义请求导致，故 `guardian_callback_attribution=UNKNOWN`。本轮未追加家庭观察。

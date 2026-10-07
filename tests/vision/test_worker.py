@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+from concurrent.futures import Future
 from dataclasses import FrozenInstanceError, fields
 from datetime import UTC, datetime, timedelta
 from pathlib import Path
@@ -19,6 +20,7 @@ from packages.contracts.vision import (
     RealtimeCandidateTransition,
     RealtimeCandidateTransitionKind,
     RealtimeObservation,
+    VisualReview,
 )
 from services.vision.realtime_load import (
     RealtimeLoadStatus,
@@ -131,7 +133,7 @@ class RecordingScheduler:
         self.calls: list[tuple[tuple[PreparedAnalysisFrame, ...], float, bool]] = []
         self.closed = False
 
-    def poll(self) -> None:
+    def poll(self, *, monotonic_now: float | None = None) -> None:
         return None
 
     def try_submit(
@@ -362,6 +364,63 @@ def test_worker_samples_every_two_seconds_and_reviews_first_at_ten() -> None:
     assert [item.captured_at.second for item in submitted] == [4, 6, 8, 10]
     assert submitted_at == 10.0
     assert urgent is False
+
+
+def test_real_scheduler_clock_cannot_reject_worker_review_timestamp() -> None:
+    from services.vision.review_scheduler import VisualReviewScheduler
+    from services.vision.semantic_observation import SemanticObservationSession
+
+    class ImmediateExecutor:
+        def submit(self, function, frames):
+            future = Future()
+            future.set_result(function(frames))
+            return future
+
+    review = VisualReview.model_validate(
+        {
+            "baby_visibility": "visible",
+            "face_visibility": "clear",
+            "posture": "supine",
+            "bed_state": "inside",
+            "adult_presence": "absent",
+            "image_quality": "usable",
+            "risk": "none",
+            "reason_codes": [],
+            "confidence": 0.95,
+        }
+    )
+    observation = SemanticObservationSession(
+        enabled=True,
+        deployment_version="2ab2407",
+    )
+    observation.start(monotonic_now=0.0)
+    clock = {"worker": 0.0}
+    scheduler = VisualReviewScheduler(
+        reviewer=lambda _frames: review,
+        executor=ImmediateExecutor(),
+        observer=observation,
+        monotonic=lambda: clock["worker"] + 0.01,
+    )
+    worker = worker_module().VisualWorker(
+        stream_factory=lambda: iter(()),
+        frame_policy=RecordingPolicy(),
+        frame_ring=RecordingRing(),
+        frame_health=RecordingHealth(),
+        review_scheduler=scheduler,
+        monotonic=lambda: clock["worker"],
+        realtime_analyzer=RecordingRealtimeAnalyzer(),
+        candidate_machine=RecordingCandidateMachine(),
+        load_controller=FixedLoadController(),
+    )
+
+    for tick in range(51):
+        clock["worker"] = tick / 5
+        worker.run_frame(
+            captured(clock["worker"]),
+            monotonic_now=clock["worker"],
+        )
+
+    assert observation.snapshot()["request_count"] == 1
 
 
 def test_realtime_worker_analyzes_five_fps_but_samples_ring_every_two_seconds() -> None:

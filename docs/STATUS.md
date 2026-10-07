@@ -954,3 +954,12 @@ runtime callback 实际产生的 Guardian transition 数。bridge 失败/重连/
 `semantic_accuracy=NOT_VERIFIED`。bridge 在窗口末发生一次可见中断/重连后恢复，记为
 `bridge_continuity=INTERRUPTED_RECOVERED`；历史 exit 255 不归因于本窗口新增故障。
 未启动新的家庭观察或语义报告，Camera Reply=false，WS2021 继续隔离。
+
+### 语义观察零请求诊断
+
+最近一次 600 秒观察结果为 `semantic_observation=NO_SAMPLES`、
+`semantic_accuracy=NOT_EVALUABLE`。实际 worker/scheduler 接线复现了 observer 计数为零的
+原因：`poll()` 与 `try_submit()` 分别采样 monotonic 时间，observer 看到时间倒退而拒绝
+请求记录。修正后统一使用 worker 的单次时间样本，并通过真实 worker/scheduler/fake
+reviewer/observer 接线回归验证；不改变生产调度策略。4 次 Guardian 回调仍仅命名为会话窗口
+内转换回调，`guardian_callback_attribution=UNKNOWN`。

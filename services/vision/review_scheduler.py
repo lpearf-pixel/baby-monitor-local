@@ -126,8 +126,9 @@ class VisualReviewScheduler:
         self._notify_request(frames, monotonic_now)
         return ReviewScheduleDecision.SUBMITTED
 
-    def poll(self) -> ReviewCompletion | None:
-        monotonic_now = self._monotonic()
+    def poll(self, *, monotonic_now: float | None = None) -> ReviewCompletion | None:
+        if monotonic_now is None:
+            monotonic_now = self._monotonic()
         self._notify_tick(monotonic_now)
         future = self._future
         if future is None:

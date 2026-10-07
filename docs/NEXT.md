@@ -600,3 +600,7 @@ VisualReview 请求结果、有效延迟、`baby_visibility`、本会话实际 r
 **Next:** 如需真实语义汇总，现场另行批准后使用显式报告参数启动一次不超过 10 分钟的
 观察；不要自动启动，不保存帧/模型原文/音频/转写，不推广 baseline。Camera Reply=false，
 WS2021 继续隔离。
+
+**诊断更新:** 上一次观察为 `NO_SAMPLES`，首个阻断点是 worker/scheduler/observer 的
+monotonic 时间采样不一致，已用最小共享时间参数修正并完成软件回归。下一次家庭观察前，
+仍须重新核对部署版本和 bridge；不得把修正前的零请求报告当作语义准确率证据。
