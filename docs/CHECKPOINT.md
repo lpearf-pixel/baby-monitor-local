@@ -2545,3 +2545,31 @@ pose 仅作为实时候选启发式，不证明成人身份或床区交叠。
 30 秒成人证据新鲜度窗口；过期后仅关闭实时候选，不生成 Guardian 恢复、通知或持久事件。
 聚焦分析器/候选/合同/worker 测试 71 passed，`git diff --check` 待最终提交前复核。
 未启动真实 10 分钟观察，Camera Reply=false，WS2021 继续隔离。
+
+## 2026-10-08 10 分钟性能证据与语义观察软件收口
+
+已完成且不重复运行性能窗口：
+
+```text
+make alpha-visual-performance
+samples=60
+fps_5_count=60
+fps_3_count=0
+fps_1_count=0
+processing_p50_ms=85.798
+processing_p95_ms=130.651
+processing_max_ms=145.869
+model_state=available
+performance=PASS mode=5fps
+```
+
+该命令只采样脱敏状态，不证明家庭场景识别准确率；因此明确保留
+`semantic_accuracy=NOT_VERIFIED`。窗口末 bridge 检查短暂不可达，随后恢复；
+`bridge_continuity=INTERRUPTED_RECOVERED`。launchd 历史 `last exit code=255` 单独保留，
+不冒充本窗口新增故障计数。
+
+本轮新增默认关闭、最长 600 秒的内存语义 observer 与 0600 聚合报告入口。它只接收实际
+四帧提交/完成和 runtime transition callback，区分 timeout 与 late response；会话起止、
+部署版本、可归因转换、延迟和 `baby_visibility` 计数均有界。没有来源的 bridge 计数为
+`null`，历史数据库时间窗不作为本会话因果证据。软件聚焦测试 `37 passed`；未启动家庭
+语义观察，未保存帧/模型原文/音频/转写，Camera Reply=false，WS2021 隔离。

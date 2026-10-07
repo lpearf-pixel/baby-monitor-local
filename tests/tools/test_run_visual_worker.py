@@ -145,6 +145,7 @@ def test_main_wires_real_status_writer_into_visual_runtime(
     assert captured["initial_frame_health_code"] is None
     assert callable(captured["on_risk_transition"])
     assert callable(captured["on_safe_frame"])
+    assert captured["semantic_observation"] is None
     assert captured["initial_risk_snapshot"].open_risks == frozenset()
     guardian_database = tmp_path / "runtime-data/events.sqlite3"
     with sqlite3.connect(guardian_database) as connection:
@@ -163,6 +164,50 @@ def test_main_wires_real_status_writer_into_visual_runtime(
             """
         ).fetchone()
     assert evidence_table == ("visual_risk_evidence",)
+
+
+def test_main_writes_explicit_bounded_semantic_observation_report(
+    tmp_path: Path,
+    monkeypatch,
+) -> None:
+    from tools import run_visual_worker
+
+    resources = RecordingResources()
+    settings = enabled_settings()
+    monkeypatch.setattr(run_visual_worker, "ROOT", tmp_path)
+    monkeypatch.setattr(
+        run_visual_worker.AppSettings,
+        "load",
+        lambda _path: settings,
+    )
+
+    def build(_settings: object, **kwargs: object) -> RecordingResources:
+        resources.worker.status_callback = kwargs["on_realtime_status"]
+        assert kwargs["semantic_observation"] is not None
+        return resources
+
+    monkeypatch.setattr(run_visual_worker, "build_visual_runtime", build)
+    monkeypatch.setattr(
+        run_visual_worker,
+        "build_visual_health_notifier",
+        lambda _settings, _environ: None,
+    )
+    report = tmp_path / "runtime-data/status/semantic-observation.json"
+
+    assert run_visual_worker.main(
+        [
+            "--settings",
+            str(tmp_path / "settings.yaml"),
+            "--semantic-observation-report",
+            str(report),
+            "--deployment-version",
+            "abcdef1",
+        ]
+    ) == 0
+    payload = json.loads(report.read_text(encoding="utf-8"))
+    assert payload["state"] == "stopped"
+    assert payload["deployment_version"] == "abcdef1"
+    assert report.stat().st_mode & 0o777 == 0o600
 
 
 def test_main_restores_open_guardian_event_into_visual_runtime(

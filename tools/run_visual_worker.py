@@ -5,6 +5,7 @@ import os
 import signal
 import sys
 import threading
+import time
 from datetime import datetime
 from typing import TextIO
 from pathlib import Path
@@ -40,6 +41,11 @@ from services.vision.realtime_status import (
     RealtimeVisualStatusWriter,
 )
 from services.vision.realtime_analyzer import RealtimeStageTiming
+from services.vision.semantic_observation import (
+    MAX_OBSERVATION_SECONDS,
+    SemanticObservationSession,
+    write_semantic_observation_report,
+)
 
 
 def _print_slow_analysis(
@@ -72,6 +78,22 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
         type=Path,
         help="Optional mode-600 local environment file; values are never logged.",
     )
+    parser.add_argument(
+        "--semantic-observation-report",
+        type=Path,
+        help="Explicitly enable bounded aggregate semantic observation output.",
+    )
+    parser.add_argument(
+        "--semantic-observation-seconds",
+        type=int,
+        default=MAX_OBSERVATION_SECONDS,
+        help="Bound semantic observation to at most 600 seconds.",
+    )
+    parser.add_argument(
+        "--deployment-version",
+        default="unknown",
+        help="Opaque commit id recorded only when semantic observation is enabled.",
+    )
     return parser.parse_args(argv)
 
 
@@ -81,6 +103,8 @@ def main(argv: list[str] | None = None) -> int:
     evidence_recorder: GuardianEvidenceRecorder | None = None
     guardian_dispatcher: GuardianNotificationDispatcher | None = None
     evidence_retention_worker: GuardianEvidenceRetentionWorker | None = None
+    semantic_observation: SemanticObservationSession | None = None
+    semantic_observation_report: Path | None = None
     try:
         if args.env_file is not None:
             load_local_env_file(args.env_file)
@@ -90,6 +114,18 @@ def main(argv: list[str] | None = None) -> int:
         data_dir = settings.app.data_dir
         if not data_dir.is_absolute():
             data_dir = ROOT / data_dir
+        if args.semantic_observation_report is not None:
+            report_root = (data_dir / "status").resolve()
+            candidate = args.semantic_observation_report.expanduser().resolve()
+            if candidate.parent != report_root:
+                raise ValueError("semantic observation report must stay in status directory")
+            semantic_observation = SemanticObservationSession(
+                enabled=True,
+                deployment_version=args.deployment_version,
+                max_duration_seconds=args.semantic_observation_seconds,
+            )
+            semantic_observation.start(monotonic_now=time.monotonic())
+            semantic_observation_report = candidate
         visual_health_store = VisualHealthStore(
             data_dir / "visual-health.sqlite3"
         )
@@ -169,6 +205,7 @@ def main(argv: list[str] | None = None) -> int:
                 timing,
                 stream=sys.stderr,
             ),
+            semantic_observation=semantic_observation,
         )
         evidence_files = GuardianEvidenceFiles(data_dir / "guardian-evidence")
         evidence_recorder = GuardianEvidenceRecorder(
@@ -267,6 +304,14 @@ def main(argv: list[str] | None = None) -> int:
             status_publisher.close()
         except Exception:
             runtime_failed = True
+        if semantic_observation is not None and semantic_observation_report is not None:
+            try:
+                write_semantic_observation_report(
+                    semantic_observation_report,
+                    semantic_observation.stop(monotonic_now=time.monotonic()),
+                )
+            except Exception:
+                runtime_failed = True
     if runtime_failed:
         print("visual_worker_runtime_failed", file=sys.stderr)
         return 2

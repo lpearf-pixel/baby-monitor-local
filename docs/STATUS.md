@@ -939,3 +939,18 @@ ABSENT 仍须独立 2 秒确认。该清除只作用于实时候选，不作用�
 
 相关分析器、候选状态机、合同和 worker 测试为 71 passed。未执行真实摄像头/麦克风/扬声器
 观察，Camera Reply=false，WS2021 继续隔离。
+
+## 2026-10-08 语义观察汇总软件门
+
+VisualReview 现有 scheduler/runtime 已补充可选的 `SemanticObservationSession`。默认不启用；
+显式报告参数才创建会话，最长 600 秒，停止或过期后冻结。汇总字段包括请求、成功、失败、
+超时、迟到响应、四帧时间戳 distinct/新鲜度、`baby_visibility` 各枚举、有效延迟和由本次
+runtime callback 实际产生的 Guardian transition 数。bridge 失败/重连/恢复没有来源时为
+`null`，不补零。聚合报告不含图片、模型原文、音频、转写、事件 ID 或私有路径，并以 0600
+原子写入。
+
+本轮软件聚焦测试 37 项通过；此前 10 分钟性能门的真实证据为 60/60 个 5 FPS 样本，P50
+85.798 ms、P95 130.651 ms、最大 145.869 ms，模型 available。该证据仅证明链路性能，
+`semantic_accuracy=NOT_VERIFIED`。bridge 在窗口末发生一次可见中断/重连后恢复，记为
+`bridge_continuity=INTERRUPTED_RECOVERED`；历史 exit 255 不归因于本窗口新增故障。
+未启动新的家庭观察或语义报告，Camera Reply=false，WS2021 继续隔离。

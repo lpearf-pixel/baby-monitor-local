@@ -16,6 +16,7 @@ from services.vision.review_scheduler import (
     ReviewCompletionCode,
 )
 from services.vision.risk_state import VisualRiskStateMachine
+from services.vision.semantic_observation import SemanticObservationSession
 
 
 class ReviewRuntimeCode(StrEnum):
@@ -42,6 +43,7 @@ class VisualReviewRuntime:
         monotonic: Callable[[], float] = time.monotonic,
         on_model_health: Callable[[ModelHealthTransition], None] | None = None,
         on_risk_transition: Callable[[RiskTransition], None] | None = None,
+        observation: SemanticObservationSession | None = None,
     ) -> None:
         self._risk_machine = risk_machine
         self._model_health = model_health or VisualModelHealthMonitor()
@@ -49,6 +51,7 @@ class VisualReviewRuntime:
         self._monotonic = monotonic
         self._on_model_health = on_model_health or (lambda _transition: None)
         self._on_risk_transition = on_risk_transition or (lambda _transition: None)
+        self._observation = observation
 
     def handle(self, completion: ReviewCompletion) -> ReviewRuntimeUpdate:
         monotonic_now = self._monotonic()
@@ -63,7 +66,8 @@ class VisualReviewRuntime:
                 ReviewRuntimeUpdate(
                     code=ReviewRuntimeCode.REVIEW_FAILED,
                     model_health_transition=health_transition,
-                )
+                ),
+                monotonic_now=monotonic_now,
             )
 
         health_transition = self._model_health.succeeded(
@@ -79,18 +83,31 @@ class VisualReviewRuntime:
                 ReviewRuntimeUpdate(
                     code=ReviewRuntimeCode.INTERNAL_FAILED,
                     model_health_transition=health_transition,
-                )
+                ),
+                monotonic_now=monotonic_now,
             )
         return self._emit(
             ReviewRuntimeUpdate(
                 code=ReviewRuntimeCode.OK,
                 risk_transitions=risk_transitions,
                 model_health_transition=health_transition,
-            )
+            ),
+            monotonic_now=monotonic_now,
         )
 
-    def _emit(self, update: ReviewRuntimeUpdate) -> ReviewRuntimeUpdate:
+    def _emit(
+        self,
+        update: ReviewRuntimeUpdate,
+        *,
+        monotonic_now: float,
+    ) -> ReviewRuntimeUpdate:
         try:
+            if self._observation is not None:
+                for transition in update.risk_transitions:
+                    self._observation.record_transition(
+                        transition,
+                        monotonic_now=monotonic_now,
+                    )
             if update.model_health_transition is not None:
                 self._on_model_health(update.model_health_transition)
             for transition in update.risk_transitions:

@@ -585,3 +585,18 @@ or tagging; do not modify `main`, push, merge or tag implicitly.
   状态转换和延迟，不计算识别准确率。
 - 观察前确认 Camera Reply=false、WS2021 隔离、共享 producer 单一、bridge 可达；不保存或
   上传家庭帧和模型原文，不调用 PTZ/扬声器，不写入公开 baseline。
+
+## 2026-10-08 语义观察软件收口
+
+**Status:** 软件完成；家庭语义观察未启动。
+
+已增加默认关闭、最长 600 秒的聚合 observer 和显式 0600 报告入口。它记录四帧新鲜度、
+VisualReview 请求结果、有效延迟、`baby_visibility`、本会话实际 runtime transition 和
+可选 bridge 事件；未知字段为 `null`，不读取历史事件时间窗来伪造因果归属。
+
+此前 10 分钟性能证据为 60/60 个 5 FPS 样本，P95 130.651 ms；
+`semantic_accuracy=NOT_VERIFIED`，`bridge_continuity=INTERRUPTED_RECOVERED`。
+
+**Next:** 如需真实语义汇总，现场另行批准后使用显式报告参数启动一次不超过 10 分钟的
+观察；不要自动启动，不保存帧/模型原文/音频/转写，不推广 baseline。Camera Reply=false，
+WS2021 继续隔离。

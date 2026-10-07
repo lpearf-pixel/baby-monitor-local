@@ -932,3 +932,17 @@ only the bounded log window needed to identify the first actionable failure.
 `INTERSECTING_BED`。持续 UNCERTAIN 使用既有 30 秒成人证据新鲜度窗口，超过窗口并
 经过既有 2 秒清除确认后只清理实时候选，不产生 Guardian 恢复事件或通知。聚焦 71 项测试通过。
 Camera Reply=false，WS2021 继续隔离；真实 10 分钟观察尚未启动。
+
+## 2026-10-08 有界语义观察能力（软件完成，未启动家庭观察）
+
+新增默认关闭的内存聚合 observer：显式启用后最多运行 600 秒，记录请求/成功/失败/超时、
+迟到响应、四帧时间戳差异与既有新鲜度校验、`baby_visibility` 枚举计数、有效延迟、
+本会话回调产生的 Guardian 转换，以及可选 bridge 事件计数。它不保存帧、模型原文、音频、
+转写或逐帧日志；未知 bridge 字段保留 `null`。报告只能由显式 CLI 参数写入 0600 聚合 JSON。
+停止或自动过期后不再接收新记录；历史数据库事件不计入本会话因果转换。
+
+此前 10 分钟性能证据保留：60/60 样本为 5 FPS，P50 85.798 ms、P95 130.651 ms、最大
+145.869 ms，模型 available，`performance=PASS mode=5fps`。该窗口未做人为场景变化，
+`semantic_accuracy=NOT_VERIFIED`。bridge 在窗口末出现重连中断后恢复，记录为
+`bridge_continuity=INTERRUPTED_RECOVERED`；历史 launchd exit 255 与本窗口检查分开。
+未自动再次启动家庭观察，Camera Reply=false，WS2021 继续隔离。

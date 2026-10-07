@@ -250,7 +250,7 @@ def test_replay_uses_real_worker_and_returns_bounded_aggregates(
     assert result.observation_counts["pose_count.1"] == 60
     assert result.observation_counts["face_count.1"] == 60
     assert result.observation_counts["bed_subject_track.inside"] == 60
-    assert result.observation_counts["adult_track.absent"] == 60
+    assert result.observation_counts["adult_track.uncertain"] == 60
     assert result.observation_counts["head_face_state.visible"] == 60
     assert result.model_state == "available"
     assert 0 <= result.processing_p50_ms <= result.processing_p95_ms

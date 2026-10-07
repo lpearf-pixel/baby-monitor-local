@@ -23,6 +23,7 @@ from services.vision.realtime_load import RealtimeLoadController
 from services.vision.realtime_models import build_realtime_model_backend
 from services.vision.realtime_status import RealtimeVisualMetricsSnapshot
 from services.vision.risk_state import VisualRiskStateMachine
+from services.vision.semantic_observation import SemanticObservationSession
 from services.vision.worker import VisualWorker
 
 
@@ -63,6 +64,7 @@ def build_visual_runtime(
     | None = None,
     on_realtime_slow_analysis: Callable[[RealtimeStageTiming], None]
     | None = None,
+    semantic_observation: SemanticObservationSession | None = None,
 ) -> VisualRuntimeResources:
     if not settings.visual.enabled:
         raise ValueError("visual_review_disabled")
@@ -93,6 +95,7 @@ def build_visual_runtime(
     scheduler = VisualReviewScheduler(
         reviewer=reviewer.review,
         executor=executor,
+        observer=semantic_observation,
     )
     risk_machine = (
         VisualRiskStateMachine.from_snapshot(initial_risk_snapshot)
@@ -102,6 +105,7 @@ def build_visual_runtime(
     runtime = VisualReviewRuntime(
         risk_machine=risk_machine,
         on_risk_transition=on_risk_transition,
+        observation=semantic_observation,
     )
     realtime_analyzer: RealtimeVisualAnalyzer | None = None
     candidate_machine: RealtimeCandidateStateMachine | None = None
