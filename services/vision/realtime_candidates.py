@@ -86,6 +86,12 @@ class RealtimeCandidateStateMachine:
         else:
             self._update_noise(observation.motion_ratio)
 
+        adult_uncertain_stale = (
+            observation.adult_track is AdultTrack.UNCERTAIN
+            and self._last_adult_at is not None
+            and monotonic_now - self._last_adult_at
+            > ADULT_EXIT_SUPPRESSION_SECONDS
+        )
         definitions = (
             (
                 RealtimeCandidateKind.SIGNIFICANT_BED_MOTION,
@@ -148,7 +154,8 @@ class RealtimeCandidateStateMachine:
             (
                 RealtimeCandidateKind.ADULT_INTERVENTION,
                 observation.adult_track is AdultTrack.INTERSECTING_BED,
-                observation.adult_track is AdultTrack.ABSENT,
+                observation.adult_track is AdultTrack.ABSENT
+                or adult_uncertain_stale,
                 0.6,
                 2.0,
             ),

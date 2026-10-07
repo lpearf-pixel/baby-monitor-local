@@ -575,3 +575,13 @@ explicit approval.
 
 **Next:** only after documented PASS, request explicit approval for release integration
 or tagging; do not modify `main`, push, merge or tag implicitly.
+
+## 2026-10-07 真实多帧观察前置
+
+- 当前软件修正已在隔离集成 worktree 完成，持续 `UNCERTAIN` 不会立即清除成人候选，也不会
+  无期限保留：沿用既有 30 秒证据新鲜度窗口，并用既有 2 秒清除确认收口。
+- 下一步仅在现场操作人确认后执行一次有界 10 分钟观察。每次 VisualReview 必须使用四个
+  时间戳不同的新鲜帧；只统计请求、成功/失败/超时、帧新鲜度、`baby_visibility` 分布、
+  状态转换和延迟，不计算识别准确率。
+- 观察前确认 Camera Reply=false、WS2021 隔离、共享 producer 单一、bridge 可达；不保存或
+  上传家庭帧和模型原文，不调用 PTZ/扬声器，不写入公开 baseline。

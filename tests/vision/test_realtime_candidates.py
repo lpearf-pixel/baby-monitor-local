@@ -3,6 +3,7 @@ from __future__ import annotations
 import pytest
 
 from packages.contracts.vision import (
+    AdultTrack,
     RealtimeCandidateKind,
     RealtimeCandidateTransitionKind,
     RealtimeObservation,
@@ -158,6 +159,76 @@ def test_rollover_proxy_and_adult_intervention_are_watch_only() -> None:
     assert RealtimeCandidateKind.ADULT_INTERVENTION in opened(intervention)
     forbidden = {RiskTransitionKind.ALERT_OPENED.value, RiskTransitionKind.RECOVERED.value}
     assert not ({item.transition_kind.value for item in rollover + intervention} & forbidden)
+
+
+def test_adult_intervention_stays_open_during_fresh_uncertain_window() -> None:
+    module = candidate_module()
+    machine = module.RealtimeCandidateStateMachine()
+    warm(machine)
+    adult = observation(pose_count=2, adult_track=AdultTrack.INTERSECTING_BED)
+    uncertain = observation(
+        pose_count=1,
+        adult_track=AdultTrack.UNCERTAIN,
+    )
+
+    machine.evaluate(adult, monotonic_now=10.1)
+    opened_transition = machine.evaluate(adult, monotonic_now=10.7)
+    assert RealtimeCandidateKind.ADULT_INTERVENTION in opened(opened_transition)
+
+    assert machine.evaluate(uncertain, monotonic_now=20.0) == ()
+
+
+def test_adult_intervention_expires_after_stale_uncertain_evidence() -> None:
+    module = candidate_module()
+    machine = module.RealtimeCandidateStateMachine()
+    warm(machine)
+    adult = observation(pose_count=2, adult_track=AdultTrack.INTERSECTING_BED)
+    uncertain = observation(pose_count=1, adult_track=AdultTrack.UNCERTAIN)
+
+    machine.evaluate(adult, monotonic_now=10.1)
+    machine.evaluate(adult, monotonic_now=10.7)
+    machine.evaluate(uncertain, monotonic_now=40.8)
+    cleared = machine.evaluate(uncertain, monotonic_now=42.8)
+
+    assert cleared == (
+        module.RealtimeCandidateTransition(
+            transition_kind=RealtimeCandidateTransitionKind.CANDIDATE_CLEARED,
+            candidate_kind=RealtimeCandidateKind.ADULT_INTERVENTION,
+            monotonic_at=42.8,
+        ),
+    )
+
+
+def test_adult_intervention_clears_only_after_explicit_absent_confirmation() -> None:
+    module = candidate_module()
+    machine = module.RealtimeCandidateStateMachine()
+    warm(machine)
+    adult = observation(pose_count=2, adult_track=AdultTrack.INTERSECTING_BED)
+    absent = observation(pose_count=0, adult_track=AdultTrack.ABSENT)
+
+    machine.evaluate(adult, monotonic_now=10.1)
+    machine.evaluate(adult, monotonic_now=10.7)
+    machine.evaluate(absent, monotonic_now=20.0)
+    cleared = machine.evaluate(absent, monotonic_now=22.0)
+
+    assert cleared[0].candidate_kind is RealtimeCandidateKind.ADULT_INTERVENTION
+    assert cleared[0].transition_kind is RealtimeCandidateTransitionKind.CANDIDATE_CLEARED
+
+
+def test_adult_intervention_rejects_time_rollback_and_duplicate_observation() -> None:
+    module = candidate_module()
+    machine = module.RealtimeCandidateStateMachine()
+    warm(machine)
+    adult = observation(pose_count=2, adult_track=AdultTrack.INTERSECTING_BED)
+
+    machine.evaluate(adult, monotonic_now=10.1)
+    first = machine.evaluate(adult, monotonic_now=10.7)
+    duplicate = machine.evaluate(adult, monotonic_now=10.7)
+
+    assert opened(first) == {RealtimeCandidateKind.ADULT_INTERVENTION}
+    assert duplicate == ()
+    with pytest.raises(ValueError, match="monotonic"):
+        machine.evaluate(adult, monotonic_now=10.6)
 
 
 def test_camera_obstruction_works_during_warmup_and_requires_two_seconds() -> None:

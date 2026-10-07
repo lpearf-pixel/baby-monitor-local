@@ -928,3 +928,14 @@ starts only with the logged-in operator ready. Do not restart completed software
   Mom absent, Voice healthy/listen-only and source PASS. Mom enrollment and all
   two-profile isolation gates are deferred by the user. Nanny/Nancy is not an approved
   enrollment role and no such collection was started.
+
+## 2026-10-07 静态漏检与成人候选新鲜度修正
+
+远端最新基线为 `dd13bef9b81a050bab510a2d6e07fd36381f2e89`。此前私有离线诊断确认
+ROI 上边界遗漏婴儿；私有 runtime 修正与备份不进入 Git。实时分析器已保持零/一个 pose
+为 `UNCERTAIN`，不再写成 `ABSENT`。候选状态机新增确定性过期行为：持续 UNCERTAIN 在既有
+30 秒成人证据新鲜度窗口内保持观察，过期后经过现有 2 秒清除确认才关闭实时候选；明确
+ABSENT 仍须独立 2 秒确认。该清除只作用于实时候选，不作用于持久 Guardian 事件、恢复或通知。
+
+相关分析器、候选状态机、合同和 worker 测试为 71 passed。未执行真实摄像头/麦克风/扬声器
+观察，Camera Reply=false，WS2021 继续隔离。

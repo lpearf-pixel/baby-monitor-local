@@ -2534,3 +2534,14 @@ The owner additionally requested an i9 Codex handoff. Added the bounded read-onl
 preflight prompt as the immediate next step. It requests existing-state evidence,
 a predefined positive/negative trial list and proposed plan corrections, without
 starting a live matrix or claiming that either agent inspected the camera scene.
+
+## 2026-10-07 ROI/成人候选修正集成
+
+以远端基线 `dd13bef9b81a050bab510a2d6e07fd36381f2e89` 建立隔离 worktree，并移植救援
+提交中的实时分析器、合成测试和状态文档增量。零/一个 pose 保持 `UNCERTAIN`，两个及以上
+pose 仅作为实时候选启发式，不证明成人身份或床区交叠。
+
+新增持续 UNCERTAIN、持续有效成人证据、显式 ABSENT、时间倒退和重复观察回归。复用既有
+30 秒成人证据新鲜度窗口；过期后仅关闭实时候选，不生成 Guardian 恢复、通知或持久事件。
+聚焦分析器/候选/合同/worker 测试 71 passed，`git diff --check` 待最终提交前复核。
+未启动真实 10 分钟观察，Camera Reply=false，WS2021 继续隔离。

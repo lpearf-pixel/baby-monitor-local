@@ -181,7 +181,7 @@ class RealtimeVisualAnalyzer:
         adult_track = (
             AdultTrack.INTERSECTING_BED
             if pose_count >= 2
-            else AdultTrack.ABSENT
+            else AdultTrack.UNCERTAIN
         )
         if face_count:
             face_state = HeadFaceState.VISIBLE

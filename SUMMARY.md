@@ -923,3 +923,12 @@ only the bounded log window needed to identify the first actionable failure.
 7. Use focused tests for the slice and the full gate only at the next milestone or
    stable-branch integration.
 8. Do not push, create a PR, merge, tag or modify `main` without explicit approval.
+
+## 2026-10-07 ROI/成人候选修正集成
+
+从远端基线 `dd13bef9b81a050bab510a2d6e07fd36381f2e89` 建立独立集成 worktree，
+移植救援提交中的实时分析器与合成测试最小补丁。`pose_count` 为 0/1 时保持
+`AdultTrack.UNCERTAIN`；仅两个及以上 pose 才产生实时候选启发式
+`INTERSECTING_BED`。持续 UNCERTAIN 使用既有 30 秒成人证据新鲜度窗口，超过窗口并
+经过既有 2 秒清除确认后只清理实时候选，不产生 Guardian 恢复事件或通知。聚焦 71 项测试通过。
+Camera Reply=false，WS2021 继续隔离；真实 10 分钟观察尚未启动。

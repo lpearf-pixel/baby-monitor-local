@@ -209,6 +209,34 @@ def test_model_signals_map_to_bounded_semantic_tracks() -> None:
     assert observation.head_face_state is HeadFaceState.VISIBLE
 
 
+def test_one_pose_does_not_confirm_adult_absence() -> None:
+    module = analyzer_module()
+    analyzer = module.RealtimeVisualAnalyzer(
+        model_backend=RecordingBackend(
+            RealtimeModelSignals(pose_centers=((0.5, 0.5),))
+        ),
+        perf_counter=lambda: 1.0,
+    )
+
+    observation = analyzer.analyze(frame(textured()), monotonic_now=0.0)
+
+    assert observation.pose_count == 1
+    assert observation.adult_track is AdultTrack.UNCERTAIN
+
+
+def test_zero_pose_does_not_confirm_adult_absence() -> None:
+    module = analyzer_module()
+    analyzer = module.RealtimeVisualAnalyzer(
+        model_backend=RecordingBackend(RealtimeModelSignals()),
+        perf_counter=lambda: 1.0,
+    )
+
+    observation = analyzer.analyze(frame(textured()), monotonic_now=0.0)
+
+    assert observation.pose_count == 0
+    assert observation.adult_track is AdultTrack.UNCERTAIN
+
+
 def test_model_degradation_transition_is_emitted_once() -> None:
     module = analyzer_module()
     analyzer = module.RealtimeVisualAnalyzer()
