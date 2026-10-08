@@ -751,3 +751,16 @@ check 分别返回 `export_ok`、`check_ok`。本节不记录样本 ID、文件�
 和 E2 保持 OPEN。下一动作是无宝宝、无成人条件下完成位置 2 的 schema-v2 Dashboard
 标定，再运行 calibrated private collection；随后依次完成位置 3-5、夜间/IR、重建
 dataset、最终 80-epoch train/export/check 和实机读表。
+
+## WS2021 software artifact recheck (2026-10-08)
+
+在不连接摄像头、不启动采集且不触碰私有画面的前提下，使用共享 ignored runtime
+重新执行 `tools/ws2021_model.py check --root ../../runtime/training/ws2021`，结果为
+`ws2021_model=check_ok`。metadata 仅核对脱敏字段：YOLOX 固定提交、640 输入、FP16
+OpenVINO、configured epochs=80、best epoch=76，以及三份固定工件名称；未输出摘要或
+样本身份。随后执行 WS2021 相关 gauge、collection、environment pipeline 回归：
+`89 passed in 22.22s`，`git diff --check` 通过，工作树无 tracked 改动。
+
+该复核只证明当前中间候选的工件完整性和软件合同，不能关闭 Task 15.4b/15.6b，不能
+替代位置 2-5、夜间/IR、最终训练或 E2/E3 实机门。WS2021 仍按当前执行约束隔离，下一
+个需要真人参与的步骤仍是位置 2 的 schema-v2 物理摆放与保存标定。
