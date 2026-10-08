@@ -963,3 +963,16 @@ runtime callback 实际产生的 Guardian transition 数。bridge 失败/重连/
 请求记录。修正后统一使用 worker 的单次时间样本，并通过真实 worker/scheduler/fake
 reviewer/observer 接线回归验证；不改变生产调度策略。4 次 Guardian 回调仍仅命名为会话窗口
 内转换回调，`guardian_callback_attribution=UNKNOWN`。
+
+## 2026-10-09 600 秒语义观察
+
+部署 `4c42b3b` 的独立 600 秒观察已完成：59 次请求、58 次成功，1 次在窗口结束时未
+形成完成结果；失败、超时、迟到均为 0。四帧时间戳 distinct/fresh 合格 59/59，
+`baby_visibility` 为 visible=44、partial=14、not_visible=0、uncertain=0；延迟
+P50/P95/max 为 7205.455/7419.545/7458.883ms。人工区间无法按帧采集时间对齐，
+因此准确率未评估。Guardian 3 次仅是窗口回调，因果归属未知；bridge 12 次健康抽查
+可达，但细粒度 bridge 事件计数不可观测，保留 `null`。
+
+本次报告为 ignored 0600 聚合 JSON；未保存家庭媒体、模型原文或逐帧日志。报告中的
+“Gauge 正常”指独立环境传感器 gauge worker，不是 WS2021。WS2021 已由所有者取消，
+不再作为宝宝视觉或后续验收前置。

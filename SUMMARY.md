@@ -946,3 +946,16 @@ Camera Reply=false，WS2021 继续隔离；真实 10 分钟观察尚未启动。
 `semantic_accuracy=NOT_VERIFIED`。bridge 在窗口末出现重连中断后恢复，记录为
 `bridge_continuity=INTERRUPTED_RECOVERED`；历史 launchd exit 255 与本窗口检查分开。
 未自动再次启动家庭观察，Camera Reply=false，WS2021 继续隔离。
+
+## 2026-10-09 600 秒语义观察收口
+
+沿用已验证部署 `4c42b3b` 完成一次独立 600 秒语义观察：59 次请求、58 次成功、
+失败/超时/迟到均为 0；其中 1 次在窗口结束时未形成完成结果。四帧时间戳不同且新鲜度
+合格 59/59；`baby_visibility` 为 visible=44、partial=14、not_visible=0、uncertain=0。
+延迟 P50/P95/max 为 7205.455/7419.545/7458.883ms。人工区间未提供可按采集时间对齐的
+样本，因此人工准确率未评估。Guardian 的 3 次仅记录为窗口回调，因果归属未知；bridge
+12 次有限健康抽查均可达，但细粒度事件计数不可观测，保留为 `null`。报告为 ignored
+0600 聚合 JSON，未保存媒体、模型原文或逐帧日志。
+
+“Gauge 正常”仅指独立环境传感器 gauge worker；不表示 WS2021 已恢复。WS2021 已由
+所有者取消，不再是宝宝视觉或后续验收前置。

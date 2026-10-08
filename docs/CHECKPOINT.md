@@ -2590,3 +2590,19 @@ performance=PASS mode=5fps
 
 报告中的 `guardian_transition_count=4` 仅命名为“会话窗口内转换回调”，无法证明由
 语义请求导致，故 `guardian_callback_attribution=UNKNOWN`。本轮未追加家庭观察。
+
+## 2026-10-09 600 秒语义观察验收记录
+
+沿用已验证部署 `4c42b3b`，在 Camera Reply=false、WS2021 隔离和单 worker/single
+producer 条件下完成一次独立最长 600 秒观察。最终私有 0600 聚合报告记录：59 次请求、
+58 次成功，失败/超时/迟到均为 0；1 次请求在窗口结束时未形成完成结果。四帧时间戳不同、
+新鲜度合格 59/59；`baby_visibility` 为 visible=44、partial=14、not_visible=0、
+uncertain=0。延迟 P50/P95/max 为 7205.455/7419.545/7458.883ms。
+
+未提供能按四帧采集时间对齐的人工“宝宝持续可见”区间，因此人工准确率未评估。Guardian
+3 次仅记录为观察窗口内回调，不能宣称由语义请求导致，因果归属未知。运行期间 12 次
+有限 bridge 健康抽查均可达；observer 细粒度 bridge 事件计数不可观测，保持 `null`。
+报告未保存家庭媒体、模型原文或逐帧日志；观察结束后报告参数关闭，普通监控继续运行。
+
+本记录中的“Gauge 正常”仅指独立环境传感器 gauge worker 的存活/状态，不是 WS2021
+专属 worker，也不代表 WS2021 恢复。WS2021 已由所有者取消，不再列为宝宝视觉验收前置。
