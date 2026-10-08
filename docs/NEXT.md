@@ -1,12 +1,19 @@
 # Next Work
 
+> **Owner cancellation (2026-10-08):** WS2021 automatic localization, positions 2-5
+> calibration, night/IR collection and related final training/readout tasks are
+> `CANCELLED_BY_OWNER`. They are removed from the active queue and are not a
+> prerequisite for the Baby Guardian acceptance sequence. Do not prompt for gauge
+> placement or restart WS2021 collection. Existing private artifacts remain retained.
+
 The repository baseline, environment software and functional Guardian loop are
 complete. Do not restart completed milestones. Execute the following stages in order;
 the detailed approved specs and plans remain authoritative for behavior.
 
 ## P0 — Environment real-device acceptance (current)
 
-**Status:** E1 persistence passed on 2026-08-16. Task 15 software, privacy-safe crop
+**Status:** WS2021 lane `CANCELLED_BY_OWNER`; the historical E1/Task 15 evidence below
+is retained for audit only. Task 15 software, privacy-safe crop
 persistence, deterministic dataset preparation and pinned Intel CPU train/export
 tooling are complete. Position 1 has 60 valid private pairs. On 2026-09-14 a fresh
 80-epoch intermediate candidate (best epoch 76) trained, exported and passed exact
@@ -51,19 +58,16 @@ metrics in ignored local storage.
 **Codex can:** run bounded readiness checks, guide the approved workflow, validate
 closed outputs, diagnose recoverable failures and update redacted documentation.
 
-**Human required now:** place the upright, fully visible gauge at position 2 with safe
-frame-edge margin and no baby/adult in view, then save a fresh schema-v2 calibration in
-the authenticated Dashboard. Codex can then run the bounded calibrated collection and
-all aggregate checks without seeing or reporting the household media.
+**Human required now:** none for the cancelled WS2021 lane. Do not request a new
+schema-v2 calibration or start private collection.
 
 **Acceptance and tests:** Follow environment plan E1–E5 and approved environment spec
 section 18. Every published daylight reading meets the error target; unreliable input
 is `unavailable`; M2 outage does not stop the environment path; 24-hour evidence shows
 no backlog. Run focused software checks only if code changes become separately approved.
 
-**Next:** finish Task 15 positions 2-5 and night/IR, rebuild and train the final private
-model, then obtain one automatically localized available reading. E2 manual comparisons
-and E3 real-scene checks remain required before the final release gate.
+**Next:** no further WS2021 work is queued. E2/E3 environment acceptance must not be
+treated as blocked by WS2021; continue only the independent Baby Guardian queue.
 
 ## P1 — Three-browser HD real-device acceptance
 

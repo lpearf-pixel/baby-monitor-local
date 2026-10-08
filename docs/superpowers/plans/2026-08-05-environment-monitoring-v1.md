@@ -639,7 +639,7 @@ overlap with persisted crops.
   API to FP16 IR, records only non-sensitive metadata/digests, and never commits source
   checkout or weights. The fixed checkout and independent environment are installed;
   a synthetic CPU forward/loss/backward step passes.
-- [ ] **15.4b Private model artifact:** after private crops exist, run the explicit
+- [CANCELLED_BY_OWNER] **15.4b Private model artifact:** after private crops exist, run the explicit
   train/export/check sequence and require exact ONNX/XML/BIN digests. Random or
   synthetic smoke weights cannot satisfy this gate. A 20-epoch position-1-only seed
   was exported and digest-checked on 2026-08-16 for collection bootstrap only; it is
@@ -666,7 +666,7 @@ overlap with persisted crops.
 - [x] **15.6a Software gate:** focused settings/environment/gauge/dataset/model tests,
   compilation, Make dry-runs and `git diff --check` pass; collection commands expose
   counts only and persist crops only after person/face/skin-overlap rejection.
-- [ ] **15.6b Installed-i9 gate:** run
+- [CANCELLED_BY_OWNER] **15.6b Installed-i9 gate:** run
   five 30-second daylight positions plus night/IR collection, review only uncertain
   crops, train locally, verify minimum 1/10-width detection, and resume E2 only after a
   private production reading passes all existing deterministic gates.
@@ -687,15 +687,14 @@ overlap with persisted crops.
   failed the two-dial layout/refinement. Position-2 re-calibration and calibrated
   collection are therefore still the next installed-i9 step.
 
-**Human work:** first confirm no baby is present and collect the current calibrated
-position, then place the gauge in five upright, front-facing positions for 30 seconds
-each, repeat once under night/IR, and approve/reject only the bounded uncertain crop set.
+**Human work:** `CANCELLED_BY_OWNER`. Do not request gauge placement, position
+collection, night/IR capture or uncertain-crop review for this lane.
 
 **Acceptance:** no household full frame persists; no baby crop is accepted; adult
 overlap is discarded; model absence and every detection ambiguity fail closed; moving
 the upright gauge anywhere in frame re-localizes without manual coordinates; published
 readings still satisfy all existing geometry, five-frame, confidence and physical gates.
 
-**Next:** complete positions 2–5 and night/IR collection, final training/export/check
-and the deterministic live reading gate; then complete E2 and E3. E4 and E5 already
-have installed-i9 PASS evidence and must not be repeated as substitutes for E2/E3.
+**Next:** no WS2021 work is queued. Existing E4/E5 evidence remains independent; do not
+repeat or reinterpret it as WS2021 completion, and do not make cancelled WS2021 work a
+prerequisite for the Baby Guardian queue.

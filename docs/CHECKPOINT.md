@@ -764,3 +764,18 @@ OpenVINO、configured epochs=80、best epoch=76，以及三份固定工件名称
 该复核只证明当前中间候选的工件完整性和软件合同，不能关闭 Task 15.4b/15.6b，不能
 替代位置 2-5、夜间/IR、最终训练或 E2/E3 实机门。WS2021 仍按当前执行约束隔离，下一
 个需要真人参与的步骤仍是位置 2 的 schema-v2 物理摆放与保存标定。
+
+## WS2021 lane cancellation (2026-10-08)
+
+Owner cancelled the WS2021 automatic-localization lane. Task 15.4b (private final
+model artifact), Task 15.6b (installed-i9 position/night collection), position 2-5
+schema-v2 calibration, night/IR capture, final training and readout acceptance are
+recorded as `CANCELLED_BY_OWNER` and removed from the active queue. This cancellation
+does not claim those gates passed and does not make them a prerequisite for the Baby
+Guardian queue.
+
+The bounded process check found no `ws2021_model`, `ws2021_collect` or dedicated WS2021
+readout process. The registered `com.babymonitor.gauge` process is the independent
+environment sensor and was deliberately left running; the visual worker was also left
+running. No runtime model, calibration, dataset, backup or private media was deleted.
+Camera, Baby Vision, Voice, Ollama and Dashboard were not changed.

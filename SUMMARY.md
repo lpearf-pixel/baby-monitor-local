@@ -1,8 +1,14 @@
 # Baby Monitor Local Project Summary
 
-Updated: 2026-09-14
+Updated: 2026-10-08
 
 ## Snapshot
+
+- **WS2021 lane status: `CANCELLED_BY_OWNER` (2026-10-08).** The owner cancelled
+  automatic localization, position 2-5 calibration, night/IR collection, and the
+  related final-training/readout work. These items are removed from the active queue
+  and are no longer prerequisites for Baby Guardian acceptance. Existing private
+  models, calibration, datasets and backups remain preserved in ignored runtime.
 
 - Repository: `lpearf-pixel/baby-monitor-local` (public).
 - Stable Xiaomi line: `stable/xiaomi-alpha` at `0df20ae`.

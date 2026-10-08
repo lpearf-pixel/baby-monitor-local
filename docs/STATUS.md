@@ -2,6 +2,13 @@
 
 ## Current phase
 
+- **WS2021 environment lane: `CANCELLED_BY_OWNER` (2026-10-08).** Automatic
+  localization, position 2-5 calibration, night/IR collection, final training and
+  readout acceptance are cancelled and must not be scheduled or retried. This does
+  not stop the independent gauge/environment worker and does not change camera,
+  Baby Vision, Voice, Ollama or Dashboard behavior. Existing private artifacts remain
+  available for audit and are not deleted.
+
 - Repository: initialized and public.
 - Design: approved.
 - Environment monitoring design and implementation plan: approved on 2026-08-05.
