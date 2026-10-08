@@ -11,7 +11,7 @@ from urllib.request import Request, urlopen
 
 from PIL import Image, UnidentifiedImageError
 
-from apps.api.alpha import AlphaRuntime, SnapshotViewport
+from apps.api.alpha import AlphaRuntime, RecentObservationUnavailable, SnapshotViewport
 from apps.api.hd_stream import HdStreamService
 from apps.api.ptz import DisabledPtzAdapter, StepPtzController
 from packages.contracts.settings import AppSettings
@@ -19,12 +19,24 @@ from services.dashboard.guardian_query import GuardianDashboardQuery
 from services.dashboard.service import LocalDashboardService
 from services.environment.bootstrap import build_dashboard_service
 from services.events.guardian_query import GuardianEventQueryService
+from services.vision.recent_observation import read_recent_observation_status
 
 
 MAX_SNAPSHOT_BYTES = 16 * 1024 * 1024
 MAX_SNAPSHOT_WIDTH = 4096
 MAX_SNAPSHOT_HEIGHT = 2160
 MAX_SNAPSHOT_PIXELS = MAX_SNAPSHOT_WIDTH * MAX_SNAPSHOT_HEIGHT
+
+
+class FileRecentObservation:
+    def __init__(self, path: Path) -> None:
+        self._path = Path(path)
+
+    def read(self) -> dict[str, object]:
+        try:
+            return read_recent_observation_status(self._path)
+        except (OSError, ValueError, json.JSONDecodeError) as exc:
+            raise RecentObservationUnavailable from exc
 
 
 class SnapshotFrameRejected(RuntimeError):
@@ -222,4 +234,9 @@ def runtime_from_env(environ: dict[str, str] | None = None) -> AlphaRuntime:
         environment=environment,
         guardian_events=guardian_events,
         dashboard=dashboard,
+        recent_observation=(
+            FileRecentObservation(data_dir / "status" / "visual-observation.json")
+            if settings is not None
+            else None
+        ),
     )

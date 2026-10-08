@@ -959,3 +959,12 @@ Camera Reply=false，WS2021 继续隔离；真实 10 分钟观察尚未启动。
 
 “Gauge 正常”仅指独立环境传感器 gauge worker；不表示 WS2021 已恢复。WS2021 已由
 所有者取消，不再是宝宝视觉或后续验收前置。
+
+## 2026-10-09 Dashboard 最近宝宝观察状态（软件完成）
+
+新增默认更新的最小只读投影：正常 VisualReview 通过独立 observer 写入 0600 原子状态，记录
+`visible/partial/not_visible/uncertain`、最新输入帧采集时间、结果完成时间和新鲜度。无结果、
+失败、超时、worker 重启和迟到结果均 fail closed；30 秒后标记 `stale`，不把过期结果解释为
+当前“没有宝宝”。Dashboard 通过鉴权 `GET /api/dashboard/visual-observation` 展示“最近一次
+观察”，复用唯一 15 秒刷新器，局部不可用不影响其他卡片。Guardian 风险/通知、诊断报告、
+Camera Reply 和 WS2021 均未改变。软件回归已通过，尚未部署或启动家庭观察。

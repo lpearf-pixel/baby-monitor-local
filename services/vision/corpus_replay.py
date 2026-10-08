@@ -335,7 +335,8 @@ class RecordingRealtimeAnalyzer:
 
 
 class _NullReviewScheduler:
-    def poll(self) -> None:
+    def poll(self, *, monotonic_now: float | None = None) -> None:
+        del monotonic_now
         return None
 
     def try_submit(self, *args: object, **kwargs: object) -> None:

@@ -2606,3 +2606,15 @@ uncertain=0。延迟 P50/P95/max 为 7205.455/7419.545/7458.883ms。
 
 本记录中的“Gauge 正常”仅指独立环境传感器 gauge worker 的存活/状态，不是 WS2021
 专属 worker，也不代表 WS2021 恢复。WS2021 已由所有者取消，不再列为宝宝视觉验收前置。
+
+## 2026-10-09 Dashboard 最近宝宝观察状态软件检查点
+
+在不启动实机观察的前提下完成最小投影：共享帧环 → scheduler → VisualReview → observer →
+0600 原子状态 → 鉴权 Dashboard API/UI。新增状态合同明确 `available`、`stale`、`no_result`、
+`failed`、`worker_restarted` 的合法字段组合和 `review_expired`/失败/重启原因。30 秒过期依据
+为当前 10 秒常规间隔加 20 秒 scheduler 超时。失败、超时、重复旧结果和旧 worker 迟到结果
+不会刷新当前采集时间或覆盖新状态；状态写失败不阻断 Guardian。
+
+软件证据：视觉/API/Guardian Python 500 passed、1 个既有语料库未完成 skip；worker/bootstrap
+18 passed；前端全量 125 tests passed；compileall、Node syntax 和 `git diff --check` 通过。
+Camera Reply=false，WS2021 继续隔离；未部署、未访问摄像头、未启动家庭观察。

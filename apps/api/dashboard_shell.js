@@ -11,6 +11,7 @@
         clearInterval: root.clearInterval.bind(root),
         document: root.document,
         fetch: root.fetch.bind(root),
+        observation: root.BabyMonitorDashboardObservation ?? null,
         setInterval: root.setInterval.bind(root),
         views: root.BabyMonitorDashboardViews,
         window: root,
@@ -143,7 +144,7 @@
       state.generation = generation;
       const request = (async () => {
         try {
-          const response = await environment.fetch(environment.url);
+        const response = await environment.fetch(environment.url);
           if (!response || response.ok !== true) throw new TypeError(unavailableCode);
           const payload = await response.json();
           if (generation !== state.generation) return {ok: false, superseded: true};
@@ -159,9 +160,9 @@
           return {ok: true, payload};
         } catch (_error) {
           if (generation === state.generation) {
-            if (state.lastPayload === null) {
-              environment.markUnavailable(environment.document, environment.section);
-            } else {
+          if (state.lastPayload === null) {
+            environment.markUnavailable(environment.document, environment.section);
+          } else {
               environment.markStale(
                 environment.document,
                 environment.section,
@@ -169,6 +170,9 @@
                 environment.staleOptions,
               );
             }
+          }
+          if (typeof environment.onError === "function") {
+            environment.onError(environment.document);
           }
           return {ok: false, error: unavailableCode};
         } finally {
@@ -307,13 +311,24 @@
         url: "/api/dashboard/system",
       }),
     };
+    if (environment.observation && document.getElementById("recent-observation")) {
+      controllers.observation = createResourceController({
+        ...common,
+        onError: (documentObject) => environment.observation.renderObservation(documentObject, null),
+        render: environment.observation.renderObservation,
+        section: "observation",
+        url: "/api/dashboard/visual-observation",
+      });
+    }
 
     function refreshAll() {
-      return Promise.all([
+      const refreshes = [
         controllers.overview.refresh(),
         controllers.alerts.refresh(),
         controllers.system.refresh(),
-      ]);
+      ];
+      if (controllers.observation) refreshes.push(controllers.observation.refresh());
+      return Promise.all(refreshes);
     }
 
     function startTimer() {

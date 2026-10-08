@@ -305,8 +305,10 @@ function mountFixture({
   system = systemPayload(),
   analytics = null,
   analyticsController = {activate() {}},
+  observation = null,
 } = {}) {
   const document = new FakeDocument();
+  if (observation) document.add("recent-observation");
   document.hidden = hidden;
   const window = new FakeWindow(hash);
   const calls = [];
@@ -334,6 +336,7 @@ function mountFixture({
       return fetch(url, options);
     },
     now: () => new Date("2026-09-03T01:00:30Z"),
+    observation,
     setInterval(callback, milliseconds) {
       const timer = {callback, id: timers.length + 1, milliseconds};
       timers.push(timer);
@@ -345,6 +348,32 @@ function mountFixture({
   const shell = mountDashboardShell(environment);
   return {calls, cleared, document, environment, shell, timers, window};
 }
+
+test("recent observation shares the single dashboard refresh timer", async () => {
+  const observed = [];
+  const observation = {
+    renderObservation(document, payload) {
+      const element = document.getElementById("recent-observation");
+      element.textContent = payload === null ? "不可用" : "最近一次观察：宝宝可见";
+      return true;
+    },
+  };
+  const fixture = mountFixture({observation, fetch: async (url) => {
+    observed.push(url);
+    if (url === "/api/dashboard/visual-observation") return response({state: "available"});
+    if (url === "/api/dashboard/overview") return response(overviewPayload());
+    if (url === "/api/dashboard/alerts") return response(alertsPayload());
+    return response(systemPayload());
+  }});
+  await fixture.shell.initialRefresh;
+  assert.equal(fixture.timers.length, 1);
+  assert.deepEqual(observed, [
+    "/api/dashboard/overview",
+    "/api/dashboard/alerts",
+    "/api/dashboard/system",
+    "/api/dashboard/visual-observation",
+  ]);
+});
 
 
 async function settle() {

@@ -108,6 +108,14 @@ class AlphaDashboard(Protocol):
     def system(self, now: datetime) -> DashboardSystemV1: ...
 
 
+class RecentObservationUnavailable(RuntimeError):
+    pass
+
+
+class AlphaRecentObservation(Protocol):
+    def read(self) -> dict[str, object]: ...
+
+
 class StarletteHdSocket:
     def __init__(self, socket: WebSocket) -> None:
         self._socket = socket
@@ -176,6 +184,7 @@ class AlphaRuntime:
     environment: AlphaEnvironment | None = None
     guardian_events: AlphaGuardianEvents | None = None
     dashboard: AlphaDashboard | None = None
+    recent_observation: AlphaRecentObservation | None = None
 
 
 class SnapshotViewport(BaseModel):
@@ -221,6 +230,7 @@ _GUARDIAN_EVENTS_SCRIPT = Path(__file__).with_name("guardian_events.js")
 _DASHBOARD_VIEWS_SCRIPT = Path(__file__).with_name("dashboard_views.js")
 _DASHBOARD_ANALYTICS_SCRIPT = Path(__file__).with_name("dashboard_analytics.js")
 _DASHBOARD_SHELL_SCRIPT = Path(__file__).with_name("dashboard_shell.js")
+_DASHBOARD_OBSERVATION_SCRIPT = Path(__file__).with_name("dashboard_observation.js")
 _DASHBOARD_STYLE = Path(__file__).with_name("dashboard.css")
 _INCIDENT_ID = re.compile(r"^[A-Za-z0-9][A-Za-z0-9._-]{0,127}$")
 _DASHBOARD_NO_STORE_ASSETS = frozenset(
@@ -229,6 +239,7 @@ _DASHBOARD_NO_STORE_ASSETS = frozenset(
         "/assets/dashboard-views.js",
         "/assets/dashboard-analytics.js",
         "/assets/dashboard-shell.js",
+        "/assets/dashboard-observation.js",
     }
 )
 
@@ -290,6 +301,12 @@ _DASHBOARD = """<!doctype html>
           <h2 id="overview-guardian-title">Guardian 摘要</h2>
           <p id="overview-guardian-counts" aria-live="polite">正在读取…</p>
         </section>
+        <section id="overview-observation" class="card" aria-labelledby="overview-observation-title">
+          <h2 id="overview-observation-title">最近宝宝观察状态</h2>
+          <p id="recent-observation" aria-live="polite">正在读取…</p>
+          <p id="recent-observation-detail" class="muted">正在读取观察时间…</p>
+          <p class="muted">这是最近一次语义观察结果，不表示持续跟踪或宝宝安全状态。</p>
+        </section>
       </div>
     </div>
     <section id="overview-components" class="card compact-card" aria-labelledby="overview-components-title">
@@ -337,6 +354,7 @@ _DASHBOARD = """<!doctype html>
 <script defer src="/assets/gauge-calibration.js"></script>
 <script defer src="/assets/dashboard-views.js"></script>
 <script defer src="/assets/dashboard-analytics.js"></script>
+<script defer src="/assets/dashboard-observation.js"></script>
 <script defer src="/assets/dashboard-shell.js"></script>
 </body>
 </html>
@@ -438,6 +456,16 @@ def create_app(runtime: AlphaRuntime) -> FastAPI:
     ) -> Response:
         return Response(
             content=_DASHBOARD_SHELL_SCRIPT.read_text(encoding="utf-8"),
+            media_type="text/javascript",
+            headers={"Cache-Control": "no-store"},
+        )
+
+    @app.get("/assets/dashboard-observation.js")
+    def dashboard_observation_script(
+        _parent: str = Depends(require_parent),
+    ) -> Response:
+        return Response(
+            content=_DASHBOARD_OBSERVATION_SCRIPT.read_text(encoding="utf-8"),
             media_type="text/javascript",
             headers={"Cache-Control": "no-store"},
         )
@@ -568,6 +596,27 @@ def create_app(runtime: AlphaRuntime) -> FastAPI:
             raise HTTPException(
                 status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
                 detail="DASHBOARD_DATA_UNAVAILABLE",
+            ) from None
+        return JSONResponse(
+            content=jsonable_encoder(result),
+            headers={"Cache-Control": "no-store"},
+        )
+
+    @app.get("/api/dashboard/visual-observation")
+    def dashboard_visual_observation(
+        _parent: str = Depends(require_parent),
+    ) -> JSONResponse:
+        if runtime.recent_observation is None:
+            raise HTTPException(
+                status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+                detail="VISUAL_OBSERVATION_UNAVAILABLE",
+            )
+        try:
+            result = runtime.recent_observation.read()
+        except RecentObservationUnavailable:
+            raise HTTPException(
+                status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+                detail="VISUAL_OBSERVATION_UNAVAILABLE",
             ) from None
         return JSONResponse(
             content=jsonable_encoder(result),

@@ -976,3 +976,11 @@ P50/P95/max 为 7205.455/7419.545/7458.883ms。人工区间无法按帧采集时
 本次报告为 ignored 0600 聚合 JSON；未保存家庭媒体、模型原文或逐帧日志。报告中的
 “Gauge 正常”指独立环境传感器 gauge worker，不是 WS2021。WS2021 已由所有者取消，
 不再作为宝宝视觉或后续验收前置。
+
+## 2026-10-09 Dashboard 最近宝宝观察状态
+
+最近一次 VisualReview 状态已形成独立只读投影。合法组合为：`available` 搭配新鲜可见性；
+`stale` 搭配上一次成功可见性和 `review_expired`；`no_result`、`failed`、`worker_restarted`
+均为 `baby_visibility=null`。状态文件 0600 原子写入，worker generation 防止旧进程迟到结果
+覆盖新状态；投影写失败由 observer fan-out 吞掉，不阻断 Guardian。Dashboard API 继续鉴权和
+`no-store`，前端复用现有单一 15 秒刷新器。当前仅完成软件验证，未切换实机部署、未启动家庭观察。

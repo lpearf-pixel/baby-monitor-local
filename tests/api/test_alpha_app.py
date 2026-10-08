@@ -115,6 +115,14 @@ class FakeGateway:
 
 
 @dataclass
+class FakeRecentObservation:
+    payload: dict[str, object]
+
+    def read(self) -> dict[str, object]:
+        return self.payload
+
+
+@dataclass
 class RecordingPtzAdapter:
     result: PtzCode = PtzCode.OK
     directions: list[PtzDirection] | None = None
@@ -365,6 +373,7 @@ def client(
     environment: FakeEnvironmentService | None = None,
     guardian_events: FakeGuardianEventService | None = None,
     dashboard: FakeDashboardService | None = None,
+    recent_observation: FakeRecentObservation | None = None,
 ) -> tuple[TestClient, FakeGateway]:
     fake = gateway or FakeGateway()
     runtime_kwargs: dict[str, object] = dict(
@@ -383,8 +392,38 @@ def client(
         runtime_kwargs["guardian_events"] = guardian_events
     if dashboard is not None:
         runtime_kwargs["dashboard"] = dashboard
+    if recent_observation is not None:
+        runtime_kwargs["recent_observation"] = recent_observation
     runtime = AlphaRuntime(**runtime_kwargs)
     return TestClient(create_app(runtime)), fake
+
+
+def test_recent_observation_requires_auth_and_returns_no_store_projection() -> None:
+    observation = FakeRecentObservation(
+        {
+            "schema_version": 1,
+            "state": "available",
+            "baby_visibility": "visible",
+            "input_frame_captured_at": "2026-10-09T12:00:06+00:00",
+            "result_completed_at": "2026-10-09T12:00:07+00:00",
+            "freshness": "fresh",
+            "reason_code": "none",
+            "written_at": "2026-10-09T12:00:07+00:00",
+        }
+    )
+    app, _ = client(recent_observation=observation)
+    assert app.get("/api/dashboard/visual-observation").status_code == 401
+    response = app.get("/api/dashboard/visual-observation", headers=auth())
+    assert response.status_code == 200
+    assert response.headers["cache-control"] == "no-store"
+    assert response.json() == observation.payload
+
+
+def test_recent_observation_unavailable_is_local_503() -> None:
+    app, _ = client()
+    response = app.get("/api/dashboard/visual-observation", headers=auth())
+    assert response.status_code == 503
+    assert response.json() == {"detail": "VISUAL_OBSERVATION_UNAVAILABLE"}
 
 
 DASHBOARD_ROUTES = (
@@ -400,6 +439,7 @@ DASHBOARD_ASSETS = (
     ("/assets/dashboard-views.js", "_DASHBOARD_VIEWS_SCRIPT"),
     ("/assets/dashboard-analytics.js", "_DASHBOARD_ANALYTICS_SCRIPT"),
     ("/assets/dashboard-shell.js", "_DASHBOARD_SHELL_SCRIPT"),
+    ("/assets/dashboard-observation.js", "_DASHBOARD_OBSERVATION_SCRIPT"),
 )
 
 
@@ -778,6 +818,7 @@ def test_dashboard_html_is_one_local_four_tab_shell_in_dependency_order() -> Non
         "/assets/gauge-calibration.js",
         "/assets/dashboard-views.js",
         "/assets/dashboard-analytics.js",
+        "/assets/dashboard-observation.js",
         "/assets/dashboard-shell.js",
     ]
 

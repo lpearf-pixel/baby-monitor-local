@@ -46,6 +46,7 @@ from services.vision.semantic_observation import (
     SemanticObservationSession,
     write_semantic_observation_report,
 )
+from services.vision.recent_observation import RecentObservationStatus, RecentObservationStatusWriter
 
 
 def _print_slow_analysis(
@@ -105,6 +106,7 @@ def main(argv: list[str] | None = None) -> int:
     evidence_retention_worker: GuardianEvidenceRetentionWorker | None = None
     semantic_observation: SemanticObservationSession | None = None
     semantic_observation_report: Path | None = None
+    recent_observation: RecentObservationStatus | None = None
     try:
         if args.env_file is not None:
             load_local_env_file(args.env_file)
@@ -114,6 +116,16 @@ def main(argv: list[str] | None = None) -> int:
         data_dir = settings.app.data_dir
         if not data_dir.is_absolute():
             data_dir = ROOT / data_dir
+        try:
+            recent_observation = RecentObservationStatus(
+                writer=RecentObservationStatusWriter(
+                    data_dir / "status" / "visual-observation.json"
+                )
+            )
+            recent_observation.mark_worker_restarted()
+        except Exception:
+            recent_observation = None
+            print("visual_observation_status_unavailable", file=sys.stderr)
         if args.semantic_observation_report is not None:
             report_root = (data_dir / "status").resolve()
             candidate = args.semantic_observation_report.expanduser().resolve()
@@ -206,6 +218,7 @@ def main(argv: list[str] | None = None) -> int:
                 stream=sys.stderr,
             ),
             semantic_observation=semantic_observation,
+            recent_observation=recent_observation,
         )
         evidence_files = GuardianEvidenceFiles(data_dir / "guardian-evidence")
         evidence_recorder = GuardianEvidenceRecorder(

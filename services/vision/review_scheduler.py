@@ -68,6 +68,47 @@ class ReviewObserverLike(Protocol):
     def tick(self, *, monotonic_now: float) -> dict[str, object]: ...
 
 
+class ReviewObserverFanout:
+    """Deliver scheduler diagnostics to independent non-blocking observers."""
+
+    def __init__(self, *observers: ReviewObserverLike) -> None:
+        self._observers = tuple(observer for observer in observers if observer is not None)
+
+    def record_request(self, frames, *, monotonic_now: float) -> None:
+        for observer in self._observers:
+            try:
+                observer.record_request(frames, monotonic_now=monotonic_now)
+            except Exception:
+                continue
+
+    def record_timeout(self, *, monotonic_now: float) -> None:
+        for observer in self._observers:
+            try:
+                observer.record_timeout(monotonic_now=monotonic_now)
+            except Exception:
+                continue
+
+    def record_completion(self, *, code, review, monotonic_now: float, late: bool = False) -> None:
+        for observer in self._observers:
+            try:
+                observer.record_completion(
+                    code=code,
+                    review=review,
+                    monotonic_now=monotonic_now,
+                    late=late,
+                )
+            except Exception:
+                continue
+
+    def tick(self, *, monotonic_now: float) -> dict[str, object]:
+        for observer in self._observers:
+            try:
+                observer.tick(monotonic_now=monotonic_now)
+            except Exception:
+                continue
+        return {}
+
+
 class VisualReviewScheduler:
     def __init__(
         self,

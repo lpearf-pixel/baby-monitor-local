@@ -16,7 +16,7 @@ from services.vision.frame_policy import PreparedAnalysisFrame, VisionFramePolic
 from services.vision.frame_ring import AnalysisFrameRing
 from services.vision.ollama_client import OllamaVisualReviewer
 from services.vision.review_runtime import VisualReviewRuntime
-from services.vision.review_scheduler import VisualReviewScheduler
+from services.vision.review_scheduler import ReviewObserverFanout, VisualReviewScheduler
 from services.vision.realtime_analyzer import RealtimeStageTiming, RealtimeVisualAnalyzer
 from services.vision.realtime_candidates import RealtimeCandidateStateMachine
 from services.vision.realtime_load import RealtimeLoadController
@@ -65,6 +65,7 @@ def build_visual_runtime(
     on_realtime_slow_analysis: Callable[[RealtimeStageTiming], None]
     | None = None,
     semantic_observation: SemanticObservationSession | None = None,
+    recent_observation: object | None = None,
 ) -> VisualRuntimeResources:
     if not settings.visual.enabled:
         raise ValueError("visual_review_disabled")
@@ -92,10 +93,15 @@ def build_visual_runtime(
         max_workers=1,
         thread_name_prefix="visual-review",
     )
+    observers = tuple(
+        observer
+        for observer in (semantic_observation, recent_observation)
+        if observer is not None
+    )
     scheduler = VisualReviewScheduler(
         reviewer=reviewer.review,
         executor=executor,
-        observer=semantic_observation,
+        observer=ReviewObserverFanout(*observers) if observers else None,
     )
     risk_machine = (
         VisualRiskStateMachine.from_snapshot(initial_risk_snapshot)

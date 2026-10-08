@@ -80,6 +80,45 @@ def test_first_complete_batch_submits_once_and_busy_batch_is_skipped() -> None:
     assert len(executor.calls) == 1
 
 
+def test_observer_fanout_preserves_review_and_diagnostics_independently() -> None:
+    module = scheduler_module()
+
+    class Observer:
+        def __init__(self, *, fail: bool = False) -> None:
+            self.fail = fail
+            self.calls: list[str] = []
+
+        def record_request(self, frames, *, monotonic_now):
+            self.calls.append("request")
+            if self.fail:
+                raise RuntimeError("diagnostic failure")
+
+        def record_timeout(self, *, monotonic_now):
+            self.calls.append("timeout")
+
+        def record_completion(self, *, code, review, monotonic_now, late=False):
+            self.calls.append("completion")
+
+        def tick(self, *, monotonic_now):
+            self.calls.append("tick")
+            return {}
+
+    first = Observer(fail=True)
+    second = Observer()
+    fanout = module.ReviewObserverFanout(first, second)
+    executor = FakeExecutor()
+    scheduler = module.VisualReviewScheduler(
+        reviewer=lambda _frames: review(),
+        executor=executor,
+        observer=fanout,
+    )
+    scheduler.try_submit(four_frames(), monotonic_now=1.0)
+    executor.futures[0].set_result(review())
+    scheduler.poll(monotonic_now=2.0)
+
+    assert second.calls == ["tick", "request", "tick", "completion"]
+
+
 def test_incomplete_batch_is_not_submitted() -> None:
     module = scheduler_module()
     executor = FakeExecutor()
