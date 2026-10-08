@@ -2618,3 +2618,11 @@ uncertain=0。延迟 P50/P95/max 为 7205.455/7419.545/7458.883ms。
 软件证据：视觉/API/Guardian Python 500 passed、1 个既有语料库未完成 skip；worker/bootstrap
 18 passed；前端全量 125 tests passed；compileall、Node syntax 和 `git diff --check` 通过。
 Camera Reply=false，WS2021 继续隔离；未部署、未访问摄像头、未启动家庭观察。
+
+## 2026-10-09 Dashboard 7641391 交付复审
+
+功能分支 `codex/dashboard-recent-observation` 的 HEAD 为 `76413912d4c2f1be763e58f99e42158b26beda1a`，远端集成分支 `origin/codex/visual-regression-corpus` 为 `0615ebd8f8fc043f9bdbe87230a7d49e8fa751a3`。两者 merge-base 为 `0615ebd`；功能分支仅多出 `7641391`，无远端独有提交，merge-tree 无冲突。该基线已包含此前视觉修正、统计时钟修正和 WS2021 取消记录。
+
+复审确认：API 每次读取按输入帧采集时间动态计算 30 秒过期；worker 停写后状态变为 `stale`。浏览器请求失败会把观察卡片局部置为“当前不可用”，不会保留 fresh。generation、采集时间单调性和 late 标记共同拒绝旧/重复/重启前结果；投影写入失败由 observer fan-out 隔离，不阻断 Guardian。状态文件缺失、损坏或读取失败时 API 返回 503 `VISUAL_OBSERVATION_UNAVAILABLE`，UI 显示“最近一次观察：当前不可用”，不会映射为 `no_result` 或 `not_visible`。
+
+验证：仓库外独立 Python 3.11 环境安装项目声明依赖后，在不含私有 symlink、保留 `.git` 的 clean clone 中运行 `python -m pytest -q --tb=short --disable-warnings`：`2522 passed, 1 skipped`。前端 `node --test tests/frontend/*.test.mjs`：`136 passed`。原工作树的失败仅来自私有 `.venv-alpha` symlink 和沙箱回环监听权限，未修改 `.gitignore` 或跳过业务测试。未部署、未启动家庭观察，Camera Reply=false，WS2021 继续隔离。

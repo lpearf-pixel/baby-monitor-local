@@ -984,3 +984,5 @@ P50/P95/max 为 7205.455/7419.545/7458.883ms。人工区间无法按帧采集时
 均为 `baby_visibility=null`。状态文件 0600 原子写入，worker generation 防止旧进程迟到结果
 覆盖新状态；投影写失败由 observer fan-out 吞掉，不阻断 Guardian。Dashboard API 继续鉴权和
 `no-store`，前端复用现有单一 15 秒刷新器。当前仅完成软件验证，未切换实机部署、未启动家庭观察。
+
+交付复审已完成：功能分支 `76413912` 基于集成分支 `0615ebd`，无远端独有提交、merge-tree 无冲突，已普通推送到 `origin/codex/dashboard-recent-observation`。状态读取故障使用 API 503 `VISUAL_OBSERVATION_UNAVAILABLE` 和 UI “当前不可用”局部降级，不伪装成 `no_result`/`not_visible`。独立 Python 3.11 clean clone 全套 `2522 passed, 1 skipped`，前端全套 `136 passed`；未部署、未启动家庭观察。

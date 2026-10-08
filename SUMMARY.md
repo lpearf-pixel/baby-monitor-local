@@ -968,3 +968,7 @@ Camera Reply=false，WS2021 继续隔离；真实 10 分钟观察尚未启动。
 当前“没有宝宝”。Dashboard 通过鉴权 `GET /api/dashboard/visual-observation` 展示“最近一次
 观察”，复用唯一 15 秒刷新器，局部不可用不影响其他卡片。Guardian 风险/通知、诊断报告、
 Camera Reply 和 WS2021 均未改变。软件回归已通过，尚未部署或启动家庭观察。
+
+### 交付复审
+
+`codex/dashboard-recent-observation@76413912` 已推送；基线 `origin/codex/visual-regression-corpus@0615ebd`，仅多出本投影提交，merge-tree 无冲突。API/UI 对缺失、损坏、读取失败明确显示不可用（503 `VISUAL_OBSERVATION_UNAVAILABLE`），不降级为 `no_result` 或 `not_visible`；过期、旧结果、重复结果和重启前迟到结果均 fail closed。独立 Python 3.11 clean clone 全套 `2522 passed, 1 skipped`，前端全套 `136 passed`。
