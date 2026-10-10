@@ -972,3 +972,11 @@ Camera Reply 和 WS2021 均未改变。软件回归已通过，尚未部署或�
 ### 交付复审
 
 `codex/dashboard-recent-observation@76413912` 已推送；基线 `origin/codex/visual-regression-corpus@0615ebd`，仅多出本投影提交，merge-tree 无冲突。API/UI 对缺失、损坏、读取失败明确显示不可用（503 `VISUAL_OBSERVATION_UNAVAILABLE`），不降级为 `no_result` 或 `not_visible`；过期、旧结果、重复结果和重启前迟到结果均 fail closed。独立 Python 3.11 clean clone 全套 `2522 passed, 1 skipped`，前端全套 `136 passed`。
+
+## 2026-10-10 Voice 音频链路稳定性审计
+
+完成 ASR → intent → TTS → 输出边界的离线审计与最小解耦。新增 `AudioSink`/`MacAudioSink`
+和 `VoiceOutput` 契约；本机扬声器仍是默认输出，Camera Reply 仍独立且默认关闭。聚焦
+Voice/音频回归 `172 passed`。MJSXJ17CM 反向语音仍为 `HARDWARE_ACCEPTANCE_PENDING`，
+不能用软件通过冒充真实播放成功。详见
+`docs/reviews/2026-10-10-voice-audio-stability-audit.md`。

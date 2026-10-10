@@ -15,6 +15,16 @@ from services.voice.tts import (
 )
 
 
+class RecordingAudioSink:
+    def __init__(self, result: bool = True) -> None:
+        self.result = result
+        self.calls = []
+
+    def play(self, rendered, cancelled) -> bool:
+        self.calls.append((rendered.path, cancelled))
+        return self.result
+
+
 def _aiff(frames: int = 8_000) -> bytes:
     sample_rate = b"\x40\x0c\xfa\x00\x00\x00\x00\x00\x00\x00"
     comm = struct.pack(">hIh", 1, frames, 16) + sample_rate
@@ -110,6 +120,45 @@ def test_synthesizer_uses_stdin_fixed_volume_ducking_and_guard(tmp_path: Path) -
     assert ducker.events == ["pause", "resume"]
     assert sleeps == [0.5]
     assert list(tmp_path.iterdir()) == []
+
+
+def test_synthesizer_accepts_an_isolated_audio_sink(tmp_path: Path) -> None:
+    runner = RecordingRunner()
+    ducker = RecordingDucker()
+    sink = RecordingAudioSink()
+    synth = FixedVoiceSynthesizer(
+        runner=runner,
+        ducker=ducker,
+        audio_sink=sink,
+        temporary_directory=tmp_path,
+        sleep=lambda _seconds: None,
+    )
+
+    assert synth.speak_code("saved", threading.Event()) is True
+    assert len(sink.calls) == 1
+    assert runner.calls[0][0][0] == "/usr/bin/say"
+    assert len(runner.calls) == 1
+    assert ducker.events == ["pause", "resume"]
+    assert list(tmp_path.iterdir()) == []
+
+
+def test_isolated_audio_sink_failure_does_not_poison_next_reply(tmp_path: Path) -> None:
+    runner = RecordingRunner()
+    ducker = RecordingDucker()
+    sink = RecordingAudioSink(False)
+    synth = FixedVoiceSynthesizer(
+        runner=runner,
+        ducker=ducker,
+        audio_sink=sink,
+        temporary_directory=tmp_path,
+        sleep=lambda _seconds: None,
+    )
+
+    assert synth.speak_code("saved", threading.Event()) is False
+    sink.result = True
+    assert synth.speak_code("saved", threading.Event()) is True
+    assert len(sink.calls) == 2
+    assert ducker.events == ["pause", "resume", "pause", "resume"]
 
 
 def test_synthesizer_can_resume_immediately_for_exact_wake_followup(

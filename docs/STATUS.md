@@ -986,3 +986,15 @@ P50/P95/max 为 7205.455/7419.545/7458.883ms。人工区间无法按帧采集时
 `no-store`，前端复用现有单一 15 秒刷新器。当前仅完成软件验证，未切换实机部署、未启动家庭观察。
 
 交付复审已完成：功能分支 `76413912` 基于集成分支 `0615ebd`，无远端独有提交、merge-tree 无冲突，已普通推送到 `origin/codex/dashboard-recent-observation`。状态读取故障使用 API 503 `VISUAL_OBSERVATION_UNAVAILABLE` 和 UI “当前不可用”局部降级，不伪装成 `no_result`/`not_visible`。独立 Python 3.11 clean clone 全套 `2522 passed, 1 skipped`，前端全套 `136 passed`；未部署、未启动家庭观察。
+
+## 2026-10-10 Voice 音频链路稳定性审计
+
+完成 Voice 输入、TTS、本机输出、Camera Reply 和 go2rtc/CS2 边界的只读审计。当前固定
+patch 已包含 CS2 payload 回归；生命周期软件证据完整，但 MJSXJ17CM 真实扬声器仍未证明稳定。
+新增 `AudioSink`/`MacAudioSink` 只解耦本机 TTS 输出，不改变 Guardian、Camera Reply、PTZ、
+模型或阈值；Camera Reply 保持关闭。
+
+Fresh focused gate：`tests/voice/test_tts.py tests/voice/test_camera_reply.py
+tests/voice/test_listen_only.py tests/voice/test_listen_only_runtime.py
+tests/voice/test_audio_pump.py tests/audio/test_worker.py` → `172 passed`。根因矩阵、A/B/C
+比较和硬件门记录于 `docs/reviews/2026-10-10-voice-audio-stability-audit.md`。

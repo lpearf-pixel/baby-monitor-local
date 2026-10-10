@@ -86,6 +86,18 @@ class RenderedReply:
     temporary_root: Path
 
 
+class AudioSink(Protocol):
+    """Bounded output boundary for one already-validated reply."""
+
+    def play(self, rendered: RenderedReply, cancelled: CancelEvent) -> bool: ...
+
+
+class VoiceOutput(Protocol):
+    """Common semantic-code output boundary for local and camera adapters."""
+
+    def speak_code(self, code: str, cancelled: CancelEvent) -> bool: ...
+
+
 class BoundedCommandRunner:
     """Run fixed local commands with cancellation and no inherited output."""
 
@@ -204,6 +216,7 @@ class FixedReplyRenderer:
             delivered = True
             output = None
             return rendered
+
         except Exception:
             return None
         finally:
@@ -233,6 +246,24 @@ class FixedReplyRenderer:
         return root_resolved, False
 
 
+class MacAudioSink:
+    """Play a validated reply through the local macOS speaker only."""
+
+    def __init__(self, *, runner: CommandRunner, volume: str = "0.35") -> None:
+        if type(volume) is not str or volume not in {"0.35"}:
+            raise ValueError(VOICE_TTS_UNAVAILABLE)
+        self._runner = runner
+        self._volume = volume
+
+    def play(self, rendered: RenderedReply, cancelled: CancelEvent) -> bool:
+        return self._runner.run(
+            ("/usr/bin/afplay", "-v", self._volume, str(rendered.path)),
+            input_bytes=None,
+            timeout_seconds=_PLAYBACK_TIMEOUT_SECONDS,
+            cancelled=cancelled,
+        )
+
+
 class FixedVoiceSynthesizer:
     def __init__(
         self,
@@ -240,6 +271,7 @@ class FixedVoiceSynthesizer:
         runner: CommandRunner,
         ducker: CaptureDucker,
         temporary_directory: Path | None = None,
+        audio_sink: AudioSink | None = None,
         sleep: Callable[[float], None] = time.sleep,
         post_playback_guard_seconds: float = _POST_PLAYBACK_GUARD_SECONDS,
     ) -> None:
@@ -248,6 +280,7 @@ class FixedVoiceSynthesizer:
         self._runner = runner
         self._ducker = ducker
         self._temporary_directory = temporary_directory
+        self._audio_sink = audio_sink or MacAudioSink(runner=runner)
         self._sleep = sleep
         self._post_playback_guard_seconds = post_playback_guard_seconds
         self._renderer = FixedReplyRenderer(
@@ -266,12 +299,7 @@ class FixedVoiceSynthesizer:
             rendered = self._renderer.render(code, cancelled)
             if rendered is None:
                 return False
-            return self._runner.run(
-                ("/usr/bin/afplay", "-v", "0.35", str(rendered.path)),
-                input_bytes=None,
-                timeout_seconds=_PLAYBACK_TIMEOUT_SECONDS,
-                cancelled=cancelled,
-            )
+            return self._audio_sink.play(rendered, cancelled)
         except (OSError, ValueError):
             return False
         finally:
@@ -390,10 +418,13 @@ def _stop_process(process: subprocess.Popen[bytes]) -> None:
 __all__ = [
     "RESPONSE_PHRASES",
     "VOICE_TTS_UNAVAILABLE",
+    "AudioSink",
     "BoundedCommandRunner",
     "FixedReplyRenderer",
     "FixedVoiceSynthesizer",
+    "MacAudioSink",
     "NoopCaptureDucker",
     "RenderedReply",
+    "VoiceOutput",
     "phrase_for_semantic_code",
 ]

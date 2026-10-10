@@ -22,6 +22,7 @@ from services.voice.tts import (
     CaptureDucker,
     FixedReplyRenderer,
     RenderedReply,
+    VoiceOutput,
 )
 
 
@@ -840,15 +841,11 @@ class _CameraOutput(Protocol):
     ) -> CameraReplyResult: ...
 
 
-class _FallbackOutput(Protocol):
-    def speak_code(self, code: str, cancelled: CancelEvent) -> bool: ...
-
-
 class CameraPreferredVoiceOutput:
     """Use i9 fallback only when the camera send has certainly not begun."""
 
     def __init__(
-        self, camera: _CameraOutput, fallback: _FallbackOutput
+        self, camera: _CameraOutput, fallback: VoiceOutput
     ) -> None:
         self._camera = camera
         self._fallback = fallback

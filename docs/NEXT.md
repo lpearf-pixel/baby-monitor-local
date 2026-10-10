@@ -623,3 +623,11 @@ not_visible=0、uncertain=0；延迟 P50/P95/max 为 7205.455/7419.545/7458.883m
 代码审查和普通功能分支交付后，按现有隔离部署流程准备候选版本；部署前不启动家庭观察。
 需要后续实机验证时，应单独确认状态文件、API、Dashboard 文案和过期行为，不能以软件测试
 替代真实宝宝识别准确率验收。WS2021 继续取消，Camera Reply 保持关闭。
+
+## Voice 音频链路（2026-10-10）
+
+软件稳定性 slice 已完成：固定 TTS 使用可替换 `AudioSink`，本机 `MacAudioSink` 为默认，
+Camera Reply 仍是独立、默认关闭的 `VoiceOutput` adapter。下一步不要求重复家庭语音测试；
+如继续产品化，先设计本地独立音箱 adapter，再决定是否进行一次受监督的 Xiaomi Camera
+Reply 硬件门。任何 CS2 失败必须 fail-closed，且不得影响视频、拾音、Guardian 或 Baby Care
+手动记录。详见 `docs/reviews/2026-10-10-voice-audio-stability-audit.md`。
