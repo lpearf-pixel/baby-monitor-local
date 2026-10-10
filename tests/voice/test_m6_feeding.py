@@ -93,7 +93,45 @@ def test_expired_context_clears_without_resuming_old_session() -> None:
     coordinator.process("开始喂奶", at(0), request_id="r1")
     result = coordinator.process("母乳60毫升", at(9), request_id="r2")
     assert result.code == "context_expired"
+    assert result.phase == "pending"
     assert [call[0] for call in gateway.calls] == ["feeding_start"]
+
+
+def test_expiry_preserves_server_task_for_explicit_resume_query_and_cancel() -> None:
+    gateway = Gateway()
+    coordinator = M6FeedingCoordinator(gateway, context_seconds=8)
+    coordinator.process("开始喂奶", at(0), request_id="r1")
+    coordinator.process("母乳60毫升", at(1), request_id="r2")
+    expired = coordinator.process("配方奶30毫升", at(10), request_id="r3")
+    assert expired.code == "context_expired"
+    assert coordinator.process("查询记录", at(10), request_id="r4").code == "query_result"
+    assert coordinator.process("继续喂奶", at(11), request_id="r5").code == "task_resumed"
+    assert coordinator.process("配方奶30毫升", at(12), request_id="r6").code == "accepted_pending"
+    assert coordinator.process("取消", at(13), request_id="r7").code == "cancelled"
+    assert [call[0] for call in gateway.calls] == [
+        "feeding_start", "feeding_update", "query", "feeding_update", "care_cancel"
+    ]
+
+
+def test_expired_confirmation_can_retry_after_gateway_failure_without_losing_task() -> None:
+    class ConfirmOnceGateway(Gateway):
+        def __init__(self) -> None:
+            super().__init__()
+            self.fail = True
+
+        def confirm(self, *, session_id: str, proposal_id: str) -> str:
+            if self.fail:
+                self.fail = False
+                raise RuntimeError("database unavailable")
+            return super().confirm(session_id=session_id, proposal_id=proposal_id)
+
+    gateway = ConfirmOnceGateway()
+    coordinator = M6FeedingCoordinator(gateway, context_seconds=8)
+    coordinator.process("开始喂奶", at(0), request_id="r1")
+    coordinator.process("母乳60毫升", at(1), request_id="r2")
+    coordinator.process("结束", at(2), request_id="r3")
+    assert coordinator.process("确认保存", at(12), request_id="r4").code == "temporarily_unavailable"
+    assert coordinator.process("确认保存", at(13), request_id="r5").code == "saved"
 
 
 def test_gateway_failure_and_audio_failure_are_closed_and_retryable() -> None:

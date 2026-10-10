@@ -44,7 +44,7 @@ class M6Output(Protocol):
 
 @dataclass(frozen=True, slots=True)
 class M6ParsedUtterance:
-    kind: Literal["feeding_start", "feeding_component", "feeding_end", "confirm", "cancel", "query", "uncertain"]
+    kind: Literal["feeding_start", "feeding_component", "feeding_end", "confirm", "cancel", "query", "resume", "uncertain"]
     component: dict[str, object] | None = None
     correction: bool = False
 
@@ -81,6 +81,7 @@ class M6FeedingCoordinator:
         self._proposal_id: str | None = None
         self._phase: Literal["idle", "pending", "needs_confirmation", "saved"] = "idle"
         self._last_at: datetime | None = None
+        self._context_expired = False
         self._seen: dict[str, M6Result] = {}
 
     def process(self, text: str, observed_at: datetime, *, request_id: str) -> M6Result:
@@ -92,13 +93,16 @@ class M6FeedingCoordinator:
         if prior is not None:
             return prior
         if self._last_at is not None and (observed_at - self._last_at).total_seconds() > self._context_seconds:
-            self._clear()
-            result = self._result("context_expired", "idle")
+            self._context_expired = True
+            self._last_at = None
+        parsed = parse_m6_utterance(text)
+        if self._context_expired and parsed.kind not in {"resume", "query", "cancel", "confirm"}:
+            result = self._result("context_expired", self._phase)
             self._remember(request_id, result)
             return result
-        parsed = parse_m6_utterance(text)
         result = self._apply(parsed, observed_at)
-        self._last_at = observed_at if result.code != "context_expired" else None
+        if result.code != "context_expired" and parsed.kind not in {"query", "cancel"}:
+            self._last_at = observed_at
         self._remember(request_id, result)
         return result
 
@@ -118,8 +122,16 @@ class M6FeedingCoordinator:
                 self._components = ()
                 self._proposal_id = None
                 self._phase = "pending"
+                self._context_expired = False
                 return self._result("accepted_pending", "pending")
+            if parsed.kind == "resume":
+                if self._session_id is None or self._phase not in {"pending", "needs_confirmation"}:
+                    return self._result("state_conflict", self._phase)
+                self._context_expired = False
+                return self._result("task_resumed", self._phase)
             if parsed.kind == "feeding_component":
+                if self._context_expired:
+                    return self._result("context_expired", self._phase)
                 if self._phase != "pending" or self._session_id is None or parsed.component is None:
                     return self._result("state_conflict", self._phase)
                 if parsed.correction and not self._components:
@@ -131,6 +143,8 @@ class M6FeedingCoordinator:
                 self._components = next_components
                 return self._result("accepted_pending", "pending")
             if parsed.kind == "feeding_end":
+                if self._context_expired:
+                    return self._result("context_expired", self._phase)
                 if self._phase != "pending" or self._session_id is None or not self._components:
                     return self._result("state_conflict", self._phase)
                 proposal_id = self._gateway.end(session_id=self._session_id, components=self._components)
@@ -145,6 +159,7 @@ class M6FeedingCoordinator:
                 code = self._gateway.confirm(session_id=self._session_id, proposal_id=self._proposal_id)
                 if code == "saved":
                     self._phase = "saved"
+                    self._context_expired = False
                 return self._result(code, "saved" if code == "saved" else "needs_confirmation")
             if parsed.kind == "cancel":
                 if self._session_id is None or self._phase not in {"pending", "needs_confirmation"}:
@@ -183,6 +198,7 @@ class M6FeedingCoordinator:
         self._proposal_id = None
         self._phase = "idle"
         self._last_at = None
+        self._context_expired = False
 
 
 def parse_m6_utterance(text: str) -> M6ParsedUtterance:
@@ -204,6 +220,8 @@ def parse_m6_utterance(text: str) -> M6ParsedUtterance:
         return M6ParsedUtterance("cancel")
     if normalized in {"查询记录", "最近记录", "查喂奶记录"}:
         return M6ParsedUtterance("query")
+    if normalized in {"继续喂奶", "恢复喂奶", "继续记录"}:
+        return M6ParsedUtterance("resume")
     match = _COMPONENT.fullmatch(normalized)
     if match is not None:
         amount = _parse_number(match.group("amount"), maximum=2_000)
