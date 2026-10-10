@@ -977,6 +977,18 @@ Camera Reply 和 WS2021 均未改变。软件回归已通过，尚未部署或�
 
 完成 ASR → intent → TTS → 输出边界的离线审计与最小解耦。新增 `AudioSink`/`MacAudioSink`
 和 `VoiceOutput` 契约；本机扬声器仍是默认输出，Camera Reply 仍独立且默认关闭。聚焦
-Voice/音频回归 `172 passed`。MJSXJ17CM 反向语音仍为 `HARDWARE_ACCEPTANCE_PENDING`，
+Voice/音频回归 `173 passed`。MJSXJ17CM 反向语音仍为 `HARDWARE_ACCEPTANCE_PENDING`，
 不能用软件通过冒充真实播放成功。详见
 `docs/reviews/2026-10-10-voice-audio-stability-audit.md`。
+
+## 2026-10-10 M6 Voice feeding session（离线软件 slice）
+
+AudioSink 基础审查已通过并推送到 `origin/codex/voice-audio-sink-stability`（HEAD
+`451d8fb`）。M6 Task 1 已完成：新增 8 秒内存上下文、闭合中文意图解析、混合喂养组件
+聚合、纠错、重复请求去重、过期清理、确认/取消/查询和失败可重试；直接亲喂只记录分钟，
+不换算毫升。`M6SessionGateway` 是 Baby Care 写入边界，测试使用 synthetic gateway 和
+失败型 Mock AudioSink，不写数据库、不播放真实音频。
+
+Baby Care M5 远端分支 `b301571` 的 v1 状态机仍是单 proposal；混合组件不能安全投递到 v1。
+因此生产多组件适配保持 blocked，需 Baby Care 发布并固定 v2 contract 后再接入。Camera Reply
+默认关闭，WS2021 继续取消。

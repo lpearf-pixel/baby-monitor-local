@@ -994,6 +994,20 @@ patch 已包含 CS2 payload 回归；生命周期软件证据完整，但 MJSXJ1
 新增 `AudioSink`/`MacAudioSink` 只解耦本机 TTS 输出，不改变 Guardian、Camera Reply、PTZ、
 模型或阈值；Camera Reply 保持关闭。
 
+## 2026-10-10 M6 Voice feeding session
+
+M6 Task 1 的离线实现已完成，文件为 `services/voice/m6_feeding.py` 及其 synthetic 回归。
+它只处理唤醒后的闭合文本，不保存 transcript；上下文默认 8 秒、最多 16 个 turn，超时后
+清除而不恢复旧 session，重复 request ID 不重复调用 gateway。混合流中的 expressed
+breast milk 与 formula 是独立 bottle components；direct breastfeeding 只保留 duration
+minutes。gateway 异常返回 `temporarily_unavailable` 并保留可重试状态，AudioSink 异常只
+标记 `audio_output_ok=false`，不阻断 Guardian/go2rtc/Baby Care。
+
+验证：M6 focused `11 passed`；与既有 Voice/音频受影响套件合计 `184 passed`。尚未接入
+生产 Baby Care：M5 远端 `b301571` 的 v1 单 proposal 无法表示多组件，必须先固定独立 v2
+契约与 source digest。NetworkAudioSink 仅保留接口设计，未采购设备或写固件；未部署、未播放
+家庭音频、未启动 Camera Reply。
+
 Fresh focused gate：`tests/voice/test_tts.py tests/voice/test_camera_reply.py
 tests/voice/test_listen_only.py tests/voice/test_listen_only_runtime.py
 tests/voice/test_audio_pump.py tests/audio/test_worker.py` → `172 passed`。根因矩阵、A/B/C

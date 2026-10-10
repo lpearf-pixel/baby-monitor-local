@@ -631,3 +631,18 @@ Camera Reply 仍是独立、默认关闭的 `VoiceOutput` adapter。下一步不
 如继续产品化，先设计本地独立音箱 adapter，再决定是否进行一次受监督的 Xiaomi Camera
 Reply 硬件门。任何 CS2 失败必须 fail-closed，且不得影响视频、拾音、Guardian 或 Baby Care
 手动记录。详见 `docs/reviews/2026-10-10-voice-audio-stability-audit.md`。
+
+## M6 Voice feeding session（2026-10-10）
+
+Task 1 已完成：离线 bounded parser/coordinator 与 Mock 闭环通过。下一步按顺序：
+
+1. 为 `M6SessionGateway` 补齐 v2 多组件 adapter 设计和合同测试；在 Baby Care 未发布 v2
+   source digest 前，不向 M5 v1 endpoint 发送 mixed proposal。
+2. 完成 synthetic gateway + Mock AudioSink 的完整闭环回归：开始、母乳 60 ml、配方奶 30 ml、
+   结束、确认、查询，并覆盖纠错、超时、重复、播放失败、数据库不可用。
+3. 评估是否在 Baby Care 独立功能分支实现 v2 session proposal；保持 v1 fixture/consumer
+   不变，需独立批准后才跨仓库修改。
+4. 仅设计 `NetworkAudioSink` 接口和故障语义，不采购设备、不部署家庭环境。
+
+生产门：Camera Reply=false，WS2021=CANCELLED_BY_OWNER；软件 green 不等于 Xiaomi
+MJSXJ17CM 真实扬声器通过，硬件验收仍为 `HARDWARE_ACCEPTANCE_PENDING`。
