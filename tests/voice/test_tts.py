@@ -25,6 +25,11 @@ class RecordingAudioSink:
         return self.result
 
 
+class RaisingAudioSink:
+    def play(self, _rendered, _cancelled) -> bool:
+        raise RuntimeError("synthetic sink failure")
+
+
 def _aiff(frames: int = 8_000) -> bytes:
     sample_rate = b"\x40\x0c\xfa\x00\x00\x00\x00\x00\x00\x00"
     comm = struct.pack(">hIh", 1, frames, 16) + sample_rate
@@ -159,6 +164,22 @@ def test_isolated_audio_sink_failure_does_not_poison_next_reply(tmp_path: Path) 
     assert synth.speak_code("saved", threading.Event()) is True
     assert len(sink.calls) == 2
     assert ducker.events == ["pause", "resume", "pause", "resume"]
+
+
+def test_audio_sink_exception_is_a_bounded_output_failure(tmp_path: Path) -> None:
+    runner = RecordingRunner()
+    ducker = RecordingDucker()
+    synth = FixedVoiceSynthesizer(
+        runner=runner,
+        ducker=ducker,
+        audio_sink=RaisingAudioSink(),
+        temporary_directory=tmp_path,
+        sleep=lambda _seconds: None,
+    )
+
+    assert synth.speak_code("saved", threading.Event()) is False
+    assert ducker.events == ["pause", "resume"]
+    assert list(tmp_path.iterdir()) == []
 
 
 def test_synthesizer_can_resume_immediately_for_exact_wake_followup(

@@ -300,7 +300,7 @@ class FixedVoiceSynthesizer:
             if rendered is None:
                 return False
             return self._audio_sink.play(rendered, cancelled)
-        except (OSError, ValueError):
+        except Exception:
             return False
         finally:
             if rendered is not None:
