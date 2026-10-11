@@ -53,6 +53,9 @@ if grep -q 'com.babymonitor.ollama-tunnel' "$TMP/calls.log"; then
   exit 1
 fi
 
+check_output="$(bash "$ROOT/scripts/tunnels/control.sh" check --target 'kandysmith@192.168.2.141' --identity "$TMP/key")"
+echo "$check_output" | grep -q '^ssh_process=absent$'
+
 export FAKE_CONFLICT=1
 if bash "$ROOT/scripts/tunnels/install.sh" --target 'kandysmith@192.168.2.141' --identity "$TMP/key" --log-dir "$TMP/logs"; then
   echo 'expected port conflict rejection' >&2

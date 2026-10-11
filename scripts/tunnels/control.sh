@@ -12,4 +12,5 @@ owned() { [ -f "$PLIST" ] && plutil -extract BabymonitorManaged raw -o - "$PLIST
 start() { owned || fail not_installed; "$LAUNCHCTL" bootstrap "$DOMAIN" "$PLIST" >/dev/null 2>&1 || true; "$LAUNCHCTL" kickstart -k "$DOMAIN/$LABEL" >/dev/null 2>&1 || fail kickstart_failed; echo 'ssh_tunnels_start=PASS'; }
 stop() { owned || { echo 'ssh_tunnels_stop=PASS state=not_installed'; return; }; "$LAUNCHCTL" bootout "$DOMAIN/$LABEL" >/dev/null 2>&1 || true; echo 'ssh_tunnels_stop=PASS'; }
 status() { owned || { echo 'ssh_process=not_installed'; return; }; if "$LAUNCHCTL" print "$DOMAIN/$LABEL" >/dev/null 2>&1; then echo 'ssh_process=present'; else echo 'ssh_process=absent'; fi; }
-case "${1:-}" in start) start ;; stop) stop ;; restart) stop; start ;; status) status ;; check) bash "$ROOT/scripts/tunnels/check.sh" ;; *) fail 'usage_start_stop_restart_status_check' ;; esac
+check() { shift; bash "$ROOT/scripts/tunnels/check.sh" "$@"; }
+case "${1:-}" in start) start ;; stop) stop ;; restart) stop; start ;; status) status ;; check) check "$@" ;; *) fail 'usage_start_stop_restart_status_check' ;; esac
