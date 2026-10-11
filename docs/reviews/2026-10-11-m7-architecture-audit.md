@@ -36,9 +36,12 @@ does not write its database.
 - `9833b82`: v2 multi-component intent construction and non-downgrading response adapter.
 - `1472c4c`: deterministic 224-sample synthetic evaluation generator.
 - `382e7d6`: Voice Worker response adapter and synthetic authoritative mixed-feeding closure.
+- `60f48be`: M6 lifecycle adapter to the signed Baby Care v2 device route.
 
-Focused M7 and existing M6/Worker paths pass in targeted suites. Full cross-repository
-PG16 integration and A/B/C evaluation remain open.
+Focused M7 and existing M6/Worker paths pass in targeted suites. The v2 adapter is
+transport-injected and has not been enabled in the installed worker; the authoritative
+read/query route still needs a Baby Care read adapter. Full cross-repository PG16
+integration and live A/B/C evaluation remain open.
 
 ## Live model status
 

@@ -1013,7 +1013,7 @@ run `38118932790` 的 static/unit/integration/build/compose-smoke 全部成功�
 
 M7 首批软件切片已在独立分支 `codex/m7-local-llm-parenting-assistant` 完成：严格 Ollama
 文本客户端、feeding-only 工具白名单、M6 会话恢复 facade、Voice Worker 可选模型优先接线，
-以及 Voice Care v2 多组件 intent builder/response adapter。当前最近提交 `382e7d6`；
+以及 Voice Care v2 多组件 intent builder/response adapter。当前最近提交 `60f48be`；
 完整跨仓库 PG16 集成、A/B/C 评测和真实模型验证仍未完成。已生成 224 条合成中文样本，
 规则基线聚合测试通过；M2 `127.0.0.1:11435` 有界健康检查返回连接失败，状态为
 `LIVE_MODEL_PENDING`。Camera Reply=false，WS2021 已取消，未访问家庭音视频或生产数据库。
