@@ -7,7 +7,7 @@ trap 'rm -rf "$TMP"' EXIT HUP INT TERM
 mkdir -p "$TMP/home/Library/LaunchAgents"
 printf 'synthetic-key' >"$TMP/key"
 chmod 600 "$TMP/key"
-bash "$ROOT/scripts/tunnels/render.sh" --template "$ROOT/config/launchd/com.babymonitor.ssh-tunnels.plist.template" --output "$TMP/plist" --target 'kandysmith@192.168.2.141' --identity "$TMP/key" --log-dir "$TMP/logs"
+bash "$ROOT/scripts/tunnels/render.sh" --template "$ROOT/config/launchd/com.babymonitor.ssh-tunnels.plist.template" --output "$TMP/plist" --target 'kandysmith@192.168.2.141' --identity "$TMP/key" --log-dir "$TMP/logs" --ollama-host 192.168.2.144
 cp "$TMP/plist" "$TMP/home/Library/LaunchAgents/com.babymonitor.ssh-tunnels.plist"
 cat >"$TMP/fake-launchctl" <<'EOF'
 #!/bin/bash

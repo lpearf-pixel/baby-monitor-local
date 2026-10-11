@@ -10,4 +10,7 @@ grep -q '127.0.0.1:11435' "$DOC"
 grep -q 'Camera Reply' "$DOC"
 grep -q 'never disables' "$DOC"
 grep -qi 'hardware activation remains' "$DOC"
+grep -q 'preflight.sh' "$DOC"
+grep -q 'inference machine' "$DOC"
+grep -q -- '--ollama-host' "$DOC"
 echo 'test_docs=PASS'

@@ -15,11 +15,12 @@ bash "$ROOT/scripts/tunnels/render.sh" \
   --output "$TMP/rendered.plist" \
   --target "kandysmith@192.168.2.141" \
   --identity "$IDENTITY" \
-  --log-dir "$LOG_DIR"
+  --log-dir "$LOG_DIR" \
+  --ollama-host "192.168.2.144"
 
 grep -q 'com.babymonitor.ssh-tunnels' "$TMP/rendered.plist"
 grep -q '127.0.0.1:1984:127.0.0.1:1984' "$TMP/rendered.plist"
-grep -q '127.0.0.1:11435:127.0.0.1:11434' "$TMP/rendered.plist"
+grep -q '127.0.0.1:11435:192.168.2.144:11434' "$TMP/rendered.plist"
 grep -q 'BatchMode=yes' "$TMP/rendered.plist"
 grep -q 'ExitOnForwardFailure=yes' "$TMP/rendered.plist"
 grep -q 'ConnectTimeout=8' "$TMP/rendered.plist"

@@ -1017,3 +1017,10 @@ updates roll back safely, stop/uninstall verify bootout, ownership checks valida
 marker and forwards, legacy tunnel conflicts fail closed, and status separates launchd
 registration from the real SSH process. State: `TUNNEL_SOFTWARE_READY`; no M2/i9
 LaunchAgent has been installed.
+
+Deployment topology is explicit after the 2026-10-11 preflight correction: the code
+machine (currently Intel i9), tunnel/LaunchAgent machine (M2/M3 or another declared
+host), and Ollama inference machine are independent roles. `-R` destinations are
+resolved from i9, so the installer now accepts an explicit i9-reachable
+`--ollama-host`; it does not infer M2 from `uname -m`. The i9-side preflight was
+`BLOCKED` (SSH exit 255, no local listeners) and did not alter the legacy plist or services.

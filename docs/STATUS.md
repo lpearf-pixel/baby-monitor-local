@@ -1046,3 +1046,14 @@ old owned plist until bootout succeeds, bootstrap/kickstart failures roll back, 
 never removes a still-loaded service, and status distinguishes launchd registration from
 the actual SSH process. Legacy `com.babymonitor.ollama-tunnel` conflicts fail closed.
 This is `TUNNEL_SOFTWARE_READY`; M2 installation and household acceptance remain pending.
+
+### Deployment topology correction
+
+The previous preflight ran on the Intel i9 checkout and incorrectly treated its
+`x86_64` architecture as evidence about the tunnel host. That result is invalid for
+M2/M3 acceptance. Roles are now explicit: code machine, tunnel/LaunchAgent machine,
+and Ollama inference machine. The new read-only `scripts/tunnels/preflight.sh` never
+infers roles from `uname -m`; it verifies a declared install role, SSH authentication,
+and an Ollama destination reachable from i9. The combined template accepts an explicit
+`--ollama-host` for the `-R` destination. The current i9-side preflight is BLOCKED because
+SSH auth returned 255, both local ports were absent, and no service was migrated.

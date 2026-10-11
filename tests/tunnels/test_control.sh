@@ -53,6 +53,11 @@ bash "$ROOT/scripts/tunnels/install.sh" --target 'kandysmith@192.168.2.141' --id
 grep -q 'bootstrap' "$TMP/calls.log"
 export FAKE_OWNED=1
 
+if bash "$ROOT/scripts/tunnels/install.sh" --initiator-host m3 --target 'kandysmith@192.168.2.141' --identity "$TMP/key" --log-dir "$TMP/logs"; then
+  echo 'expected named initiator to require ollama host' >&2
+  exit 1
+fi
+
 before_update="$(shasum -a 256 "$LAUNCH_AGENTS_DIR/com.babymonitor.ssh-tunnels.plist")"
 export FAKE_BOOTOUT_FAIL=1
 if bash "$ROOT/scripts/tunnels/install.sh" --target 'kandysmith@192.168.2.141' --identity "$TMP/key" --log-dir "$TMP/logs"; then

@@ -11,9 +11,12 @@ SSH="${SSH:-/usr/bin/ssh}"
 TARGET=""
 IDENTITY=""
 LOG_DIR="${ROOT}/runtime/logs"
+OLLAMA_HOST="127.0.0.1"
+INITIATOR_HOST="unspecified"
+OLLAMA_HOST_EXPLICIT=0
 
 fail() { echo "ssh_tunnels_install=FAIL reason=$1" >&2; exit 1; }
-usage() { echo "usage: install.sh --target USER@192.168.2.141 --identity PATH [--log-dir PATH]" >&2; exit 64; }
+usage() { echo "usage: install.sh --target USER@192.168.2.141 --identity PATH --ollama-host HOST [--initiator-host m2|m3] [--log-dir PATH]" >&2; exit 64; }
 owns_plist() {
   [ -f "$PLIST" ] || return 1
   plutil -extract BabymonitorManaged raw -o - "$PLIST" 2>/dev/null | grep -qx true || return 1
@@ -21,19 +24,24 @@ owns_plist() {
   [ "$(plutil -extract ProgramArguments.0 raw -o - "$PLIST" 2>/dev/null || true)" = /usr/bin/ssh ] || return 1
   plutil -extract ProgramArguments.1 raw -o - "$PLIST" 2>/dev/null | grep -qx -- -N || return 1
   plutil -extract ProgramArguments.22 raw -o - "$PLIST" 2>/dev/null | grep -qx '127.0.0.1:1984:127.0.0.1:1984' || return 1
-  plutil -extract ProgramArguments.24 raw -o - "$PLIST" 2>/dev/null | grep -qx '127.0.0.1:11435:127.0.0.1:11434' || return 1
+  plutil -extract ProgramArguments.24 raw -o - "$PLIST" 2>/dev/null | grep -Eq '^127\.0\.0\.1:11435:[A-Za-z0-9._:-]+:11434$' || return 1
 }
 while [ "$#" -gt 0 ]; do
   case "$1" in
     --target) [ "$#" -ge 2 ] || usage; TARGET="$2"; shift 2 ;;
     --identity) [ "$#" -ge 2 ] || usage; IDENTITY="$2"; shift 2 ;;
     --log-dir) [ "$#" -ge 2 ] || usage; LOG_DIR="$2"; shift 2 ;;
+    --ollama-host) [ "$#" -ge 2 ] || usage; OLLAMA_HOST="$2"; OLLAMA_HOST_EXPLICIT=1; shift 2 ;;
+    --initiator-host) [ "$#" -ge 2 ] || usage; INITIATOR_HOST="$2"; shift 2 ;;
     *) usage ;;
   esac
 done
 [ "$(uname -s)" = "Darwin" ] || fail macos_required
 [ -n "$TARGET" ] && [ -n "$IDENTITY" ] || usage
 case "$TARGET" in *'@192.168.2.141') ;; *) fail target_must_be_i9_192_168_2_141 ;; esac
+case "$INITIATOR_HOST" in unspecified|m2|m3) ;; *) fail invalid_initiator_host ;; esac
+case "$OLLAMA_HOST" in *[!A-Za-z0-9._:-]*) fail invalid_ollama_host ;; esac
+[ "$INITIATOR_HOST" = unspecified ] || [ "$OLLAMA_HOST_EXPLICIT" -eq 1 ] || fail ollama_host_required_for_named_initiator
 [ -f "$IDENTITY" ] || fail identity_missing
 [ "$(stat -f '%Lp' "$IDENTITY" 2>/dev/null || true)" = 600 ] || fail identity_not_0600
 
@@ -64,7 +72,7 @@ WAS_LOADED=0
 trap 'rm -f "$TMP" "$BACKUP"' EXIT HUP INT TERM
 bash "$ROOT/scripts/tunnels/render.sh" \
   --template "$ROOT/config/launchd/$LABEL.plist.template" --output "$TMP" \
-  --target "$TARGET" --identity "$IDENTITY" --log-dir "$LOG_DIR"
+  --target "$TARGET" --identity "$IDENTITY" --log-dir "$LOG_DIR" --ollama-host "$OLLAMA_HOST"
 plutil -lint "$TMP" >/dev/null 2>&1 || fail rendered_plist_invalid
 chmod 600 "$TMP"
 if [ -f "$PLIST" ]; then

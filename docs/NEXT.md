@@ -668,3 +668,9 @@ state remains unchanged and no household service should be restarted.
 The hardening gate is closed as `TUNNEL_SOFTWARE_READY`: ownership checks cover the label,
 marker and fixed forwards; update, uninstall and status failure paths are fail-closed and
 synthetically tested. The next action is only the separately authorized M2 installation.
+
+Before activation, run `scripts/tunnels/preflight.sh` on the actual M2/M3 tunnel host
+with an explicit `--ollama-host` that i9 can reach. Do not use the Intel i9 Codex
+environment's architecture as a deployment verdict. If Ollama is local to M3, verify
+both M3 loopback API availability and an i9-routable address; a M3 loopback alone cannot
+serve an i9-side `-R` destination.

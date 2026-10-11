@@ -30,7 +30,7 @@ owns_plist() {
   plutil -extract Label raw -o - "$PLIST" 2>/dev/null | grep -qx "$LABEL" || return 1
   [ "$(plutil -extract ProgramArguments.0 raw -o - "$PLIST" 2>/dev/null || true)" = /usr/bin/ssh ] || return 1
   plutil -extract ProgramArguments.22 raw -o - "$PLIST" 2>/dev/null | grep -qx '127.0.0.1:1984:127.0.0.1:1984' || return 1
-  plutil -extract ProgramArguments.24 raw -o - "$PLIST" 2>/dev/null | grep -qx '127.0.0.1:11435:127.0.0.1:11434' || return 1
+  plutil -extract ProgramArguments.24 raw -o - "$PLIST" 2>/dev/null | grep -Eq '^127\.0\.0\.1:11435:[A-Za-z0-9._:-]+:11434$' || return 1
 }
 if ! owns_plist; then
   echo 'launchd_registration=not_installed'
