@@ -989,6 +989,7 @@ AudioSink 基础审查已通过并推送到 `origin/codex/voice-audio-sink-stabi
 不换算毫升。`M6SessionGateway` 是 Baby Care 写入边界，测试使用 synthetic gateway 和
 失败型 Mock AudioSink，不写数据库、不播放真实音频。
 
-Baby Care M5 远端分支 `b301571` 的 v1 状态机仍是单 proposal；混合组件不能安全投递到 v1。
-因此生产多组件适配保持 blocked，需 Baby Care 发布并固定 v2 contract 后再接入。Camera Reply
-默认关闭，WS2021 继续取消。
+Baby Care 独立 v2 契约已固定，当前 HEAD 为 `7bdb693`，Voice Care v2 schema SHA-256 为
+`a0fe59a4c30c7f053a13677ab472e343c95a8794def7ee8ac5303a46d4d47954`；精确 CI run
+`38117730296` 的 static/unit/integration/build/compose-smoke 全部成功。M6 软件证据仍不等同
+家庭实机或生产就绪。Camera Reply 默认关闭，WS2021 继续取消。

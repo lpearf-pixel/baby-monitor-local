@@ -1003,10 +1003,11 @@ breast milk 与 formula 是独立 bottle components；direct breastfeeding 只�
 minutes。gateway 异常返回 `temporarily_unavailable` 并保留可重试状态，AudioSink 异常只
 标记 `audio_output_ok=false`，不阻断 Guardian/go2rtc/Baby Care。
 
-验证：M6 focused `11 passed`；与既有 Voice/音频受影响套件合计 `184 passed`。尚未接入
-生产 Baby Care：M5 远端 `b301571` 的 v1 单 proposal 无法表示多组件，必须先固定独立 v2
-契约与 source digest。NetworkAudioSink 仅保留接口设计，未采购设备或写固件；未部署、未播放
-家庭音频、未启动 Camera Reply。
+验证：M6 focused `11 passed`；与既有 Voice/音频受影响套件合计 `184 passed`。Baby Care
+独立 v2 契约已固定，当前 HEAD 为 `7bdb693`，schema SHA-256 为
+`a0fe59a4c30c7f053a13677ab472e343c95a8794def7ee8ac5303a46d4d47954`；精确 GitHub Actions
+run `38117730296` 的 static/unit/integration/build/compose-smoke 全部成功。NetworkAudioSink
+仅保留接口设计；未部署、未播放家庭音频、未启动 Camera Reply，软件证据不替代家庭实机验收。
 
 Fresh focused gate：`tests/voice/test_tts.py tests/voice/test_camera_reply.py
 tests/voice/test_listen_only.py tests/voice/test_listen_only_runtime.py

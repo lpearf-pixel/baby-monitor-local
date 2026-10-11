@@ -2626,3 +2626,15 @@ Camera Reply=false，WS2021 继续隔离；未部署、未访问摄像头、未�
 复审确认：API 每次读取按输入帧采集时间动态计算 30 秒过期；worker 停写后状态变为 `stale`。浏览器请求失败会把观察卡片局部置为“当前不可用”，不会保留 fresh。generation、采集时间单调性和 late 标记共同拒绝旧/重复/重启前结果；投影写入失败由 observer fan-out 隔离，不阻断 Guardian。状态文件缺失、损坏或读取失败时 API 返回 503 `VISUAL_OBSERVATION_UNAVAILABLE`，UI 显示“最近一次观察：当前不可用”，不会映射为 `no_result` 或 `not_visible`。
 
 验证：仓库外独立 Python 3.11 环境安装项目声明依赖后，在不含私有 symlink、保留 `.git` 的 clean clone 中运行 `python -m pytest -q --tb=short --disable-warnings`：`2522 passed, 1 skipped`。前端 `node --test tests/frontend/*.test.mjs`：`136 passed`。原工作树的失败仅来自私有 `.venv-alpha` symlink 和沙箱回环监听权限，未修改 `.gitignore` 或跳过业务测试。未部署、未启动家庭观察，Camera Reply=false，WS2021 继续隔离。
+
+## 2026-10-11 M6 软件发布门禁收口
+
+Baby Monitor 分支 HEAD `82f66099fa4e1fdacabf2eb6c283fc72e4267cd7`；精确 GitHub Actions
+run `38117607202` 成功。该修复为 CI 明确安装 ffmpeg，并以 Python 精确时间比较修正环境事件窗口微秒边界；受影响聚焦测试 `119 passed`。
+Baby Care 分支 HEAD `7bdb693de662e0000eb5041b314ff86decd1a38b`；精确 run `38117730296`
+的 static/unit/integration/build/compose-smoke 全部成功。PG16 v2 混合喂养、直接亲喂、并发确认
+与重试回归通过；并发最多产生一条权威事件。Voice Care v2 schema SHA-256 保持
+`a0fe59a4c30c7f053a13677ab472e343c95a8794def7ee8ac5303a46d4d47954`。
+
+本记录仅证明软件门禁；不代表家庭实机验收、Camera Reply 或生产就绪。Camera Reply=false，
+WS2021=CANCELLED_BY_OWNER；Interactive、test.sh 和私有运行态均未纳入提交。
