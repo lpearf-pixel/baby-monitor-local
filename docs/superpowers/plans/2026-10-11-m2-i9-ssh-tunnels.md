@@ -87,15 +87,15 @@
 - Modify: `docs/STATUS.md`, `docs/NEXT.md`, `SUMMARY.md`, `AGENTS.md` only if a durable rule is genuinely missing.
 - Test: `tests/tunnels/test_docs.sh`
 
-- [ ] Document M2 installation, rollback, existing-service conflict migration, M7 Ollama check and separate M2/i9 status interpretation.
-- [ ] Explicitly state that install is not run automatically and old services are not disabled.
-- [ ] Run all tunnel tests, `bash -n`, ASCII/LF, `git diff --check` and privacy scans.
-- [ ] Perform read-only review of all changed paths and preserve `Interactive`/`test.sh`.
-- [ ] Commit `docs: document combined ssh tunnel operations`.
+- [x] Document M2 installation, rollback, existing-service conflict migration, M7 Ollama check and separate M2/i9 status interpretation.
+- [x] Explicitly state that install is not run automatically and old services are not disabled.
+- [x] Run all tunnel tests, `bash -n`, ASCII/LF, `git diff --check` and privacy scans.
+- [x] Perform read-only review of all changed paths and preserve `Interactive`/`test.sh`.
+- [x] Commit `docs: document combined ssh tunnel operations`.
 
 ### Task 5: Delivery
 
-- [ ] Confirm current branch is `codex/m7-local-llm-parenting-assistant` and no protected branch is involved.
-- [ ] Run the focused tunnel suite and relevant existing deployment tests once.
-- [ ] Commit only reviewed scripts, template, tests and documentation; do not stage user files.
+- [x] Confirm current branch is `codex/m7-local-llm-parenting-assistant` and no protected branch is involved.
+- [x] Run the focused tunnel suite and relevant existing deployment tests once.
+- [x] Commit only reviewed scripts, template, tests and documentation; do not stage user files.
 - [ ] Push the feature branch normally and report local/remote SHA, test counts and hardware-install pending state.
