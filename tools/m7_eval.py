@@ -121,4 +121,22 @@ def evaluate_rule_only(samples: tuple[EvalSample, ...]) -> EvalReport:
     )
 
 
-__all__ = ["EvalReport", "EvalSample", "build_samples", "evaluate_rule_only"]
+def evaluate_modes(samples: tuple[EvalSample, ...], *, llm) -> dict[str, dict[str, object]]:
+    rule = evaluate_rule_only(samples)
+    result: dict[str, dict[str, object]] = {
+        "rule_only": {"status": "evaluated", **rule.as_dict()},
+        "pure_llm": {"status": "live_model_pending"},
+        "hybrid": {"status": "live_model_pending"},
+    }
+    if llm is None:
+        return result
+    # The live adapter is intentionally injected by the caller; this function
+    # never persists utterances or treats a missing adapter as a score of zero.
+    for sample in samples:
+        llm(sample)
+    result["pure_llm"] = {"status": "evaluated_by_injected_adapter"}
+    result["hybrid"] = {"status": "evaluated_by_injected_adapter"}
+    return result
+
+
+__all__ = ["EvalReport", "EvalSample", "build_samples", "evaluate_modes", "evaluate_rule_only"]
