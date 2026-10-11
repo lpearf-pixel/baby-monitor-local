@@ -650,3 +650,9 @@ MJSXJ17CM 真实扬声器通过，硬件验收仍为 `HARDWARE_ACCEPTANCE_PENDIN
 feeding 工具校验、M6 8 秒上下文与长期任务边界、Voice Worker 可选接线和 v2 多组件签名
 适配。下一步是跨仓库合成 Gateway/PG16 故障注入、A/B/C 224 样本评测和真实 M2 模型探测；
 当前为 `LIVE_MODEL_PENDING`。未满足 M7-6 前，不称软件候选，不部署家庭实例，不启用 Camera Reply。
+
+### M7 P0/P1 最新交接
+
+11435 隧道首个阻断点已定位为 SSH 目标端口拒绝，不是 Ollama 客户端配置或模型解析；等待现场恢复 M2 SSH 后再做一次真实模型探测。PG16 隔离 API 集成与 UTC 完整 API 门禁已通过；Operations Compose smoke 因既有 `baby-care-*` 容器/网络不为空而阻断，不得为了测试停止用户服务。
+
+P1 查询已复用 Baby Care 现有 summary/timeline 只读接口，并通过可选的 `M7AuthoritativeQueryClient` 接入查询工具；仍需在带真实授权传输的隔离 Voice Worker 路径验证端到端查询回复。真实 Ollama A/B/C、完整 M7-6 门禁仍未完成。

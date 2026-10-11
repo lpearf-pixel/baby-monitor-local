@@ -2638,3 +2638,11 @@ Baby Care 分支 HEAD `4f14ecc254740e9405f2e9b40e7b3217c4a5cb49`；精确 run `3
 
 本记录仅证明软件门禁；不代表家庭实机验收、Camera Reply 或生产就绪。Camera Reply=false，
 WS2021=CANCELLED_BY_OWNER；Interactive、test.sh 和私有运行态均未纳入提交。
+## 2026-10-11 M7 P0/P1 acceptance checkpoint
+
+- Branch/local HEAD: `codex/m7-local-llm-parenting-assistant` / `93b6fb8` before this checkpoint; untracked `Interactive` and `test.sh` preserved.
+- Ollama topology: Darwin x86_64; local 11435 listener absent; launchd has fixed `-L 127.0.0.1:11435:127.0.0.1:11434`; bounded SSH target check returned `connection refused`. No restart or network change performed. `LIVE_MODEL_PENDING`.
+- Isolated PG16: Node `v24.19.0`, Corepack pnpm `10.17.1`; M7/API targeted 23/23, API full 234/234 under `TZ=UTC`. Root lint/typecheck/build passed; native helper emitted `native_helper_built`.
+- Operations: non-Compose 148 passed/4 skipped. Compose smoke was not claimed: preflight found pre-existing `baby-care-*` containers/network, so the test failed closed without stopping user services.
+- P1 query: Baby Care already exposes authoritative `/api/care/summary` and `/api/care/timeline`; added only strict injected `M7AuthoritativeQueryClient` and optional `M6ToolExecutor` query route. Focused monitor gate: 598 passed.
+- No family media, production DB, Camera Reply, PTZ or Guardian risk logic accessed/changed.

@@ -1018,6 +1018,14 @@ M7 首批软件切片已在独立分支 `codex/m7-local-llm-parenting-assistant`
 规则基线聚合测试通过；M2 `127.0.0.1:11435` 有界健康检查返回连接失败，状态为
 `LIVE_MODEL_PENDING`。Camera Reply=false，WS2021 已取消，未访问家庭音视频或生产数据库。
 
+### 2026-10-11 M7 P0/P1 software gate update
+
+本机为 Darwin x86_64；11435 无监听，launchd 仍配置固定 i9 `-L 127.0.0.1:11435:127.0.0.1:11434`，但 SSH 目标端口返回 `connection refused`。未重启 Guardian、Ollama 或隧道，真实模型保持 `LIVE_MODEL_PENDING`。
+
+Node24 `v24.19.0` 与 pnpm `10.17.1` 可用。隔离 PostgreSQL 16 下 M7 相关 API 集成 23/23、UTC 完整 API 234/234 通过；根级 lint/typecheck/build 通过（native helper 输出 `native_helper_built`）。Operations 非 Compose 测试 148 passed/4 skipped；真实 Compose smoke 因既有用户运行的 `baby-care-*` 对象不为空而 fail-closed，未停止或删除用户服务。
+
+Baby Care 已有权威只读 `GET /api/care/summary` 与 `GET /api/care/timeline`。本轮新增严格的 `M7AuthoritativeQueryClient` 和 `M6ToolExecutor` 可选查询接线，不新增数据库、schema 或设备读路由。Camera Reply=false，未访问家庭媒体或生产数据库。
+
 Fresh focused gate：`tests/voice/test_tts.py tests/voice/test_camera_reply.py
 tests/voice/test_listen_only.py tests/voice/test_listen_only_runtime.py
 tests/voice/test_audio_pump.py tests/audio/test_worker.py` → `172 passed`。根因矩阵、A/B/C

@@ -3,9 +3,18 @@
 from __future__ import annotations
 
 from datetime import datetime
+from typing import Protocol
 
 from services.voice.m6_feeding import M6FeedingCoordinator, M6Result, M6SessionGateway
 from services.voice.m7_tools import ValidatedToolCall
+
+
+class M7QueryClient(Protocol):
+    def get_feeding_summary(self, at: datetime) -> dict[str, object]: ...
+
+    def get_recent_feedings(
+        self, at: datetime, *, from_time: datetime | None = None, limit: int = 20,
+    ) -> tuple[dict[str, object], ...]: ...
 
 
 class M7SessionBridge:
@@ -30,15 +39,36 @@ class M7SessionBridge:
 class M6ToolExecutor:
     """Translate validated M7 feeding tools to the existing M6 coordinator."""
 
-    def __init__(self, bridge: M7SessionBridge, *, clock) -> None:
+    def __init__(self, bridge: M7SessionBridge, *, clock, query_client: M7QueryClient | None = None) -> None:
         self._bridge = bridge
         self._clock = clock
+        self._query_client = query_client
+        self.last_query: object | None = None
         self._sequence = 0
 
     def execute(self, call: ValidatedToolCall) -> str:
         self._sequence += 1
         request_id = f"m7-tool-{self._sequence}"
         args = call.arguments
+        now = self._clock()
+        if call.name == "get_feeding_summary":
+            if self._query_client is None:
+                return "temporarily_unavailable"
+            try:
+                self.last_query = self._query_client.get_feeding_summary(now)
+                return "query_result"
+            except Exception:
+                self.last_query = None
+                return "temporarily_unavailable"
+        if call.name == "get_recent_feedings":
+            if self._query_client is None:
+                return "temporarily_unavailable"
+            try:
+                self.last_query = self._query_client.get_recent_feedings(now)
+                return "query_result"
+            except Exception:
+                self.last_query = None
+                return "temporarily_unavailable"
         text = {
             "start_feeding": "开始喂奶",
             "end_feeding": "结束",
@@ -60,7 +90,7 @@ class M6ToolExecutor:
             text = f"改成{liquid}{args['amount_ml']}毫升"
         if text is None:
             return "rejected"
-        return self._bridge.process(text, self._clock(), request_id=request_id).code
+        return self._bridge.process(text, now, request_id=request_id).code
 
 
-__all__ = ["M6ToolExecutor", "M7SessionBridge"]
+__all__ = ["M6ToolExecutor", "M7QueryClient", "M7SessionBridge"]

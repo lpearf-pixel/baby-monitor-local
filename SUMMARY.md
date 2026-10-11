@@ -1002,3 +1002,5 @@ Ollama 文本客户端、feeding-only 工具白名单、M6 会话恢复边界、
 测试通过，但 `127.0.0.1:11435` 当前不可达，真实模型为 `LIVE_MODEL_PENDING`。跨仓库 PG16
 集成、A/B/C 指标、真实模型验证、独立复审和 M7 软件候选门仍未完成。Camera Reply=false，
 WS2021=CANCELLED_BY_OWNER，未部署或访问家庭数据。
+
+最新 P0/P1 证据：本机 i9 的固定 Ollama 隧道无监听，SSH 目标端口返回 `connection refused`；未重启任何服务。Node24/pnpm10.17.1 + 隔离 PG16 下 M7 相关 23/23、Baby Care API 234/234 通过；lint/typecheck/build 通过，Operations 非 Compose 148/4 通过/跳过，真实 Compose 因已有用户 `baby-care-*` 对象不为空而保守阻断。新增 `M7AuthoritativeQueryClient` 复用 Baby Care `/api/care/summary` 与 `/api/care/timeline` 只读接口，查询适配器定向测试通过。当前状态仍为 `MOCK_TEST_PASS`、`POSTGRES_INTEGRATION_PASS`（隔离数据库）、`LIVE_MODEL_PENDING`、`SOFTWARE_RELEASE_CANDIDATE=false`、`HARDWARE_ACCEPTANCE_PENDING`。
