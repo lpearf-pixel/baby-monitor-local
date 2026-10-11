@@ -186,6 +186,12 @@ class CommandProcessor(Protocol):
     ) -> VoiceSemanticResponse | None: ...
 
 
+class M7Processor(Protocol):
+    def process(
+        self, command: str, observed_at: datetime, *, identity_bound: bool
+    ) -> VoiceSemanticResponse | None: ...
+
+
 class Synthesizer(Protocol):
     def speak_code(self, code: str, cancelled: StopEvent) -> bool: ...
 
@@ -216,6 +222,7 @@ class VoiceCommandProcessor:
         lease_id: str,
         model_version: str,
         request_id_factory: Callable[[], str],
+        m7_processor: M7Processor | None = None,
     ) -> None:
         if set(profile_claims) - {"dad", "mom"}:
             raise ValueError(VOICE_WORKER_UNAVAILABLE)
@@ -229,6 +236,7 @@ class VoiceCommandProcessor:
         self._lease_id = lease_id
         self._model_version = model_version
         self._request_id_factory = request_id_factory
+        self._m7_processor = m7_processor
         self._dialogue = DialogueState.idle(observed_at="1970-01-01T00:00:00+00:00")
         self._care_session_id: str | None = None
 
@@ -243,6 +251,14 @@ class VoiceCommandProcessor:
                 return None
             claimed_profile_id, command = self._extract_claim(wake.command)
             verification = self._speaker_verifier(claimed_profile_id, pcm)
+            if self._m7_processor is not None and not _is_fast_voice_command(command):
+                m7_response = self._m7_processor.process(
+                    command,
+                    observed_at,
+                    identity_bound=verification.state == "verified",
+                )
+                if m7_response is not None:
+                    return m7_response
             dialogue = _dialogue_at(self._dialogue, observed_at.isoformat())
             parsed = parse_feeding_command(command, dialogue)
             if parsed.intent_type is None or parsed.payload is None:
@@ -517,6 +533,11 @@ def _dialogue_at(state: DialogueState, observed_at: str) -> DialogueState:
         warning_digest=state.warning_digest,
         warning_codes=state.warning_codes,
     )
+
+
+def _is_fast_voice_command(command: str) -> bool:
+    normalized = "".join(command.split())
+    return normalized in {"取消", "停止", "停止播放", "停止记录"}
 
 
 def _closed_response(code: str) -> VoiceSemanticResponse:

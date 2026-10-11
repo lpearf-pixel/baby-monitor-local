@@ -536,3 +536,31 @@ def test_command_processor_ignores_missing_wake_without_signing() -> None:
     ) is None
     assert identity.values == []
     assert outbox.enqueued == []
+
+
+def test_command_processor_routes_ordinary_wake_command_to_m7_before_rule_parser() -> None:
+    class M7:
+        def __init__(self) -> None:
+            self.calls: list[tuple[str, bool]] = []
+
+        def process(self, command: str, observed_at: datetime, *, identity_bound: bool):
+            self.calls.append((command, identity_bound))
+            return pending_response()
+
+    m7 = M7()
+    processor = VoiceCommandProcessor(
+        asr=Asr(["小小，我是爸爸，宝宝喝了六十毫升母乳，又补了三十毫升奶粉"]),
+        speaker_verifier=lambda _claim, _pcm: SpeakerVerification("verified", "speaker_verified"),
+        profile_claims={"dad": "dddddddd-dddd-4ddd-8ddd-dddddddddddd"},
+        identity=Identity(),
+        outbox=Outbox([]),
+        client=object(),
+        device_id="11111111-1111-4111-8111-111111111111",
+        lease_id="22222222-2222-4222-8222-222222222222",
+        model_version="voice-v1",
+        request_id_factory=lambda: "33333333-3333-4333-8333-333333333333",
+        m7_processor=m7,
+    )
+
+    assert processor.process(b"p" * 32_000, datetime(2026, 8, 24, 1, tzinfo=UTC)) == pending_response()
+    assert m7.calls == [("宝宝喝了六十毫升母乳，又补了三十毫升奶粉", True)]
