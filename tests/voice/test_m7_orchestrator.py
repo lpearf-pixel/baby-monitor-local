@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from services.voice.m7_llm import LanguageCandidate, LlmUnavailable, M7ToolCall
-from services.voice.m7_orchestrator import M7Orchestrator, M7Outcome
+from services.voice.m7_orchestrator import M7Orchestrator, M7Outcome, M7VoiceProcessor
 from services.voice.m7_session import M6ToolExecutor, M7SessionBridge
 
 
@@ -153,3 +153,17 @@ def test_synthetic_mixed_feeding_reaches_one_authoritative_saved_session() -> No
         {"kind": "bottle", "liquidType": "expressed_breast_milk", "amountMl": 60},
         {"kind": "bottle", "liquidType": "formula", "amountMl": 30},
     )
+
+
+def test_voice_processor_adapts_only_authoritative_code_to_existing_worker_response() -> None:
+    language = FakeLanguage(candidate(M7ToolCall(name="confirm_feeding", arguments={}), intent="care_confirm"))
+    executor = FakeExecutor("temporarily_unavailable")
+    processor = M7VoiceProcessor(
+        M7Orchestrator(language, executor, fallback=lambda text: "规则回退")
+    )
+
+    response = processor.process("帮我保存", {}, identity_bound=True)
+
+    assert response.schema_version == 2
+    assert response.code == "temporarily_unavailable"
+    assert response.care_event_id is None

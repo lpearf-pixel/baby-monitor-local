@@ -5,6 +5,7 @@ from __future__ import annotations
 from dataclasses import dataclass
 from typing import Callable, Protocol
 
+from services.voice.client import VoiceSemanticResponse
 from services.voice.m7_llm import LanguageCandidate, LlmUnavailable, M7ToolCall
 from services.voice.m7_tools import validate_candidate
 
@@ -80,4 +81,24 @@ class M7Orchestrator:
         return M7Outcome(code, replies.get(code, "我需要再确认一下。"))
 
 
-__all__ = ["M7Orchestrator", "M7Outcome"]
+class M7VoiceProcessor:
+    """Adapt an M7 outcome to the existing Voice Worker response envelope."""
+
+    def __init__(self, orchestrator: M7Orchestrator) -> None:
+        self._orchestrator = orchestrator
+
+    def process(
+        self,
+        command: str,
+        context: object,
+        *,
+        identity_bound: bool,
+    ) -> VoiceSemanticResponse:
+        safe_context = context if isinstance(context, dict) else {}
+        outcome = self._orchestrator.handle(command, safe_context, identity_bound=identity_bound)
+        return VoiceSemanticResponse(
+            2, outcome.code, None, None, None, None, None, (), None
+        )
+
+
+__all__ = ["M7Orchestrator", "M7Outcome", "M7VoiceProcessor"]
