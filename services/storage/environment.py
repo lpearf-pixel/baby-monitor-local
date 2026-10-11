@@ -348,29 +348,24 @@ class EnvironmentStore:
             raise ValueError("ended_at must follow started_at")
         with self._connect() as connection:
             connection.execute("PRAGMA query_only = ON")
-            row = connection.execute(
-                """
-                SELECT
-                    COALESCE(SUM(CASE
-                        WHEN kind = 'range' AND severity = 'normal'
-                        THEN 1 ELSE 0 END), 0) AS range_normal,
-                    COALESCE(SUM(CASE
-                        WHEN kind = 'range' AND severity = 'critical'
-                        THEN 1 ELSE 0 END), 0) AS range_critical,
-                    COALESCE(SUM(CASE
-                        WHEN kind = 'unreadable'
-                        THEN 1 ELSE 0 END), 0) AS unreadable
-                FROM environment_incidents
-                WHERE julianday(opened_at) >= julianday(?)
-                    AND julianday(opened_at) < julianday(?)
-                """,
-                (started_at.isoformat(), ended_at.isoformat()),
-            ).fetchone()
-        assert row is not None
+            rows = connection.execute(
+                "SELECT kind, severity, opened_at FROM environment_incidents"
+            ).fetchall()
+        counts = {"range_normal": 0, "range_critical": 0, "unreadable": 0}
+        for row in rows:
+            opened_at = datetime.fromisoformat(row["opened_at"])
+            if not started_at <= opened_at < ended_at:
+                continue
+            if row["kind"] == "unreadable":
+                counts["unreadable"] += 1
+            elif row["severity"] == "normal":
+                counts["range_normal"] += 1
+            elif row["severity"] == "critical":
+                counts["range_critical"] += 1
         return EnvironmentIncidentCounts(
-            range_normal=int(row["range_normal"]),
-            range_critical=int(row["range_critical"]),
-            unreadable=int(row["unreadable"]),
+            range_normal=counts["range_normal"],
+            range_critical=counts["range_critical"],
+            unreadable=counts["unreadable"],
         )
 
     def open_incidents(
