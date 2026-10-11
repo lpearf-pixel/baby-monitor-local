@@ -37,6 +37,7 @@ does not write its database.
 - `1472c4c`: deterministic 224-sample synthetic evaluation generator.
 - `382e7d6`: Voice Worker response adapter and synthetic authoritative mixed-feeding closure.
 - `60f48be`: M6 lifecycle adapter to the signed Baby Care v2 device route.
+- `7e73f8e`: explicit approved Voice Care v2 schema digest pin.
 
 Focused M7 and existing M6/Worker paths pass in targeted suites. The v2 adapter is
 transport-injected and has not been enabled in the installed worker; the authoritative
