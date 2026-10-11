@@ -2631,7 +2631,7 @@ Camera Reply=false，WS2021 继续隔离；未部署、未访问摄像头、未�
 
 Baby Monitor 分支 HEAD `82f66099fa4e1fdacabf2eb6c283fc72e4267cd7`；精确 GitHub Actions
 run `38117607202` 成功。该修复为 CI 明确安装 ffmpeg，并以 Python 精确时间比较修正环境事件窗口微秒边界；受影响聚焦测试 `119 passed`。
-Baby Care 分支 HEAD `7bdb693de662e0000eb5041b314ff86decd1a38b`；精确 run `38117730296`
+Baby Care 分支 HEAD `4f14ecc254740e9405f2e9b40e7b3217c4a5cb49`；精确 run `38118932790`
 的 static/unit/integration/build/compose-smoke 全部成功。PG16 v2 混合喂养、直接亲喂、并发确认
 与重试回归通过；并发最多产生一条权威事件。Voice Care v2 schema SHA-256 保持
 `a0fe59a4c30c7f053a13677ab472e343c95a8794def7ee8ac5303a46d4d47954`。
