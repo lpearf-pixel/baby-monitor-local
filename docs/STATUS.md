@@ -1040,3 +1040,9 @@ health fields. Synthetic tests cover local and remote port conflicts, authentica
 failure, foreign-plist protection and degraded service states. The scripts have not been
 installed on M2 or i9; the existing `com.babymonitor.ollama-tunnel` remains untouched.
 Camera Reply=false and all household services remain unchanged.
+
+The final software hardening is now complete on the same branch: updates preserve the
+old owned plist until bootout succeeds, bootstrap/kickstart failures roll back, uninstall
+never removes a still-loaded service, and status distinguishes launchd registration from
+the actual SSH process. Legacy `com.babymonitor.ollama-tunnel` conflicts fail closed.
+This is `TUNNEL_SOFTWARE_READY`; M2 installation and household acceptance remain pending.

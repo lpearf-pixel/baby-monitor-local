@@ -8,6 +8,7 @@ LAUNCHCTL="${LAUNCHCTL:-/bin/launchctl}"
 LSOF="${LSOF:-/usr/sbin/lsof}"
 CURL="${CURL:-/usr/bin/curl}"
 SSH="${SSH:-/usr/bin/ssh}"
+PS="${PS:-/bin/ps}"
 TARGET=""
 IDENTITY=""
 fail() { echo "ssh_tunnels_check=FAIL reason=$1" >&2; exit 64; }
@@ -23,10 +24,21 @@ done
 [ -f "$IDENTITY" ] || fail identity_missing
 
 PLIST="$AGENTS_DIR/$LABEL.plist"
-if [ ! -f "$PLIST" ]; then
+owns_plist() {
+  [ -f "$PLIST" ] || return 1
+  plutil -extract BabymonitorManaged raw -o - "$PLIST" 2>/dev/null | grep -qx true || return 1
+  plutil -extract Label raw -o - "$PLIST" 2>/dev/null | grep -qx "$LABEL" || return 1
+  [ "$(plutil -extract ProgramArguments.0 raw -o - "$PLIST" 2>/dev/null || true)" = /usr/bin/ssh ] || return 1
+  plutil -extract ProgramArguments.22 raw -o - "$PLIST" 2>/dev/null | grep -qx '127.0.0.1:1984:127.0.0.1:1984' || return 1
+  plutil -extract ProgramArguments.24 raw -o - "$PLIST" 2>/dev/null | grep -qx '127.0.0.1:11435:127.0.0.1:11434' || return 1
+}
+if ! owns_plist; then
+  echo 'launchd_registration=not_installed'
   echo 'ssh_process=not_installed'
 else
-  if "$LAUNCHCTL" print "$DOMAIN/$LABEL" >/dev/null 2>&1; then echo 'ssh_process=present'; else echo 'ssh_process=absent'; fi
+  if "$LAUNCHCTL" print "$DOMAIN/$LABEL" >/dev/null 2>&1; then echo 'launchd_registration=registered'; else echo 'launchd_registration=not_registered'; fi
+  processes="$($PS -axo command= 2>/dev/null || true)"
+  if printf '%s\n' "$processes" | grep -E '/usr/bin/ssh.*127\.0\.0\.1:1984:127\.0\.0\.1:1984.*127\.0\.0\.1:11435:127\.0\.0\.1:11434' >/dev/null 2>&1; then echo 'ssh_process=present'; else echo 'ssh_process=absent'; fi
 fi
 
 local_listener="$($LSOF -nP -iTCP:1984 -sTCP:LISTEN 2>/dev/null || true)"

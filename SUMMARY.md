@@ -1011,3 +1011,9 @@ Software-only tunnel controls are complete on this branch in `c03c1d5`, `3c13a98
 layered health checks for the M2 go2rtc port, i9 Ollama port, and both HTTP APIs. The
 old i9 tunnel is not disabled or replaced. Installation on real Macs, migration and
 live Ollama validation remain separately authorized; no household service was touched.
+
+Hardening is complete at `5ff03ea` plus the follow-up software fixes on this branch:
+updates roll back safely, stop/uninstall verify bootout, ownership checks validate label,
+marker and forwards, legacy tunnel conflicts fail closed, and status separates launchd
+registration from the real SSH process. State: `TUNNEL_SOFTWARE_READY`; no M2/i9
+LaunchAgent has been installed.

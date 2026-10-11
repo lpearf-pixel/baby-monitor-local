@@ -12,8 +12,14 @@ cat >"$TMP/fake-launchctl" <<'EOF'
 set -eu
 printf 'launchctl %s\n' "$*" >>"$FAKE_LOG"
 case "${1:-}" in
-  print) exit 1 ;;
-  bootstrap|kickstart|bootout) exit 0 ;;
+  print)
+    case "$2" in
+      */com.babymonitor.ollama-tunnel) [ "${FAKE_LEGACY:-0}" = 1 ] && exit 0 || exit 1 ;;
+      *) [ -f "$FAKE_STATE" ] && exit 1; [ "${FAKE_OWNED:-0}" = 1 ] && exit 0 || exit 1 ;;
+    esac
+    ;;
+  bootstrap|kickstart) rm -f "$FAKE_STATE"; exit 0 ;;
+  bootout) [ "${FAKE_BOOTOUT_FAIL:-0}" = 1 ] && exit 1 || { : >"$FAKE_STATE"; exit 0; } ;;
   *) exit 0 ;;
 esac
 EOF
@@ -37,7 +43,7 @@ exit 0
 EOF
 chmod 700 "$TMP/fake-launchctl" "$TMP/fake-lsof" "$TMP/fake-ssh"
 
-export HOME="$TMP/home" FAKE_LOG="$TMP/calls.log"
+export HOME="$TMP/home" FAKE_LOG="$TMP/calls.log" FAKE_STATE="$TMP/loaded"
 export LAUNCHCTL="$TMP/fake-launchctl" LSOF="$TMP/fake-lsof" SSH="$TMP/fake-ssh"
 export LAUNCH_AGENTS_DIR="$TMP/home/Library/LaunchAgents"
 
@@ -45,7 +51,30 @@ bash "$ROOT/scripts/tunnels/install.sh" --target 'kandysmith@192.168.2.141' --id
 bash "$ROOT/scripts/tunnels/install.sh" --target 'kandysmith@192.168.2.141' --identity "$TMP/key" --log-dir "$TMP/logs"
 [ -f "$LAUNCH_AGENTS_DIR/com.babymonitor.ssh-tunnels.plist" ]
 grep -q 'bootstrap' "$TMP/calls.log"
+export FAKE_OWNED=1
 
+before_update="$(shasum -a 256 "$LAUNCH_AGENTS_DIR/com.babymonitor.ssh-tunnels.plist")"
+export FAKE_BOOTOUT_FAIL=1
+if bash "$ROOT/scripts/tunnels/install.sh" --target 'kandysmith@192.168.2.141' --identity "$TMP/key" --log-dir "$TMP/logs"; then
+  echo 'expected update bootout failure' >&2
+  exit 1
+fi
+[ "$before_update" = "$(shasum -a 256 "$LAUNCH_AGENTS_DIR/com.babymonitor.ssh-tunnels.plist")" ]
+if bash "$ROOT/scripts/tunnels/uninstall.sh"; then
+  echo 'expected uninstall bootout failure' >&2
+  exit 1
+fi
+[ -f "$LAUNCH_AGENTS_DIR/com.babymonitor.ssh-tunnels.plist" ]
+export FAKE_BOOTOUT_FAIL=0
+
+export FAKE_LEGACY=1
+if bash "$ROOT/scripts/tunnels/install.sh" --target 'kandysmith@192.168.2.141' --identity "$TMP/key" --log-dir "$TMP/logs"; then
+  echo 'expected legacy tunnel conflict' >&2
+  exit 1
+fi
+export FAKE_LEGACY=0
+
+: >"$TMP/calls.log"
 bash "$ROOT/scripts/tunnels/control.sh" stop
 grep -q 'bootout' "$TMP/calls.log"
 if grep -q 'com.babymonitor.ollama-tunnel' "$TMP/calls.log"; then

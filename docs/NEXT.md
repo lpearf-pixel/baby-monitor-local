@@ -664,3 +664,7 @@ installation after reviewing any existing tunnel owner and port use. Do not disa
 `com.babymonitor.ollama-tunnel` automatically; if it owns i9 port 11435, perform a
 manual, separately approved migration with a rollback plan. Until then the M7 live model
 state remains unchanged and no household service should be restarted.
+
+The hardening gate is closed as `TUNNEL_SOFTWARE_READY`: ownership checks cover the label,
+marker and fixed forwards; update, uninstall and status failure paths are fail-closed and
+synthetically tested. The next action is only the separately authorized M2 installation.

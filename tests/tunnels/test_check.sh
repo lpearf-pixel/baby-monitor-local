@@ -7,11 +7,7 @@ trap 'rm -rf "$TMP"' EXIT HUP INT TERM
 mkdir -p "$TMP/home/Library/LaunchAgents"
 printf 'synthetic-key' >"$TMP/key"
 chmod 600 "$TMP/key"
-cat >"$TMP/plist" <<'EOF'
-<?xml version="1.0"?><plist version="1.0"><dict>
-<key>BabymonitorManaged</key><true/><key>Label</key><string>com.babymonitor.ssh-tunnels</string>
-</dict></plist>
-EOF
+bash "$ROOT/scripts/tunnels/render.sh" --template "$ROOT/config/launchd/com.babymonitor.ssh-tunnels.plist.template" --output "$TMP/plist" --target 'kandysmith@192.168.2.141' --identity "$TMP/key" --log-dir "$TMP/logs"
 cp "$TMP/plist" "$TMP/home/Library/LaunchAgents/com.babymonitor.ssh-tunnels.plist"
 cat >"$TMP/fake-launchctl" <<'EOF'
 #!/bin/bash
@@ -24,6 +20,11 @@ set -eu
 case "${FAKE_LOCAL_PORT:-1}" in
   1) echo 'ssh 123 user 3u IPv4 0x0 0t0 TCP 127.0.0.1:1984 (LISTEN)' ;;
 esac
+EOF
+cat >"$TMP/fake-ps" <<'EOF'
+#!/bin/bash
+set -eu
+[ "${FAKE_SSH_PROCESS:-1}" = 1 ] && echo '/usr/bin/ssh -N -T -L 127.0.0.1:1984:127.0.0.1:1984 -R 127.0.0.1:11435:127.0.0.1:11434'
 EOF
 cat >"$TMP/fake-curl" <<'EOF'
 #!/bin/bash
@@ -41,18 +42,19 @@ case "$*" in
   */usr/bin/curl*) [ "${FAKE_OLLAMA:-1}" = 1 ] || exit 22 ;;
 esac
 EOF
-chmod 700 "$TMP/fake-launchctl" "$TMP/fake-lsof" "$TMP/fake-curl" "$TMP/fake-ssh"
+chmod 700 "$TMP/fake-launchctl" "$TMP/fake-lsof" "$TMP/fake-curl" "$TMP/fake-ssh" "$TMP/fake-ps"
 export HOME="$TMP/home" LAUNCH_AGENTS_DIR="$TMP/home/Library/LaunchAgents"
-export LAUNCHCTL="$TMP/fake-launchctl" LSOF="$TMP/fake-lsof" CURL="$TMP/fake-curl" SSH="$TMP/fake-ssh"
+export LAUNCHCTL="$TMP/fake-launchctl" LSOF="$TMP/fake-lsof" CURL="$TMP/fake-curl" SSH="$TMP/fake-ssh" PS="$TMP/fake-ps"
 
 healthy="$(bash "$ROOT/scripts/tunnels/check.sh" --target 'kandysmith@192.168.2.141' --identity "$TMP/key")"
 echo "$healthy" | grep -q '^ssh_process=present$'
+echo "$healthy" | grep -q '^launchd_registration=registered$'
 echo "$healthy" | grep -q '^m2_port_1984=listening$'
 echo "$healthy" | grep -q '^go2rtc_api=reachable$'
 echo "$healthy" | grep -q '^i9_port_11435=listening$'
 echo "$healthy" | grep -q '^ollama_api=reachable$'
 
-export FAKE_LOCAL_PORT=0 FAKE_GO2RTC=0 FAKE_REMOTE_PORT=0 FAKE_OLLAMA=0 FAKE_SSH_PROCESS=0
+export FAKE_LOCAL_PORT=0 FAKE_GO2RTC=0 FAKE_REMOTE_PORT=0 FAKE_OLLAMA=0 FAKE_SSH_PROCESS=0 FAKE_SSH_PROCESS=0
 degraded="$(bash "$ROOT/scripts/tunnels/check.sh" --target 'kandysmith@192.168.2.141' --identity "$TMP/key")"
 echo "$degraded" | grep -q '^ssh_process=absent$'
 echo "$degraded" | grep -q '^m2_port_1984=not_listening$'
