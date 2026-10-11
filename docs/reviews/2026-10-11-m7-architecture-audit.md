@@ -34,7 +34,8 @@ does not write its database.
 - `31f9b18`: M6 session bridge preserving recovery after language-context expiry.
 - `22fc464`: optional model-first Voice Worker hook with deterministic fallback.
 - `9833b82`: v2 multi-component intent construction and non-downgrading response adapter.
-- `1472c4c`: deterministic 220-sample synthetic evaluation generator.
+- `1472c4c`: deterministic 224-sample synthetic evaluation generator.
+- `382e7d6`: Voice Worker response adapter and synthetic authoritative mixed-feeding closure.
 
 Focused M7 and existing M6/Worker paths pass in targeted suites. Full cross-repository
 PG16 integration and A/B/C evaluation remain open.

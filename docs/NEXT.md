@@ -648,5 +648,5 @@ MJSXJ17CM 真实扬声器通过，硬件验收仍为 `HARDWARE_ACCEPTANCE_PENDIN
 
 当前分支 `codex/m7-local-llm-parenting-assistant` 按批准计划执行。已完成严格语言候选、
 feeding 工具校验、M6 8 秒上下文与长期任务边界、Voice Worker 可选接线和 v2 多组件签名
-适配。下一步是跨仓库合成 Gateway/PG16 故障注入、A/B/C 220 样本评测和真实 M2 模型探测；
+适配。下一步是跨仓库合成 Gateway/PG16 故障注入、A/B/C 224 样本评测和真实 M2 模型探测；
 当前为 `LIVE_MODEL_PENDING`。未满足 M7-6 前，不称软件候选，不部署家庭实例，不启用 Camera Reply。

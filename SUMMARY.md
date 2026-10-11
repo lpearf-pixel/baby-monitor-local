@@ -998,7 +998,7 @@ Baby Care 独立 v2 契约已固定，当前 HEAD 为 `4f14ecc`，Voice Care v2 
 
 M7 已在独立分支 `codex/m7-local-llm-parenting-assistant` 开始实现。当前有受限本地
 Ollama 文本客户端、feeding-only 工具白名单、M6 会话恢复边界、Voice Worker 可选模型优先
-入口及 Voice Care v2 多组件 adapter；最近提交 `1472c4c`。220 条合成中文样本规则基线
+入口及 Voice Care v2 多组件 adapter；最近提交 `382e7d6`。224 条合成中文样本规则基线
 测试通过，但 `127.0.0.1:11435` 当前不可达，真实模型为 `LIVE_MODEL_PENDING`。跨仓库 PG16
 集成、A/B/C 指标、真实模型验证、独立复审和 M7 软件候选门仍未完成。Camera Reply=false，
 WS2021=CANCELLED_BY_OWNER，未部署或访问家庭数据。
