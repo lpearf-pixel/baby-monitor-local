@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import json
 from datetime import datetime
+from collections.abc import Callable
 from typing import Protocol
 
 from services.voice.client import VoiceSemanticResponse
@@ -74,6 +75,7 @@ class V2VoiceCareGateway:
                 "state_conflict",
                 "temporarily_unavailable",
                 "rejected",
+                "cancelled",
             }:
                 raise ValueError("invalid_code")
             self.last_schema_version = 2
@@ -93,4 +95,128 @@ class V2VoiceCareGateway:
             return VoiceSemanticResponse.temporarily_unavailable()
 
 
-__all__ = ["V2VoiceCareGateway", "build_feeding_update_v2"]
+class M7BabyCareGateway:
+    """M6SessionGateway adapter backed by the signed Baby Care v2 device route."""
+
+    def __init__(
+        self,
+        *,
+        identity: IntentSigner,
+        transport: V2Transport,
+        device_id: str,
+        lease_id: str,
+        request_id_factory: Callable[[], str],
+        clock: Callable[[], datetime],
+    ) -> None:
+        self._identity = identity
+        self._sender = V2VoiceCareGateway(transport)
+        self._device_id = device_id
+        self._lease_id = lease_id
+        self._request_id_factory = request_id_factory
+        self._clock = clock
+        self._session_id: str | None = None
+        self._version: int | None = None
+        self._started_at: datetime | None = None
+        self._proposal_digest: str | None = None
+
+    def start(self, *, occurred_at: datetime) -> str:
+        value = _envelope(
+            request_id=self._request_id_factory(), device_id=self._device_id,
+            lease_id=self._lease_id, occurred_at=occurred_at, intent_type="feeding_start",
+            session_id=None, payload={"mode": "unknown", "startedAt": occurred_at.isoformat()},
+        )
+        result = self._sender.send(self._identity.sign_intent(value))
+        if result.code != "accepted_pending" or result.care_session_id is None or result.session_version is None:
+            raise RuntimeError("voice_care_start_failed")
+        self._session_id, self._version, self._started_at = result.care_session_id, result.session_version, occurred_at
+        return result.care_session_id
+
+    def update(self, *, session_id: str, components: tuple[dict[str, object], ...]) -> None:
+        self._require_session(session_id)
+        value = _envelope(
+            request_id=self._request_id_factory(), device_id=self._device_id,
+            lease_id=self._lease_id, occurred_at=self._clock(), intent_type="feeding_update",
+            session_id=session_id, payload={"expectedVersion": self._require_version(), "components": list(components)},
+        )
+        result = self._sender.send(self._identity.sign_intent(value))
+        if result.code != "accepted_pending" or result.session_version is None:
+            raise RuntimeError("voice_care_update_failed")
+        self._version = result.session_version
+
+    def end(self, *, session_id: str, components: tuple[dict[str, object], ...]) -> str:
+        self._require_session(session_id)
+        now = self._clock()
+        value = _envelope(
+            request_id=self._request_id_factory(), device_id=self._device_id,
+            lease_id=self._lease_id, occurred_at=now, intent_type="feeding_end",
+            session_id=session_id, payload={
+                "expectedVersion": self._require_version(),
+                "finalProposal": {"schemaVersion": 2, "startedAt": (self._started_at or now).isoformat(), "endedAt": now.isoformat(), "components": list(components)},
+            },
+        )
+        result = self._sender.send(self._identity.sign_intent(value))
+        if result.code != "needs_confirmation" or result.proposal_digest is None or result.session_version is None:
+            raise RuntimeError("voice_care_end_failed")
+        self._version, self._proposal_digest = result.session_version, result.proposal_digest
+        return result.proposal_digest
+
+    def confirm(self, *, session_id: str, proposal_id: str) -> str:
+        self._require_session(session_id)
+        if proposal_id != self._proposal_digest:
+            raise RuntimeError("voice_care_proposal_mismatch")
+        value = _envelope(
+            request_id=self._request_id_factory(), device_id=self._device_id,
+            lease_id=self._lease_id, occurred_at=self._clock(), intent_type="care_confirm",
+            session_id=session_id, payload={"proposalDigest": proposal_id, "expectedVersion": self._require_version(), "warningDigest": None, "confirmedWarningCodes": []},
+        )
+        result = self._sender.send(self._identity.sign_intent(value))
+        if result.code != "saved":
+            return result.code
+        self._version = result.session_version
+        return "saved"
+
+    def cancel(self, *, session_id: str) -> str:
+        self._require_session(session_id)
+        value = _envelope(
+            request_id=self._request_id_factory(), device_id=self._device_id,
+            lease_id=self._lease_id, occurred_at=self._clock(), intent_type="care_cancel",
+            session_id=session_id, payload={"expectedVersion": self._require_version(), "reason": "caregiver_cancelled"},
+        )
+        result = self._sender.send(self._identity.sign_intent(value))
+        if result.code == "cancelled":
+            self._session_id = None
+        return result.code
+
+    def query(self) -> tuple[dict[str, object], ...]:
+        raise RuntimeError("voice_care_query_requires_authoritative_read_route")
+
+    def _require_session(self, session_id: str) -> None:
+        if session_id != self._session_id:
+            raise RuntimeError("voice_care_session_mismatch")
+
+    def _require_version(self) -> int:
+        if self._version is None:
+            raise RuntimeError("voice_care_version_unavailable")
+        return self._version
+
+
+def _envelope(*, request_id: str, device_id: str, lease_id: str, occurred_at: datetime,
+              intent_type: str, session_id: str | None, payload: dict[str, object]) -> dict[str, object]:
+    return {
+        "schemaVersion": 2,
+        "requestId": request_id,
+        "deviceId": device_id,
+        "leaseId": lease_id,
+        "issuedAt": occurred_at.isoformat(),
+        "occurredAt": occurred_at.isoformat(),
+        "deliveryMode": "live",
+        "speakerState": "verified",
+        "source": "voice",
+        "modelVersion": "m7-llm",
+        "intentType": intent_type,
+        "careSessionId": session_id,
+        "payload": payload,
+    }
+
+
+__all__ = ["M7BabyCareGateway", "V2VoiceCareGateway", "build_feeding_update_v2"]
