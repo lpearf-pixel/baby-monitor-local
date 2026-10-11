@@ -1030,3 +1030,13 @@ Fresh focused gate：`tests/voice/test_tts.py tests/voice/test_camera_reply.py
 tests/voice/test_listen_only.py tests/voice/test_listen_only_runtime.py
 tests/voice/test_audio_pump.py tests/audio/test_worker.py` → `172 passed`。根因矩阵、A/B/C
 比较和硬件门记录于 `docs/reviews/2026-10-10-voice-audio-stability-audit.md`。
+## 2026-10-11 M2-i9 combined SSH tunnel software slice
+
+The approved M2-originated tunnel implementation is complete in commits `c03c1d5`,
+`3c13a98` and `30a36c6`. It provides one user LaunchAgent template, idempotent
+install/uninstall/control scripts, loopback-only `-L 1984` and `-R 11435`, ownership
+markers, throttled reconnect settings and separate SSH/process, port, go2rtc and Ollama
+health fields. Synthetic tests cover local and remote port conflicts, authentication
+failure, foreign-plist protection and degraded service states. The scripts have not been
+installed on M2 or i9; the existing `com.babymonitor.ollama-tunnel` remains untouched.
+Camera Reply=false and all household services remain unchanged.

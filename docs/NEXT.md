@@ -656,3 +656,11 @@ feeding 工具校验、M6 8 秒上下文与长期任务边界、Voice Worker 可
 11435 隧道首个阻断点已定位为 SSH 目标端口拒绝，不是 Ollama 客户端配置或模型解析；等待现场恢复 M2 SSH 后再做一次真实模型探测。PG16 隔离 API 集成与 UTC 完整 API 门禁已通过；Operations Compose smoke 因既有 `baby-care-*` 容器/网络不为空而阻断，不得为了测试停止用户服务。
 
 P1 查询已复用 Baby Care 现有 summary/timeline 只读接口，并通过可选的 `M7AuthoritativeQueryClient` 接入查询工具；仍需在带真实授权传输的隔离 Voice Worker 路径验证端到端查询回复。真实 Ollama A/B/C、完整 M7-6 门禁仍未完成。
+## M2-i9 tunnel automation (software complete, activation pending)
+
+The combined M2-originated SSH LaunchAgent is implemented and tested at commits
+`c03c1d5`, `3c13a98` and `30a36c6`. The next action is a separately authorized M2
+installation after reviewing any existing tunnel owner and port use. Do not disable
+`com.babymonitor.ollama-tunnel` automatically; if it owns i9 port 11435, perform a
+manual, separately approved migration with a rollback plan. Until then the M7 live model
+state remains unchanged and no household service should be restarted.

@@ -1004,3 +1004,10 @@ Ollama 文本客户端、feeding-only 工具白名单、M6 会话恢复边界、
 WS2021=CANCELLED_BY_OWNER，未部署或访问家庭数据。
 
 最新 P0/P1 证据：本机 i9 的固定 Ollama 隧道无监听，SSH 目标端口返回 `connection refused`；未重启任何服务。Node24/pnpm10.17.1 + 隔离 PG16 下 M7 相关 23/23、Baby Care API 234/234 通过；lint/typecheck/build 通过，Operations 非 Compose 148/4 通过/跳过，真实 Compose 因已有用户 `baby-care-*` 对象不为空而保守阻断。新增 `M7AuthoritativeQueryClient` 复用 Baby Care `/api/care/summary` 与 `/api/care/timeline` 只读接口，查询适配器定向测试通过。当前状态仍为 `MOCK_TEST_PASS`、`POSTGRES_INTEGRATION_PASS`（隔离数据库）、`LIVE_MODEL_PENDING`、`SOFTWARE_RELEASE_CANDIDATE=false`、`HARDWARE_ACCEPTANCE_PENDING`。
+### M2-i9 SSH tunnel automation (2026-10-11)
+
+Software-only tunnel controls are complete on this branch in `c03c1d5`, `3c13a98` and
+`30a36c6`: a single M2-launched LaunchAgent template, safe lifecycle controls and
+layered health checks for the M2 go2rtc port, i9 Ollama port, and both HTTP APIs. The
+old i9 tunnel is not disabled or replaced. Installation on real Macs, migration and
+live Ollama validation remain separately authorized; no household service was touched.
