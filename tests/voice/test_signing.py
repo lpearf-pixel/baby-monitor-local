@@ -136,11 +136,10 @@ def test_device_identity_rejects_invalid_pairing_fields() -> None:
     [
         lambda value: value.update({"endpointToken": "must-not-sign"}),
         lambda value: value.update({"signature": "A" * 86}),
-        lambda value: value.update({"schemaVersion": 2}),
         lambda value: value["payload"].update({"amountMl": 12.5}),
     ],
 )
-def test_device_identity_rejects_non_contract_or_pre_signed_input(mutation) -> None:
+def test_device_identity_rejects_non_contract_or_pre_signed_v1_input(mutation) -> None:
     value = unsigned_feeding_start()
     mutation(value)
     identity = DeviceIdentity(
@@ -155,3 +154,34 @@ def test_canonical_json_rejects_non_integer_numbers_and_non_string_keys() -> Non
     for value in ({"value": 1.5}, {1: "value"}, {"value": 2**53}):
         with pytest.raises(ValueError, match=f"^{VOICE_SIGNING_INVALID}$"):
             canonical_json_bytes(value)
+
+
+def test_device_identity_signs_valid_v2_multi_component_update() -> None:
+    value = {
+        "schemaVersion": 2,
+        "requestId": "11111111-1111-4111-8111-111111111111",
+        "deviceId": "22222222-2222-4222-8222-222222222222",
+        "leaseId": "33333333-3333-4333-8333-333333333333",
+        "issuedAt": "2026-10-11T01:00:00+00:00",
+        "occurredAt": "2026-10-11T01:00:00+00:00",
+        "deliveryMode": "live",
+        "speakerState": "verified",
+        "source": "voice",
+        "modelVersion": "m7-llm",
+        "intentType": "feeding_update",
+        "careSessionId": "44444444-4444-4444-8444-444444444444",
+        "payload": {
+            "expectedVersion": 2,
+            "components": [
+                {"kind": "bottle", "liquidType": "expressed_breast_milk", "amountMl": 60},
+                {"kind": "bottle", "liquidType": "formula", "amountMl": 30},
+            ],
+        },
+    }
+    identity = DeviceIdentity(
+        KeychainSecretStore(FakeKeychain(), random_bytes=lambda size: _SEED[:size])
+    )
+
+    signed = identity.sign_intent(value)
+
+    assert json.loads(signed)["schemaVersion"] == 2

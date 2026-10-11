@@ -193,6 +193,96 @@ VoiceCareIntentV1: TypeAlias = Annotated[
 _VOICE_CARE_ADAPTER = TypeAdapter(VoiceCareIntentV1)
 
 
+class _VoiceCareEnvelopeV2(_ContractModel):
+    schemaVersion: Literal[2]
+    requestId: UUID
+    deviceId: UUID
+    leaseId: UUID
+    issuedAt: OffsetDateTime
+    occurredAt: OffsetDateTime
+    deliveryMode: Literal["live", "replay"]
+    speakerState: SpeakerState
+    source: Literal["voice"]
+    modelVersion: ModelVersion
+    signature: Signature
+
+
+class FeedingStartIntentV2(_VoiceCareEnvelopeV2):
+    intentType: Literal["feeding_start"]
+    careSessionId: None
+    payload: FeedingStartPayload
+
+
+class BottleComponentV2(_ContractModel):
+    kind: Literal["bottle"]
+    liquidType: LiquidType
+    amountMl: SafePositiveInteger
+    bottleCapacityMl: SafePositiveInteger | None = None
+
+
+class DirectComponentV2(_ContractModel):
+    kind: Literal["direct_breastfeeding"]
+    durationMinutes: SafePositiveInteger
+
+
+VoiceCareFeedingComponentV2: TypeAlias = Annotated[
+    BottleComponentV2 | DirectComponentV2,
+    Field(discriminator="kind"),
+]
+
+
+class FeedingUpdatePayloadV2(_ContractModel):
+    expectedVersion: SafePositiveInteger
+    components: list[VoiceCareFeedingComponentV2] = Field(min_length=1, max_length=8)
+
+
+class FeedingUpdateIntentV2(_VoiceCareEnvelopeV2):
+    intentType: Literal["feeding_update"]
+    careSessionId: UUID
+    payload: FeedingUpdatePayloadV2
+
+
+class FinalFeedingProposalV2(_ContractModel):
+    schemaVersion: Literal[2]
+    startedAt: OffsetDateTime
+    endedAt: OffsetDateTime
+    components: list[VoiceCareFeedingComponentV2] = Field(min_length=1, max_length=8)
+
+
+class FeedingEndPayloadV2(_ContractModel):
+    expectedVersion: SafePositiveInteger
+    finalProposal: FinalFeedingProposalV2
+
+
+class FeedingEndIntentV2(_VoiceCareEnvelopeV2):
+    intentType: Literal["feeding_end"]
+    careSessionId: UUID
+    payload: FeedingEndPayloadV2
+
+
+class CareConfirmIntentV2(_VoiceCareEnvelopeV2):
+    intentType: Literal["care_confirm"]
+    careSessionId: UUID
+    payload: CareConfirmPayload
+
+
+class CareCancelIntentV2(_VoiceCareEnvelopeV2):
+    intentType: Literal["care_cancel"]
+    careSessionId: UUID
+    payload: CareCancelPayload
+
+
+VoiceCareIntentV2: TypeAlias = Annotated[
+    FeedingStartIntentV2
+    | FeedingUpdateIntentV2
+    | FeedingEndIntentV2
+    | CareConfirmIntentV2
+    | CareCancelIntentV2,
+    Field(discriminator="intentType"),
+]
+_VOICE_CARE_V2_ADAPTER = TypeAdapter(VoiceCareIntentV2)
+
+
 @dataclass(frozen=True)
 class VendoredVoiceCareContract:
     source_commit: str
@@ -209,8 +299,8 @@ def _reject_duplicate_keys(pairs: list[tuple[str, object]]) -> dict[str, object]
     return value
 
 
-def parse_voice_care_intent(raw: str | bytes) -> VoiceCareIntentV1:
-    """Parse only canonical UTF-8 Voice Care v1 JSON with no duplicate keys."""
+def parse_voice_care_intent(raw: str | bytes) -> VoiceCareIntentV1 | VoiceCareIntentV2:
+    """Parse canonical UTF-8 Voice Care v1 or v2 JSON with no duplicate keys."""
 
     try:
         text = raw.decode("utf-8", errors="strict") if isinstance(raw, bytes) else raw
@@ -227,7 +317,8 @@ def parse_voice_care_intent(raw: str | bytes) -> VoiceCareIntentV1:
         )
         if canonical != text:
             raise ValueError(VOICE_CARE_CONTRACT_INVALID)
-        return _VOICE_CARE_ADAPTER.validate_json(text)
+        adapter = _VOICE_CARE_V2_ADAPTER if payload.get("schemaVersion") == 2 else _VOICE_CARE_ADAPTER
+        return adapter.validate_json(text)
     except (UnicodeDecodeError, json.JSONDecodeError, ValidationError, ValueError, TypeError):
         raise ValueError(VOICE_CARE_CONTRACT_INVALID) from None
 
@@ -274,6 +365,8 @@ __all__ = [
     "VOICE_CARE_CORPUS_SHA256",
     "VOICE_CARE_SCHEMA_SHA256",
     "VoiceCareIntentV1",
+    "VoiceCareIntentV2",
+    "VoiceCareFeedingComponentV2",
     "VendoredVoiceCareContract",
     "parse_voice_care_intent",
     "verify_vendored_voice_care_contract",
