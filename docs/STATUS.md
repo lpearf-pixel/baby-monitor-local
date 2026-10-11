@@ -1009,6 +1009,15 @@ minutes。gateway 异常返回 `temporarily_unavailable` 并保留可重试状�
 run `38118932790` 的 static/unit/integration/build/compose-smoke 全部成功。NetworkAudioSink
 仅保留接口设计；未部署、未播放家庭音频、未启动 Camera Reply，软件证据不替代家庭实机验收。
 
+## 2026-10-11 M7 local LLM parenting assistant
+
+M7 首批软件切片已在独立分支 `codex/m7-local-llm-parenting-assistant` 完成：严格 Ollama
+文本客户端、feeding-only 工具白名单、M6 会话恢复 facade、Voice Worker 可选模型优先接线，
+以及 Voice Care v2 多组件 intent builder/response adapter。当前最近提交 `1472c4c`；
+完整跨仓库 PG16 集成、A/B/C 评测和真实模型验证仍未完成。已生成 220 条合成中文样本，
+规则基线聚合测试通过；M2 `127.0.0.1:11435` 有界健康检查返回连接失败，状态为
+`LIVE_MODEL_PENDING`。Camera Reply=false，WS2021 已取消，未访问家庭音视频或生产数据库。
+
 Fresh focused gate：`tests/voice/test_tts.py tests/voice/test_camera_reply.py
 tests/voice/test_listen_only.py tests/voice/test_listen_only_runtime.py
 tests/voice/test_audio_pump.py tests/audio/test_worker.py` → `172 passed`。根因矩阵、A/B/C
