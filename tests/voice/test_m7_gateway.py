@@ -8,6 +8,7 @@ from services.voice.m7_gateway import (
     V2VoiceCareGateway,
     build_feeding_update_v2,
 )
+from packages.contracts.voice_care import VOICE_CARE_V2_SCHEMA_SHA256
 
 
 class Identity:
@@ -16,6 +17,7 @@ class Identity:
 
 
 def test_v2_update_preserves_multiple_components_and_direct_duration() -> None:
+    assert VOICE_CARE_V2_SCHEMA_SHA256 == "a0fe59a4c30c7f053a13677ab472e343c95a8794def7ee8ac5303a46d4d47954"
     signed = build_feeding_update_v2(
         identity=Identity(),
         request_id="11111111-1111-4111-8111-111111111111",

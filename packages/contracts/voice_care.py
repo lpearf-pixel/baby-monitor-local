@@ -31,6 +31,7 @@ BABY_CARE_SOURCE_REPOSITORY = "lpearf-pixel/baby-care"
 BABY_CARE_SOURCE_COMMIT = "bb1337226c1948695159d14199c9bb73cdaf115a"
 VOICE_CARE_SCHEMA_SHA256 = "44e4648765e1d3df8419d45fe87a5b835b8e21c217ee9da699b08dfcc974b0de"
 VOICE_CARE_CORPUS_SHA256 = "af0736f02011225e38054336c7ca472a8e0e9b6dde600ae6f62540886fea06e5"
+VOICE_CARE_V2_SCHEMA_SHA256 = "a0fe59a4c30c7f053a13677ab472e343c95a8794def7ee8ac5303a46d4d47954"
 _CONTRACT_DIRECTORY = Path(__file__).with_name("voice-care")
 _SCHEMA_FILE = "voice-care-intent.v1.schema.json"
 _CORPUS_FILE = "voice-care-v1.json"
@@ -364,6 +365,7 @@ __all__ = [
     "VOICE_CARE_CONTRACT_INVALID",
     "VOICE_CARE_CORPUS_SHA256",
     "VOICE_CARE_SCHEMA_SHA256",
+    "VOICE_CARE_V2_SCHEMA_SHA256",
     "VoiceCareIntentV1",
     "VoiceCareIntentV2",
     "VoiceCareFeedingComponentV2",
