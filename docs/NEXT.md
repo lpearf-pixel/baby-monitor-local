@@ -704,3 +704,8 @@ The closed-set first score is now frozen evidence (13/24 intent, 5/7 applicable
 amount, 19/24 tool legality). Continue only with evidence-backed semantic fixes;
 after a change, rerun the fixed 168-item test and closed set once each, then run
 the full software gates. Keep failed and ambiguous samples in denominators.
+
+Stage 6 also exposed one existing contract-fixture blocker: the v1 golden corpus
+labels a schemaVersion=2 example as unsupported while the active M7-compatible
+parser accepts v2. Resolve that contract ownership decision before any release
+candidate; do not weaken the parser or bypass the test.

@@ -134,3 +134,14 @@ With the frozen C configuration it produced 13/24 intent-correct, 5/7
 applicable-amount-correct, 19/24 tool-legal, 4 schema mismatches and 2
 missing/invalid amount candidates. P50/P95/max latency was 1238.4/1558.1/2289.4
 ms. This is an independent software measurement, not household acceptance.
+
+## Stage 6 gate result
+
+The final local Python gate ran once after the closed-set addition: 2580 passed,
+1 expected visual-corpus skip, and 1 failure. The failure is
+`tests/contracts/test_voice_care.py::test_all_exact_golden_corpus_examples_match_the_python_contract`:
+the vendored v1 golden corpus names a `schemaVersion=2` example
+`unsupported-version`, while the current parser intentionally accepts the
+version-2 contract for M7 compatibility. This is a contract-fixture mismatch,
+not evidence to weaken validation; it remains a release blocker until the owning
+contract decision is resolved.

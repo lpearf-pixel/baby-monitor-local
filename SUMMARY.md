@@ -1057,3 +1057,8 @@ The frozen 24-item closed synthetic set is disjoint from development/test data.
 First C evaluation: intent 13/24, applicable amounts 5/7, tool legality 19/24,
 4 schema mismatches, 2 missing/invalid amount candidates, latency
 P50/P95/max 1238.4/1558.1/2289.4 ms. This confirms the semantic gap persists.
+
+Stage 6 full local Python gate: 2580 passed, 1 expected visual-corpus skip, 1
+failure in the pre-existing v1 golden contract because its `unsupported-version`
+fixture is schemaVersion=2 while the M7 parser accepts v2. This remains unresolved
+and keeps `SOFTWARE_RELEASE_CANDIDATE=false`; it was not bypassed.
