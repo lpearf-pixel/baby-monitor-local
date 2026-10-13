@@ -1077,6 +1077,11 @@ The evaluator reports closed failure reasons (`invalid_json`, `invalid_response`
 utterances. Fresh aggregate: 224 total, 154 responded, 70 schema mismatches,
 128 intent-correct, 62/80 applicable amounts correct, 152 tool-legal, and 18
 missing/invalid-candidate amount errors (0 wrong numeric). Latency was
-P50 1363.7 ms/P95 2001.8 ms/max 2111.9 ms. A-D modes are available; only a
-bounded 4-sample smoke ran for A-D because repeated live calls became slow, so
-complete A-D development scores remain pending.
+P50 1363.7 ms/P95 2001.8 ms/max 2111.9 ms. A-D modes are available and the
+complete development comparison is recorded below.
+
+The pending comparison is now closed on the 56-item development split: A raw JSON
+0/56 intent, B current prompt+Schema 2/56, C optimized prompt+Schema 35/56, and
+D optimized+fence repair 35/56. C/D were 17/20 applicable-amount correct and
+41/56 tool-legal; fence repair did not change the score. The 168-item test split
+was not used for this choice. `SOFTWARE_RELEASE_CANDIDATE` remains false.

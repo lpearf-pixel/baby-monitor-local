@@ -693,3 +693,9 @@ wrongly numerically interpreted. The next bounded task is a complete fair A/B/C/
 development comparison on the same 56 samples and fixed settings; the 168-item test
 split remains holdout. Keep Camera Reply=false and do not deploy until semantic
 targets and independent review pass.
+
+The fair development comparison is complete. Retain C (optimized prompt + native
+Schema) as the measured baseline; D's format-only repair produced no gain. Next
+work must address the remaining schema/semantic failure clusters and then run the
+fixed 168-item test split once, followed by the existing integration and privacy
+gates. Do not tune against the test split or call M7 a software candidate yet.

@@ -1044,5 +1044,11 @@ fresh 224-sample qwen2.5-coder run produced 70 `schema_mismatch` failures and 18
 amount errors, all missing/invalid candidates; wrong numeric amount was 0. Intent
 was 128/224, applicable amount 62/80, tool legality 152/224, and latency
 P50/P95/max was 1363.7/2001.8/2111.9 ms. Targets are unmet and
-`SOFTWARE_RELEASE_CANDIDATE=false`. A-D comparison switches are ready; only a
-4-sample smoke was completed for new modes, not a full development comparison.
+`SOFTWARE_RELEASE_CANDIDATE=false`. A-D comparison switches are ready and the
+complete development comparison is recorded below.
+
+The complete 56-sample A-D development comparison is now recorded: A=0/56,
+B=2/56, C=35/56 and D=35/56 intent-correct; C/D each reached 17/20 applicable
+amounts and 41/56 legal tools. B had 34 schema mismatches and 14 unknown tools;
+C/D had 14 schema mismatches. The optimized native-Schema mode remains below all
+release targets and is not promoted.

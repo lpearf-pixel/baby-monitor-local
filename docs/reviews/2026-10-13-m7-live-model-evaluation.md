@@ -107,3 +107,21 @@ The prior complete 56-sample B/C baseline remains the only full development
 comparison; a full A-D run was not claimed after repeated live calls became slow.
 Stage 1 therefore points to strict schema rejection, not safe numeric repair, and
 the release targets remain unmet.
+
+## Development A/B/C/D comparison
+
+All four modes used the same 56 development samples, model, temperature, timeout
+and tool validator. No test-split sample was used for selection.
+
+| Mode | Intent | Applicable amount | Tool-legal | Failures | Failure reasons | P95 ms |
+| --- | ---: | ---: | ---: | ---: | --- | ---: |
+| A raw JSON + current prompt | 0/56 | 0/20 | 0/56 | 56 | schema_mismatch | 1742.0 |
+| B native Schema + current prompt | 2/56 | 0/20 | 4/56 | 48 | schema_mismatch 34, unknown_tool 14 | 1405.0 |
+| C native Schema + optimized prompt | 35/56 | 17/20 | 41/56 | 14 | schema_mismatch 14 | 1580.4* |
+| D C + one JSON-fence repair | 35/56 | 17/20 | 41/56 | 14 | schema_mismatch 14 | 1864.7 |
+
+*C is the previously completed full development run with identical settings; its
+P95 is retained as prior evidence, not mixed with a new prompt or corpus. D's
+repair changed no business fields and did not improve the development scores.
+The optimized prompt plus native Schema is therefore retained as the baseline
+candidate for the next diagnostic slice, not as a release decision.
