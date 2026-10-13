@@ -684,3 +684,12 @@ applicable-parameter targets, then perform independent review and CI. The Postgr
 date-only blocker is fixed in Baby Care `cb9a86f`; fresh API gate evidence is 234/234.
 Do not repeat the 224 live run unless the model, prompt, or evaluator changes. Do not
 deploy to household devices.
+
+### M7.1 Stage 1/2 next slice
+
+Stage 1 classification is complete: the dominant full-run failure is strict schema
+mismatch (70/70 closed candidates), with 18 amount samples unavailable rather than
+wrongly numerically interpreted. The next bounded task is a complete fair A/B/C/D
+development comparison on the same 56 samples and fixed settings; the 168-item test
+split remains holdout. Keep Camera Reply=false and do not deploy until semantic
+targets and independent review pass.

@@ -1063,9 +1063,20 @@ SSH auth returned 255, both local ports were absent, and no service was migrated
 The existing i9 to M3 Ollama route was read-only verified: API version `0.32.11`
 and installed model `qwen2.5-coder:7b-instruct` were available. Corrected
 evaluation on 224 unique samples produced 154 schema-valid candidates and 70
-`invalid_candidate` results; B/C intent was 57.14%, applicable parameter accuracy
+`schema_mismatch` results; B/C intent was 57.14%, applicable parameter accuracy
 77.5%, and C tool legality 67.86%. Independent test split intent was 93/168.
 Baby Care Voice v2 isolated PG16 integration passed 27/27; fresh full API gate
 passed 234/234 after commit `cb9a86f` fixed PostgreSQL date-only serialization.
 Status: `LIVE_MODEL_EVALUATED`, `POSTGRES_INTEGRATION_PASS`,
 `SOFTWARE_RELEASE_CANDIDATE=false`, `HARDWARE_ACCEPTANCE_PENDING`.
+
+### M7.1 Stage 1/2 (2026-10-14)
+
+The evaluator reports closed failure reasons (`invalid_json`, `invalid_response`,
+`schema_mismatch`, `unknown_tool`) and amount-error reasons without retaining
+utterances. Fresh aggregate: 224 total, 154 responded, 70 schema mismatches,
+128 intent-correct, 62/80 applicable amounts correct, 152 tool-legal, and 18
+missing/invalid-candidate amount errors (0 wrong numeric). Latency was
+P50 1363.7 ms/P95 2001.8 ms/max 2111.9 ms. A-D modes are available; only a
+bounded 4-sample smoke ran for A-D because repeated live calls became slow, so
+complete A-D development scores remain pending.

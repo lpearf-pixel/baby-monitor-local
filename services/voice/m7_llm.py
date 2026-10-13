@@ -34,6 +34,14 @@ _ALLOWED_TOOLS = {
     "get_feeding_summary",
 }
 
+
+class _InvalidResponse(ValueError):
+    """The Ollama envelope is not a valid bounded chat response."""
+
+
+class _UnknownTool(ValueError):
+    """The model selected a tool outside the closed M7 registry."""
+
 _SCHEMA_PROMPT = (
     "Return only JSON with keys intent, tool_calls, clarification, confidence, context_key. "
     "Use only these exact tool names: get_active_feeding, start_feeding, "
@@ -48,6 +56,7 @@ _SCHEMA_PROMPT = (
     "are {}. Feeding tools only; never invent identity, permission, saved state, "
     "database results, or millilitres for direct breastfeeding."
 )
+_BASE_PROMPT = "Return JSON with intent, tool_calls, clarification, confidence, context_key."
 
 
 class M7ToolCall(BaseModel):
@@ -107,13 +116,21 @@ class OllamaLanguageClient:
         *,
         base_url: str = VISUAL_OLLAMA_BASE_URL,
         model_name: str = LANGUAGE_MODEL_NAME,
+        response_format: Literal["json", "schema"] = "schema",
+        prompt_variant: Literal["current", "optimized"] = "optimized",
+        format_repair: bool = False,
         opener: FrameOpener = _open_without_proxy,
     ) -> None:
         if base_url != VISUAL_OLLAMA_BASE_URL:
             raise ValueError("Ollama origin must use the fixed loopback gateway")
         if not isinstance(model_name, str) or not model_name or len(model_name) > 128:
             raise ValueError("invalid model name")
+        if response_format not in {"json", "schema"}:
+            raise ValueError("invalid response format")
         self._model_name = model_name
+        self._response_format = response_format
+        self._prompt_variant = prompt_variant
+        self._format_repair = format_repair
         self._opener = opener
 
     def complete(
@@ -133,14 +150,16 @@ class OllamaLanguageClient:
             payload = {
                 "model": self._model_name,
                 "messages": [
-                    {"role": "system", "content": _SCHEMA_PROMPT},
+                    {"role": "system", "content": _SCHEMA_PROMPT if self._prompt_variant == "optimized" else _BASE_PROMPT},
                     {"role": "user", "content": json.dumps(
                         {"text": text, "context": context},
                         ensure_ascii=False,
                         separators=(",", ":"),
                     )},
                 ],
-                "format": LanguageCandidate.model_json_schema(),
+                "format": LanguageCandidate.model_json_schema()
+                if self._response_format == "schema"
+                else "json",
                 "stream": False,
                 "think": False,
                 "keep_alive": "5m",
@@ -156,33 +175,53 @@ class OllamaLanguageClient:
                 raw = response.read(MAX_RESPONSE_BYTES + 1)
             if len(raw) > MAX_RESPONSE_BYTES:
                 raise ValueError("response_too_large")
-            candidate = self._parse_response(raw, model_name=self._model_name)
+            candidate = self._parse_response(
+                raw, model_name=self._model_name, format_repair=self._format_repair
+            )
             if any(call.name not in _ALLOWED_TOOLS for call in candidate.tool_calls):
-                raise ValueError("unknown_tool")
+                raise _UnknownTool("unknown_tool")
             return candidate
         except TimeoutError:
             return LlmUnavailable("timeout")
         except (OSError, ConnectionError):
             return LlmUnavailable("transport_failure")
-        except (ValueError, ValidationError):
+        except json.JSONDecodeError:
+            return LlmUnavailable("invalid_json")
+        except _UnknownTool:
+            return LlmUnavailable("unknown_tool")
+        except _InvalidResponse:
+            return LlmUnavailable("invalid_response")
+        except ValidationError:
+            return LlmUnavailable("schema_mismatch")
+        except ValueError:
             return LlmUnavailable("invalid_candidate")
         except Exception:
             return LlmUnavailable()
 
     @staticmethod
-    def _parse_response(raw: bytes, *, model_name: str = LANGUAGE_MODEL_NAME) -> LanguageCandidate:
+    def _parse_response(
+        raw: bytes,
+        *,
+        model_name: str = LANGUAGE_MODEL_NAME,
+        format_repair: bool = False,
+    ) -> LanguageCandidate:
         payload = json.loads(raw, object_pairs_hook=_reject_duplicate_keys)
         if not isinstance(payload, dict):
-            raise ValueError("invalid_response")
+            raise _InvalidResponse("invalid_response")
         if payload.get("model") != model_name or payload.get("done") is not True:
-            raise ValueError("invalid_response")
+            raise _InvalidResponse("invalid_response")
         message = payload.get("message")
         if not isinstance(message, dict) or message.get("role") != "assistant":
-            raise ValueError("invalid_response")
+            raise _InvalidResponse("invalid_response")
         content = message.get("content")
         if not isinstance(content, str):
-            raise ValueError("invalid_response")
+            raise _InvalidResponse("invalid_response")
         candidate_payload = json.loads(content, object_pairs_hook=_reject_duplicate_keys)
+        if format_repair and isinstance(candidate_payload, str):
+            fenced = candidate_payload.strip()
+            if fenced.startswith("```") and fenced.endswith("```"):
+                fenced = fenced[fenced.find("\n") + 1 : -3].strip()
+                candidate_payload = json.loads(fenced, object_pairs_hook=_reject_duplicate_keys)
         candidate = LanguageCandidate.model_validate(candidate_payload)
         if candidate.intent == "clarification" and not candidate.clarification:
             raise ValidationError.from_exception_data(

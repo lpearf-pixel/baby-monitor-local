@@ -1030,9 +1030,19 @@ resolved from i9, so the installer now accepts an explicit i9-reachable
 The existing tunnel was used without modifying tunnel code. Ollama `0.32.11` is
 reachable at `127.0.0.1:11435`; the fixed installed model is
 `qwen2.5-coder:7b-instruct` (Q4_K_M). The corrected 224-unique-sample run returned
-154 schema-valid candidates and 70 closed `invalid_candidate` results; B/C intent
+154 schema-valid candidates and 70 closed `schema_mismatch` results; B/C intent
 was 128/224, applicable parameter accuracy 62/80, and C tool legality 152/224.
 P50/P95/max latency was 1205.5/1630.5/1910.1 ms. M7 remains
 `SOFTWARE_RELEASE_CANDIDATE=false` because semantic targets are unmet. Baby Care
 commit `cb9a86f` fixed date-only serialization; fresh PG16 API gate is 234/234.
 Camera Reply=false and hardware acceptance remain pending.
+
+### 2026-10-14 M7.1 semantic quality audit
+
+Stage 1 failure classification and strict parser diagnostics are implemented. A
+fresh 224-sample qwen2.5-coder run produced 70 `schema_mismatch` failures and 18
+amount errors, all missing/invalid candidates; wrong numeric amount was 0. Intent
+was 128/224, applicable amount 62/80, tool legality 152/224, and latency
+P50/P95/max was 1363.7/2001.8/2111.9 ms. Targets are unmet and
+`SOFTWARE_RELEASE_CANDIDATE=false`. A-D comparison switches are ready; only a
+4-sample smoke was completed for new modes, not a full development comparison.

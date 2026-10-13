@@ -57,3 +57,21 @@ def test_live_evaluation_does_not_score_non_amount_samples_as_parameter_accuracy
 
     assert result["parameter_total"] == 0
     assert result["pure_llm"]["parameter_accuracy"] is None
+
+
+def test_live_evaluation_classifies_amount_failures_without_retaining_text() -> None:
+    sample = next(sample for sample in build_samples() if sample.expected_amount_ml == 30)
+    missing = evaluate_live_modes((sample,), FakeClient(LlmUnavailable("invalid_json")))
+    assert missing["amount_error_reasons"] == {"missing_or_invalid_candidate": 1}
+
+    wrong_candidate = candidate().model_copy(
+        update={
+            "tool_calls": [M7ToolCall(
+                name="add_feeding_component",
+                arguments={"kind": "bottle", "liquid_type": "formula", "amount_ml": 40},
+            )]
+        }
+    )
+    wrong = evaluate_live_modes((sample,), FakeClient(wrong_candidate))
+    assert wrong["amount_error_reasons"] == {"wrong_numeric_amount": 1}
+    assert sample.text not in str(wrong)

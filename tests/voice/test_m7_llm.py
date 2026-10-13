@@ -100,6 +100,23 @@ def test_language_client_accepts_explicit_candidate_model_for_isolated_evaluatio
     assert payload["model"] == "candidate-model"
 
 
+def test_language_client_supports_raw_json_comparison_mode() -> None:
+    opener = RecordingOpener(response_payload(valid_candidate()))
+    result = OllamaLanguageClient(response_format="json", prompt_variant="current", opener=opener).complete("test", {})
+
+    assert isinstance(result, LanguageCandidate)
+    payload = json.loads(opener.calls[0][0].data)
+    assert payload["format"] == "json"
+    assert payload["messages"][0]["content"].startswith("Return JSON")
+
+
+def test_language_client_format_repair_only_removes_json_fence() -> None:
+    raw = response_payload("```json\n" + json.dumps(valid_candidate()) + "\n```")
+    result = OllamaLanguageClient(format_repair=True, opener=RecordingOpener(raw)).complete("test", {})
+
+    assert isinstance(result, LanguageCandidate)
+
+
 @pytest.mark.parametrize(
     "candidate",
     [
@@ -131,7 +148,7 @@ def test_language_client_maps_transport_failure_to_closed_result() -> None:
     assert result.reason == "timeout"
 
 
-def test_language_client_classifies_invalid_candidate_separately() -> None:
+def test_language_client_classifies_schema_mismatch_separately() -> None:
     client = OllamaLanguageClient(
         opener=RecordingOpener(response_payload({**valid_candidate(), "unexpected": True}))
     )
@@ -139,4 +156,36 @@ def test_language_client_classifies_invalid_candidate_separately() -> None:
     result = client.complete("test", {})
 
     assert isinstance(result, LlmUnavailable)
-    assert result.reason == "invalid_candidate"
+    assert result.reason == "schema_mismatch"
+
+
+def test_language_client_classifies_malformed_json_without_calling_it_a_candidate() -> None:
+    raw = json.dumps(
+        {
+            "model": LANGUAGE_MODEL_NAME,
+            "message": {"role": "assistant", "content": "{"},
+            "done": True,
+        }
+    ).encode()
+    result = OllamaLanguageClient(opener=RecordingOpener(raw)).complete("test", {})
+
+    assert isinstance(result, LlmUnavailable)
+    assert result.reason == "invalid_json"
+
+
+def test_language_client_classifies_envelope_schema_failures() -> None:
+    raw = json.dumps({"model": LANGUAGE_MODEL_NAME, "done": True}).encode()
+    result = OllamaLanguageClient(opener=RecordingOpener(raw)).complete("test", {})
+
+    assert isinstance(result, LlmUnavailable)
+    assert result.reason == "invalid_response"
+
+
+def test_language_client_classifies_unknown_tool_separately() -> None:
+    payload = response_payload(
+        {**valid_candidate(), "tool_calls": [{"name": "drop_database", "arguments": {}}]}
+    )
+    result = OllamaLanguageClient(opener=RecordingOpener(payload)).complete("test", {})
+
+    assert isinstance(result, LlmUnavailable)
+    assert result.reason == "unknown_tool"

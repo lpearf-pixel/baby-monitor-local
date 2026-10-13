@@ -92,6 +92,7 @@ def evaluate_live_modes(
     pure_intent = pure_params = hybrid_intent = hybrid_params = 0
     parameter_total = 0
     responded = tool_legal = clarification_correct = wrong_amount = failures = 0
+    amount_error_reasons: dict[str, int] = {}
     by_category: dict[str, dict[str, int]] = {}
     failure_reasons: dict[str, int] = {}
     by_split: dict[str, dict[str, int]] = {}
@@ -111,6 +112,9 @@ def evaluate_live_modes(
             failure_reasons[result.reason] = failure_reasons.get(result.reason, 0) + 1
             if sample.expected_amount_ml is not None:
                 wrong_amount += 1
+                amount_error_reasons["missing_or_invalid_candidate"] = (
+                    amount_error_reasons.get("missing_or_invalid_candidate", 0) + 1
+                )
             continue
         responded += 1
         category["responded"] += 1
@@ -129,6 +133,8 @@ def evaluate_live_modes(
         split["parameter_correct"] += int(params_ok)
         if sample.expected_amount_ml is not None and amount != sample.expected_amount_ml:
             wrong_amount += 1
+            reason = "missing_or_invalid_candidate" if amount is None else "wrong_numeric_amount"
+            amount_error_reasons[reason] = amount_error_reasons.get(reason, 0) + 1
         legal = validation.rejection_reason is None and (
             validation.clarification is not None or bool(validation.calls)
         )
@@ -163,6 +169,7 @@ def evaluate_live_modes(
             "clarification_correct": clarification_correct,
         },
         "wrong_amount_count": wrong_amount,
+        "amount_error_reasons": amount_error_reasons,
         "by_category": by_category,
         "by_split": by_split,
         "failure_reasons": failure_reasons,

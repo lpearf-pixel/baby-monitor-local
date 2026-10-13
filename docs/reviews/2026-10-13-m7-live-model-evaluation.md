@@ -30,7 +30,7 @@ aggregate metrics only. Failures were not retried or counted as successes.
 | C: real Ollama + registry validation | 57.14% (128/224) | 77.5% (62/80 applicable) | 67.86% (152/224) |
 
 Real-model request results: 154 responded with schema-valid candidates and 70
-were closed as `invalid_candidate` (no timeout in this full run). There were 18
+were closed as `schema_mismatch` (no timeout in this full run). There were 18
 wrong or missing amounts among the 80 applicable amount samples. Latency: P50
 1205.5 ms, P95 1630.5 ms, max 1910.1 ms. The independent test split was 93/168
 intent-correct, 45/60 applicable-parameter-correct, and 111/168 tool-legal.
@@ -79,3 +79,31 @@ fixes the conversion using local date components; the focused regression passed
 
 Camera Reply remains disabled. SSH tunnel scripts and family services were not
 modified or restarted.
+
+## 2026-10-14 M7.1 Stage 1/2 diagnostic update
+
+The evaluator was audited before changing prompts. The 224-sample aggregate was
+rerun once after adding bounded failure categories and amount-error categories:
+
+| Failure category | Count | Applicable interpretation |
+| --- | ---: | --- |
+| JSON syntax error | 0 | No malformed JSON observed in the full run |
+| Envelope response error | 0 | No missing model/done/message envelope observed |
+| Schema mismatch | 70 | Closed responses failed the strict candidate contract |
+| Unknown tool | 0 | No full-run response reached this branch |
+| Amount missing/invalid candidate | 18 | Every amount error had no usable candidate |
+| Wrong numeric amount | 0 | No wrong numeric amount was accepted |
+
+The amount denominator remains 80 explicitly amount-bearing samples. Full results
+remain 128/224 intent-correct, 62/80 applicable-parameter-correct and 152/224
+tool-legal. Latency was P50 1363.7 ms, P95 2001.8 ms and max 2111.9 ms. No input
+text or model response was persisted.
+
+The client now exposes four bounded modes: A raw JSON, B current prompt plus native
+schema, C optimized prompt plus native schema, and D optimized prompt plus one
+JSON-fence-only repair. A 4-sample live smoke (not a development score) produced
+A=4 schema mismatches, B=1 unknown-tool failure, C=0 failures and D=0 failures.
+The prior complete 56-sample B/C baseline remains the only full development
+comparison; a full A-D run was not claimed after repeated live calls became slow.
+Stage 1 therefore points to strict schema rejection, not safe numeric repair, and
+the release targets remain unmet.
