@@ -12,6 +12,8 @@ from services.voice.m7_llm import (
     LanguageCandidate,
     LlmUnavailable,
     OllamaLanguageClient,
+    MinimalSemanticCandidate,
+    semantic_candidate_to_language_candidate,
 )
 
 
@@ -87,6 +89,94 @@ def test_language_client_posts_bounded_text_only_request() -> None:
     prompt = payload["messages"][0]["content"]
     assert "add_feeding_component" in prompt
     assert "record_milk_volume" in prompt
+
+
+def test_minimal_semantic_candidate_contains_no_authority_fields() -> None:
+    candidate = MinimalSemanticCandidate(
+        intent="feeding_update",
+        action="add_component",
+        milk_type="formula",
+        explicit_amount_ml=30,
+        duration_minutes=None,
+        correction_target=None,
+        needs_clarification=False,
+    )
+
+    adapted = semantic_candidate_to_language_candidate(candidate)
+
+    assert adapted.tool_calls[0].name == "add_feeding_component"
+    assert adapted.tool_calls[0].arguments == {
+        "kind": "bottle",
+        "liquid_type": "formula",
+        "amount_ml": 30,
+    }
+    assert "request_id" not in candidate.model_dump()
+    assert "signature" not in candidate.model_dump()
+
+
+def test_minimal_semantic_candidate_requires_clarification_without_milk_type() -> None:
+    candidate = MinimalSemanticCandidate(
+        intent="feeding_update",
+        action="add_component",
+        milk_type=None,
+        explicit_amount_ml=30,
+        duration_minutes=None,
+        correction_target=None,
+        needs_clarification=True,
+    )
+
+    adapted = semantic_candidate_to_language_candidate(candidate)
+
+    assert adapted.intent == "clarification"
+    assert adapted.tool_calls == []
+    assert adapted.clarification
+
+
+def test_language_client_minimal_profile_uses_minimal_schema_and_adapts() -> None:
+    payload = {
+        "intent": "feeding_update",
+        "action": "add_component",
+        "milk_type": "formula",
+        "explicit_amount_ml": 30,
+        "duration_minutes": None,
+        "correction_target": None,
+        "needs_clarification": False,
+    }
+    opener = RecordingOpener(response_payload(payload))
+    result = OllamaLanguageClient(schema_profile="minimal", opener=opener).complete("test", {})
+
+    assert isinstance(result, LanguageCandidate)
+    assert result.tool_calls[0].name == "add_feeding_component"
+    request_payload = json.loads(opener.calls[0][0].data)
+    assert "tool_calls" not in request_payload["format"]["properties"]
+    assert "request_id" not in request_payload["format"]["properties"]
+
+
+@pytest.mark.parametrize(
+    ("candidate", "tool", "arguments"),
+    [
+        (
+            {"intent": "feeding_update", "action": "add_component", "milk_type": "expressed_breast_milk", "explicit_amount_ml": 60, "duration_minutes": None, "correction_target": None, "needs_clarification": False},
+            "add_feeding_component",
+            {"kind": "bottle", "liquid_type": "expressed_breast_milk", "amount_ml": 60},
+        ),
+        (
+            {"intent": "feeding_update", "action": "add_component", "milk_type": None, "explicit_amount_ml": None, "duration_minutes": 15, "correction_target": None, "needs_clarification": False},
+            "add_feeding_component",
+            {"kind": "direct_breastfeeding", "duration_minutes": 15},
+        ),
+        (
+            {"intent": "feeding_update", "action": "add_component", "milk_type": None, "explicit_amount_ml": 40, "duration_minutes": None, "correction_target": "formula", "needs_clarification": False},
+            "correct_feeding_component",
+            {"target": "formula", "amount_ml": 40},
+        ),
+    ],
+)
+def test_minimal_adapter_preserves_component_semantics(candidate: dict[str, object], tool: str, arguments: dict[str, object]) -> None:
+    adapted = semantic_candidate_to_language_candidate(MinimalSemanticCandidate.model_validate(candidate))
+
+    assert adapted.tool_calls[0].name == tool
+    assert adapted.tool_calls[0].arguments == arguments
 
 
 def test_language_client_accepts_explicit_candidate_model_for_isolated_evaluation() -> None:

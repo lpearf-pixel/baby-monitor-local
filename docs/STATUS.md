@@ -1136,3 +1136,23 @@ legal tools, 12 schema failures, P50/P95/max 1093.4/1244.3/1689.3ms. Its
 semantic quality is lower, so it is not promoted. M3 CPU/GPU/memory/swap
 metrics remain unobservable from i9. go2rtc 1984 remains unavailable and was
 not restarted. No production code or runtime service was changed.
+
+### M7.5 minimal semantic schema experiment (2026-10-14)
+
+An isolated `MinimalSemanticCandidate` profile was added behind an explicit
+client option; default C mode remains unchanged. The model-facing fields are
+intent, action, milk type, explicit amount, duration, correction target and a
+clarification flag. A deterministic adapter alone creates existing closed
+Tool Registry calls; no authority or persistence fields are model-generated.
+
+On the same 56-item dev split, baseline C scored 35/56 intent, 17/20 applicable
+amounts, 41/56 legal tools, P50/P95 1303.9/1922.9ms. Qwen2.5-Coder with the
+minimal schema scored 12/56 intent, 0/20 amounts, 56/56 structurally legal
+tools, P50/P95 642.0/711.0ms. Qwen3 4B with the minimal schema scored 30/56
+intent, 0/20 amounts, 56/56 legal tools, P50/P95 535.8/744.0ms. Neither
+variant is promoted; C remains the only production candidate. Adapter and
+M7/M6 focused tests passed 29; the full Python gate passed 2595 with one
+existing visual-corpus skip.
+
+P5 read-only go2rtc diagnosis found no launchd entry and no listener on i9
+1984; the API returned connection refused. No process or service was restarted.

@@ -1090,3 +1090,11 @@ under identical conditions and scored 27/56 intent, 10/20 amounts, 42/56 legal
 tools, P50/P95/max 1093.4/1244.3/1689.3ms; rejected from promotion. M3 resource
 metrics remain unavailable from i9; go2rtc 1984 remains down. No runtime or
 production service changed; SOFTWARE_RELEASE_CANDIDATE=false.
+
+M7.5 minimal-schema experiment: explicit opt-in `MinimalSemanticCandidate` and
+deterministic adapter are implemented and tested, while default C remains
+unchanged. On dev-56, C=35/56 intent, 17/20 amounts, 41/56 legal tools;
+Qwen2.5-Coder+minimal=12/56, 0/20, 56/56 (P50/P95 642/711ms);
+Qwen3-4B+minimal=30/56, 0/20, 56/56 (535.8/744ms). No promotion. Full Python
+gate: 2595 passed, 1 visual-corpus skip. i9 go2rtc 1984 has no listener and no
+launchd entry; no restart performed. SOFTWARE_RELEASE_CANDIDATE=false.

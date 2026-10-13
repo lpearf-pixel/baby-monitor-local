@@ -735,3 +735,12 @@ production candidates. `qwen3:4b-instruct` is rejected for semantic quality
 despite lower latency. Future work should isolate prompt/schema or model-load
 experiments on the dev split only; do not rerun 224 live requests merely to
 recreate the earlier timeout observation.
+
+### M7.5 decision
+
+The minimal semantic schema is retained as an offline experiment only. It
+improved structural legality and latency but failed amount extraction and
+reduced intent accuracy, so it must not replace C. Investigate prompt/examples
+or model capability only with a new bounded experiment; do not widen the
+schema or add a second production model call. go2rtc 1984 requires a separate
+runtime recovery decision and is not part of M7 semantic work.
