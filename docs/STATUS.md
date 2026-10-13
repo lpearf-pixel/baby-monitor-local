@@ -1120,3 +1120,19 @@ extra field, enum mismatch, type mismatch, and generic schema mismatch. The
 evaluator groups all `schema_*` reasons as schema-output failures. Focused
 M7 tests: 27 passed; C remains the rollback baseline and release targets are
 unmet. No household services or SSH configuration were changed.
+
+### M7.4 inference stability and M3 baseline (2026-10-14)
+
+The prior "56-sample timeout" was an evaluation-boundary error: the command
+used all 224 samples. Bounded sequential probes completed 1/1, 5/5 and 10/10
+requests; the true 56-item development split completed 56/56 in 77.2s with
+the baseline model (35/56 intent, 17/20 applicable amounts, 41/56 legal tools,
+14 schema failures, P50/P95/max 1303.9/1922.9/2158.3ms). No request was
+removed from a denominator.
+
+The installed `qwen3:4b-instruct` was evaluated under the same prompt,
+schema and scorer without downloading: 27/56 intent, 10/20 amounts, 42/56
+legal tools, 12 schema failures, P50/P95/max 1093.4/1244.3/1689.3ms. Its
+semantic quality is lower, so it is not promoted. M3 CPU/GPU/memory/swap
+metrics remain unobservable from i9. go2rtc 1984 remains unavailable and was
+not restarted. No production code or runtime service was changed.

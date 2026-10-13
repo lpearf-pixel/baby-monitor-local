@@ -727,3 +727,11 @@ establish a bounded warm-up/health probe and compare candidates only on the
 56-item development split. Keep C as the production rollback path, and do not
 add a second model call or deploy until measurable gain is shown without
 reducing tool legality or safety.
+
+### M7.4 decision
+
+Keep `qwen2.5-coder:7b-instruct` and the existing C path as rollback and
+production candidates. `qwen3:4b-instruct` is rejected for semantic quality
+despite lower latency. Future work should isolate prompt/schema or model-load
+experiments on the dev split only; do not rerun 224 live requests merely to
+recreate the earlier timeout observation.

@@ -1081,3 +1081,12 @@ A new 56-sample live rerun was intentionally stopped at 300s due to a stalled
 Ollama response read; no score was recorded from that incomplete run. go2rtc
 1984 was unavailable and untouched. C remains the rollback baseline;
 SOFTWARE_RELEASE_CANDIDATE=false.
+
+M7.4: corrected stability testing showed the earlier 56-sample timeout was
+actually a 224-sample invocation. True dev-56 baseline run: 56/56 completed
+in 77.2s, intent 35/56, amounts 17/20, legal tools 41/56, schema failures 14,
+P50/P95/max 1303.9/1922.9/2158.3ms. Installed `qwen3:4b-instruct` was tested
+under identical conditions and scored 27/56 intent, 10/20 amounts, 42/56 legal
+tools, P50/P95/max 1093.4/1244.3/1689.3ms; rejected from promotion. M3 resource
+metrics remain unavailable from i9; go2rtc 1984 remains down. No runtime or
+production service changed; SOFTWARE_RELEASE_CANDIDATE=false.
