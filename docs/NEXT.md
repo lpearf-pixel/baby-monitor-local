@@ -678,8 +678,9 @@ serve an i9-side `-R` destination.
 ## M7 live-model follow-up
 
 The real-model gate is now measured, not pending. Keep the selected model and prompt
-contract fixed for comparisons. Before calling M7 a software candidate, isolate/reset
-the synthetic PostgreSQL test database and rerun the one stale `family-authorization`
-assertion plus the complete API gate; then perform independent review and CI. Do not
-repeat the 224 live run unless the model, prompt, or evaluator changes. Do not deploy
-to household devices.
+contract fixed for comparisons. Before calling M7 a software candidate, improve
+semantic performance on the independent test split toward the 95% intent and 99%
+applicable-parameter targets, then perform independent review and CI. The PostgreSQL
+date-only blocker is fixed in Baby Care `cb9a86f`; fresh API gate evidence is 234/234.
+Do not repeat the 224 live run unless the model, prompt, or evaluator changes. Do not
+deploy to household devices.

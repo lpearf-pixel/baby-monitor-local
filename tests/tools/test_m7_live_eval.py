@@ -49,3 +49,11 @@ def test_live_evaluation_counts_missing_amount_as_wrong_for_amount_samples() -> 
     result = evaluate_live_modes((sample,), FakeClient(LlmUnavailable()))
 
     assert result["wrong_amount_count"] == 1
+
+
+def test_live_evaluation_does_not_score_non_amount_samples_as_parameter_accuracy() -> None:
+    sample = build_samples()[0]
+    result = evaluate_live_modes((sample,), FakeClient(LlmUnavailable()))
+
+    assert result["parameter_total"] == 0
+    assert result["pure_llm"]["parameter_accuracy"] is None

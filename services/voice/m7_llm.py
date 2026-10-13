@@ -106,10 +106,14 @@ class OllamaLanguageClient:
         self,
         *,
         base_url: str = VISUAL_OLLAMA_BASE_URL,
+        model_name: str = LANGUAGE_MODEL_NAME,
         opener: FrameOpener = _open_without_proxy,
     ) -> None:
         if base_url != VISUAL_OLLAMA_BASE_URL:
             raise ValueError("Ollama origin must use the fixed loopback gateway")
+        if not isinstance(model_name, str) or not model_name or len(model_name) > 128:
+            raise ValueError("invalid model name")
+        self._model_name = model_name
         self._opener = opener
 
     def complete(
@@ -127,7 +131,7 @@ class OllamaLanguageClient:
             if len(text_bytes) > MAX_INPUT_TEXT_BYTES or len(context_bytes) > MAX_CONTEXT_BYTES:
                 raise ValueError("input_too_large")
             payload = {
-                "model": LANGUAGE_MODEL_NAME,
+                "model": self._model_name,
                 "messages": [
                     {"role": "system", "content": _SCHEMA_PROMPT},
                     {"role": "user", "content": json.dumps(
@@ -152,19 +156,25 @@ class OllamaLanguageClient:
                 raw = response.read(MAX_RESPONSE_BYTES + 1)
             if len(raw) > MAX_RESPONSE_BYTES:
                 raise ValueError("response_too_large")
-            candidate = self._parse_response(raw)
+            candidate = self._parse_response(raw, model_name=self._model_name)
             if any(call.name not in _ALLOWED_TOOLS for call in candidate.tool_calls):
                 raise ValueError("unknown_tool")
             return candidate
+        except TimeoutError:
+            return LlmUnavailable("timeout")
+        except (OSError, ConnectionError):
+            return LlmUnavailable("transport_failure")
+        except (ValueError, ValidationError):
+            return LlmUnavailable("invalid_candidate")
         except Exception:
             return LlmUnavailable()
 
     @staticmethod
-    def _parse_response(raw: bytes) -> LanguageCandidate:
+    def _parse_response(raw: bytes, *, model_name: str = LANGUAGE_MODEL_NAME) -> LanguageCandidate:
         payload = json.loads(raw, object_pairs_hook=_reject_duplicate_keys)
         if not isinstance(payload, dict):
             raise ValueError("invalid_response")
-        if payload.get("model") != LANGUAGE_MODEL_NAME or payload.get("done") is not True:
+        if payload.get("model") != model_name or payload.get("done") is not True:
             raise ValueError("invalid_response")
         message = payload.get("message")
         if not isinstance(message, dict) or message.get("role") != "assistant":

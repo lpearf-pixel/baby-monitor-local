@@ -1029,11 +1029,10 @@ resolved from i9, so the installer now accepts an explicit i9-reachable
 
 The existing tunnel was used without modifying tunnel code. Ollama `0.32.11` is
 reachable at `127.0.0.1:11435`; the fixed installed model is
-`qwen2.5-coder:7b-instruct` (Q4_K_M). A real 224-sample run returned 176
-schema-valid candidates and 48 closed failures; P50/P95/max latency was
-1224.9/1576.5/2430.2 ms. Rule-only was 72/224 intent and 144/224 parameter;
-real-model B and validated C were 96/224 intent, 176/224 parameter/tool-legal.
-M7 remains not a software release candidate because the full API database gate
-had one stale shared-test-date failure. M7 live evaluation is complete but
-`SOFTWARE_RELEASE_CANDIDATE=false`; Camera Reply=false and hardware acceptance
-remain pending.
+`qwen2.5-coder:7b-instruct` (Q4_K_M). The corrected 224-unique-sample run returned
+154 schema-valid candidates and 70 closed `invalid_candidate` results; B/C intent
+was 128/224, applicable parameter accuracy 62/80, and C tool legality 152/224.
+P50/P95/max latency was 1205.5/1630.5/1910.1 ms. M7 remains
+`SOFTWARE_RELEASE_CANDIDATE=false` because semantic targets are unmet. Baby Care
+commit `cb9a86f` fixed date-only serialization; fresh PG16 API gate is 234/234.
+Camera Reply=false and hardware acceptance remain pending.

@@ -1,6 +1,7 @@
 from __future__ import annotations
 
-from tools.m7_eval import build_samples, evaluate_modes, evaluate_rule_only
+from services.voice.m7_llm import LlmUnavailable
+from tools.m7_eval import build_samples, evaluate_live_modes, evaluate_modes, evaluate_rule_only
 
 
 def test_m7_eval_contains_at_least_200_categorized_synthetic_samples() -> None:
@@ -20,6 +21,8 @@ def test_m7_eval_contains_at_least_200_categorized_synthetic_samples() -> None:
         "fault",
     } <= categories
     assert len({sample.sample_id for sample in samples}) == len(samples)
+    assert len({sample.text for sample in samples}) == len(samples)
+    assert {sample.split for sample in samples} == {"dev", "test"}
 
 
 def test_rule_baseline_reports_aggregate_metrics_without_transcripts() -> None:
@@ -39,3 +42,15 @@ def test_a_b_c_comparison_marks_unavailable_live_modes_without_fabricating_metri
     assert comparison["pure_llm"]["status"] == "live_model_pending"
     assert comparison["hybrid"]["status"] == "live_model_pending"
     assert "accuracy" not in comparison["pure_llm"]
+
+
+def test_live_report_exposes_per_category_and_failure_reason_counts() -> None:
+    class UnavailableClient:
+        def complete(self, text: str, context: dict[str, object]) -> LlmUnavailable:
+            return LlmUnavailable("timeout")
+
+    report = evaluate_live_modes(build_samples()[:1], UnavailableClient())
+
+    assert report["status"] == "evaluated"
+    assert "by_category" in report
+    assert "failure_reasons" in report

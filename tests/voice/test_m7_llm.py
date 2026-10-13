@@ -89,6 +89,17 @@ def test_language_client_posts_bounded_text_only_request() -> None:
     assert "record_milk_volume" in prompt
 
 
+def test_language_client_accepts_explicit_candidate_model_for_isolated_evaluation() -> None:
+    opener = RecordingOpener(response_payload(valid_candidate(), model="candidate-model"))
+    client = OllamaLanguageClient(model_name="candidate-model", opener=opener)
+
+    result = client.complete("宝宝喝了六十毫升母乳", {})
+
+    assert isinstance(result, LanguageCandidate)
+    payload = json.loads(opener.calls[0][0].data)
+    assert payload["model"] == "candidate-model"
+
+
 @pytest.mark.parametrize(
     "candidate",
     [
@@ -117,4 +128,15 @@ def test_language_client_maps_transport_failure_to_closed_result() -> None:
     result = client.complete("test", {})
 
     assert isinstance(result, LlmUnavailable)
-    assert result.reason == "llm_unavailable"
+    assert result.reason == "timeout"
+
+
+def test_language_client_classifies_invalid_candidate_separately() -> None:
+    client = OllamaLanguageClient(
+        opener=RecordingOpener(response_payload({**valid_candidate(), "unexpected": True}))
+    )
+
+    result = client.complete("test", {})
+
+    assert isinstance(result, LlmUnavailable)
+    assert result.reason == "invalid_candidate"

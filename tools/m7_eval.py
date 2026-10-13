@@ -17,6 +17,7 @@ class EvalSample:
     text: str
     expected_intent: str | None
     expected_amount_ml: int | None
+    split: str = "test"
 
 
 @dataclass(frozen=True, slots=True)
@@ -87,28 +88,51 @@ def evaluate_live_modes(
         return round(latencies[index], 1)
 
     pure_intent = pure_params = hybrid_intent = hybrid_params = 0
+    parameter_total = 0
     responded = tool_legal = clarification_correct = wrong_amount = failures = 0
+    by_category: dict[str, dict[str, int]] = {}
+    failure_reasons: dict[str, int] = {}
+    by_split: dict[str, dict[str, int]] = {}
     for sample, result, _ in rows:
+        category = by_category.setdefault(
+            sample.category, {"total": 0, "responded": 0, "failures": 0, "intent_correct": 0, "parameter_correct": 0, "tool_legal": 0}
+        )
+        category["total"] += 1
+        split = by_split.setdefault(sample.split, {"total": 0, "responded": 0, "failures": 0, "intent_correct": 0, "parameter_correct": 0, "tool_legal": 0})
+        split["total"] += 1
+        params_applicable = sample.expected_amount_ml is not None
+        parameter_total += int(params_applicable)
         if isinstance(result, LlmUnavailable):
             failures += 1
+            category["failures"] += 1
+            split["failures"] += 1
+            failure_reasons[result.reason] = failure_reasons.get(result.reason, 0) + 1
             if sample.expected_amount_ml is not None:
                 wrong_amount += 1
             continue
         responded += 1
-        intent_ok = _canonical_intent(result) == sample.expected_intent
-        amount = _candidate_amount(result)
-        params_ok = amount == sample.expected_amount_ml or (
-            sample.expected_amount_ml is None and amount is None
+        category["responded"] += 1
+        split["responded"] += 1
+        validation = validate_candidate(result, identity_bound=True)
+        intent_ok = _canonical_intent(result) == sample.expected_intent or (
+            sample.expected_intent is None and validation.clarification is not None
         )
+        amount = _candidate_amount(result)
+        params_ok = params_applicable and amount == sample.expected_amount_ml
         pure_intent += int(intent_ok)
         pure_params += int(params_ok)
+        category["intent_correct"] += int(intent_ok)
+        category["parameter_correct"] += int(params_ok)
+        split["intent_correct"] += int(intent_ok)
+        split["parameter_correct"] += int(params_ok)
         if sample.expected_amount_ml is not None and amount != sample.expected_amount_ml:
             wrong_amount += 1
-        validation = validate_candidate(result, identity_bound=True)
         legal = validation.rejection_reason is None and (
             validation.clarification is not None or bool(validation.calls)
         )
         tool_legal += int(legal)
+        category["tool_legal"] += int(legal)
+        split["tool_legal"] += int(legal)
         clarification_correct += int(
             sample.expected_intent is None and validation.clarification is not None
         )
@@ -120,22 +144,26 @@ def evaluate_live_modes(
         "total": total,
         "responded": responded,
         "failures": failures,
+        "parameter_total": parameter_total,
         "pure_llm": {
             "intent_correct": pure_intent,
             "parameter_correct": pure_params,
             "intent_accuracy": pure_intent / total if total else 0.0,
-            "parameter_accuracy": pure_params / total if total else 0.0,
+            "parameter_accuracy": pure_params / parameter_total if parameter_total else None,
         },
         "hybrid": {
             "intent_correct": hybrid_intent,
             "parameter_correct": hybrid_params,
             "intent_accuracy": hybrid_intent / total if total else 0.0,
-            "parameter_accuracy": hybrid_params / total if total else 0.0,
+            "parameter_accuracy": hybrid_params / parameter_total if parameter_total else None,
             "tool_legal": tool_legal,
             "tool_legal_rate": tool_legal / total if total else 0.0,
             "clarification_correct": clarification_correct,
         },
         "wrong_amount_count": wrong_amount,
+        "by_category": by_category,
+        "by_split": by_split,
+        "failure_reasons": failure_reasons,
         "latency_p50_ms": percentile(0.50),
         "latency_p95_ms": percentile(0.95),
         "latency_max_ms": round(max(latencies), 1) if latencies else None,
@@ -144,49 +172,26 @@ def evaluate_live_modes(
 
 
 def build_samples() -> tuple[EvalSample, ...]:
-    templates: tuple[tuple[str, tuple[tuple[str, str, str | None, int | None], ...]], ...] = (
-        (
-            "standard",
-            tuple((f"standard-{i:03d}", "开始喂奶", "feeding_start", None) for i in range(24)),
-        ),
-        (
-            "colloquial",
-            tuple((f"colloquial-{i:03d}", "我准备给宝宝喂奶", "feeding_start", None) for i in range(24)),
-        ),
-        (
-            "asr_noise",
-            tuple((f"asr-noise-{i:03d}", "母乳60毫升", "feeding_update", 60) for i in range(24)),
-        ),
-        (
-            "mixed_feeding",
-            tuple((f"mixed-{i:03d}", "配方奶30毫升", "feeding_update", 30) for i in range(32)),
-        ),
-        (
-            "correction",
-            tuple((f"correction-{i:03d}", "改成配方奶20毫升", "feeding_update", 20) for i in range(24)),
-        ),
-        (
-            "query",
-            tuple((f"query-{i:03d}", "查询记录", "query", None) for i in range(24)),
-        ),
-        (
-            "ambiguous",
-            tuple((f"ambiguous-{i:03d}", "再补一点", None, None) for i in range(24)),
-        ),
-        (
-            "negative",
-            tuple((f"negative-{i:03d}", "喂药五毫升", None, None) for i in range(24)),
-        ),
-        (
-            "fault",
-            tuple((f"fault-{i:03d}", "确认保存", "confirm", None) for i in range(24)),
-        ),
+    def variants(roots: tuple[str, ...], endings: tuple[str, ...]) -> tuple[str, ...]:
+        return tuple(root + ending for root in roots for ending in endings)
+
+    templates = (
+        ("standard", variants(("开始喂奶", "现在开始喂奶", "给宝宝开始喂奶", "我们开始喂宝宝", "准备开始记录喂奶", "请开始这次喂奶"), ("。", "！", "，帮我记下", "，现在开始")), "feeding_start", None),
+        ("colloquial", variants(("宝宝要吃奶了", "我准备给宝宝喂奶", "可以喂宝宝了", "宝宝现在要吃了", "我来给宝宝喂一顿", "这会儿开始喂"), ("。", "呀", "，你记一下", "，先开始")), "feeding_start", None),
+        ("asr_noise", variants(("母乳60毫升", "母乳六十毫升", "刚喝母乳六十", "母乳喝了60ml", "记母乳六十毫升", "母乳六十毫升记一下"), ("。", "", "了", "请记录")), "feeding_update", 60),
+        ("mixed_feeding", variants(("配方奶30毫升", "奶粉三十毫升", "补了配方奶30", "再加三十毫升奶粉", "配方三十毫升记下", "又补30ml配方奶", "补充奶粉三十毫升", "奶粉加三十毫升"), ("。", "", "了", "请记录")), "feeding_update", 30),
+        ("correction", variants(("改成配方奶20毫升", "刚才奶粉是二十毫升", "更正配方奶20", "把奶粉改为20ml", "说错了配方奶二十", "配方奶实际二十毫升"), ("。", "", "请修改", "记为这个数")), "feeding_update", 20),
+        ("query", variants(("查询记录", "今天喝了多少奶", "看看喂奶记录", "帮我查今天的奶量", "最近一次喂奶是什么时候", "统计一下今天喂奶"), ("。", "？", "请告诉我", "帮我看看")), "query", None),
+        ("ambiguous", variants(("再补一点", "宝宝还没吃饱", "再加一些吧", "要不要再补", "还想再喂一点", "再来一点奶"), ("。", "？", "，你问我", "，但我没说多少")), None, None),
+        ("negative", variants(("喂药五毫升", "给宝宝吃药", "记录药物剂量", "吃五毫升药", "帮我记药", "药物五毫升"), ("。", "", "请执行", "记下来")), None, None),
+        ("fault", variants(("确认保存", "嗯就这样保存", "帮我保存这次", "保存记录吧", "确认提交", "可以记入了"), ("。", "", "请处理", "现在保存")), "confirm", None),
     )
-    return tuple(
-        EvalSample(sample_id, category, text, intent, amount)
-        for category, rows in templates
-        for sample_id, text, intent, amount in rows
-    )
+    samples: list[EvalSample] = []
+    for category, texts, intent, amount in templates:
+        for index, text in enumerate(texts):
+            split = "dev" if index % 4 == 0 else "test"
+            samples.append(EvalSample(f"{category}-{index:03d}", category, text, intent, amount, split))
+    return tuple(samples)
 
 
 def evaluate_rule_only(samples: tuple[EvalSample, ...]) -> EvalReport:
