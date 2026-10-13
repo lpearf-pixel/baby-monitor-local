@@ -1072,3 +1072,12 @@ Frozen C rerun: 168-item test = 93/168 intent, 45/60 applicable amounts, 111/168
 tool-legal, P50/P95/max 1142.3/1665.7/1949.0 ms. Closed set rerun = 13/24 intent,
 5/7 amounts, 19/24 legal, P50/P95/max 1536.0/2048.4/2971.7 ms. Targets remain
 unmet.
+
+M7.3 P0/P1: CI `38472634973` is green. Ollama 0.32.11 and the fixed
+qwen2.5-coder:7b-instruct Q4_K_M model are reachable through i9 loopback
+11435 (digest `dae161e27b0e90dd1856c8bb3209201fd6736d8eb66298e75ed87571486f4364`).
+Schema failures now have bounded field categories and 27 focused tests pass.
+A new 56-sample live rerun was intentionally stopped at 300s due to a stalled
+Ollama response read; no score was recorded from that incomplete run. go2rtc
+1984 was unavailable and untouched. C remains the rollback baseline;
+SOFTWARE_RELEASE_CANDIDATE=false.

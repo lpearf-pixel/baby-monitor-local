@@ -114,6 +114,7 @@ def evaluate_live_modes(
             stage = (
                 "schema_output_failure"
                 if result.reason in {"invalid_json", "invalid_response", "schema_mismatch", "unknown_tool"}
+                or result.reason.startswith("schema_")
                 else "model_unavailable"
             )
             failure_stages[stage] = failure_stages.get(stage, 0) + 1

@@ -719,3 +719,11 @@ P1 diagnostics are now classified by processing stage. P2 remains an experiment:
 do not replace C until an intent-routed, dedicated-schema candidate beats C on the
 development split without reducing tool legality or safety. P3 synthetic mixed
 feeding and cancellation gates remain required before independent re-evaluation.
+### M7.3 next action
+
+Use bounded schema-field diagnostics for the next model/prompt experiment. Do
+not rerun the full live set while Ollama response reads are unstable; first
+establish a bounded warm-up/health probe and compare candidates only on the
+56-item development split. Keep C as the production rollback path, and do not
+add a second model call or deploy until measurable gain is shown without
+reducing tool legality or safety.

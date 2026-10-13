@@ -156,7 +156,24 @@ def test_language_client_classifies_schema_mismatch_separately() -> None:
     result = client.complete("test", {})
 
     assert isinstance(result, LlmUnavailable)
-    assert result.reason == "schema_mismatch"
+    assert result.reason == "schema_extra_field"
+
+
+@pytest.mark.parametrize(
+    ("candidate", "reason"),
+    [
+        ({key: value for key, value in valid_candidate().items() if key != "intent"}, "schema_missing_field"),
+        ({**valid_candidate(), "intent": "not_an_intent"}, "schema_enum_mismatch"),
+        ({**valid_candidate(), "confidence": "high"}, "schema_type_mismatch"),
+    ],
+)
+def test_language_client_classifies_schema_field_failures(
+    candidate: dict[str, object], reason: str
+) -> None:
+    result = OllamaLanguageClient(opener=RecordingOpener(response_payload(candidate))).complete("test", {})
+
+    assert isinstance(result, LlmUnavailable)
+    assert result.reason == reason
 
 
 def test_language_client_classifies_malformed_json_without_calling_it_a_candidate() -> None:

@@ -1103,3 +1103,20 @@ an old confirmation and the focused contract/M7/M6 set is green.
 Frozen test rerun: 168 samples, 93 intent, 45/60 amounts, 111 legal; stage counts
 schema 56, intent 18, tool 1, amount 3. Closed rerun: 24 samples, 13 intent,
 5/7 amounts, 19 legal. These remain below targets.
+
+### M7.3 P0/P1 (2026-10-14)
+
+CI run `38472634973` for HEAD `603722a` completed successfully. Read-only
+Ollama checks from i9 reached `127.0.0.1:11435`: version `0.32.11`, baseline
+`qwen2.5-coder:7b-instruct`, digest
+`dae161e27b0e90dd1856c8bb3209201fd6736d8eb66298e75ed87571486f4364`,
+Q4_K_M/7.6B/gguf. A single synthetic chat request completed in 2.02s; the
+bounded 56-sample rerun was stopped after 300s while one request remained
+blocked in response read, so no new aggregate score is claimed. The go2rtc
+1984 probe was unavailable and was not restarted.
+
+Schema diagnostics now preserve only bounded categories: missing field,
+extra field, enum mismatch, type mismatch, and generic schema mismatch. The
+evaluator groups all `schema_*` reasons as schema-output failures. Focused
+M7 tests: 27 passed; C remains the rollback baseline and release targets are
+unmet. No household services or SSH configuration were changed.

@@ -90,6 +90,23 @@ class LlmUnavailable:
     reason: str = "llm_unavailable"
 
 
+def _schema_failure_reason(error: ValidationError) -> str:
+    """Map model-shape failures to bounded diagnostic categories only."""
+    error_types = {str(item.get("type", "")) for item in error.errors()}
+    if "missing" in error_types:
+        return "schema_missing_field"
+    if "extra_forbidden" in error_types:
+        return "schema_extra_field"
+    if "literal_error" in error_types:
+        return "schema_enum_mismatch"
+    if any(
+        item.endswith(("_type", "_parsing", "_from_union"))
+        for item in error_types
+    ):
+        return "schema_type_mismatch"
+    return "schema_mismatch"
+
+
 FrameOpener = Callable[[Request, float], AbstractContextManager[BinaryIO]]
 
 
@@ -191,8 +208,8 @@ class OllamaLanguageClient:
             return LlmUnavailable("unknown_tool")
         except _InvalidResponse:
             return LlmUnavailable("invalid_response")
-        except ValidationError:
-            return LlmUnavailable("schema_mismatch")
+        except ValidationError as exc:
+            return LlmUnavailable(_schema_failure_reason(exc))
         except ValueError:
             return LlmUnavailable("invalid_candidate")
         except Exception:

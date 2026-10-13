@@ -82,3 +82,9 @@ def test_live_evaluation_reports_failure_stage_counts_without_text() -> None:
     report = evaluate_live_modes(samples, FakeClient(LlmUnavailable("schema_mismatch")))
 
     assert report["failure_stages"] == {"schema_output_failure": 2}
+
+
+def test_live_evaluation_groups_field_schema_failures_as_schema_output() -> None:
+    report = evaluate_live_modes(build_samples()[:1], FakeClient(LlmUnavailable("schema_missing_field")))
+
+    assert report["failure_stages"] == {"schema_output_failure": 1}
