@@ -25,7 +25,7 @@ aggregate metrics only. Failures were not retried or counted as successes.
 
 | Mode | Intent accuracy | Parameter accuracy | Tool legality |
 | --- | ---: | ---: | ---: |
-| A: existing deterministic rules | 32.14% (72/224) | 64.29% (not applicable values excluded) | n/a |
+| A: existing deterministic rules | 22.32% (50/224) | 0% (0/80 applicable) | n/a |
 | B: real Ollama candidate | 57.14% (128/224) | 77.5% (62/80 applicable) | n/a |
 | C: real Ollama + registry validation | 57.14% (128/224) | 77.5% (62/80 applicable) | 67.86% (152/224) |
 

@@ -25,6 +25,7 @@ class EvalReport:
     total: int
     intent_correct: int
     parameter_correct: int
+    parameter_total: int
     latency_p50_ms: float | None
     latency_p95_ms: float | None
     error_execution_count: int
@@ -36,13 +37,14 @@ class EvalReport:
 
     @property
     def parameter_accuracy(self) -> float:
-        return self.parameter_correct / self.total if self.total else 0.0
+        return self.parameter_correct / self.parameter_total if self.parameter_total else 0.0
 
     def as_dict(self) -> dict[str, object]:
         return {
             "total": self.total,
             "intent_accuracy": self.intent_accuracy,
             "parameter_accuracy": self.parameter_accuracy,
+            "parameter_total": self.parameter_total,
             "latency_p50_ms": self.latency_p50_ms,
             "latency_p95_ms": self.latency_p95_ms,
             "error_execution_count": self.error_execution_count,
@@ -197,6 +199,7 @@ def build_samples() -> tuple[EvalSample, ...]:
 def evaluate_rule_only(samples: tuple[EvalSample, ...]) -> EvalReport:
     intent_correct = 0
     parameter_correct = 0
+    parameter_total = 0
     for sample in samples:
         parsed = parse_feeding_command(
             sample.text,
@@ -210,14 +213,15 @@ def evaluate_rule_only(samples: tuple[EvalSample, ...]) -> EvalReport:
             proposal = parsed.payload.get("proposal")
             if isinstance(proposal, dict):
                 amount = proposal.get("amountMl")
-        if amount == sample.expected_amount_ml:
-            parameter_correct += 1
-        elif sample.expected_amount_ml is None and parsed.payload is None:
+        if sample.expected_amount_ml is not None:
+            parameter_total += 1
+        if sample.expected_amount_ml is not None and amount == sample.expected_amount_ml:
             parameter_correct += 1
     return EvalReport(
         total=len(samples),
         intent_correct=intent_correct,
         parameter_correct=parameter_correct,
+        parameter_total=parameter_total,
         latency_p50_ms=None,
         latency_p95_ms=None,
         error_execution_count=0,

@@ -31,6 +31,7 @@ def test_rule_baseline_reports_aggregate_metrics_without_transcripts() -> None:
     assert report.total >= 200
     assert report.intent_accuracy >= 0
     assert report.parameter_accuracy >= 0
+    assert report.as_dict()["parameter_total"] == 80
     assert report.private_text_persisted is False
     assert "text" not in report.as_dict()
 
