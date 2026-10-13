@@ -674,3 +674,12 @@ with an explicit `--ollama-host` that i9 can reach. Do not use the Intel i9 Code
 environment's architecture as a deployment verdict. If Ollama is local to M3, verify
 both M3 loopback API availability and an i9-routable address; a M3 loopback alone cannot
 serve an i9-side `-R` destination.
+
+## M7 live-model follow-up
+
+The real-model gate is now measured, not pending. Keep the selected model and prompt
+contract fixed for comparisons. Before calling M7 a software candidate, isolate/reset
+the synthetic PostgreSQL test database and rerun the one stale `family-authorization`
+assertion plus the complete API gate; then perform independent review and CI. Do not
+repeat the 224 live run unless the model, prompt, or evaluator changes. Do not deploy
+to household devices.

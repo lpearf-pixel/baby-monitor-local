@@ -14,7 +14,7 @@ from pydantic import BaseModel, ConfigDict, Field, ValidationError
 from packages.contracts.settings import VISUAL_OLLAMA_BASE_URL
 
 
-LANGUAGE_MODEL_NAME = "qwen3:8b-instruct-q4_K_M"
+LANGUAGE_MODEL_NAME = "qwen2.5-coder:7b-instruct"
 CHAT_URL = f"{VISUAL_OLLAMA_BASE_URL}/api/chat"
 REQUEST_TIMEOUT_SECONDS = 12
 MAX_RESPONSE_BYTES = 64 * 1024
@@ -35,9 +35,18 @@ _ALLOWED_TOOLS = {
 }
 
 _SCHEMA_PROMPT = (
-    "Return only JSON with keys intent, tool_calls, clarification, confidence, "
-    "context_key. Feeding tools only; never invent identity, permission, saved "
-    "state, database results, or millilitres for direct breastfeeding."
+    "Return only JSON with keys intent, tool_calls, clarification, confidence, context_key. "
+    "Use only these exact tool names: get_active_feeding, start_feeding, "
+    "add_feeding_component, correct_feeding_component, end_feeding, "
+    "request_feeding_confirmation, confirm_feeding, cancel_feeding, "
+    "get_recent_feedings, get_feeding_summary. Never invent another name such as "
+    "record_milk_volume or feed_baby. For add_feeding_component use exactly one of: "
+    "{kind:bottle,liquid_type:expressed_breast_milk,amount_ml:integer} or "
+    "{kind:bottle,liquid_type:formula,amount_ml:integer} or "
+    "{kind:direct_breastfeeding,duration_minutes:integer}. For corrections use "
+    "{target:formula|expressed_breast_milk,amount_ml:integer}. Other tool arguments "
+    "are {}. Feeding tools only; never invent identity, permission, saved state, "
+    "database results, or millilitres for direct breastfeeding."
 )
 
 

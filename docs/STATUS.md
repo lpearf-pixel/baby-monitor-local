@@ -1057,3 +1057,15 @@ infers roles from `uname -m`; it verifies a declared install role, SSH authentic
 and an Ollama destination reachable from i9. The combined template accepts an explicit
 `--ollama-host` for the `-R` destination. The current i9-side preflight is BLOCKED because
 SSH auth returned 255, both local ports were absent, and no service was migrated.
+
+## 2026-10-13 M7 live model evaluation
+
+The existing i9 to M3 Ollama route was read-only verified: API version `0.32.11`
+and installed model `qwen2.5-coder:7b-instruct` were available. Real synthetic
+evaluation completed 224 requests with 176 valid candidates and 48 closed
+failures; B/C intent accuracy was 42.86%, parameter and tool legality 78.57%,
+latency P50/P95/max 1224.9/1576.5/2430.2 ms. Baby Care Voice v2 isolated PG16
+integration passed 27/27. Full API database-enabled run passed 233/234; one
+pre-existing family-authorization date assertion failed on reused test data.
+Status: `LIVE_MODEL_EVALUATED`, `POSTGRES_INTEGRATION_PASS` for the M7 slice,
+`SOFTWARE_RELEASE_CANDIDATE=false`, `HARDWARE_ACCEPTANCE_PENDING`.

@@ -3,7 +3,11 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
+from time import perf_counter
+from typing import Protocol
 from services.voice.intent import DialogueState, parse_feeding_command
+from services.voice.m7_llm import LanguageCandidate, LlmUnavailable
+from services.voice.m7_tools import validate_candidate
 
 
 @dataclass(frozen=True, slots=True)
@@ -43,6 +47,100 @@ class EvalReport:
             "error_execution_count": self.error_execution_count,
             "private_text_persisted": self.private_text_persisted,
         }
+
+
+class LiveLanguageClient(Protocol):
+    def complete(self, text: str, context: dict[str, object]) -> LanguageCandidate | LlmUnavailable: ...
+
+
+def _canonical_intent(candidate: LanguageCandidate) -> str:
+    return {"feeding_query": "query", "care_confirm": "confirm"}.get(
+        candidate.intent, candidate.intent
+    )
+
+
+def _candidate_amount(candidate: LanguageCandidate) -> int | None:
+    for call in candidate.tool_calls:
+        amount = call.arguments.get("amount_ml")
+        if type(amount) is int:
+            return amount
+    return None
+
+
+def evaluate_live_modes(
+    samples: tuple[EvalSample, ...], client: LiveLanguageClient
+) -> dict[str, object]:
+    """Evaluate one client pass and return aggregate-only B/C metrics."""
+    rows: list[tuple[EvalSample, LanguageCandidate | LlmUnavailable, float]] = []
+    for sample in samples:
+        started = perf_counter()
+        result = client.complete(
+            sample.text, {"phase": "evaluation", "sample_id": sample.sample_id}
+        )
+        rows.append((sample, result, (perf_counter() - started) * 1000))
+    latencies = sorted(latency for _, _, latency in rows)
+
+    def percentile(value: float) -> float | None:
+        if not latencies:
+            return None
+        index = min(len(latencies) - 1, int(round((len(latencies) - 1) * value)))
+        return round(latencies[index], 1)
+
+    pure_intent = pure_params = hybrid_intent = hybrid_params = 0
+    responded = tool_legal = clarification_correct = wrong_amount = failures = 0
+    for sample, result, _ in rows:
+        if isinstance(result, LlmUnavailable):
+            failures += 1
+            if sample.expected_amount_ml is not None:
+                wrong_amount += 1
+            continue
+        responded += 1
+        intent_ok = _canonical_intent(result) == sample.expected_intent
+        amount = _candidate_amount(result)
+        params_ok = amount == sample.expected_amount_ml or (
+            sample.expected_amount_ml is None and amount is None
+        )
+        pure_intent += int(intent_ok)
+        pure_params += int(params_ok)
+        if sample.expected_amount_ml is not None and amount != sample.expected_amount_ml:
+            wrong_amount += 1
+        validation = validate_candidate(result, identity_bound=True)
+        legal = validation.rejection_reason is None and (
+            validation.clarification is not None or bool(validation.calls)
+        )
+        tool_legal += int(legal)
+        clarification_correct += int(
+            sample.expected_intent is None and validation.clarification is not None
+        )
+        hybrid_intent += int(legal and intent_ok)
+        hybrid_params += int(legal and params_ok)
+    total = len(rows)
+    return {
+        "status": "evaluated",
+        "total": total,
+        "responded": responded,
+        "failures": failures,
+        "pure_llm": {
+            "intent_correct": pure_intent,
+            "parameter_correct": pure_params,
+            "intent_accuracy": pure_intent / total if total else 0.0,
+            "parameter_accuracy": pure_params / total if total else 0.0,
+        },
+        "hybrid": {
+            "intent_correct": hybrid_intent,
+            "parameter_correct": hybrid_params,
+            "intent_accuracy": hybrid_intent / total if total else 0.0,
+            "parameter_accuracy": hybrid_params / total if total else 0.0,
+            "tool_legal": tool_legal,
+            "tool_legal_rate": tool_legal / total if total else 0.0,
+            "clarification_correct": clarification_correct,
+        },
+        "wrong_amount_count": wrong_amount,
+        "latency_p50_ms": percentile(0.50),
+        "latency_p95_ms": percentile(0.95),
+        "latency_max_ms": round(max(latencies), 1) if latencies else None,
+        "private_text_persisted": False,
+    }
 
 
 def build_samples() -> tuple[EvalSample, ...]:
@@ -139,4 +237,11 @@ def evaluate_modes(samples: tuple[EvalSample, ...], *, llm) -> dict[str, dict[st
     return result
 
 
-__all__ = ["EvalReport", "EvalSample", "build_samples", "evaluate_modes", "evaluate_rule_only"]
+__all__ = [
+    "EvalReport",
+    "EvalSample",
+    "build_samples",
+    "evaluate_live_modes",
+    "evaluate_modes",
+    "evaluate_rule_only",
+]

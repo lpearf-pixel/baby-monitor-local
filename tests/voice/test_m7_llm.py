@@ -66,6 +66,7 @@ def valid_candidate() -> dict[str, object]:
 
 
 def test_language_client_posts_bounded_text_only_request() -> None:
+    assert LANGUAGE_MODEL_NAME == "qwen2.5-coder:7b-instruct"
     opener = RecordingOpener(response_payload(valid_candidate()))
     client = OllamaLanguageClient(opener=opener)
 
@@ -83,6 +84,9 @@ def test_language_client_posts_bounded_text_only_request() -> None:
     assert payload["options"] == {"temperature": 0}
     assert "images" not in payload["messages"][0]
     assert payload["messages"][0]["content"]
+    prompt = payload["messages"][0]["content"]
+    assert "add_feeding_component" in prompt
+    assert "record_milk_volume" in prompt
 
 
 @pytest.mark.parametrize(
