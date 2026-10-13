@@ -93,6 +93,7 @@ def evaluate_live_modes(
     parameter_total = 0
     responded = tool_legal = clarification_correct = wrong_amount = failures = 0
     amount_error_reasons: dict[str, int] = {}
+    failure_stages: dict[str, int] = {}
     by_category: dict[str, dict[str, int]] = {}
     failure_reasons: dict[str, int] = {}
     by_split: dict[str, dict[str, int]] = {}
@@ -110,6 +111,12 @@ def evaluate_live_modes(
             category["failures"] += 1
             split["failures"] += 1
             failure_reasons[result.reason] = failure_reasons.get(result.reason, 0) + 1
+            stage = (
+                "schema_output_failure"
+                if result.reason in {"invalid_json", "invalid_response", "schema_mismatch", "unknown_tool"}
+                else "model_unavailable"
+            )
+            failure_stages[stage] = failure_stages.get(stage, 0) + 1
             if sample.expected_amount_ml is not None:
                 wrong_amount += 1
                 amount_error_reasons["missing_or_invalid_candidate"] = (
@@ -125,6 +132,14 @@ def evaluate_live_modes(
         )
         amount = _candidate_amount(result)
         params_ok = params_applicable and amount == sample.expected_amount_ml
+        if validation.rejection_reason is not None:
+            failure_stages["tool_selection_failure"] = failure_stages.get("tool_selection_failure", 0) + 1
+        elif sample.expected_intent is None and validation.clarification is not None:
+            failure_stages["correct_rejection"] = failure_stages.get("correct_rejection", 0) + 1
+        elif not intent_ok:
+            failure_stages["intent_failure"] = failure_stages.get("intent_failure", 0) + 1
+        elif params_applicable and not params_ok:
+            failure_stages["amount_failure"] = failure_stages.get("amount_failure", 0) + 1
         pure_intent += int(intent_ok)
         pure_params += int(params_ok)
         category["intent_correct"] += int(intent_ok)
@@ -170,6 +185,7 @@ def evaluate_live_modes(
         },
         "wrong_amount_count": wrong_amount,
         "amount_error_reasons": amount_error_reasons,
+        "failure_stages": failure_stages,
         "by_category": by_category,
         "by_split": by_split,
         "failure_reasons": failure_reasons,

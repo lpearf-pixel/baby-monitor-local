@@ -709,3 +709,8 @@ Stage 6 also exposed one existing contract-fixture blocker: the v1 golden corpus
 labels a schemaVersion=2 example as unsupported while the active M7-compatible
 parser accepts v2. Resolve that contract ownership decision before any release
 candidate; do not weaken the parser or bypass the test.
+
+P1 diagnostics are now classified by processing stage. P2 remains an experiment:
+do not replace C until an intent-routed, dedicated-schema candidate beats C on the
+development split without reducing tool legality or safety. P3 synthetic mixed
+feeding and cancellation gates remain required before independent re-evaluation.

@@ -145,3 +145,18 @@ the vendored v1 golden corpus names a `schemaVersion=2` example
 version-2 contract for M7 compatibility. This is a contract-fixture mismatch,
 not evidence to weaken validation; it remains a release blocker until the owning
 contract decision is resolved.
+
+## M7.2 semantic failure-stage replay
+
+The same 224 synthetic samples were replayed with stage aggregation enabled:
+
+| Stage | Count |
+| --- | ---: |
+| Schema output failure | 70 |
+| Intent failure | 24 |
+| Tool-selection failure | 2 |
+| Amount failure after a usable candidate | 4 |
+
+The separate amount-error counter still reports 18 missing/invalid candidates;
+these are not silently converted to numeric errors. This stage split is aggregate
+only and contains no source text.

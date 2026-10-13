@@ -1094,3 +1094,8 @@ Stage 6 full local Python gate was 2580 passed/1 skip/1 failure. The failure is
 the v1 golden-corpus `unsupported-version` example carrying schemaVersion=2,
 which the active v2-compatible parser accepts. No test was weakened; contract
 owner review is required before release-candidate status.
+
+M7.2 failure-stage replay: schema output 70, intent 24, tool selection 2, amount
+after usable candidate 4; missing/invalid amount candidates 18. These are
+aggregate diagnostics only. The M6 regression also proves cancellation invalidates
+an old confirmation and the focused contract/M7/M6 set is green.

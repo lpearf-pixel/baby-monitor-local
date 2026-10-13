@@ -181,6 +181,22 @@ def test_saved_session_can_start_a_new_session_and_empty_correction_conflicts() 
     assert coordinator.process("开始喂奶", at(5), request_id="r5").code == "accepted_pending"
 
 
+def test_correction_requires_new_confirmation_and_cancel_invalidates_old_proposal() -> None:
+    gateway = Gateway()
+    coordinator = M6FeedingCoordinator(gateway)
+    coordinator.process("开始喂奶", at(0), request_id="r1")
+    coordinator.process("母乳60毫升", at(1), request_id="r2")
+    coordinator.process("结束", at(2), request_id="r3")
+    assert coordinator.process("确认保存", at(3), request_id="r4").code == "saved"
+
+    coordinator.process("开始喂奶", at(4), request_id="r5")
+    coordinator.process("母乳60毫升", at(5), request_id="r6")
+    coordinator.process("结束", at(6), request_id="r7")
+    assert coordinator.process("改成母乳70毫升", at(7), request_id="r8").code == "state_conflict"
+    assert coordinator.process("取消", at(8), request_id="r9").code == "cancelled"
+    assert coordinator.process("确认保存", at(9), request_id="r10").code == "state_conflict"
+
+
 @pytest.mark.parametrize("text", ["喝一点", "配方奶", "喂药五毫升", "母乳0毫升", "母乳6000毫升"])
 def test_ambiguous_or_unsafe_text_fails_closed(text: str) -> None:
     assert parse_m6_utterance(text).kind == "uncertain"

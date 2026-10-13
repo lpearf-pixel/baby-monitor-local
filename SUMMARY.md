@@ -1062,3 +1062,8 @@ Stage 6 full local Python gate: 2580 passed, 1 expected visual-corpus skip, 1
 failure in the pre-existing v1 golden contract because its `unsupported-version`
 fixture is schemaVersion=2 while the M7 parser accepts v2. This remains unresolved
 and keeps `SOFTWARE_RELEASE_CANDIDATE=false`; it was not bypassed.
+
+M7.2 stage replay split the 224 failures into 70 schema-output failures, 24 intent
+failures, 2 tool-selection failures and 4 usable-candidate amount failures. The
+separate missing/invalid-candidate amount count remains 18; no numeric guessing
+or unsafe write was introduced.

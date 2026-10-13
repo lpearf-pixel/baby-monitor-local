@@ -75,3 +75,10 @@ def test_live_evaluation_classifies_amount_failures_without_retaining_text() -> 
     wrong = evaluate_live_modes((sample,), FakeClient(wrong_candidate))
     assert wrong["amount_error_reasons"] == {"wrong_numeric_amount": 1}
     assert sample.text not in str(wrong)
+
+
+def test_live_evaluation_reports_failure_stage_counts_without_text() -> None:
+    samples = (build_samples()[0], next(s for s in build_samples() if s.expected_amount_ml == 30))
+    report = evaluate_live_modes(samples, FakeClient(LlmUnavailable("schema_mismatch")))
+
+    assert report["failure_stages"] == {"schema_output_failure": 2}
