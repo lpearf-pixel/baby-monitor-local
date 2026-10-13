@@ -1067,3 +1067,8 @@ M7.2 stage replay split the 224 failures into 70 schema-output failures, 24 inte
 failures, 2 tool-selection failures and 4 usable-candidate amount failures. The
 separate missing/invalid-candidate amount count remains 18; no numeric guessing
 or unsafe write was introduced.
+
+Frozen C rerun: 168-item test = 93/168 intent, 45/60 applicable amounts, 111/168
+tool-legal, P50/P95/max 1142.3/1665.7/1949.0 ms. Closed set rerun = 13/24 intent,
+5/7 amounts, 19/24 legal, P50/P95/max 1536.0/2048.4/2971.7 ms. Targets remain
+unmet.

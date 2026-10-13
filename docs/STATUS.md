@@ -1099,3 +1099,7 @@ M7.2 failure-stage replay: schema output 70, intent 24, tool selection 2, amount
 after usable candidate 4; missing/invalid amount candidates 18. These are
 aggregate diagnostics only. The M6 regression also proves cancellation invalidates
 an old confirmation and the focused contract/M7/M6 set is green.
+
+Frozen test rerun: 168 samples, 93 intent, 45/60 amounts, 111 legal; stage counts
+schema 56, intent 18, tool 1, amount 3. Closed rerun: 24 samples, 13 intent,
+5/7 amounts, 19 legal. These remain below targets.

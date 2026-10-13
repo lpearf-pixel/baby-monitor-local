@@ -160,3 +160,16 @@ The same 224 synthetic samples were replayed with stage aggregation enabled:
 The separate amount-error counter still reports 18 missing/invalid candidates;
 these are not silently converted to numeric errors. This stage split is aggregate
 only and contains no source text.
+
+## Frozen fixed-test and closed-set rerun
+
+After the evaluator-only stage instrumentation, the frozen 168-item test split
+was run once with C: 93/168 intent-correct, 45/60 applicable amounts correct,
+111/168 tool-legal, 56 schema-output failures, 18 intent failures, 1 tool
+selection failure and 3 usable-candidate amount failures. Missing/invalid amount
+candidates were 15. P50/P95/max latency was 1142.3/1665.7/1949.0 ms.
+
+The 24-item closed set rerun was 13/24 intent, 5/7 applicable amounts and 19/24
+tool-legal; failures were 4 schema-output, 6 intent, 1 tool-selection and 1
+usable-candidate amount, with 2 missing/invalid candidates. P50/P95/max was
+1536.0/2048.4/2971.7 ms. No target is met.

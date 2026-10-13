@@ -710,6 +710,11 @@ labels a schemaVersion=2 example as unsupported while the active M7-compatible
 parser accepts v2. Resolve that contract ownership decision before any release
 candidate; do not weaken the parser or bypass the test.
 
+The frozen test and closed-set reruns are complete and still below target. Do not
+promote C or add a second live model call until an intent-routed experiment has a
+measured overall improvement; otherwise retain the current safe C path and report
+the semantic limitation.
+
 P1 diagnostics are now classified by processing stage. P2 remains an experiment:
 do not replace C until an intent-routed, dedicated-schema candidate beats C on the
 development split without reducing tool legality or safety. P3 synthetic mixed
