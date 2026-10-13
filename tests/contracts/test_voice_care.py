@@ -10,6 +10,7 @@ from packages.contracts.voice_care import (
     VOICE_CARE_CORPUS_SHA256,
     VOICE_CARE_SCHEMA_SHA256,
     parse_voice_care_intent,
+    parse_voice_care_intent_v1,
     verify_vendored_voice_care_contract,
 )
 
@@ -40,7 +41,29 @@ def test_all_exact_golden_corpus_examples_match_the_python_contract() -> None:
         )
     for example in corpus["invalid"]:
         with pytest.raises(ValueError, match="VOICE_CARE_CONTRACT_INVALID"):
-            parse_voice_care_intent(example["raw"])
+            parse_voice_care_intent_v1(example["raw"])
+
+
+def test_generic_parser_accepts_v2_but_v1_only_parser_rejects_it() -> None:
+    corpus = json.loads(
+        (CONTRACT_ROOT / "voice-care-v1.json").read_text(encoding="utf-8")
+    )
+    raw_v2 = corpus["valid"][0]["raw"].replace('"schemaVersion":1', '"schemaVersion":2', 1)
+
+    assert parse_voice_care_intent(raw_v2).schemaVersion == 2
+    with pytest.raises(ValueError, match="VOICE_CARE_CONTRACT_INVALID"):
+        parse_voice_care_intent_v1(raw_v2)
+
+
+def test_generic_and_v1_only_parsers_reject_unknown_version_and_malformed_input() -> None:
+    corpus = json.loads(
+        (CONTRACT_ROOT / "voice-care-v1.json").read_text(encoding="utf-8")
+    )
+    raw_v3 = corpus["valid"][0]["raw"].replace('"schemaVersion":1', '"schemaVersion":3', 1)
+    for parser in (parse_voice_care_intent, parse_voice_care_intent_v1):
+        for raw in (raw_v3, "{not-json"):
+            with pytest.raises(ValueError, match="VOICE_CARE_CONTRACT_INVALID"):
+                parser(raw)
 
 
 def test_contract_rejects_unknown_identity_and_private_content_fields() -> None:

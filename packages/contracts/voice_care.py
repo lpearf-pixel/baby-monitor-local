@@ -300,8 +300,10 @@ def _reject_duplicate_keys(pairs: list[tuple[str, object]]) -> dict[str, object]
     return value
 
 
-def parse_voice_care_intent(raw: str | bytes) -> VoiceCareIntentV1 | VoiceCareIntentV2:
-    """Parse canonical UTF-8 Voice Care v1 or v2 JSON with no duplicate keys."""
+def _parse_voice_care_intent(
+    raw: str | bytes, *, allowed_versions: frozenset[int]
+) -> VoiceCareIntentV1 | VoiceCareIntentV2:
+    """Parse canonical UTF-8 Voice Care JSON for an explicit version set."""
 
     try:
         text = raw.decode("utf-8", errors="strict") if isinstance(raw, bytes) else raw
@@ -309,6 +311,9 @@ def parse_voice_care_intent(raw: str | bytes) -> VoiceCareIntentV1 | VoiceCareIn
             raise ValueError(VOICE_CARE_CONTRACT_INVALID)
         payload = json.loads(text, object_pairs_hook=_reject_duplicate_keys)
         if not isinstance(payload, dict):
+            raise ValueError(VOICE_CARE_CONTRACT_INVALID)
+        version = payload.get("schemaVersion")
+        if version not in allowed_versions:
             raise ValueError(VOICE_CARE_CONTRACT_INVALID)
         canonical = json.dumps(
             payload,
@@ -322,6 +327,19 @@ def parse_voice_care_intent(raw: str | bytes) -> VoiceCareIntentV1 | VoiceCareIn
         return adapter.validate_json(text)
     except (UnicodeDecodeError, json.JSONDecodeError, ValidationError, ValueError, TypeError):
         raise ValueError(VOICE_CARE_CONTRACT_INVALID) from None
+
+
+def parse_voice_care_intent(raw: str | bytes) -> VoiceCareIntentV1 | VoiceCareIntentV2:
+    """Parse canonical UTF-8 Voice Care v1 or v2 JSON with no duplicate keys."""
+
+    return _parse_voice_care_intent(raw, allowed_versions=frozenset({1, 2}))
+
+
+def parse_voice_care_intent_v1(raw: str | bytes) -> VoiceCareIntentV1:
+    """Parse only the v1 contract; v2 is intentionally rejected."""
+
+    parsed = _parse_voice_care_intent(raw, allowed_versions=frozenset({1}))
+    return parsed  # type: ignore[return-value]
 
 
 def verify_vendored_voice_care_contract(
@@ -371,5 +389,6 @@ __all__ = [
     "VoiceCareFeedingComponentV2",
     "VendoredVoiceCareContract",
     "parse_voice_care_intent",
+    "parse_voice_care_intent_v1",
     "verify_vendored_voice_care_contract",
 ]
