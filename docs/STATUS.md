@@ -1085,3 +1085,7 @@ The pending comparison is now closed on the 56-item development split: A raw JSO
 D optimized+fence repair 35/56. C/D were 17/20 applicable-amount correct and
 41/56 tool-legal; fence repair did not change the score. The 168-item test split
 was not used for this choice. `SOFTWARE_RELEASE_CANDIDATE` remains false.
+
+The newly frozen 24-item closed set is disjoint and was evaluated once with C:
+13/24 intent, 5/7 applicable amounts, 19/24 tool-legal, 4 schema mismatches and
+2 missing/invalid amount candidates; P50/P95/max 1238.4/1558.1/2289.4 ms.

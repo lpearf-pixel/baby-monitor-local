@@ -699,3 +699,8 @@ Schema) as the measured baseline; D's format-only repair produced no gain. Next
 work must address the remaining schema/semantic failure clusters and then run the
 fixed 168-item test split once, followed by the existing integration and privacy
 gates. Do not tune against the test split or call M7 a software candidate yet.
+
+The closed-set first score is now frozen evidence (13/24 intent, 5/7 applicable
+amount, 19/24 tool legality). Continue only with evidence-backed semantic fixes;
+after a change, rerun the fixed 168-item test and closed set once each, then run
+the full software gates. Keep failed and ambiguous samples in denominators.

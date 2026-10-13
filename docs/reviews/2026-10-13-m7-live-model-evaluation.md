@@ -125,3 +125,12 @@ P95 is retained as prior evidence, not mixed with a new prompt or corpus. D's
 repair changed no business fields and did not improve the development scores.
 The optimized prompt plus native Schema is therefore retained as the baseline
 candidate for the next diagnostic slice, not as a release decision.
+
+## Independent closed set
+
+The 24-item closed synthetic set was authored after development comparison,
+stored as code-only metadata, and verified disjoint from the 224-item corpus.
+With the frozen C configuration it produced 13/24 intent-correct, 5/7
+applicable-amount-correct, 19/24 tool-legal, 4 schema mismatches and 2
+missing/invalid amount candidates. P50/P95/max latency was 1238.4/1558.1/2289.4
+ms. This is an independent software measurement, not household acceptance.

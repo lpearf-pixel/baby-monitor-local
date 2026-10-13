@@ -1052,3 +1052,8 @@ B=2/56, C=35/56 and D=35/56 intent-correct; C/D each reached 17/20 applicable
 amounts and 41/56 legal tools. B had 34 schema mismatches and 14 unknown tools;
 C/D had 14 schema mismatches. The optimized native-Schema mode remains below all
 release targets and is not promoted.
+
+The frozen 24-item closed synthetic set is disjoint from development/test data.
+First C evaluation: intent 13/24, applicable amounts 5/7, tool legality 19/24,
+4 schema mismatches, 2 missing/invalid amount candidates, latency
+P50/P95/max 1238.4/1558.1/2289.4 ms. This confirms the semantic gap persists.

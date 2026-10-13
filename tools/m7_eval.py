@@ -203,6 +203,37 @@ def build_samples() -> tuple[EvalSample, ...]:
     return tuple(samples)
 
 
+def build_closed_samples() -> tuple[EvalSample, ...]:
+    """Frozen, separately authored set; never used for prompt selection."""
+    rows = (
+        ("closed-001", "natural", "小小，今天开始给宝宝喂奶", "feeding_start", None),
+        ("closed-002", "natural", "刚刚喝了母乳六十五毫升", "feeding_update", 65),
+        ("closed-003", "natural", "又添了四十毫升配方奶", "feeding_update", 40),
+        ("closed-004", "natural", "奶粉那项改成二十五毫升", "feeding_update", 25),
+        ("closed-005", "natural", "母乳不改，奶粉还是二十五", "feeding_update", 25),
+        ("closed-006", "natural", "亲喂了十二分钟", "feeding_update", None),
+        ("closed-007", "natural", "先别保存，取消这次", "care_cancel", None),
+        ("closed-008", "natural", "结束喂奶但暂时不要保存", "feeding_end", None),
+        ("closed-009", "natural", "我确认保存刚才那一单", "confirm", None),
+        ("closed-010", "query", "今天一共喝了多少", "query", None),
+        ("closed-011", "query", "查一下最近的喂奶", "query", None),
+        ("closed-012", "ambiguous", "再喝一点点", None, None),
+        ("closed-013", "ambiguous", "大概半瓶吧", None, None),
+        ("closed-014", "negative", "帮我记录五毫升药", None, None),
+        ("closed-015", "negative", "把刚才的奶删掉", "care_cancel", None),
+        ("closed-016", "natural", "恢复刚才没结束的喂奶", "feeding_resume", None),
+        ("closed-017", "natural", "配方奶从三十改四十五毫升", "feeding_update", 45),
+        ("closed-018", "natural", "这次只亲喂八分钟", "feeding_update", None),
+        ("closed-019", "natural", "母乳七十，另外奶粉二十", "feeding_update", 70),
+        ("closed-020", "natural", "我说错了，母乳是六十毫升", "feeding_update", 60),
+        ("closed-021", "query", "昨天比今天少喝多少", "query", None),
+        ("closed-022", "ambiguous", "补一点奶粉就好", None, None),
+        ("closed-023", "natural", "喂完啦", "feeding_end", None),
+        ("closed-024", "natural", "好，保存这次喂奶", "confirm", None),
+    )
+    return tuple(EvalSample(*row, split="closed") for row in rows)
+
+
 def evaluate_rule_only(samples: tuple[EvalSample, ...]) -> EvalReport:
     intent_correct = 0
     parameter_correct = 0
@@ -257,6 +288,7 @@ __all__ = [
     "EvalReport",
     "EvalSample",
     "build_samples",
+    "build_closed_samples",
     "evaluate_live_modes",
     "evaluate_modes",
     "evaluate_rule_only",
