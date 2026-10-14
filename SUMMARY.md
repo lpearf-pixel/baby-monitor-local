@@ -1179,3 +1179,13 @@ Existing real-model confirmation evidence remains Qwen2.5 C 3/12 and Qwen3 focus
 with zero authoritative saves; deterministic M6/M7 confirmation closure remains 63
 focused passes. `POSTGRES_API_FULL_PASS=NO`, `SOFTWARE_RELEASE_CANDIDATE=false`, and
 Camera Reply remains disabled. Details: `docs/reviews/2026-10-14-m7-13-postgres-confirmation.md`.
+
+## M7.14 contract and confirmation probe (2026-10-14)
+
+The four cross-repository consumer-contract tests now pass in an accurate baby-care Git
+checkout with Node24/pnpm10.17.1 and a test-container git binary: 4/4. The previous
+failures were archive/no-git executor issues. A bounded synthetic Ollama probe found
+confirmation/cancellation ambiguity and short-request timeouts in both model paths;
+the deterministic Registry/M6 state machine rejected unsafe or no-draft candidates.
+Default C remains unchanged, no authoritative model saves occurred, and
+`SOFTWARE_RELEASE_CANDIDATE=false`. Report: `docs/reviews/2026-10-14-m7-14-contract-confirmation.md`.

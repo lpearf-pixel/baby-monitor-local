@@ -1270,3 +1270,13 @@ is 63 focused passes. Real Ollama confirmation runs remain incomplete (Qwen2.5 C
 Qwen3 focus 6/12, zero authoritative saves), so no model path is promoted and
 `SOFTWARE_RELEASE_CANDIDATE=false`. See the redacted report in
 `docs/reviews/2026-10-14-m7-13-postgres-confirmation.md`.
+
+### M7.14 cross-repository contract and confirmation probe (2026-10-14)
+
+The consumer contract was rerun from a real Git checkout rather than an archive, with
+Node24/pnpm10.17.1 and git available inside the isolated runner: **4/4 passed**. The
+earlier ENOENT was an executor image dependency issue. A bounded real-Ollama probe found
+model-level end/confirm/cancel ambiguity and short-request timeouts; deterministic
+Tool Registry and M6 gates continued to reject unsafe/no-draft confirmation. No new
+schema, state machine or default-path change was made. Release candidate remains false.
+See `docs/reviews/2026-10-14-m7-14-contract-confirmation.md`.

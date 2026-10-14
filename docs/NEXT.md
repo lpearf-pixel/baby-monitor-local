@@ -812,3 +812,12 @@ logic change. Re-run that contract with both repositories present, then the comp
 gate. Keep C as default: real confirmation completion is only 3/12 for Qwen2.5 C and
 6/12 for Qwen3 focus, with zero authoritative saves. Do not auto-confirm, deploy, or
 connect household services; keep Camera Reply disabled and release candidate false.
+
+### M7.14 next action
+
+Cross-repository consumer-contract is now green at 4/4 using a real dual-checkout
+environment. The remaining blocker is semantic, not PostgreSQL: both real models still
+show confirmation/cancellation ambiguity and incomplete task completion. Keep C as the
+default, retain deterministic confirmation and no-draft rejection, and do not add a new
+schema or auto-confirmation path. Any future optimization must be opt-in and evaluated
+on frozen synthetic data; household deployment remains prohibited.
