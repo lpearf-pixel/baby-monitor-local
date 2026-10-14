@@ -56,6 +56,17 @@ _SCHEMA_PROMPT = (
     "are {}. Feeding tools only; never invent identity, permission, saved state, "
     "database results, or millilitres for direct breastfeeding."
 )
+_SEMANTIC_FOCUS_PROMPT = _SCHEMA_PROMPT + (
+    " Additional routing rules: use feeding_start for explicit start wording; "
+    "use feeding_update for any explicit milk amount or direct breastfeeding "
+    "duration, including correction phrases, never feeding_query. Use "
+    "feeding_query only for historical or statistical questions. Use "
+    "care_confirm only for explicit save confirmation, and care_cancel only "
+    "for explicit cancellation. Ambiguous quantity words such as 一点、一些、"
+    "大概、半瓶 must return clarification with no tool calls. Medication or "
+    "unrelated requests must return clarification with no tool calls. Never "
+    "guess a milk amount."
+)
 _BASE_PROMPT = "Return JSON with intent, tool_calls, clarification, confidence, context_key."
 _MINIMAL_SCHEMA_PROMPT = (
     "Return only the minimal semantic JSON fields: intent, action, milk_type, "
@@ -309,7 +320,7 @@ class OllamaLanguageClient:
         base_url: str = VISUAL_OLLAMA_BASE_URL,
         model_name: str = LANGUAGE_MODEL_NAME,
         response_format: Literal["json", "schema"] = "schema",
-        prompt_variant: Literal["current", "optimized"] = "optimized",
+        prompt_variant: Literal["current", "optimized", "semantic_focus"] = "optimized",
         format_repair: bool = False,
         schema_profile: Literal["full", "minimal", "minimal_v2"] = "full",
         opener: FrameOpener = _open_without_proxy,
@@ -346,7 +357,7 @@ class OllamaLanguageClient:
             payload = {
                 "model": self._model_name,
                 "messages": [
-                    {"role": "system", "content": _MINIMAL_V2_SCHEMA_PROMPT if self._schema_profile == "minimal_v2" else (_MINIMAL_SCHEMA_PROMPT if self._schema_profile == "minimal" else (_SCHEMA_PROMPT if self._prompt_variant == "optimized" else _BASE_PROMPT))},
+                    {"role": "system", "content": _MINIMAL_V2_SCHEMA_PROMPT if self._schema_profile == "minimal_v2" else (_MINIMAL_SCHEMA_PROMPT if self._schema_profile == "minimal" else (_SEMANTIC_FOCUS_PROMPT if self._prompt_variant == "semantic_focus" else (_SCHEMA_PROMPT if self._prompt_variant == "optimized" else _BASE_PROMPT)))},
                     {"role": "user", "content": json.dumps(
                         {"text": text, "context": context},
                         ensure_ascii=False,

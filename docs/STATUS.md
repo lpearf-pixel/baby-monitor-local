@@ -1197,3 +1197,18 @@ and `runtime/go2rtc.yaml` exist, and the installed LaunchAgent plist exists, but
 1984 has no listener. The bounded log tail records `terminated` exits only.
 Suggested recovery is an operator-authorized bootstrap/kickstart; rollback is
 bootout of this label and removal of only its plist. No recovery command ran.
+
+### M7.8 high-frequency care semantics (2026-10-14)
+
+CI `38488256913` for `d0f8fc7` is green. The existing C path remains default; an
+opt-in `semantic_focus` prompt variant adds closed routing rules for feeding updates,
+queries, confirmation/cancellation and ambiguous quantities without changing the
+Schema, Tool Registry or M6/Gateway. Fresh dev-56 evidence: Qwen2.5 + C 35/56 intent,
+17/20 amounts, 41/56 legal; Qwen3 + C 27/56, 10/20, 42/56; Qwen2.5 + semantic_focus
+41/56, 16/20, 16/56; Qwen3 + semantic_focus 45/56, 20/20, 47/56 with P50/P95
+903/1135ms. Fixed 168 and historical 24 replays with Qwen3 semantic_focus were
+144/168 and 17/24 intent respectively; a new 12-item synthetic set was 9/12.
+These remain below release targets and the variant is not promoted. Focused M7 tests
+passed 41; full Python passed 2599 with the existing one incomplete-public-corpus skip.
+No household input or production database was accessed; Camera Reply remains false and
+`SOFTWARE_RELEASE_CANDIDATE=false`.

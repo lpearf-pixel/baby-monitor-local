@@ -20,6 +20,16 @@ starts only with the logged-in operator ready. Do not restart completed software
 
 Updated: 2026-09-14
 
+## M7.8 semantic quality checkpoint (2026-10-14)
+
+The current feature branch retains C/optimized as default and adds only an opt-in
+`semantic_focus` prompt variant. Qwen3 + this variant scored 45/56 intent, 20/20
+explicit amounts and 47/56 legal tools on dev; fixed 168 scored 144/168 intent and
+60/60 amounts, historical 24 scored 17/24, and a new 12-item synthetic set scored
+9/12. Full Python is 2599 passed / 1 existing visual-corpus skip; M7 focused is 41/41.
+The evidence is below release targets, so `SOFTWARE_RELEASE_CANDIDATE=false`; no
+household input, production DB, SSH, Guardian or Camera Reply was touched.
+
 ## Snapshot
 
 - Repository: `lpearf-pixel/baby-monitor-local` (public).

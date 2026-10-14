@@ -761,3 +761,12 @@ components safely but remains below C for intent and amount accuracy. Do not
 promote it or add a second production call. Any next semantic experiment must
 target model extraction quality on the frozen dev split. go2rtc recovery is an
 independent operations task requiring explicit runtime authorization.
+
+### M7.8 decision
+
+Keep C/optimized as the production rollback/default path. The opt-in `semantic_focus`
+prompt improves Qwen3's development intent and amount scores, but fixed/closed and new
+independent synthetic evidence remain below 95%/99% release targets and tool legality is
+not perfect. Do not promote the prompt or switch models; preserve it only for bounded
+future experiments. Do not rerun the 224-item live set unless model, prompt or scorer
+changes materially. M6/Gateway and hardware gates remain unchanged.

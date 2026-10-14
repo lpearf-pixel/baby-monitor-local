@@ -260,6 +260,20 @@ def test_language_client_supports_raw_json_comparison_mode() -> None:
     assert payload["messages"][0]["content"].startswith("Return JSON")
 
 
+def test_language_client_semantic_focus_prompt_is_opt_in_and_keeps_closed_tools() -> None:
+    opener = RecordingOpener(response_payload(valid_candidate()))
+    result = OllamaLanguageClient(
+        prompt_variant="semantic_focus", opener=opener
+    ).complete("宝宝喝了六十毫升母乳", {})
+
+    assert isinstance(result, LanguageCandidate)
+    prompt = json.loads(opener.calls[0][0].data)["messages"][0]["content"]
+    assert "feeding_update" in prompt
+    assert "feeding_query" in prompt
+    assert "Never guess a milk amount" in prompt
+    assert "add_feeding_component" in prompt
+
+
 def test_language_client_format_repair_only_removes_json_fence() -> None:
     raw = response_payload("```json\n" + json.dumps(valid_candidate()) + "\n```")
     result = OllamaLanguageClient(format_repair=True, opener=RecordingOpener(raw)).complete("test", {})
