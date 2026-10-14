@@ -1318,3 +1318,13 @@ rejects duplicate confirmation. Fresh Node24 + pnpm10.17.1 + PostgreSQL16 integr
 passed 23/23 in five files. A/B/C 20-task real-model comparison is NOT_RUN in this
 slice, so no architecture promotion or release-candidate claim is justified.
 Camera Reply remains false and all household gates remain pending.
+
+### M7.17 deterministic core release gate (2026-10-15)
+
+The failed go2rtc CI job was rerun without changing business code and the complete run
+38566678804 is now successful. M7/M6/Gateway/session focused tests are 43 passed and
+the isolated Baby Care Voice Care PostgreSQL gate is 23/23. A real M7-to-Baby-Care
+PostgreSQL execution was not available from the current test entry, so deterministic
+core readiness is blocked rather than inferred from the in-memory boundary or the
+independent Baby Care suite. `DETERMINISTIC_CORE_READY=false`,
+`LLM_ASSISTANT_READY=false`, `SOFTWARE_RELEASE_CANDIDATE=false`.

@@ -854,3 +854,12 @@ probes are not comparable. The next bounded slice is one frozen, no-tuning compa
 with verified model digests and the same isolated database state; if Ollama is
 unavailable, record BLOCKED rather than using Mock scores. Keep C opt-in, preserve the
 current default path, and leave `SOFTWARE_RELEASE_CANDIDATE=false`.
+
+### M7.17 next action
+
+Do not expand the grammar or run more model experiments. The only blocking software
+slice is a disposable real M7BabyCareGateway-to-Baby-Care/PostgreSQL runner using the
+existing signed v2 route, followed by the same cancel/expiry/version/concurrency matrix.
+Keep deterministic routing opt-in, Camera Reply=false, and all household/hardware gates
+pending. If the adapter cannot be safely exercised in isolation, retain BLOCKED rather
+than using a FakeExecutor or memory Gateway as persistence evidence.

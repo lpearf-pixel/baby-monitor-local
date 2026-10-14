@@ -1133,6 +1133,17 @@ real 20-task A/B/C model comparison was not run, so C remains opt-in and
 `SOFTWARE_RELEASE_CANDIDATE=false`; see
 `docs/reviews/2026-10-14-m7-16-architecture-decision.md`.
 
+## M7.17 deterministic core gate (2026-10-15)
+
+CI run 38566678804 was rerun only for the failed go2rtc job and finished SUCCESS.
+Focused M7/M6/Gateway/session regression is 43 passed; the existing full Python gate
+remains 2619 passed with one corpus skip. Baby Care's isolated Node24/pnpm10.17.1/
+PostgreSQL16 Voice Care gate is 23/23, but the M7 entry is not wired to that API in a
+real disposable run. Therefore `POSTGRES_END_TO_END_PASS` and
+`DETERMINISTIC_CORE_READY` remain false; simulated LLM outage is covered, real Ollama
+and hardware remain pending. Report:
+`docs/reviews/2026-10-15-m7-17-deterministic-core-release-gate.md`.
+
 ## M7.10 safety closure (2026-10-14)
 
 Added deterministic intent-to-tool-family validation: query, confirmation, cancellation
