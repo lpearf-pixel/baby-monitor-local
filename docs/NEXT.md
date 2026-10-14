@@ -770,3 +770,11 @@ independent synthetic evidence remain below 95%/99% release targets and tool leg
 not perfect. Do not promote the prompt or switch models; preserve it only for bounded
 future experiments. Do not rerun the 224-item live set unless model, prompt or scorer
 changes materially. M6/Gateway and hardware gates remain unchanged.
+
+### M7.9 decision
+
+The 200-item independent semantic set is not release-grade (76% intent, 81.25%
+explicit amount, 77% tool legality). Keep C/optimized as the only default and do not
+add another schema version or model. Future work, if authorized, should target Chinese
+entity/tool routing and confirmation/cancel consistency with a new bounded experiment;
+do not tune the 168-item holdout or deploy to household devices.

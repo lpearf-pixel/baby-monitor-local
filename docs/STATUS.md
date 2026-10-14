@@ -1212,3 +1212,14 @@ These remain below release targets and the variant is not promoted. Focused M7 t
 passed 41; full Python passed 2599 with the existing one incomplete-public-corpus skip.
 No household input or production database was accessed; Camera Reply remains false and
 `SOFTWARE_RELEASE_CANDIDATE=false`.
+
+### M7.9 semantic routing acceptance (2026-10-14)
+
+CI `38492116973` for `e4c6a32` is green. Frozen Qwen3 `semantic_focus` routing on
+the 168-item test set found 27 Tool Registry rejections and one Schema output failure;
+negative/ambiguous/query samples produced zero write-tool candidates, while four
+confirm/cancel cases had intent mismatch without persistence. A corrected independent
+200-item stratified synthetic set scored 152/200 intent, 65/80 explicit amounts and
+154/200 legal tools, with P50/P95/max 1038/1601/1715ms. The first 200-item run was
+discarded because its generator reused an incorrect expected amount. Evidence is far
+below release targets; C remains default and `SOFTWARE_RELEASE_CANDIDATE=false`.
