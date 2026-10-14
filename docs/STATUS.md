@@ -1237,3 +1237,12 @@ breastfeeding duration; the full M7 focused set is 50 passed. This is a routing 
 fix, not a model-quality claim: the historical independent set remains below 95% intent
 and 99% amount targets. M6/Gateway contracts and default C mode are unchanged, Camera
 Reply remains false, and no household or production data was used.
+
+### M7.11 task reliability (2026-10-14)
+
+Real Ollama task evaluation now runs through the existing M7 orchestrator, Tool Registry,
+M6 Coordinator and an isolated synthetic gateway. Twelve scenarios cover mixed feeding,
+correction, confirmation, cancellation, duplicate confirmation, query, clarification and
+direct breastfeeding. Qwen2.5 C completed 3/12; Qwen3 semantic_focus completed 6/12.
+The result is diagnostic only: no authoritative database write occurred, PostgreSQL and
+Baby Care integration were not rerun, and the semantic release targets remain unmet.

@@ -787,3 +787,10 @@ with the fresh result and push the feature branch. Keep Qwen2.5-Coder + C as def
 do not tune the 168-item holdout or promote Qwen3. The independent semantic evidence
 is below release targets, so SOFTWARE_RELEASE_CANDIDATE remains false and hardware
 deployment stays blocked.
+
+### M7.11 next action
+
+The real-model task evaluator is in place, but 12-task completion is only 25% for C and
+50% for Qwen3, with no complete authoritative save flow. Keep C as default and do not
+promote Qwen3. The next required slice is a larger frozen task set plus an isolated
+PostgreSQL/Baby Care run; do not use the synthetic gateway result as database evidence.

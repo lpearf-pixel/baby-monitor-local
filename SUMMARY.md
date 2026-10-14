@@ -1092,6 +1092,15 @@ Ollama response read; no score was recorded from that incomplete run. go2rtc
 1984 was unavailable and untouched. C remains the rollback baseline;
 SOFTWARE_RELEASE_CANDIDATE=false.
 
+## M7.11 task reliability (2026-10-14)
+
+Added aggregate-only `tools/m7_task_eval.py` using real Ollama clients with the existing
+M7/M6 orchestration and an isolated in-memory gateway. On 12 synthetic tasks, Qwen2.5
+C completed 3/12 (25%, P50/P95 1096/1534 ms) and Qwen3 semantic_focus completed 6/12
+(50%, 748/1020 ms); neither produced an authoritative save in the incomplete flows.
+This is not PostgreSQL or household acceptance. C remains default and release candidate
+status stays false.
+
 ## M7.9 routing acceptance (2026-10-14)
 
 Frozen Qwen3 + `semantic_focus` produced 27 Tool Registry rejections and 1 Schema
