@@ -1225,3 +1225,15 @@ confirm/cancel cases had intent mismatch without persistence. A corrected indepe
 The first 200-item run was
 discarded because its generator reused an incorrect expected amount. Evidence is far
 below release targets; C remains default and `SOFTWARE_RELEASE_CANDIDATE=false`.
+
+### M7.10 safety closure (2026-10-14)
+
+The reviewed high-frequency safety defect was an absent deterministic consistency gate
+between model intent and tool family. `services/voice/m7_tools.py` now rejects query,
+confirmation, cancellation and update candidates that select incompatible tools before
+the executor is called. New tests exercise the synthetic mixed-feeding task flow,
+targeted correction, duplicate confirmation, cancellation, query and direct
+breastfeeding duration; the full M7 focused set is 50 passed. This is a routing safety
+fix, not a model-quality claim: the historical independent set remains below 95% intent
+and 99% amount targets. M6/Gateway contracts and default C mode are unchanged, Camera
+Reply remains false, and no household or production data was used.

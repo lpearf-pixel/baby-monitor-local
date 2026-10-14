@@ -32,6 +32,15 @@ _WRITE_TOOLS = {
     "confirm_feeding",
     "cancel_feeding",
 }
+_INTENT_TOOL_FAMILIES = {
+    "feeding_start": {"start_feeding"},
+    "feeding_update": {"add_feeding_component", "correct_feeding_component"},
+    "feeding_end": {"end_feeding"},
+    "care_confirm": {"request_feeding_confirmation", "confirm_feeding"},
+    "care_cancel": {"cancel_feeding"},
+    "feeding_query": _READ_TOOLS - {"get_active_feeding"},
+    "feeding_resume": {"get_active_feeding"},
+}
 
 
 def validate_candidate(
@@ -46,6 +55,9 @@ def validate_candidate(
         return ToolValidation(clarification=candidate.clarification)
     if not candidate.tool_calls:
         return ToolValidation(rejection_reason="no_tool_call")
+    allowed_tools = _INTENT_TOOL_FAMILIES.get(candidate.intent)
+    if allowed_tools is None or any(call.name not in allowed_tools for call in candidate.tool_calls):
+        return ToolValidation(rejection_reason="intent_tool_mismatch")
     validated: list[ValidatedToolCall] = []
     needs_confirmation = False
     for call in candidate.tool_calls:

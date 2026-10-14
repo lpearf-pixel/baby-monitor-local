@@ -778,3 +778,12 @@ explicit amount, 77% tool legality). Keep C/optimized as the only default and do
 add another schema version or model. Future work, if authorized, should target Chinese
 entity/tool routing and confirmation/cancel consistency with a new bounded experiment;
 do not tune the 168-item holdout or deploy to household devices.
+
+### M7.10 next action
+
+The intent/tool-family safety gate and synthetic business-flow regressions are complete.
+Run the full Python software gate once after this code change, then update the report
+with the fresh result and push the feature branch. Keep Qwen2.5-Coder + C as default;
+do not tune the 168-item holdout or promote Qwen3. The independent semantic evidence
+is below release targets, so SOFTWARE_RELEASE_CANDIDATE remains false and hardware
+deployment stays blocked.

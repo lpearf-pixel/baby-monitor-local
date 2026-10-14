@@ -1102,6 +1102,17 @@ intervals 69.63%–81.39%, 71.34%–88.29%, 70.69%–82.29%). The previous
 invalidly scored 200-item run was discarded. Targets remain unmet; C stays default and
 `SOFTWARE_RELEASE_CANDIDATE=false`.
 
+## M7.10 safety closure (2026-10-14)
+
+Added deterministic intent-to-tool-family validation: query, confirmation, cancellation
+and feeding-update candidates cannot cross into incompatible tools, and mismatches are
+rejected before executor calls. Synthetic M7 closure covers mixed feeding 60 ml breast
+milk + 30 ml formula, correction to 40 ml, explicit confirmation, duplicate confirmation,
+cancellation, query and direct-breastfeeding duration. Focused M7 tests: 50 passed.
+Historical independent-200 evidence remains 152/200 intent, 65/80 explicit amounts and
+154/200 legal tools, below release targets. C remains default; Camera Reply=false;
+SOFTWARE_RELEASE_CANDIDATE=false.
+
 M7.7 review: CI `38487602274` is green. Fresh dev-56 C diagnostic classified
 14 schema failures; among 42 semantic responses, 1 was feeding-as-query, 24
 other intent mismatches, 16 milk/amount parameter errors and 1 other update

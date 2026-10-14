@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+import pytest
+
 from services.voice.m7_llm import LanguageCandidate, M7ToolCall
 from services.voice.m7_tools import ToolValidation, validate_candidate
 
@@ -90,3 +92,25 @@ def test_identity_or_permission_spoof_is_rejected() -> None:
 
     assert result.calls == ()
     assert result.rejection_reason == "identity_unavailable"
+
+
+@pytest.mark.parametrize(
+    ("intent", "tool"),
+    [
+        ("feeding_query", "add_feeding_component"),
+        ("care_confirm", "add_feeding_component"),
+        ("care_cancel", "confirm_feeding"),
+        ("feeding_update", "get_recent_feedings"),
+    ],
+)
+def test_intent_and_tool_family_must_agree(intent: str, tool: str) -> None:
+    result = validate_candidate(
+        candidate(
+            M7ToolCall(name=tool, arguments={}),
+            intent=intent,
+        ),
+        identity_bound=True,
+    )
+
+    assert result.calls == ()
+    assert result.rejection_reason == "intent_tool_mismatch"
