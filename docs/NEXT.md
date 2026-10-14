@@ -788,6 +788,14 @@ do not tune the 168-item holdout or promote Qwen3. The independent semantic evid
 is below release targets, so SOFTWARE_RELEASE_CANDIDATE remains false and hardware
 deployment stays blocked.
 
+### M7.12 next action
+
+Deterministic in-memory authority closure is green, but real-model completion and fresh
+PostgreSQL verification remain blocking. Do not auto-confirm model output. First obtain a
+Node24-compatible isolated Baby Care environment and diagnose the setup-500 boundary;
+then rerun the Voice Care v2 integration. Keep Camera Reply disabled and preserve the
+default Qwen2.5-Coder C path.
+
 ### M7.11 next action
 
 The real-model task evaluator is in place, but 12-task completion is only 25% for C and

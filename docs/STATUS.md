@@ -1238,6 +1238,16 @@ fix, not a model-quality claim: the historical independent set remains below 95%
 and 99% amount targets. M6/Gateway contracts and default C mode are unchanged, Camera
 Reply remains false, and no household or production data was used.
 
+### M7.12 authority closure (2026-10-14)
+
+The deterministic candidate path now has fresh focused evidence (`63 passed`) for the
+complete mixed-feeding confirmation chain, cancellation and duplicate safety, correction,
+query isolation and direct breastfeeding duration. Real Ollama task runs still have no
+authoritative saves because the model did not complete the full confirmation sequence.
+The new isolated PostgreSQL attempt is blocked: the host provides Node22.23.1 while the
+Baby Care gate requires Node24, and the corrected Vitest run fails setup with HTTP 500.
+This is not a database PASS; release candidate remains false.
+
 ### M7.11 task reliability (2026-10-14)
 
 Real Ollama task evaluation now runs through the existing M7 orchestrator, Tool Registry,

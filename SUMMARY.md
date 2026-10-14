@@ -1092,6 +1092,16 @@ Ollama response read; no score was recorded from that incomplete run. go2rtc
 1984 was unavailable and untouched. C remains the rollback baseline;
 SOFTWARE_RELEASE_CANDIDATE=false.
 
+## M7.12 authority closure (2026-10-14)
+
+Deterministic M7/M6 closure passed 63 focused tests: mixed feeding components remain
+separate, confirmation saves once, duplicate confirmation conflicts, cancellation
+invalidates old confirmation, correction requires a new proposal, queries are read-only,
+and direct breastfeeding stores duration only. Real Ollama 12-task runs still produced
+0 authoritative saves (Qwen2.5 C 3/12 complete; Qwen3 focus 6/12). Fresh PostgreSQL
+acceptance is blocked by Node22 instead of required Node24 and setup HTTP 500; historical
+234/234 and 27/27 evidence is not reused as fresh. SOFTWARE_RELEASE_CANDIDATE=false.
+
 ## M7.11 task reliability (2026-10-14)
 
 Added aggregate-only `tools/m7_task_eval.py` using real Ollama clients with the existing
