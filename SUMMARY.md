@@ -1098,3 +1098,12 @@ Qwen2.5-Coder+minimal=12/56, 0/20, 56/56 (P50/P95 642/711ms);
 Qwen3-4B+minimal=30/56, 0/20, 56/56 (535.8/744ms). No promotion. Full Python
 gate: 2595 passed, 1 visual-corpus skip. i9 go2rtc 1984 has no listener and no
 launchd entry; no restart performed. SOFTWARE_RELEASE_CANDIDATE=false.
+
+M7.6: MinimalSemanticCandidate v2 adds bounded `components[]` for separate
+breast/formula bottles, direct-breastfeeding duration and targeted corrections;
+invalid/duplicate components clarify safely. Dev-56 results: C=35/56 intent,
+17/20 amounts, 41/56 legal; Qwen2.5+v1=12/56/0/56; Qwen3+v1=30/56/0/56;
+Qwen2.5+v2=21/56/5/56; Qwen3+v2=32/56/0/56. No promotion. Focused 44 pass;
+full Python 2598 pass/1 visual-corpus skip. go2rtc is a local binary managed
+by a runtime launchd plist, with no current listener/container; no restart.
+SOFTWARE_RELEASE_CANDIDATE=false.

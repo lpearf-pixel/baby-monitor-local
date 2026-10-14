@@ -63,6 +63,12 @@ _MINIMAL_SCHEMA_PROMPT = (
     "Use null for unknown optional values. Never output IDs, signatures, versions, "
     "confirmation tokens, database fields, tool names, or saved state."
 )
+_MINIMAL_V2_SCHEMA_PROMPT = (
+    "Return only JSON with intent, action, components, correction_target and "
+    "needs_clarification. Components are bottle with one explicit milk_type and "
+    "amount_ml, or direct_breastfeeding with duration_minutes. Keep each milk "
+    "component separate. Never output IDs, signatures, versions, tokens, or database fields."
+)
 
 
 class M7ToolCall(BaseModel):
@@ -121,6 +127,97 @@ class MinimalSemanticCandidate(BaseModel):
     duration_minutes: int | None = Field(default=None, ge=1, le=1440)
     correction_target: Literal["expressed_breast_milk", "formula"] | None = None
     needs_clarification: bool
+
+
+class MinimalSemanticComponent(BaseModel):
+    model_config = ConfigDict(extra="forbid", strict=True)
+
+    kind: Literal["bottle", "direct_breastfeeding"]
+    milk_type: Literal["expressed_breast_milk", "formula"] | None = None
+    amount_ml: int | None = Field(default=None, ge=1, le=2000)
+    duration_minutes: int | None = Field(default=None, ge=1, le=1440)
+
+
+class MinimalSemanticV2Candidate(BaseModel):
+    """Experimental bounded component list for mixed-feeding semantics."""
+
+    model_config = ConfigDict(extra="forbid", strict=True)
+
+    intent: Literal[
+        "feeding_start",
+        "feeding_update",
+        "feeding_end",
+        "care_confirm",
+        "care_cancel",
+        "feeding_query",
+        "feeding_resume",
+        "clarification",
+    ]
+    action: Literal[
+        "start",
+        "add_components",
+        "end",
+        "confirm",
+        "cancel",
+        "query",
+        "resume",
+        "correct_component",
+        "clarify",
+    ]
+    components: list[MinimalSemanticComponent] = Field(max_length=4)
+    correction_target: Literal["expressed_breast_milk", "formula"] | None = None
+    needs_clarification: bool
+
+
+def _clarification_candidate(message: str = "请补充明确的奶种和数量，或说明亲喂时长。") -> LanguageCandidate:
+    return LanguageCandidate(
+        intent="clarification", tool_calls=[], clarification=message,
+        confidence=0.0, context_key="m7-minimal-v2-experiment"
+    )
+
+
+def semantic_candidate_v2_to_language_candidate(
+    candidate: MinimalSemanticV2Candidate,
+) -> LanguageCandidate:
+    """Convert a bounded component list without merging or truncating values."""
+    if candidate.needs_clarification or candidate.action in {"clarify"}:
+        return _clarification_candidate()
+    if candidate.action == "start":
+        return LanguageCandidate(intent="feeding_start", tool_calls=[M7ToolCall(name="start_feeding", arguments={})], confidence=0.0, context_key="m7-minimal-v2-experiment")
+    if candidate.action == "end":
+        return LanguageCandidate(intent="feeding_end", tool_calls=[M7ToolCall(name="end_feeding", arguments={})], confidence=0.0, context_key="m7-minimal-v2-experiment")
+    if candidate.action == "confirm":
+        return LanguageCandidate(intent="care_confirm", tool_calls=[M7ToolCall(name="confirm_feeding", arguments={})], confidence=0.0, context_key="m7-minimal-v2-experiment")
+    if candidate.action == "cancel":
+        return LanguageCandidate(intent="care_cancel", tool_calls=[M7ToolCall(name="cancel_feeding", arguments={})], confidence=0.0, context_key="m7-minimal-v2-experiment")
+    if candidate.action == "query":
+        return LanguageCandidate(intent="feeding_query", tool_calls=[M7ToolCall(name="get_recent_feedings", arguments={})], confidence=0.0, context_key="m7-minimal-v2-experiment")
+    if candidate.action == "resume":
+        return LanguageCandidate(intent="feeding_resume", tool_calls=[M7ToolCall(name="get_active_feeding", arguments={})], confidence=0.0, context_key="m7-minimal-v2-experiment")
+    if candidate.action == "correct_component":
+        if candidate.correction_target is None or len(candidate.components) != 1:
+            return _clarification_candidate("请明确要修正的奶种和新的毫升数。")
+        component = candidate.components[0]
+        if component.kind != "bottle" or component.milk_type != candidate.correction_target or component.amount_ml is None or component.duration_minutes is not None:
+            return _clarification_candidate("请明确要修正的奶种和新的毫升数。")
+        return LanguageCandidate(intent="feeding_update", tool_calls=[M7ToolCall(name="correct_feeding_component", arguments={"target": candidate.correction_target, "amount_ml": component.amount_ml})], confidence=0.0, context_key="m7-minimal-v2-experiment")
+    if candidate.action == "add_components":
+        if not candidate.components or len(candidate.components) > MAX_TOOL_CALLS:
+            return _clarification_candidate("一次最多记录八个组件，请拆分后重试。")
+        calls: list[M7ToolCall] = []
+        seen_bottles: set[str] = set()
+        for component in candidate.components:
+            if component.kind == "bottle":
+                if component.milk_type is None or component.amount_ml is None or component.duration_minutes is not None or component.milk_type in seen_bottles:
+                    return _clarification_candidate("请为每种奶分别提供明确且不重复的毫升数。")
+                seen_bottles.add(component.milk_type)
+                calls.append(M7ToolCall(name="add_feeding_component", arguments={"kind": "bottle", "liquid_type": component.milk_type, "amount_ml": component.amount_ml}))
+            elif component.duration_minutes is None or component.milk_type is not None or component.amount_ml is not None:
+                return _clarification_candidate("亲喂只能记录明确时长，不能换算为毫升数。")
+            else:
+                calls.append(M7ToolCall(name="add_feeding_component", arguments={"kind": "direct_breastfeeding", "duration_minutes": component.duration_minutes}))
+        return LanguageCandidate(intent="feeding_update", tool_calls=calls, confidence=0.0, context_key="m7-minimal-v2-experiment")
+    return _clarification_candidate("请重新说明护理操作。")
 
 
 def semantic_candidate_to_language_candidate(
@@ -214,7 +311,7 @@ class OllamaLanguageClient:
         response_format: Literal["json", "schema"] = "schema",
         prompt_variant: Literal["current", "optimized"] = "optimized",
         format_repair: bool = False,
-        schema_profile: Literal["full", "minimal"] = "full",
+        schema_profile: Literal["full", "minimal", "minimal_v2"] = "full",
         opener: FrameOpener = _open_without_proxy,
     ) -> None:
         if base_url != VISUAL_OLLAMA_BASE_URL:
@@ -223,7 +320,7 @@ class OllamaLanguageClient:
             raise ValueError("invalid model name")
         if response_format not in {"json", "schema"}:
             raise ValueError("invalid response format")
-        if schema_profile not in {"full", "minimal"}:
+        if schema_profile not in {"full", "minimal", "minimal_v2"}:
             raise ValueError("invalid schema profile")
         self._model_name = model_name
         self._response_format = response_format
@@ -249,14 +346,16 @@ class OllamaLanguageClient:
             payload = {
                 "model": self._model_name,
                 "messages": [
-                    {"role": "system", "content": _MINIMAL_SCHEMA_PROMPT if self._schema_profile == "minimal" else (_SCHEMA_PROMPT if self._prompt_variant == "optimized" else _BASE_PROMPT)},
+                    {"role": "system", "content": _MINIMAL_V2_SCHEMA_PROMPT if self._schema_profile == "minimal_v2" else (_MINIMAL_SCHEMA_PROMPT if self._schema_profile == "minimal" else (_SCHEMA_PROMPT if self._prompt_variant == "optimized" else _BASE_PROMPT))},
                     {"role": "user", "content": json.dumps(
                         {"text": text, "context": context},
                         ensure_ascii=False,
                         separators=(",", ":"),
                     )},
                 ],
-                "format": MinimalSemanticCandidate.model_json_schema()
+                "format": MinimalSemanticV2Candidate.model_json_schema()
+                if self._schema_profile == "minimal_v2" and self._response_format == "schema"
+                else MinimalSemanticCandidate.model_json_schema()
                 if self._schema_profile == "minimal" and self._response_format == "schema"
                 else LanguageCandidate.model_json_schema()
                 if self._response_format == "schema"
@@ -308,7 +407,7 @@ class OllamaLanguageClient:
         *,
         model_name: str = LANGUAGE_MODEL_NAME,
         format_repair: bool = False,
-        schema_profile: Literal["full", "minimal"] = "full",
+        schema_profile: Literal["full", "minimal", "minimal_v2"] = "full",
     ) -> LanguageCandidate:
         payload = json.loads(raw, object_pairs_hook=_reject_duplicate_keys)
         if not isinstance(payload, dict):
@@ -327,6 +426,10 @@ class OllamaLanguageClient:
             if fenced.startswith("```") and fenced.endswith("```"):
                 fenced = fenced[fenced.find("\n") + 1 : -3].strip()
                 candidate_payload = json.loads(fenced, object_pairs_hook=_reject_duplicate_keys)
+        if schema_profile == "minimal_v2":
+            return semantic_candidate_v2_to_language_candidate(
+                MinimalSemanticV2Candidate.model_validate(candidate_payload)
+            )
         if schema_profile == "minimal":
             return semantic_candidate_to_language_candidate(
                 MinimalSemanticCandidate.model_validate(candidate_payload)
@@ -343,8 +446,11 @@ __all__ = [
     "LANGUAGE_MODEL_NAME",
     "LanguageCandidate",
     "MinimalSemanticCandidate",
+    "MinimalSemanticComponent",
+    "MinimalSemanticV2Candidate",
     "LlmUnavailable",
     "M7ToolCall",
     "OllamaLanguageClient",
     "semantic_candidate_to_language_candidate",
+    "semantic_candidate_v2_to_language_candidate",
 ]

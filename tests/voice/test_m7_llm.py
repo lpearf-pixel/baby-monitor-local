@@ -13,7 +13,9 @@ from services.voice.m7_llm import (
     LlmUnavailable,
     OllamaLanguageClient,
     MinimalSemanticCandidate,
+    MinimalSemanticV2Candidate,
     semantic_candidate_to_language_candidate,
+    semantic_candidate_v2_to_language_candidate,
 )
 
 
@@ -177,6 +179,64 @@ def test_minimal_adapter_preserves_component_semantics(candidate: dict[str, obje
 
     assert adapted.tool_calls[0].name == tool
     assert adapted.tool_calls[0].arguments == arguments
+
+
+def test_minimal_v2_preserves_two_bottle_components() -> None:
+    candidate = MinimalSemanticV2Candidate(
+        intent="feeding_update",
+        action="add_components",
+        components=[
+            {"kind": "bottle", "milk_type": "expressed_breast_milk", "amount_ml": 60, "duration_minutes": None},
+            {"kind": "bottle", "milk_type": "formula", "amount_ml": 30, "duration_minutes": None},
+        ],
+        correction_target=None,
+        needs_clarification=False,
+    )
+
+    adapted = semantic_candidate_v2_to_language_candidate(candidate)
+
+    assert [call.arguments for call in adapted.tool_calls] == [
+        {"kind": "bottle", "liquid_type": "expressed_breast_milk", "amount_ml": 60},
+        {"kind": "bottle", "liquid_type": "formula", "amount_ml": 30},
+    ]
+
+
+def test_minimal_v2_rejects_duplicate_milk_components_by_clarifying() -> None:
+    candidate = MinimalSemanticV2Candidate(
+        intent="feeding_update",
+        action="add_components",
+        components=[
+            {"kind": "bottle", "milk_type": "formula", "amount_ml": 30, "duration_minutes": None},
+            {"kind": "bottle", "milk_type": "formula", "amount_ml": 40, "duration_minutes": None},
+        ],
+        correction_target=None,
+        needs_clarification=False,
+    )
+
+    adapted = semantic_candidate_v2_to_language_candidate(candidate)
+
+    assert adapted.intent == "clarification"
+    assert adapted.tool_calls == []
+
+
+def test_language_client_minimal_v2_profile_preserves_components() -> None:
+    payload = {
+        "intent": "feeding_update",
+        "action": "add_components",
+        "components": [
+            {"kind": "bottle", "milk_type": "expressed_breast_milk", "amount_ml": 60, "duration_minutes": None},
+            {"kind": "bottle", "milk_type": "formula", "amount_ml": 30, "duration_minutes": None},
+        ],
+        "correction_target": None,
+        "needs_clarification": False,
+    }
+    opener = RecordingOpener(response_payload(payload))
+    result = OllamaLanguageClient(schema_profile="minimal_v2", opener=opener).complete("test", {})
+
+    assert isinstance(result, LanguageCandidate)
+    assert len(result.tool_calls) == 2
+    schema = json.loads(opener.calls[0][0].data)["format"]
+    assert "components" in schema["properties"]
 
 
 def test_language_client_accepts_explicit_candidate_model_for_isolated_evaluation() -> None:

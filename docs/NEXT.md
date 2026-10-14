@@ -744,3 +744,11 @@ reduced intent accuracy, so it must not replace C. Investigate prompt/examples
 or model capability only with a new bounded experiment; do not widen the
 schema or add a second production model call. go2rtc 1984 requires a separate
 runtime recovery decision and is not part of M7 semantic work.
+
+### M7.6 decision
+
+Keep Minimal v2 as an offline fidelity experiment only. It preserves mixed
+components safely but remains below C for intent and amount accuracy. Do not
+promote it or add a second production call. Any next semantic experiment must
+target model extraction quality on the frozen dev split. go2rtc recovery is an
+independent operations task requiring explicit runtime authorization.

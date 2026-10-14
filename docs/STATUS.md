@@ -1156,3 +1156,24 @@ existing visual-corpus skip.
 
 P5 read-only go2rtc diagnosis found no launchd entry and no listener on i9
 1984; the API returned connection refused. No process or service was restarted.
+
+### M7.6 semantic candidate fidelity (2026-10-14)
+
+Minimal v1 diagnostics showed the first loss before Tool Registry adaptation:
+20/20 applicable amount samples reached a valid adapted candidate, but the
+model selected clarification or a query for the amount-bearing utterances, so
+the adapter had no numeric field to preserve. No component was truncated by
+the tool-call limit. Minimal v2 now supports a bounded component list (up to
+four), separate bottle milk types, direct-breastfeeding duration, and targeted
+correction; duplicate or invalid combinations return clarification.
+
+Fair dev-56 results: C baseline 35/56 intent, 17/20 amounts, 41/56 legal;
+Qwen2.5-Coder+v1 12/56, 0/20, 56/56; Qwen3+v1 30/56, 0/20, 56/56;
+Qwen2.5-Coder+v2 21/56, 5/20, 56/56 (P50/P95 1024/1368.3ms);
+Qwen3+v2 32/56, 0/20, 56/56 (979.9/1188.3ms). V2 recovers some amounts but
+does not beat C and remains opt-in only. Focused tests passed 44; full Python
+gate passed 2598 with one existing visual-corpus skip.
+
+The go2rtc deployment evidence is local binary `.local/bin/go2rtc` plus
+`runtime/launchd/com.babymonitor.go2rtc.plist`; no Docker container was found.
+The bounded log tail shows prior clean `terminated` exits, not a crash cause.
