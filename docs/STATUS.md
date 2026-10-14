@@ -1177,3 +1177,23 @@ gate passed 2598 with one existing visual-corpus skip.
 The go2rtc deployment evidence is local binary `.local/bin/go2rtc` plus
 `runtime/launchd/com.babymonitor.go2rtc.plist`; no Docker container was found.
 The bounded log tail shows prior clean `terminated` exits, not a crash cause.
+
+### M7.7 semantic quality and closure review (2026-10-14)
+
+CI `38487602274` for `6aec244` is green. C remains frozen as the default and
+Minimal v1/v2 remain opt-in experiments. A fresh dev-56 aggregate classified
+14 schema-output failures and 42 semantic responses: 1 explicit feeding utterance
+misread as a query, 24 other intent mismatches, 16 intent-correct updates with
+milk/amount parameter errors, and 1 other update error. These are synthetic,
+aggregate-only diagnostics; no household text was persisted.
+
+The existing M6/M7 synthetic feeding flow and cancellation/duplicate-confirm
+tests remain green; no Baby Care contract or database code changed. Release
+targets remain unmet (C is 35/56 intent and 17/20 amount on dev).
+
+Go2rtc preparation is complete but inactive: `.local/Go2RTC.app/Contents/MacOS/go2rtc`
+and `runtime/go2rtc.yaml` exist, and the installed LaunchAgent plist exists, but
+`launchctl print gui/501/com.babymonitor.go2rtc` reports service not found and
+1984 has no listener. The bounded log tail records `terminated` exits only.
+Suggested recovery is an operator-authorized bootstrap/kickstart; rollback is
+bootout of this label and removal of only its plist. No recovery command ran.

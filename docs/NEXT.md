@@ -745,6 +745,15 @@ or model capability only with a new bounded experiment; do not widen the
 schema or add a second production model call. go2rtc 1984 requires a separate
 runtime recovery decision and is not part of M7 semantic work.
 
+### M7.7 decision
+
+Semantic errors are now separated into schema, intent and parameter clusters;
+the dominant remaining issue is model understanding, not JSON formatting. Keep
+C as default and do not tune against the fixed test set. The next semantic work
+requires a bounded prompt/model experiment with the same scorer. Go2rtc may be
+recovered only as a separately authorized operations action using the existing
+plist and binary; it is not a prerequisite for software semantic testing.
+
 ### M7.6 decision
 
 Keep Minimal v2 as an offline fidelity experiment only. It preserves mixed
