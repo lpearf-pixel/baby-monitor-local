@@ -1280,3 +1280,13 @@ model-level end/confirm/cancel ambiguity and short-request timeouts; determinist
 Tool Registry and M6 gates continued to reject unsafe/no-draft confirmation. No new
 schema, state machine or default-path change was made. Release candidate remains false.
 See `docs/reviews/2026-10-14-m7-14-contract-confirmation.md`.
+
+### M7.15 sensitive confirmation routing (2026-10-14)
+
+An opt-in `sensitive_routing` path now recognizes only explicit, unquoted confirmation,
+cancellation/refusal and feeding-end phrases against the authoritative draft phase and
+proposal identity. No-draft, expired, modified or conflicting requests call no executor;
+ambiguous acknowledgements remain on the existing model path. New and related tests are
+70/70, and the full Python gate is 2613 passed with one expected public-corpus skip.
+Real Ollama probes still contain semantic ambiguity, so C remains default and release
+candidate status remains false. Camera Reply stays disabled.

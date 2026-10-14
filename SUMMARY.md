@@ -1189,3 +1189,13 @@ confirmation/cancellation ambiguity and short-request timeouts in both model pat
 the deterministic Registry/M6 state machine rejected unsafe or no-draft candidates.
 Default C remains unchanged, no authoritative model saves occurred, and
 `SOFTWARE_RELEASE_CANDIDATE=false`. Report: `docs/reviews/2026-10-14-m7-14-contract-confirmation.md`.
+
+## M7.15 sensitive confirmation routing (2026-10-14)
+
+Added an opt-in, state-aware deterministic route for explicit current-draft confirmation,
+cancellation/refusal and explicit feeding end. Ambiguous acknowledgements, quoted or
+conflicting phrases, queries and corrections remain on the existing safe LLM path.
+Focused M7/M6 evidence is 70 passed; full Python is 2613 passed with one expected
+incomplete-corpus skip. Real-model probes still show confirmation/cancellation ambiguity,
+so the route is not default and `SOFTWARE_RELEASE_CANDIDATE=false`. See
+`docs/reviews/2026-10-14-m7-15-sensitive-routing.md`.

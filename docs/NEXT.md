@@ -821,3 +821,11 @@ show confirmation/cancellation ambiguity and incomplete task completion. Keep C 
 default, retain deterministic confirmation and no-draft rejection, and do not add a new
 schema or auto-confirmation path. Any future optimization must be opt-in and evaluated
 on frozen synthetic data; household deployment remains prohibited.
+
+### M7.15 next action
+
+The opt-in sensitive route is software-green but not promoted. Keep it disabled in the
+default Voice Worker until a frozen synthetic comparison demonstrates improved end-to-end
+confirmation without false saves or cancellations. Preserve the current Tool Registry,
+M6 and Gateway gates; do not add another schema or state machine, and do not run family
+observations.

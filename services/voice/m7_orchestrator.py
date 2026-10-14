@@ -8,6 +8,7 @@ from typing import Callable, Protocol
 from services.voice.client import VoiceSemanticResponse
 from services.voice.m7_llm import LanguageCandidate, LlmUnavailable, M7ToolCall
 from services.voice.m7_tools import validate_candidate
+from services.voice.m7_sensitive_router import route_sensitive_intent
 
 
 class LanguageClient(Protocol):
@@ -33,10 +34,12 @@ class M7Orchestrator:
         executor: ToolExecutor,
         *,
         fallback: Callable[[str], str],
+        sensitive_routing: bool = False,
     ) -> None:
         self._language = language
         self._executor = executor
         self._fallback = fallback
+        self._sensitive_routing = sensitive_routing
 
     def handle(
         self,
@@ -46,6 +49,24 @@ class M7Orchestrator:
         identity_bound: bool,
     ) -> M7Outcome:
         normalized = "".join(text.split())
+        if self._sensitive_routing:
+            sensitive = route_sensitive_intent(text, context)
+            if sensitive is not None:
+                if not identity_bound:
+                    return M7Outcome("identity_unavailable", "无法确认照护人身份。")
+                if sensitive.requires_current_proposal and context.get("phase") != "needs_confirmation":
+                    return M7Outcome("state_conflict", "当前没有可确认的待保存喂养记录。")
+                if sensitive.requires_current_proposal and not (context.get("proposal_version") or context.get("proposal_id")):
+                    return M7Outcome("state_conflict", "当前确认摘要已失效，请重新结束并确认。")
+                validation = validate_candidate(
+                    LanguageCandidate(
+                        intent=("care_confirm" if sensitive.call.name == "confirm_feeding" else "care_cancel" if sensitive.call.name == "cancel_feeding" else "feeding_end"),
+                        tool_calls=[sensitive.call], confidence=1.0, context_key="sensitive-router",
+                    ), identity_bound=identity_bound,
+                )
+                if validation.clarification is not None or validation.rejection_reason is not None:
+                    return M7Outcome(validation.rejection_reason or "clarification", validation.clarification or "这句话暂时无法安全记录。")
+                return self._outcome_for_code(self._executor.execute(validation.calls[0]))
         if normalized in {"取消", "取消这次记录", "停止记录"}:
             if not identity_bound:
                 return M7Outcome("identity_unavailable", "无法确认照护人身份。")
