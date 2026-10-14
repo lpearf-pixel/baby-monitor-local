@@ -6,6 +6,7 @@ import re
 from dataclasses import dataclass
 
 from services.voice.m7_llm import M7ToolCall
+from services.voice.m6_feeding import parse_m6_utterance
 
 
 @dataclass(frozen=True, slots=True)
@@ -49,4 +50,47 @@ def route_sensitive_intent(text: str, context: dict[str, object]) -> SensitiveRo
     return None
 
 
-__all__ = ["SensitiveRoute", "route_sensitive_intent"]
+def route_deterministic_intent(text: str, context: dict[str, object]) -> SensitiveRoute | None:
+    """Convert only exact, bounded M6 grammar forms into safe tool candidates."""
+    if not isinstance(text, str) or any(mark in text for mark in _QUOTE_MARKS):
+        return None
+    normalized = _normalized(text)
+    if not normalized or any(token in normalized for token in ("不要", "先别", "不是", "他说", "有人说", "大概", "左右", "一点", "一些", "又补", "总共")):
+        return None
+    if normalized in {"查询当前草稿", "查看当前草稿"}:
+        return SensitiveRoute(M7ToolCall(name="get_active_feeding", arguments={}))
+    parse_text = normalized
+    correction_match = re.fullmatch(r"(母乳|奶粉)改成(.+)", normalized)
+    if correction_match is not None:
+        liquid = "配方奶" if correction_match.group(1) == "奶粉" else correction_match.group(1)
+        parse_text = f"改成{liquid}{correction_match.group(2)}"
+    elif normalized.startswith("奶粉"):
+        parse_text = f"配方奶{normalized[2:]}"
+    parsed = parse_m6_utterance(parse_text)
+    if parsed.kind == "feeding_start":
+        return SensitiveRoute(M7ToolCall(name="start_feeding", arguments={}))
+    if parsed.kind == "feeding_end":
+        return SensitiveRoute(M7ToolCall(name="end_feeding", arguments={}))
+    if parsed.kind == "confirm":
+        return route_sensitive_intent(normalized, context)
+    if parsed.kind == "cancel":
+        return route_sensitive_intent(normalized, context)
+    if parsed.kind != "feeding_component" or parsed.component is None:
+        return None
+    component = parsed.component
+    if parsed.correction:
+        if component.get("kind") != "bottle":
+            return None
+        return SensitiveRoute(M7ToolCall(name="correct_feeding_component", arguments={
+            "target": component["liquidType"], "amount_ml": component["amountMl"],
+        }))
+    if component.get("kind") == "direct_breastfeeding":
+        return SensitiveRoute(M7ToolCall(name="add_feeding_component", arguments={
+            "kind": "direct_breastfeeding", "duration_minutes": component["durationMinutes"],
+        }))
+    return SensitiveRoute(M7ToolCall(name="add_feeding_component", arguments={
+        "kind": "bottle", "liquid_type": component["liquidType"], "amount_ml": component["amountMl"],
+    }))
+
+
+__all__ = ["SensitiveRoute", "route_deterministic_intent", "route_sensitive_intent"]

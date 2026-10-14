@@ -829,3 +829,10 @@ default Voice Worker until a frozen synthetic comparison demonstrates improved e
 confirmation without false saves or cancellations. Preserve the current Tool Registry,
 M6 and Gateway gates; do not add another schema or state machine, and do not run family
 observations.
+
+### M7.15 deterministic-first next action
+
+Keep the deterministic path opt-in. Its fixed-grammar coverage is safe but not yet an
+end-to-end A/B/C result; use the existing isolated PostgreSQL evidence and a frozen
+synthetic task set before considering promotion. Do not expand the grammar into an
+unmaintainable keyword list, and preserve LLM fallback plus all confirmation gates.

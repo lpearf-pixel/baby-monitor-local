@@ -1290,3 +1290,12 @@ ambiguous acknowledgements remain on the existing model path. New and related te
 70/70, and the full Python gate is 2613 passed with one expected public-corpus skip.
 Real Ollama probes still contain semantic ambiguity, so C remains default and release
 candidate status remains false. Camera Reply stays disabled.
+
+### M7.15 deterministic-first experiment (2026-10-14)
+
+An additional opt-in `deterministic_routing` flag reuses the existing M6 parser rather
+than creating a second rule engine. Exact safe fixed forms can bypass the model while
+all execution remains behind Tool Registry/M6/Gateway. Ambiguous increments, mixed
+components, quotes, negation and fuzzy quantities are not guessed. Focused tests are
+28/28 and full Python is 2617 passed with one expected visual-corpus skip. The default
+C path is unchanged and no new endpoint or state machine was introduced.

@@ -1,6 +1,6 @@
 from services.voice.m7_llm import LlmUnavailable
 from services.voice.m7_orchestrator import M7Orchestrator
-from services.voice.m7_sensitive_router import route_sensitive_intent
+from services.voice.m7_sensitive_router import route_deterministic_intent, route_sensitive_intent
 
 
 class FakeLanguage:
@@ -81,3 +81,45 @@ def test_end_is_not_confirmation_and_needs_pending_draft():
 def test_query_and_correction_are_not_sensitive_routes():
     assert route_sensitive_intent("最近一次喂奶记录", {"phase": "needs_confirmation"}) is None
     assert route_sensitive_intent("奶粉改成四十毫升", {"phase": "needs_confirmation"}) is None
+
+
+def test_deterministic_fast_path_covers_only_exact_safe_forms():
+    assert route_deterministic_intent("开始喂奶", {"phase": "idle"}).call.name == "start_feeding"
+    component = route_deterministic_intent("母乳六十毫升", {"phase": "pending"})
+    assert component is not None
+    assert component.call.name == "add_feeding_component"
+    assert component.call.arguments["amount_ml"] == 60
+    assert route_deterministic_intent("查询当前草稿", {"phase": "pending"}).call.name == "get_active_feeding"
+
+
+def test_fast_path_does_not_guess_increment_or_ambiguous_amount():
+    assert route_deterministic_intent("又补了三十", {"phase": "pending"}) is None
+    assert route_deterministic_intent("奶粉大概三十毫升", {"phase": "pending"}) is None
+    assert route_deterministic_intent("他说母乳六十毫升", {"phase": "pending"}) is None
+
+
+def test_fast_path_reuses_existing_m6_parser_for_correction_and_direct_breastfeeding():
+    correction = route_deterministic_intent("奶粉改成四十毫升", {"phase": "pending"})
+    assert correction is not None
+    assert correction.call.name == "correct_feeding_component"
+    assert correction.call.arguments == {"target": "formula", "amount_ml": 40}
+    direct = route_deterministic_intent("亲喂十五分钟", {"phase": "pending"})
+    assert direct is not None
+    assert direct.call.arguments == {"kind": "direct_breastfeeding", "duration_minutes": 15}
+
+
+def test_opt_in_fast_path_executes_through_registry_and_leaves_default_off():
+    language = FakeLanguage()
+    executor = FakeExecutor()
+    from services.voice.m7_orchestrator import M7Orchestrator
+
+    fast = M7Orchestrator(language, executor, fallback=lambda _text: "fallback", deterministic_routing=True)
+    outcome = fast.handle("母乳六十毫升", {"phase": "pending"}, identity_bound=True)
+    assert outcome.code == "cancelled"
+    assert executor.calls[0].name == "add_feeding_component"
+    assert language.calls == []
+
+    default_executor = FakeExecutor()
+    default = M7Orchestrator(language, default_executor, fallback=lambda _text: "fallback")
+    default.handle("母乳六十毫升", {"phase": "pending"}, identity_bound=True)
+    assert default_executor.calls == []

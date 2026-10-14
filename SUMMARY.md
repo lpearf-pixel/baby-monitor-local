@@ -1199,3 +1199,13 @@ Focused M7/M6 evidence is 70 passed; full Python is 2613 passed with one expecte
 incomplete-corpus skip. Real-model probes still show confirmation/cancellation ambiguity,
 so the route is not default and `SOFTWARE_RELEASE_CANDIDATE=false`. See
 `docs/reviews/2026-10-14-m7-15-sensitive-routing.md`.
+
+## M7.15 deterministic-first experiment (2026-10-14)
+
+The opt-in `deterministic_routing` path reuses the existing M6 parser for exact safe
+forms (start/end, explicit component amount, direct-breastfeeding duration, correction
+and current-draft query). Ambiguous increments, mixed one-line inputs, quoted/negative
+phrases and fuzzy amounts remain on LLM or clarification paths. Focused routing tests are
+28 passed; the full Python gate is 2617 passed with one expected corpus skip. No default
+switch or database logic change was made. Report:
+`docs/reviews/2026-10-14-m7-15-deterministic-first.md`.
