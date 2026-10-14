@@ -1166,3 +1166,16 @@ Qwen2.5+v2=21/56/5/56; Qwen3+v2=32/56/0/56. No promotion. Focused 44 pass;
 full Python 2598 pass/1 visual-corpus skip. go2rtc is a local binary managed
 by a runtime launchd plist, with no current listener/container; no restart.
 SOFTWARE_RELEASE_CANDIDATE=false.
+
+## M7.13 PostgreSQL and confirmation gate (2026-10-14)
+
+Fresh Node24 + pnpm10.17.1 + disposable PostgreSQL16 v2 integration passed 23/23,
+including mixed-feeding transaction, confirmation, idempotency and rollback cases.
+The earlier setup HTTP500 was a Node22.23.1 environment mismatch, not a changed
+business expectation. Baby Care API excluding the cross-repository artifact-contract
+file passed 230 tests in 50 files; the full run's four failures are limited to that
+consumer-contract's required dual-checkout artifacts and are not counted as API PASS.
+Existing real-model confirmation evidence remains Qwen2.5 C 3/12 and Qwen3 focus 6/12,
+with zero authoritative saves; deterministic M6/M7 confirmation closure remains 63
+focused passes. `POSTGRES_API_FULL_PASS=NO`, `SOFTWARE_RELEASE_CANDIDATE=false`, and
+Camera Reply remains disabled. Details: `docs/reviews/2026-10-14-m7-13-postgres-confirmation.md`.

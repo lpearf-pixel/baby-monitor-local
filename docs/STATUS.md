@@ -1256,3 +1256,17 @@ correction, confirmation, cancellation, duplicate confirmation, query, clarifica
 direct breastfeeding. Qwen2.5 C completed 3/12; Qwen3 semantic_focus completed 6/12.
 The result is diagnostic only: no authoritative database write occurred, PostgreSQL and
 Baby Care integration were not rerun, and the semantic release targets remain unmet.
+
+### M7.13 PostgreSQL gate and confirmation chain (2026-10-14)
+
+The former Node22/setup-500 blocker was reproduced as an environment mismatch. A fresh
+Node24 + pnpm10.17.1 + PostgreSQL16 disposable run passed the five M7-relevant Baby Care
+integration files, 23/23. A full API run excluding the cross-repository consumer-contract
+file passed 230 tests in 50 files. The complete API invocation still has four failures in
+that artifact contract because a single baby-care archive cannot provide the required
+byte-identical baby-monitor tracked artifacts, symlink checks and untracked-artifact
+fixtures; this is not reported as a full API pass. Existing deterministic M6/M7 closure
+is 63 focused passes. Real Ollama confirmation runs remain incomplete (Qwen2.5 C 3/12,
+Qwen3 focus 6/12, zero authoritative saves), so no model path is promoted and
+`SOFTWARE_RELEASE_CANDIDATE=false`. See the redacted report in
+`docs/reviews/2026-10-14-m7-13-postgres-confirmation.md`.

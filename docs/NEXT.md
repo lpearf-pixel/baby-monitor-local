@@ -802,3 +802,13 @@ The real-model task evaluator is in place, but 12-task completion is only 25% fo
 50% for Qwen3, with no complete authoritative save flow. Keep C as default and do not
 promote Qwen3. The next required slice is a larger frozen task set plus an isolated
 PostgreSQL/Baby Care run; do not use the synthetic gateway result as database evidence.
+
+### M7.13 next action
+
+The Node24/PG16 v2 integration gate is green at 23/23 and the non-artifact Baby Care
+API set is 230 passed. The remaining four full-API failures are the cross-repository
+consumer-contract and require a real dual-checkout workspace, not a database or business
+logic change. Re-run that contract with both repositories present, then the complete API
+gate. Keep C as default: real confirmation completion is only 3/12 for Qwen2.5 C and
+6/12 for Qwen3 focus, with zero authoritative saves. Do not auto-confirm, deploy, or
+connect household services; keep Camera Reply disabled and release candidate false.
