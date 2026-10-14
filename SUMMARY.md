@@ -1144,6 +1144,16 @@ real disposable run. Therefore `POSTGRES_END_TO_END_PASS` and
 and hardware remain pending. Report:
 `docs/reviews/2026-10-15-m7-17-deterministic-core-release-gate.md`.
 
+## M7.18 real Gateway integration (2026-10-15)
+
+Audit confirms `M7BabyCareGateway` has the v2 signing/version/proposal adapter, but no
+M7 entry-point runner currently starts an isolated Baby Care HTTP API and routes real
+text through that adapter into PostgreSQL. Existing 43 focused M7/M6 tests and Baby
+Care's independent 23/23 integration gate remain valid but are not cross-wired evidence.
+`POSTGRES_END_TO_END_PASS=false`, `DETERMINISTIC_CORE_READY=false`; the minimum next
+slice is a guarded one-shot Node24/PG16 HTTP runner, with no new state machine.
+Report: `docs/reviews/2026-10-15-m7-18-real-postgres-e2e.md`.
+
 ## M7.10 safety closure (2026-10-14)
 
 Added deterministic intent-to-tool-family validation: query, confirmation, cancellation

@@ -1328,3 +1328,11 @@ PostgreSQL execution was not available from the current test entry, so determini
 core readiness is blocked rather than inferred from the in-memory boundary or the
 independent Baby Care suite. `DETERMINISTIC_CORE_READY=false`,
 `LLM_ASSISTANT_READY=false`, `SOFTWARE_RELEASE_CANDIDATE=false`.
+
+### M7.18 real Gateway integration (2026-10-15)
+
+The missing boundary is confirmed: M7 has no runnable HTTP transport/isolated API runner
+that drives `M7BabyCareGateway` into Baby Care PostgreSQL. The in-memory Gateway tests and
+the separate Baby Care 23/23 suite cannot be combined into a cross-repository claim.
+No production or household service was touched. Deterministic core remains blocked until
+the guarded one-shot runner is implemented and verified.

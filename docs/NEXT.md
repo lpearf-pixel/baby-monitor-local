@@ -863,3 +863,11 @@ existing signed v2 route, followed by the same cancel/expiry/version/concurrency
 Keep deterministic routing opt-in, Camera Reply=false, and all household/hardware gates
 pending. If the adapter cannot be safely exercised in isolation, retain BLOCKED rather
 than using a FakeExecutor or memory Gateway as persistence evidence.
+
+### M7.18 next action
+
+Implement only the guarded isolated HTTP runner described in the M7.18 report. It must
+reject non-temporary database/API targets, use synthetic identity and lease credentials,
+route the fixed deterministic chain through the existing signed `M7BabyCareGateway`,
+verify one authoritative record plus idempotency/rollback/query behavior, and clean up
+its resources. Do not add rules, agents, model experiments or household deployment.
