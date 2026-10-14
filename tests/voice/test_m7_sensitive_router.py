@@ -131,3 +131,68 @@ def test_opt_in_fast_path_executes_through_registry_and_leaves_default_off():
     default = M7Orchestrator(language, default_executor, fallback=lambda _text: "fallback")
     default.handle("母乳六十毫升", {"phase": "pending"}, identity_bound=True)
     assert default_executor.calls == []
+
+
+def test_deterministic_chain_uses_real_m6_coordinator_and_gateway_boundary():
+    from datetime import datetime, timezone
+    from services.voice.m7_session import M6ToolExecutor, M7SessionBridge
+
+    class Gateway:
+        def __init__(self):
+            self.components = ()
+            self.saved = 0
+            self.events = []
+
+        def start(self, *, occurred_at):
+            self.events.append("start")
+            return "session-1"
+
+        def update(self, *, session_id, components):
+            self.events.append("update")
+            self.components = components
+
+        def end(self, *, session_id, components):
+            self.events.append("end")
+            self.components = components
+            return "proposal-1"
+
+        def confirm(self, *, session_id, proposal_id):
+            self.events.append("confirm")
+            if self.saved:
+                return "state_conflict"
+            self.saved += 1
+            return "saved"
+
+        def cancel(self, *, session_id):
+            self.events.append("cancel")
+            return "cancelled"
+
+        def query(self):
+            self.events.append("query")
+            return self.components
+
+    gateway = Gateway()
+    executor = M6ToolExecutor(
+        M7SessionBridge(gateway),
+        clock=lambda: datetime(2026, 10, 14, tzinfo=timezone.utc),
+    )
+    orchestrator = M7Orchestrator(
+        FakeLanguage(), executor, fallback=lambda _text: "fallback",
+        deterministic_routing=True, sensitive_routing=True,
+    )
+    context = {"phase": "idle"}
+    assert orchestrator.handle("开始喂奶", context, identity_bound=True).code == "accepted_pending"
+    context["phase"] = "pending"
+    assert orchestrator.handle("母乳六十毫升", context, identity_bound=True).code == "accepted_pending"
+    assert orchestrator.handle("配方奶三十毫升", context, identity_bound=True).code == "accepted_pending"
+    assert orchestrator.handle("奶粉改成四十毫升", context, identity_bound=True).code == "accepted_pending"
+    assert orchestrator.handle("喂完了，结束喂奶", context, identity_bound=True).code == "needs_confirmation"
+    context.update({"phase": "needs_confirmation", "proposal_id": "proposal-1"})
+    assert orchestrator.handle("确认保存这次喂奶", context, identity_bound=True).code == "saved"
+    assert orchestrator.handle("确认保存这次喂奶", context, identity_bound=True).code == "state_conflict"
+    assert gateway.saved == 1
+    assert gateway.components == (
+        {"kind": "bottle", "liquidType": "expressed_breast_milk", "amountMl": 60},
+        {"kind": "bottle", "liquidType": "formula", "amountMl": 40},
+    )
+    assert gateway.events.count("confirm") == 1

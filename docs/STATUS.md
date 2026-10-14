@@ -1308,3 +1308,13 @@ Focused routing evidence is 29 passed; full Python is 2618 passed with one expec
 corpus skip. The fresh isolated PostgreSQL A/B/C 20-task comparison is not run in this
 slice; historical model scores remain diagnostic only. C is still opt-in and the release
 candidate remains false.
+
+### M7.16 architecture freeze preparation (2026-10-14)
+
+The 20 synthetic tasks now include explicit business preconditions, proposal/version,
+identity, expiry and forbidden side effects. Focused routing/matrix tests are 30 passed.
+The real M6 executor/Gateway boundary preserves separate breast/formula components and
+rejects duplicate confirmation. Fresh Node24 + pnpm10.17.1 + PostgreSQL16 integration
+passed 23/23 in five files. A/B/C 20-task real-model comparison is NOT_RUN in this
+slice, so no architecture promotion or release-candidate claim is justified.
+Camera Reply remains false and all household gates remain pending.

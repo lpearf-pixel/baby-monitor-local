@@ -1121,6 +1121,18 @@ intervals 69.63%–81.39%, 71.34%–88.29%, 70.69%–82.29%). The previous
 invalidly scored 200-item run was discarded. Targets remain unmet; C stays default and
 `SOFTWARE_RELEASE_CANDIDATE=false`.
 
+## M7.16 architecture freeze preparation (2026-10-14)
+
+The frozen 20-task matrix now carries explicit M6 setup, proposal/version, identity,
+expiry, expected tool, database outcome and forbidden-side-effect metadata. Router dead
+branch removal and M6-semantics FakeExecutor updates are covered by 30 focused passes.
+The deterministic chain preserves breast 60 ml and formula 40 ml after correction and
+rejects duplicate confirmation at the M6/Gateway boundary. A fresh Node24/pnpm10.17.1
+PostgreSQL16 isolated run passed 23/23 across five Baby Care integration files. A new
+real 20-task A/B/C model comparison was not run, so C remains opt-in and
+`SOFTWARE_RELEASE_CANDIDATE=false`; see
+`docs/reviews/2026-10-14-m7-16-architecture-decision.md`.
+
 ## M7.10 safety closure (2026-10-14)
 
 Added deterministic intent-to-tool-family validation: query, confirmation, cancellation

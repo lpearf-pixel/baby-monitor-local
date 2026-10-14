@@ -844,3 +844,13 @@ Keep the deterministic path opt-in. Its fixed-grammar coverage is safe but not y
 end-to-end A/B/C result; use the existing isolated PostgreSQL evidence and a frozen
 synthetic task set before considering promotion. Do not expand the grammar into an
 unmaintainable keyword list, and preserve LLM fallback plus all confirmation gates.
+
+### M7.16 handoff
+
+The matrix and deterministic M6/Gateway boundary are software-green, and the fresh
+isolated PostgreSQL16 Voice Care run is 23/23. Do not promote C yet: the new 20-task
+A/B/C real-Ollama comparison was not executed in this slice and historical 12-task
+probes are not comparable. The next bounded slice is one frozen, no-tuning comparison
+with verified model digests and the same isolated database state; if Ollama is
+unavailable, record BLOCKED rather than using Mock scores. Keep C opt-in, preserve the
+current default path, and leave `SOFTWARE_RELEASE_CANDIDATE=false`.
