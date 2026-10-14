@@ -871,3 +871,8 @@ reject non-temporary database/API targets, use synthetic identity and lease cred
 route the fixed deterministic chain through the existing signed `M7BabyCareGateway`,
 verify one authoritative record plus idempotency/rollback/query behavior, and clean up
 its resources. Do not add rules, agents, model experiments or household deployment.
+
+The Runner now proves the fixed deterministic chain through real HTTP and PostgreSQL.
+Next, extend only its isolated scenarios for transaction rollback, concurrent confirmation,
+proposal/version mismatch, wrong identity/signature and API timeout; keep the same
+resource guard and do not broaden the grammar.

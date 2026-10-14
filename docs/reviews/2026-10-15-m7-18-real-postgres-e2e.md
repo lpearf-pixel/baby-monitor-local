@@ -37,10 +37,42 @@ Baby Care 仓库已有独立的 Node24/pnpm10.17.1/PostgreSQL16 Voice Care 集�
 `M7BabyCareGateway`，再以权威查询验证记录。Runner 必须拒绝生产 URL/非临时数据库，
 完成后清理所有资源。不得新增状态机、Mock 持久化或自动确认。
 
+## 实际 Runner（本轮实现）
+
+Runner 文件：`tools/m7_real_gateway_e2e.py`，API Harness：`tools/m7_baby_care_harness.mjs`。
+执行命令：`.venv-alpha/bin/python tools/m7_real_gateway_e2e.py`。
+
+Runner 自动创建临时 PostgreSQL16 容器和 Node24/pnpm10.17.1 API 容器，随机映射 HTTP
+端口，生成临时 Ed25519 身份/lease，调用真实 `M7BabyCareGateway` HTTP transport，
+并用容器内 `psql` 查询权威数据。所有容器在退出时清理。
+
+实际输出：
+
+```text
+RUNNER_EXECUTED=true
+POSTGRES_END_TO_END_PASS=true
+authority_records_before=0
+authority_records_after=1
+components=expressed_breast_milk:60, formula:40
+duplicate_result=state_conflict
+no_draft_confirm=state_conflict
+cancel_result=accepted_pending
+cancel_then_confirm=state_conflict
+authority_records_after_safety=1
+llm_calls=0
+```
+
+这证明固定混合喂养链和部分确认安全场景真实经过 HTTP API 和 PostgreSQL；并发、
+数据库事务故障、proposal/version 篡改和跨身份攻击仍沿用 Baby Care 23/23 隔离
+门禁及 M7 单元边界测试，尚未全部由该 Runner 驱动，不能扩大为完整异常矩阵 PASS。
+
 ## 状态
 
-- `POSTGRES_END_TO_END_PASS=false`（本轮未通过，状态为 BLOCKED）。
-- `DETERMINISTIC_CORE_READY=false`。
+- `RUNNER_IMPLEMENTED=true`。
+- `RUNNER_EXECUTED=true`。
+- `POSTGRES_END_TO_END_PASS=true`（固定混合喂养链）。
+- `SAFETY_MATRIX_PASS=PARTIAL`（真实 Runner 已覆盖重复、无草稿、取消后确认；完整故障注入仍需补齐）。
+- `DETERMINISTIC_CORE_READY=false`（完整异常矩阵尚未全部由真实链验证）。
 - `LLM_ASSISTANT_READY=false`。
 - `SOFTWARE_RELEASE_CANDIDATE=false`。
 - Camera Reply=false，家庭硬件验收仍挂起。

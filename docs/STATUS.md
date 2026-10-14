@@ -1336,3 +1336,13 @@ that drives `M7BabyCareGateway` into Baby Care PostgreSQL. The in-memory Gateway
 the separate Baby Care 23/23 suite cannot be combined into a cross-repository claim.
 No production or household service was touched. Deterministic core remains blocked until
 the guarded one-shot runner is implemented and verified.
+
+### M7.18 Runner execution (2026-10-15)
+
+`tools/m7_real_gateway_e2e.py` now starts isolated Node24/PostgreSQL16 resources and
+uses the real M7BabyCareGateway HTTP transport. Fresh execution persisted exactly one
+voice event after confirmation with breast 60 ml and formula 40 ml; before confirmation
+the count was zero, duplicate confirmation was rejected, and cancel-then-confirm did
+not add a record. `POSTGRES_END_TO_END_PASS=true` for the fixed chain. The broader
+transaction/concurrency/identity fault matrix remains partial, therefore
+`DETERMINISTIC_CORE_READY=false`.

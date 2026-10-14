@@ -1154,6 +1154,14 @@ Care's independent 23/23 integration gate remain valid but are not cross-wired e
 slice is a guarded one-shot Node24/PG16 HTTP runner, with no new state machine.
 Report: `docs/reviews/2026-10-15-m7-18-real-postgres-e2e.md`.
 
+M7.18 Runner is now implemented at `tools/m7_real_gateway_e2e.py` with a Node24 Baby
+Care harness. Fresh execution drove the deterministic mixed-feeding chain through the
+real HTTP route into disposable PostgreSQL: 0 records before confirmation, exactly 1
+after, components breast 60/formula 40, duplicate confirmation `state_conflict`, and
+cancel-then-confirm left the count at 1. `POSTGRES_END_TO_END_PASS=true` for this
+chain; the complete fault/concurrency matrix remains partial, so
+`DETERMINISTIC_CORE_READY=false`.
+
 ## M7.10 safety closure (2026-10-14)
 
 Added deterministic intent-to-tool-family validation: query, confirmation, cancellation
