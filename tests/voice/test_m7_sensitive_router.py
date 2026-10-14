@@ -18,7 +18,15 @@ class FakeExecutor:
 
     def execute(self, call):
         self.calls.append(call)
-        return "saved" if call.name == "confirm_feeding" else "cancelled"
+        return {
+            "add_feeding_component": "accepted_pending",
+            "correct_feeding_component": "accepted_pending",
+            "start_feeding": "accepted_pending",
+            "end_feeding": "needs_confirmation",
+            "confirm_feeding": "saved",
+            "cancel_feeding": "cancelled",
+            "get_active_feeding": "query_result",
+        }.get(call.name, "state_conflict")
 
 
 def _orchestrator():
@@ -115,7 +123,7 @@ def test_opt_in_fast_path_executes_through_registry_and_leaves_default_off():
 
     fast = M7Orchestrator(language, executor, fallback=lambda _text: "fallback", deterministic_routing=True)
     outcome = fast.handle("母乳六十毫升", {"phase": "pending"}, identity_bound=True)
-    assert outcome.code == "cancelled"
+    assert outcome.code == "accepted_pending"
     assert executor.calls[0].name == "add_feeding_component"
     assert language.calls == []
 

@@ -25,13 +25,6 @@ def _normalized(text: str) -> str:
     return "".join(character for character in text.strip() if not character.isspace() and character not in "，。！？、；：")
 
 
-def _has_current_draft(context: dict[str, object], *, proposal: bool = False) -> bool:
-    phase = context.get("phase")
-    if proposal:
-        return phase == "needs_confirmation" and bool(context.get("proposal_version") or context.get("proposal_id"))
-    return phase in {"pending", "needs_confirmation"}
-
-
 def route_sensitive_intent(text: str, context: dict[str, object]) -> SensitiveRoute | None:
     """Return a route only for an exact, unquoted, single explicit phrase."""
     if not isinstance(text, str) or any(mark in text for mark in _QUOTE_MARKS):
@@ -40,8 +33,6 @@ def route_sensitive_intent(text: str, context: dict[str, object]) -> SensitiveRo
     if not normalized or ("确认" in normalized and "不要" in normalized) or ("取消" in normalized and "确认" in normalized):
         return None
     if _CONFIRM.fullmatch(normalized):
-        if not _has_current_draft(context, proposal=True):
-            return SensitiveRoute(M7ToolCall(name="confirm_feeding", arguments={}), True)
         return SensitiveRoute(M7ToolCall(name="confirm_feeding", arguments={}), True)
     if _CANCEL.fullmatch(normalized):
         return SensitiveRoute(M7ToolCall(name="cancel_feeding", arguments={}))

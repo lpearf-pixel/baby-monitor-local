@@ -1209,3 +1209,12 @@ phrases and fuzzy amounts remain on LLM or clarification paths. Focused routing 
 28 passed; the full Python gate is 2617 passed with one expected corpus skip. No default
 switch or database logic change was made. Report:
 `docs/reviews/2026-10-14-m7-15-deterministic-first.md`.
+
+## M7.15 final architecture gate (2026-10-14)
+
+Frozen A/B/C task matrix now contains 20 synthetic tasks with explicit routing flags.
+FakeExecutor semantics were corrected and the dead router branch removed. Focused routing
+regression is 29 passed; full Python is 2618 passed with one expected corpus skip. Fresh
+20-task real-PG A/B/C comparison was intentionally not repeated; historical A/B remains
+3/12 vs 6/12 with zero authoritative saves. C is not promoted; M7.16 should run one
+fixed isolated comparison before architecture freeze. `SOFTWARE_RELEASE_CANDIDATE=false`.

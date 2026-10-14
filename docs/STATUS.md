@@ -1299,3 +1299,12 @@ all execution remains behind Tool Registry/M6/Gateway. Ambiguous increments, mix
 components, quotes, negation and fuzzy quantities are not guessed. Focused tests are
 28/28 and full Python is 2617 passed with one expected visual-corpus skip. The default
 C path is unchanged and no new endpoint or state machine was introduced.
+
+### M7.15 final architecture gate (2026-10-14)
+
+The 20-task A/B/C matrix is frozen with explicit model and routing configuration. Fake
+executor return codes now mirror M6 semantics, and the redundant router branch is gone.
+Focused routing evidence is 29 passed; full Python is 2618 passed with one expected
+corpus skip. The fresh isolated PostgreSQL A/B/C 20-task comparison is not run in this
+slice; historical model scores remain diagnostic only. C is still opt-in and the release
+candidate remains false.

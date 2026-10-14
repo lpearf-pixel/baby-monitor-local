@@ -830,6 +830,14 @@ confirmation without false saves or cancellations. Preserve the current Tool Reg
 M6 and Gateway gates; do not add another schema or state machine, and do not run family
 observations.
 
+### M7.16 architecture decision
+
+Run exactly one frozen 20-task A/B/C comparison in isolated PostgreSQL using the matrix
+fixture. Report fixed-command success, mixed-feeding fidelity, confirmation/cancellation,
+error saves, duplicate saves, LLM-call ratio and P50/P95. Do not tune prompts or expand
+the grammar during that run. Promote C only if it improves end-to-end reliability without
+false authority writes and without unacceptable maintenance complexity.
+
 ### M7.15 deterministic-first next action
 
 Keep the deterministic path opt-in. Its fixed-grammar coverage is safe but not yet an
