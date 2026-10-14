@@ -1220,6 +1220,8 @@ the 168-item test set found 27 Tool Registry rejections and one Schema output fa
 negative/ambiguous/query samples produced zero write-tool candidates, while four
 confirm/cancel cases had intent mismatch without persistence. A corrected independent
 200-item stratified synthetic set scored 152/200 intent, 65/80 explicit amounts and
-154/200 legal tools, with P50/P95/max 1038/1601/1715ms. The first 200-item run was
+154/200 legal tools, with P50/P95/max 1038/1601/1715ms. 95% Wilson intervals are
+69.63%–81.39% intent, 71.34%–88.29% explicit amounts and 70.69%–82.29% legal tools.
+The first 200-item run was
 discarded because its generator reused an incorrect expected amount. Evidence is far
 below release targets; C remains default and `SOFTWARE_RELEASE_CANDIDATE=false`.

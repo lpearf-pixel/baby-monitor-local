@@ -1097,7 +1097,8 @@ SOFTWARE_RELEASE_CANDIDATE=false.
 Frozen Qwen3 + `semantic_focus` produced 27 Tool Registry rejections and 1 Schema
 failure on the 168-item set; no query/negative/ambiguous write-tool candidate was
 observed. A corrected independent 200-item synthetic set scored 152/200 intent,
-65/80 explicit amounts and 154/200 legal tools (P50/P95 1038/1601ms). The previous
+65/80 explicit amounts and 154/200 legal tools (P50/P95 1038/1601ms; 95% Wilson
+intervals 69.63%–81.39%, 71.34%–88.29%, 70.69%–82.29%). The previous
 invalidly scored 200-item run was discarded. Targets remain unmet; C stays default and
 `SOFTWARE_RELEASE_CANDIDATE=false`.
 
