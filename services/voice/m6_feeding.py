@@ -106,6 +106,14 @@ class M6FeedingCoordinator:
         self._remember(request_id, result)
         return result
 
+    def snapshot(self) -> dict[str, object]:
+        """Expose authoritative local phase/proposal presence to the M7 adapter."""
+        return {
+            "phase": self._phase,
+            "has_proposal": self._proposal_id is not None,
+            "session_active": self._session_id is not None,
+        }
+
     def _apply(self, parsed: M6ParsedUtterance, observed_at: datetime) -> M6Result:
         if parsed.kind == "uncertain":
             return self._result("uncertain", "uncertain")

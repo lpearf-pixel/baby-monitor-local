@@ -46,6 +46,11 @@ Runner 自动创建临时 PostgreSQL16 容器和 Node24/pnpm10.17.1 API 容器�
 端口，生成临时 Ed25519 身份/lease，调用真实 `M7BabyCareGateway` HTTP transport，
 并用容器内 `psql` 查询权威数据。所有容器在退出时清理。
 
+PostgreSQL 端口同样使用随机宿主端口，并绑定 `127.0.0.1`；API 容器通过
+`host.docker.internal` 访问该端口。Runner 不接受固定生产地址或外部数据库标识。
+M7 确认所需的 phase/proposal presence 来自 M6 Coordinator snapshot，不再由测试
+手动伪造有效确认状态。
+
 实际输出：
 
 ```text
@@ -60,9 +65,11 @@ cancel_result=accepted_pending
 cancel_then_confirm=state_conflict
 authority_records_after_safety=1
 llm_calls=0
+bad_identity_result=temporarily_unavailable
+gateway_unavailable_result=temporarily_unavailable
 ```
 
-这证明固定混合喂养链和部分确认安全场景真实经过 HTTP API 和 PostgreSQL；并发、
+这证明固定混合喂养链和部分确认/身份/连接安全场景真实经过 HTTP API 和 PostgreSQL；并发、
 数据库事务故障、proposal/version 篡改和跨身份攻击仍沿用 Baby Care 23/23 隔离
 门禁及 M7 单元边界测试，尚未全部由该 Runner 驱动，不能扩大为完整异常矩阵 PASS。
 
@@ -71,7 +78,7 @@ llm_calls=0
 - `RUNNER_IMPLEMENTED=true`。
 - `RUNNER_EXECUTED=true`。
 - `POSTGRES_END_TO_END_PASS=true`（固定混合喂养链）。
-- `SAFETY_MATRIX_PASS=PARTIAL`（真实 Runner 已覆盖重复、无草稿、取消后确认；完整故障注入仍需补齐）。
+- `SAFETY_MATRIX_PASS=PARTIAL`（真实 Runner 已覆盖重复、无草稿、取消后确认、错误身份和不可达 Gateway；事务回滚、并发、版本篡改和超时仍需补齐）。
 - `DETERMINISTIC_CORE_READY=false`（完整异常矩阵尚未全部由真实链验证）。
 - `LLM_ASSISTANT_READY=false`。
 - `SOFTWARE_RELEASE_CANDIDATE=false`。

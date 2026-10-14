@@ -79,17 +79,21 @@ def main() -> int:
     pg = f"m7-18-pg-{os.getpid()}"
     seed = secrets.token_bytes(32)
     env = os.environ.copy()
-    with socket.socket() as sock:
-        sock.bind(("127.0.0.1", 0))
-        api_host_port = sock.getsockname()[1]
+    def free_port() -> int:
+        with socket.socket() as sock:
+            sock.bind(("127.0.0.1", 0))
+            return sock.getsockname()[1]
+    api_host_port = free_port()
+    pg_host_port = free_port()
     env.update({"BABY_CARE_ROOT": "/workspace", "M7_DEVICE_SEED_HEX": seed.hex(),
                 "API_PORT": "18080",
-                "TEST_DATABASE_URL": "postgres://babycare:synthetic-only@host.docker.internal:55443/babycare_test"})
+                "PG_HOST_PORT": str(pg_host_port),
+                "TEST_DATABASE_URL": "postgres://babycare:synthetic-only@host.docker.internal:%s/babycare_test" % pg_host_port})
     harness = root / "tools/m7_baby_care_harness.mjs"
     container = subprocess.run(
         ["docker", "run", "-d", "--rm", "--name", pg, "-e", "POSTGRES_USER=babycare",
          "-e", "POSTGRES_PASSWORD=synthetic-only", "-e", "POSTGRES_DB=babycare_test",
-         "-p", "55443:5432", "postgres:16-alpine"], check=True, text=True, capture_output=True,
+         "-p", f"127.0.0.1:{pg_host_port}:5432", "postgres:16-alpine"], check=True, text=True, capture_output=True,
     ).stdout.strip()
     proc = None
     try:
@@ -135,8 +139,6 @@ def main() -> int:
         for text in ("开始喂奶", "母乳六十毫升", "配方奶三十毫升", "奶粉改成四十毫升", "喂完了，结束喂奶"):
             outcome = orchestrator.handle(text, context, identity_bound=True)
             outputs.append(outcome.code)
-            if outcome.code == "accepted_pending": context["phase"] = "pending"
-            if outcome.code == "needs_confirmation": context.update({"phase": "needs_confirmation", "proposal_version": 3})
         before = _psql(pg, "select count(*) from care_events where source::text='voice'")
         if before != "0": raise RuntimeError(f"authority_before_confirm={before}")
         saved = orchestrator.handle("确认保存这次喂奶", context, identity_bound=True)
@@ -157,11 +159,26 @@ def main() -> int:
                                      deterministic_routing=True, sensitive_routing=True)
         cancel_context: dict[str, object] = {"phase": "idle"}
         cancel_flow.handle("开始喂奶", cancel_context, identity_bound=True)
-        cancel_context["phase"] = "pending"
         cancel_flow.handle("配方奶三十毫升", cancel_context, identity_bound=True)
         cancelled = cancel_flow.handle("取消这次记录", cancel_context, identity_bound=True)
-        cancel_context["phase"] = "needs_confirmation"
         cancelled_confirm = cancel_flow.handle("确认保存这次喂奶", cancel_context, identity_bound=True)
+        bad_gateway = M7BabyCareGateway(
+            identity=EphemeralIdentity(secrets.token_bytes(32)), transport=transport,
+            device_id=ready["deviceId"], lease_id=ready["leaseId"],
+            request_id_factory=(f"00000000-0000-4000-8000-{i:012d}" for i in range(200, 210)).__next__,
+            clock=lambda: datetime(2026, 10, 15, 8, tzinfo=timezone.utc),
+        )
+        bad_exec = M6ToolExecutor(M7SessionBridge(bad_gateway), clock=lambda: datetime(2026, 10, 15, 8, tzinfo=timezone.utc))
+        bad_identity = M7Orchestrator(Unavailable(), bad_exec, fallback=lambda _: "fallback", deterministic_routing=True)
+        bad_identity_result = bad_identity.handle("开始喂奶", {}, identity_bound=True)
+        unavailable_gateway = M7BabyCareGateway(
+            identity=EphemeralIdentity(seed), transport=_transport("http://127.0.0.1:1"),
+            device_id=ready["deviceId"], lease_id=ready["leaseId"],
+            request_id_factory=(f"00000000-0000-4000-8000-{i:012d}" for i in range(300, 310)).__next__,
+            clock=lambda: datetime(2026, 10, 15, 8, tzinfo=timezone.utc),
+        )
+        unavailable_exec = M6ToolExecutor(M7SessionBridge(unavailable_gateway), clock=lambda: datetime(2026, 10, 15, 8, tzinfo=timezone.utc))
+        unavailable_result = M7Orchestrator(Unavailable(), unavailable_exec, fallback=lambda _: "fallback", deterministic_routing=True).handle("开始喂奶", {}, identity_bound=True)
         after_safety = _psql(pg, "select count(*) from care_events where source::text='voice'")
         if saved.code != "saved" or after != "1" or final != "1" or duplicate.code not in {"state_conflict", "saved"}:
             raise RuntimeError(f"e2e_assertion_failed outputs={outputs} duplicate={duplicate.code} counts={before},{after},{final} response={transport.state}")
@@ -173,6 +190,8 @@ def main() -> int:
                           "no_draft_confirm": no_draft.code,
                           "cancel_result": cancelled.code,
                           "cancel_then_confirm": cancelled_confirm.code,
+                          "bad_identity_result": bad_identity_result.code,
+                          "gateway_unavailable_result": unavailable_result.code,
                           "authority_records_after_safety": int(after_safety)}))
         return 0
     finally:

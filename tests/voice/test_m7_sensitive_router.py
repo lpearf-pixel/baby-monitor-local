@@ -187,7 +187,6 @@ def test_deterministic_chain_uses_real_m6_coordinator_and_gateway_boundary():
     assert orchestrator.handle("配方奶三十毫升", context, identity_bound=True).code == "accepted_pending"
     assert orchestrator.handle("奶粉改成四十毫升", context, identity_bound=True).code == "accepted_pending"
     assert orchestrator.handle("喂完了，结束喂奶", context, identity_bound=True).code == "needs_confirmation"
-    context.update({"phase": "needs_confirmation", "proposal_id": "proposal-1"})
     assert orchestrator.handle("确认保存这次喂奶", context, identity_bound=True).code == "saved"
     assert orchestrator.handle("确认保存这次喂奶", context, identity_bound=True).code == "state_conflict"
     assert gateway.saved == 1

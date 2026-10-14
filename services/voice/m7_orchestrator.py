@@ -82,9 +82,12 @@ class M7Orchestrator:
     def _handle_routed_call(self, routed, context: dict[str, object], identity_bound: bool) -> M7Outcome:
         if not identity_bound:
             return M7Outcome("identity_unavailable", "无法确认照护人身份。")
-        if routed.requires_current_proposal and context.get("phase") != "needs_confirmation":
+        authoritative = self._executor.snapshot() if hasattr(self._executor, "snapshot") else context
+        phase = authoritative.get("phase", context.get("phase"))
+        has_proposal = authoritative.get("has_proposal", bool(context.get("proposal_version") or context.get("proposal_id")))
+        if routed.requires_current_proposal and phase != "needs_confirmation":
             return M7Outcome("state_conflict", "当前没有可确认的待保存喂养记录。")
-        if routed.requires_current_proposal and not (context.get("proposal_version") or context.get("proposal_id")):
+        if routed.requires_current_proposal and not has_proposal:
             return M7Outcome("state_conflict", "当前确认摘要已失效，请重新结束并确认。")
         intent = "care_confirm" if routed.call.name == "confirm_feeding" else "care_cancel" if routed.call.name == "cancel_feeding" else "feeding_end" if routed.call.name == "end_feeding" else "feeding_update" if routed.call.name in {"add_feeding_component", "correct_feeding_component"} else "feeding_start" if routed.call.name == "start_feeding" else "feeding_query"
         validation = validate_candidate(

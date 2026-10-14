@@ -1162,6 +1162,10 @@ cancel-then-confirm left the count at 1. `POSTGRES_END_TO_END_PASS=true` for thi
 chain; the complete fault/concurrency matrix remains partial, so
 `DETERMINISTIC_CORE_READY=false`.
 
+The final Runner hardening uses dynamic loopback PostgreSQL/API ports and authoritative
+M6 snapshots for confirmation gating. Fresh output also records wrong-identity and
+unreachable-Gateway failures as `temporarily_unavailable` with no additional event.
+
 ## M7.10 safety closure (2026-10-14)
 
 Added deterministic intent-to-tool-family validation: query, confirmation, cancellation

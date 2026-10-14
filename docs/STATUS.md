@@ -1346,3 +1346,10 @@ the count was zero, duplicate confirmation was rejected, and cancel-then-confirm
 not add a record. `POSTGRES_END_TO_END_PASS=true` for the fixed chain. The broader
 transaction/concurrency/identity fault matrix remains partial, therefore
 `DETERMINISTIC_CORE_READY=false`.
+
+The final Runner hardening uses dynamic loopback-only PostgreSQL/API ports and validates
+container ownership before writes. M6 snapshots supply authoritative phase/proposal
+presence for confirmation gating. Wrong identity and unreachable-Gateway probes fail
+closed (`temporarily_unavailable`) without adding an authority event. The real
+M7-driven transaction rollback, concurrent confirmation, proposal/version tamper and
+timeout matrix is still outstanding.

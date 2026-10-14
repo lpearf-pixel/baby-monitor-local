@@ -32,6 +32,9 @@ class M7SessionBridge:
     def query(self, observed_at: datetime, *, request_id: str) -> M6Result:
         return self.process("查询记录", observed_at, request_id=request_id)
 
+    def snapshot(self) -> dict[str, object]:
+        return self._coordinator.snapshot()
+
     def cancel(self, observed_at: datetime, *, request_id: str) -> M6Result:
         return self.process("取消", observed_at, request_id=request_id)
 
@@ -45,6 +48,9 @@ class M6ToolExecutor:
         self._query_client = query_client
         self.last_query: object | None = None
         self._sequence = 0
+
+    def snapshot(self) -> dict[str, object]:
+        return self._bridge.snapshot()
 
     def execute(self, call: ValidatedToolCall) -> str:
         self._sequence += 1
