@@ -1184,6 +1184,14 @@ at `1102b24` until its docs/verification commit is made. `DETERMINISTIC_CORE_REA
 still pending the final M7 commit/CI gate; no household services or production data were
 touched.
 
+Final M7.18 gate closure (2026-10-15): fresh Runner `SAFETY_MATRIX_PASS=true`, focused
+M7/M6 regression `52 passed`, full Python `2619 passed, 1 skipped`, and CI
+`38669582189` SUCCESS. The isolated database response-loss replay returned the original
+authoritative `saved` result with no additional event. `DETERMINISTIC_CORE_READY=true`.
+`LLM_ASSISTANT_READY=false`, `SOFTWARE_RELEASE_CANDIDATE=false`, and
+`HARDWARE_ACCEPTANCE_PENDING=true` remain unchanged; this is not household deployment
+or hardware acceptance.
+
 ## M7.10 safety closure (2026-10-14)
 
 Added deterministic intent-to-tool-family validation: query, confirmation, cancellation

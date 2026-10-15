@@ -142,3 +142,22 @@ response_replay_receipt_present=true
 Gateway 的 fail-closed 断言。Baby Care 变更文件仅为
 `apps/api/src/voice-care/intent-service.ts` 与其 v2 集成回归测试；提交已普通推送到
 `codex/m6-voice-care-v2`。M7 本地文档与 CI 发布仍待本轮提交完成。
+
+## 最终门禁结论
+
+M7 本地提交 `5778a61` 已普通推送，CI
+`https://github.com/lpearf-pixel/baby-monitor-local/actions/runs/38669582189`
+为 SUCCESS。新鲜验证为：Runner 安全矩阵 PASS、M7/M6 聚焦回归 `52 passed`、完整
+Python `2619 passed, 1 skipped`。因此：
+
+```text
+SAFETY_MATRIX_PASS=true
+DETERMINISTIC_CORE_READY=true
+LLM_ASSISTANT_READY=false
+SOFTWARE_RELEASE_CANDIDATE=false
+HARDWARE_ACCEPTANCE_PENDING=true
+```
+
+确定性核心可以结束 M7 工程开发并进入已批准的 M8 软件语音链路切片；这不等同于
+真实 Ollama 语义验收、家庭硬件验收或生产部署。Camera Reply、Guardian、go2rtc、SSH
+隧道和生产 Baby Care 数据库均未触碰。

@@ -890,3 +890,9 @@ authority event. Next: record the M7 verification commit and CI result, then dec
 existing `DETERMINISTIC_CORE_READY` gate; do not expand M7 semantics or deploy to the
 household. Keep `LLM_ASSISTANT_READY=false`, `SOFTWARE_RELEASE_CANDIDATE=false`, and
 `HARDWARE_ACCEPTANCE_PENDING=true` until that gate is explicitly closed.
+
+The gate is now closed: Baby Care `33a31ac` and M7 `5778a61` are pushed, the isolated
+real PostgreSQL replay matrix passes, and CI `38669582189` is successful. Treat the
+deterministic M7 core as ready for the next approved M8 software slice only. Keep LLM
+assistant, household deployment, Camera Reply and hardware acceptance disabled; do not
+add further M7 deterministic features.

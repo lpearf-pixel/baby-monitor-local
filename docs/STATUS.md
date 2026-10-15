@@ -1381,3 +1381,11 @@ reconfirmed mixed components, rollback recovery, concurrency, digest/version rej
 expiry, wrong identity and unreachable Gateway fail-closed behavior. The cross-repo fix
 was pushed on Baby Care `codex/m6-voice-care-v2` at `33a31ac`; M7 documentation and CI
 publication remain to be completed before changing deterministic-core readiness.
+
+Final gate decision (2026-10-15): the fresh cross-repository Runner passed the complete
+response-loss/idempotency safety matrix and the pushed M7 CI `38669582189` completed
+SUCCESS. Focused M7/M6 regression was `52 passed`; full Python was `2619 passed, 1
+skipped` (the existing incomplete public visual corpus skip). The deterministic core is
+now `DETERMINISTIC_CORE_READY=true` and `SAFETY_MATRIX_PASS=true`. This does not promote
+the LLM assistant or household deployment: `LLM_ASSISTANT_READY=false`,
+`SOFTWARE_RELEASE_CANDIDATE=false`, `HARDWARE_ACCEPTANCE_PENDING=true`.
