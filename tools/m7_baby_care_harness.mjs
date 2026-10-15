@@ -19,7 +19,7 @@ await database.pool.query(`truncate table
   users, families restart identity cascade`);
 const origin = 'http://127.0.0.1:8080';
 const setupToken = 'm7-18-isolated-setup';
-const now = new Date('2026-10-15T08:00:00.000Z');
+let now = new Date(process.env.M7_API_NOW || '2026-10-15T08:00:00.000Z');
 const app = buildApp({
   checkDatabase: database.checkDatabase,
   database,
@@ -68,6 +68,11 @@ if (!address || typeof address === 'string') throw new Error('isolated_listener_
 console.log(JSON.stringify({ ready: true, port: address.port, deviceId, leaseId }));
 const input = readline.createInterface({ input: process.stdin });
 input.on('line', async (line) => {
+  if (line.startsWith('set-now ')) {
+    const candidate = new Date(line.slice(8).trim());
+    if (!Number.isNaN(candidate.getTime())) now = candidate;
+    return;
+  }
   if (line.trim() === 'stop') {
     await app.close(); await database.close(); process.exit(0);
   }

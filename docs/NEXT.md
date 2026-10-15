@@ -877,5 +877,8 @@ with dynamic loopback ports, authoritative M6 snapshots, wrong-identity rejectio
 unreachable-Gateway fail-closed probes. The remaining slice is only the isolated real
 transaction rollback, concurrent confirmation, proposal/version mismatch, signature
 tamper, request replay and bounded timeout matrix; keep the same resource guard and do
-not broaden the grammar. Until those scenarios are driven through M7 into the real API,
-keep `DETERMINISTIC_CORE_READY=false`.
+not broaden the grammar. The four scenarios are now driven through M7 into the real API;
+all fail-closed checks pass except response-loss recovery, where the original requestId
+replay returns `temporarily_unavailable` despite one committed authority event. Resolve
+that existing cross-repository idempotency response defect before setting
+`DETERMINISTIC_CORE_READY=true`; do not add a new milestone or retry with a new ID.

@@ -40,7 +40,8 @@ Baby Care 仓库已有独立的 Node24/pnpm10.17.1/PostgreSQL16 Voice Care 集�
 ## 实际 Runner（本轮实现）
 
 Runner 文件：`tools/m7_real_gateway_e2e.py`，API Harness：`tools/m7_baby_care_harness.mjs`。
-执行命令：`.venv-alpha/bin/python tools/m7_real_gateway_e2e.py`。
+执行命令：`.venv-alpha/bin/python tools/m7_real_gateway_e2e.py`（本轮因安全矩阵未闭合
+退出码为 1；输出仍包含每个隔离场景的脱敏结果）。
 
 Runner 自动创建临时 PostgreSQL16 容器和 Node24/pnpm10.17.1 API 容器，随机映射 HTTP
 端口，生成临时 Ed25519 身份/lease，调用真实 `M7BabyCareGateway` HTTP transport，
@@ -51,11 +52,12 @@ PostgreSQL 端口同样使用随机宿主端口，并绑定 `127.0.0.1`；API �
 M7 确认所需的 phase/proposal presence 来自 M6 Coordinator snapshot，不再由测试
 手动伪造有效确认状态。
 
-实际输出：
+固定链和安全矩阵实际输出：
 
 ```text
 RUNNER_EXECUTED=true
 POSTGRES_END_TO_END_PASS=true
+SAFETY_MATRIX_PASS=false
 authority_records_before=0
 authority_records_after=1
 components=expressed_breast_milk:60, formula:40
@@ -67,19 +69,36 @@ authority_records_after_safety=1
 llm_calls=0
 bad_identity_result=temporarily_unavailable
 gateway_unavailable_result=temporarily_unavailable
+concurrent_codes=temporarily_unavailable,saved
+concurrent_authority_records=2
+rollback_result=temporarily_unavailable
+rollback_count=2
+rollback_recovery=saved
+rollback_recovered_count=3
+tampered_digest_result=rejected
+old_version_result=rejected
+tamper_authority_records=3
+response_lost_result=temporarily_unavailable
+response_lost_authority_records=4
+same_request_replay=temporarily_unavailable
+replay_authority_records=4
+expired_result=state_conflict
+expired_authority_records=4
 ```
 
-这证明固定混合喂养链和部分确认/身份/连接安全场景真实经过 HTTP API 和 PostgreSQL；并发、
-数据库事务故障、proposal/version 篡改和跨身份攻击仍沿用 Baby Care 23/23 隔离
-门禁及 M7 单元边界测试，尚未全部由该 Runner 驱动，不能扩大为完整异常矩阵 PASS。
+并发场景一请求 `saved`、另一请求为既有 `temporarily_unavailable`，权威记录只增加一条；
+事务触发器导致失败事务无记录，解除故障后同一草稿安全恢复；错误 digest/旧版本、过期
+确认、错误身份和不可达 Gateway 均未增加记录。服务器已提交但客户端丢响应的场景也只
+产生一条记录，但用原 requestId 重放返回 `temporarily_unavailable`，没有返回原来的
+`saved` 权威结果。这是当前真实跨仓库幂等恢复阻断，不能用“记录已存在”冒充协议闭环。
 
 ## 状态
 
 - `RUNNER_IMPLEMENTED=true`。
 - `RUNNER_EXECUTED=true`。
 - `POSTGRES_END_TO_END_PASS=true`（固定混合喂养链）。
-- `SAFETY_MATRIX_PASS=PARTIAL`（真实 Runner 已覆盖重复、无草稿、取消后确认、错误身份和不可达 Gateway；事务回滚、并发、版本篡改和超时仍需补齐）。
-- `DETERMINISTIC_CORE_READY=false`（完整异常矩阵尚未全部由真实链验证）。
+- `SAFETY_MATRIX_PASS=false`（除响应丢失后的原 requestId 重放恢复外，其余本轮场景均通过 fail-closed 断言）。
+- `DETERMINISTIC_CORE_READY=false`（幂等恢复契约仍未闭合）。
 - `LLM_ASSISTANT_READY=false`。
 - `SOFTWARE_RELEASE_CANDIDATE=false`。
 - Camera Reply=false，家庭硬件验收仍挂起。

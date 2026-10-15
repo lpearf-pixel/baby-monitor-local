@@ -1166,6 +1166,13 @@ The final Runner hardening uses dynamic loopback PostgreSQL/API ports and author
 M6 snapshots for confirmation gating. Fresh output also records wrong-identity and
 unreachable-Gateway failures as `temporarily_unavailable` with no additional event.
 
+The final M7.18 safety run also exercised real HTTP/PostgreSQL concurrency, injected
+rollback, digest/version tamper and expiry. All fail closed and authority counts remain
+correct, but a server-committed response-loss replay with the original requestId returns
+`temporarily_unavailable` instead of the stored `saved` result. Keep
+`SAFETY_MATRIX_PASS=false` and `DETERMINISTIC_CORE_READY=false` until that existing
+cross-repository idempotency response defect is fixed; do not retry with a new ID.
+
 ## M7.10 safety closure (2026-10-14)
 
 Added deterministic intent-to-tool-family validation: query, confirmation, cancellation

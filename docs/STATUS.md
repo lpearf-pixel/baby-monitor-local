@@ -1353,3 +1353,11 @@ presence for confirmation gating. Wrong identity and unreachable-Gateway probes 
 closed (`temporarily_unavailable`) without adding an authority event. The real
 M7-driven transaction rollback, concurrent confirmation, proposal/version tamper and
 timeout matrix is still outstanding.
+
+The final four-scenario Runner execution now covers those boundaries in the isolated
+HTTP/PostgreSQL environment. Concurrency produced one `saved` and one safe transient
+response with exactly one new authority event; the injected transaction failed without
+partial rows and recovered after removal; digest/version tamper and expiry were rejected.
+The remaining blocker is response-loss recovery: the server committed one event, but a
+same-request-id replay returned `temporarily_unavailable` instead of the stored `saved`
+result. Therefore `SAFETY_MATRIX_PASS=false` and `DETERMINISTIC_CORE_READY=false`.
