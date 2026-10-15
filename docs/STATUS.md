@@ -1361,3 +1361,23 @@ partial rows and recovered after removal; digest/version tamper and expiry were 
 The remaining blocker is response-loss recovery: the server committed one event, but a
 same-request-id replay returned `temporarily_unavailable` instead of the stored `saved`
 result. Therefore `SAFETY_MATRIX_PASS=false` and `DETERMINISTIC_CORE_READY=false`.
+
+### M7.18 idempotent response recovery (2026-10-15)
+
+Root cause was the Baby Care intent coordinator's per-device attempt window running
+before receipt lookup. After a response was lost, a valid replay of the already committed
+request could be throttled and returned `temporarily_unavailable`, even though the
+receipt row and authority event existed. Baby Care commit `33a31ac` adds a bounded
+digest-checked receipt lookup after normal authentication and before coordinator entry;
+the existing transactional lookup remains the race-safe path for first submissions.
+
+Fresh command:
+`.venv-alpha/bin/python tools/m7_real_gateway_e2e.py`
+
+Result: `RUNNER_EXECUTED=true`, `POSTGRES_END_TO_END_PASS=true`,
+`SAFETY_MATRIX_PASS=true`; response-loss first result was temporary, exact original
+request replay returned `saved`, and the authority count remained 4. The runner also
+reconfirmed mixed components, rollback recovery, concurrency, digest/version rejection,
+expiry, wrong identity and unreachable Gateway fail-closed behavior. The cross-repo fix
+was pushed on Baby Care `codex/m6-voice-care-v2` at `33a31ac`; M7 documentation and CI
+publication remain to be completed before changing deterministic-core readiness.

@@ -882,3 +882,11 @@ all fail-closed checks pass except response-loss recovery, where the original re
 replay returns `temporarily_unavailable` despite one committed authority event. Resolve
 that existing cross-repository idempotency response defect before setting
 `DETERMINISTIC_CORE_READY=true`; do not add a new milestone or retry with a new ID.
+
+The response-loss blocker is repaired in Baby Care `33a31ac`: authenticated committed
+receipts are returned before the attempt-rate coordinator, with exact request digest
+checking. The fresh isolated runner now passes the response-loss replay and keeps one
+authority event. Next: record the M7 verification commit and CI result, then decide the
+existing `DETERMINISTIC_CORE_READY` gate; do not expand M7 semantics or deploy to the
+household. Keep `LLM_ASSISTANT_READY=false`, `SOFTWARE_RELEASE_CANDIDATE=false`, and
+`HARDWARE_ACCEPTANCE_PENDING=true` until that gate is explicitly closed.

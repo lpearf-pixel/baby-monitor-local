@@ -1173,6 +1173,17 @@ correct, but a server-committed response-loss replay with the original requestId
 `SAFETY_MATRIX_PASS=false` and `DETERMINISTIC_CORE_READY=false` until that existing
 cross-repository idempotency response defect is fixed; do not retry with a new ID.
 
+M7.18 idempotent replay repair (2026-10-15): Baby Care commit `33a31ac` checks for an
+existing, digest-matching intent receipt before the per-device attempt coordinator. This
+keeps a committed receipt recoverable even after the rate window is exhausted, while
+authentication, device/request binding and schema validation remain unchanged. The
+isolated M7 runner now reports `SAFETY_MATRIX_PASS=true`: response-loss first result was
+temporary, same requestId replay returned `saved`, and the authority count stayed at 4.
+Baby Care branch `codex/m6-voice-care-v2` was pushed normally; M7 local branch remains
+at `1102b24` until its docs/verification commit is made. `DETERMINISTIC_CORE_READY` is
+still pending the final M7 commit/CI gate; no household services or production data were
+touched.
+
 ## M7.10 safety closure (2026-10-14)
 
 Added deterministic intent-to-tool-family validation: query, confirmation, cancellation

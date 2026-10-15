@@ -102,3 +102,43 @@ expired_authority_records=4
 - `LLM_ASSISTANT_READY=false`。
 - `SOFTWARE_RELEASE_CANDIDATE=false`。
 - Camera Reply=false，家庭硬件验收仍挂起。
+
+## 幂等响应恢复修复（2026-10-15）
+
+### 根因与最小修复
+
+服务器已在 PostgreSQL 提交护理事件并写入 `voice_care_intent_receipts`，但原
+requestId 重放仍先进入设备尝试窗口协调器。窗口耗尽时，重放在 receipt 查询前
+被返回 `temporarily_unavailable`，即使 receipt 与权威事件已经存在。
+
+Baby Care `codex/m6-voice-care-v2` 提交 `33a31ac` 在正常认证（设备、lease、身份
+和签名）之后、协调器之前做一次精确的 `(deviceId, requestId, requestDigest)` receipt
+查找；摘要不一致仍拒绝，匹配则按 schemaVersion 校验并返回原权威结果。首次请求和
+并发竞态仍经过原有事务内 `FOR UPDATE` 路径，未改变写入协议。
+
+### 新鲜验证
+
+命令：
+
+```text
+.venv-alpha/bin/python tools/m7_real_gateway_e2e.py
+```
+
+结果：
+
+```text
+RUNNER_EXECUTED=true
+POSTGRES_END_TO_END_PASS=true
+SAFETY_MATRIX_PASS=true
+response_lost_result=temporarily_unavailable
+response_lost_authority_records=4
+same_request_replay=saved
+replay_authority_records=4
+response_replay_receipt_present=true
+```
+
+同一隔离运行还通过了固定混合喂养（母乳 60 ml、配方奶修正为 40 ml）、未确认零记录、
+并发单写入、事务回滚及恢复、proposal/digest/version 篡改、过期、错误身份和不可达
+Gateway 的 fail-closed 断言。Baby Care 变更文件仅为
+`apps/api/src/voice-care/intent-service.ts` 与其 v2 集成回归测试；提交已普通推送到
+`codex/m6-voice-care-v2`。M7 本地文档与 CI 发布仍待本轮提交完成。
