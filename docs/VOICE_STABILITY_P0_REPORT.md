@@ -77,8 +77,9 @@ owner of local capture, ASR, deterministic test intent, TTS and playback lifecyc
 
 ## Git and delivery state
 
-- Monitor repository: branch `codex/m7-local-llm-parenting-assistant`, local HEAD
-  `f8dcc54` at inspection time; changes are uncommitted and not pushed.
+- Monitor repository: branch `codex/voice-stability-p0`, final local and remote
+  HEAD `8eea2e5`; implementation commit `628b56d` and handoff documentation commit
+  `8eea2e5` are pushed.
 - Baby Care worktree: branch `codex/voice-stability-p0`, HEAD `33a31ac`; no code
   changes and no commit or push.
 - Preserved unrelated untracked files: `Interactive`, `test.sh`, and Baby Care's
