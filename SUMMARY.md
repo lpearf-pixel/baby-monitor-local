@@ -1,5 +1,16 @@
 # Baby Monitor Local Project Summary
 
+## 2026-10-22 Voice Stability P0 checkpoint
+
+The approved priority is now local Voice Stability P0 on branch
+`codex/voice-stability-p0`, pushed at `628b56d`. The deterministic local session,
+one-flight TTS settlement, opt-in encrypted test corpus and manifest-bound regression
+runner are implemented. Fresh software evidence is 2647 passed / 1 expected visual
+corpus skip, with the Voice P0 focused gate at 55 passed. The real Paraformer 1000-
+repeat manifest gate and all microphone/wake-word/hardware gates remain unrun;
+Camera Reply remains false and Baby Care formal writes remain untouched. See
+`docs/VOICE_STABILITY_P0_REPORT.md` for the exact boundary and next gate.
+
 ## 2026-09-14 no-baby panoramic planning update
 
 The owner requested a concrete no-baby acceptance plan and reports an empty scene.

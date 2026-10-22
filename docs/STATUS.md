@@ -1,5 +1,18 @@
 # Project Status
 
+## Voice Stability P0 — 2026-10-22
+
+The local Voice P0 software slice is implemented on `codex/voice-stability-p0` at
+`628b56d`: explicit session phases, Push-to-Talk/exact wake test replies, serialized
+TTS settlement with AMBIGUOUS fail-closed handling, opt-in encrypted test corpus and
+manifest-bound regression runner. Full Python verification is 2647 passed with one
+expected incomplete visual-corpus skip; focused Voice P0 verification is 55 passed.
+The actual 1000-repeat fixed-audio Paraformer run has not been executed because no
+authorized generated/public manifest was supplied. Local microphone, wake-word,
+speaker, Camera Reply and family deployment gates are not passed. Camera Reply is
+disabled and no Baby Care formal record write was added. Full details:
+`docs/VOICE_STABILITY_P0_REPORT.md`.
+
 ## 2026-09-14 no-baby panoramic planning update
 
 The owner requested a concrete no-baby acceptance plan and reports an empty scene.

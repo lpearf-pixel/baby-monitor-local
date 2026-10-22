@@ -1,5 +1,16 @@
 # Next Work
 
+## Voice Stability P0 — next gate
+
+The current priority is the pushed software slice `codex/voice-stability-p0` at
+`628b56d`. Do not enable Camera Reply or add Baby Care writes. The next authorized
+software action is to provide a generated/public, non-household fixed WAV manifest
+and run the pinned Paraformer 1000-repeat offline gate through
+`tools.voice_stability_runner`. The following separate gate requires the logged-in
+operator's explicit authorization for real PTT, wake-word, latency, false-wake and
+resource measurements. Until both are independently accepted, keep
+`FAMILY_DEPLOYMENT_READY=NO`.
+
 ## 2026-09-14 no-baby panoramic planning update
 
 The owner requested a concrete no-baby acceptance plan and reports an empty scene.
