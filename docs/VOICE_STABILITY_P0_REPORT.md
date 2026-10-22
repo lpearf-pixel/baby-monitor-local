@@ -77,9 +77,9 @@ owner of local capture, ASR, deterministic test intent, TTS and playback lifecyc
 
 ## Git and delivery state
 
-- Monitor repository: branch `codex/voice-stability-p0`, final local and remote
-  HEAD `8eea2e5`; implementation commit `628b56d` and handoff documentation commit
-  `8eea2e5` are pushed.
+- Monitor repository: branch `codex/voice-stability-p0`; implementation commit
+  `628b56d`, handoff commit `8eea2e5` and report correction commit `2801bfc` are
+  pushed.
 - Baby Care worktree: branch `codex/voice-stability-p0`, HEAD `33a31ac`; no code
   changes and no commit or push.
 - Preserved unrelated untracked files: `Interactive`, `test.sh`, and Baby Care's
