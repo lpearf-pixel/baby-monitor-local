@@ -8,9 +8,12 @@ TTS settlement with AMBIGUOUS fail-closed handling, opt-in encrypted test corpus
 manifest-bound regression runner. Full Python verification is 2647 passed with one
 expected incomplete visual-corpus skip; focused Voice P0 verification is 55 passed.
 The actual 1000-repeat fixed-audio Paraformer run has not been executed because no
-authorized generated/public manifest was supplied. Local microphone, wake-word,
-speaker, Camera Reply and family deployment gates are not passed. Camera Reply is
-disabled and no Baby Care formal record write was added. Full details:
+authorized generated/public manifest was supplied. An authorized i9 camera-source
+capture passed once and the next six-phrase attempt stopped on its first
+`detected_segment_count=0` VAD result; this is partial hardware evidence, not ASR or
+wake-word acceptance. Local internal-microphone, wake-word, speaker, Camera Reply
+and family deployment gates are not passed. Camera Reply is disabled and no Baby
+Care formal record write was added. Full details:
 `docs/VOICE_STABILITY_P0_REPORT.md`.
 
 ## 2026-09-14 no-baby panoramic planning update

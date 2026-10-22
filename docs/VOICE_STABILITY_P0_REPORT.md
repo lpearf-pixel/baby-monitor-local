@@ -6,7 +6,7 @@ Date: 2026-10-22
 
 ```text
 SOFTWARE_TEST_PASS=PARTIAL
-LOCAL_AUDIO_HARDWARE_PASS=NOT_RUN
+LOCAL_AUDIO_HARDWARE_PASS=PARTIAL
 WAKE_WORD_PASS=NOT_RUN
 CAMERA_REPLY_PASS=FAIL_CLOSED_NOT_ACCEPTED
 FAMILY_DEPLOYMENT_READY=NO
@@ -61,9 +61,25 @@ latencies with zero residuals. This proves state-machine repeatability only; its
 ASR is synthetic and its TTS output is a no-device semantic boundary. It does not
 prove adult speech recall, speaker audibility, or real Paraformer performance.
 
+## Authorized i9 camera-source test
+
+The host was verified as an Intel Core i9 MacBook Pro. The configured input was the
+Xiaomi camera loopback audio source, not the MacBook internal microphone. The source
+was initially offline; starting the existing Alpha source path brought back
+`cs2+udp` video media with advancing bytes. No service was stopped or reset.
+
+One fixed eight-second camera-source capture for the public non-household phrase
+`negative_weather` passed and was retained only as an encrypted local calibration
+clip. No transcript was printed or copied into chat. The subsequent six-phrase
+calibration attempt stopped at its first phrase with
+`failure_stage=vad`, `detected_segment_count=0`; this is insufficient evidence for
+ASR accuracy and the phrase was not automatically retried. Voice preflight afterward
+reported Paraformer, Keychain and Silero available. The full six-clip Paraformer
+aggregate remains unrun.
+
 ## Hardware and deployment gates
 
-No real microphone recording, wake-word acceptance, 100-adult-utterance matrix,
+No MacBook-internal-microphone recording, wake-word acceptance, 100-adult-utterance matrix,
 60-minute false-wake observation, sustained CPU/memory check, Xiaomi speaker
 activation, Camera Reply playback, or family deployment was performed. These gates
 remain explicitly unverified. Camera Reply's historical V3E failure remains closed

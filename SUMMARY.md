@@ -7,7 +7,10 @@ The approved priority is now local Voice Stability P0 on branch
 one-flight TTS settlement, opt-in encrypted test corpus and manifest-bound regression
 runner are implemented. Fresh software evidence is 2647 passed / 1 expected visual
 corpus skip, with the Voice P0 focused gate at 55 passed. The real Paraformer 1000-
-repeat manifest gate and all microphone/wake-word/hardware gates remain unrun;
+repeat manifest gate and wake-word/100-utterance gates remain unrun. One authorized
+i9 Xiaomi-camera-source capture passed after the source was brought online; the
+six-phrase calibration stopped at its first no-VAD sample, so hardware remains
+partial and not accepted;
 Camera Reply remains false and Baby Care formal writes remain untouched. See
 `docs/VOICE_STABILITY_P0_REPORT.md` for the exact boundary and next gate.
 
