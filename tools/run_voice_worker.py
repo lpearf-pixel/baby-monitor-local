@@ -34,6 +34,8 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
     parser.add_argument("--settings", type=Path)
     parser.add_argument("--voice-models", type=Path)
     parser.add_argument("--preflight", action="store_true")
+    parser.add_argument("--voice-stability", action="store_true")
+    parser.add_argument("--push-to-talk", action="store_true")
     return parser.parse_args(argv)
 
 
@@ -89,7 +91,15 @@ def main(
                 from services.voice.listen_only_runtime import build_listen_only_worker
 
                 runtime_builder = build_listen_only_worker
-            worker = runtime_builder(settings, root)
+            if args.voice_stability:
+                worker = runtime_builder(
+                    settings,
+                    root,
+                    stability_mode=True,
+                    push_to_talk=args.push_to_talk,
+                )
+            else:
+                worker = runtime_builder(settings, root)
         elif worker_factory is None:
             status.write(
                 mode="care",

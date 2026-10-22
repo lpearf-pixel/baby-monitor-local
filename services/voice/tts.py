@@ -7,9 +7,11 @@ import stat
 import struct
 import subprocess
 import tempfile
+import threading
 import time
 from dataclasses import dataclass
 from collections.abc import Callable, Sequence
+from enum import StrEnum
 from pathlib import Path
 from typing import Protocol
 
@@ -26,6 +28,11 @@ RESPONSE_PHRASES = {
     "rejected": "这次请求未被接受，请人工确认。",
     "listen_only_ready": "我在，请说。",
     "listen_only_received": "我听到了。",
+    "voice_test_ready": "我在",
+    "voice_test_heard": "能听见",
+    "voice_test_ok": "语音回复正常",
+    "voice_test_stopped": "已停止",
+    "voice_test_failed": "语音识别失败",
 }
 _PLAYBACK_TIMEOUT_SECONDS = 10.0
 _POST_PLAYBACK_GUARD_SECONDS = 0.5
@@ -89,7 +96,27 @@ class RenderedReply:
 class AudioSink(Protocol):
     """Bounded output boundary for one already-validated reply."""
 
-    def play(self, rendered: RenderedReply, cancelled: CancelEvent) -> bool: ...
+    def play(
+        self, rendered: RenderedReply, cancelled: CancelEvent
+    ) -> bool | "PlaybackResult": ...
+
+
+class PlaybackStatus(StrEnum):
+    NOT_ATTEMPTED = "NOT_ATTEMPTED"
+    COMPLETE = "COMPLETE"
+    FAILED = "FAILED"
+    CANCELLED = "CANCELLED"
+    AMBIGUOUS = "AMBIGUOUS"
+    BUSY = "BUSY"
+
+
+@dataclass(frozen=True, slots=True)
+class PlaybackResult:
+    status: PlaybackStatus
+
+    def __post_init__(self) -> None:
+        if not isinstance(self.status, PlaybackStatus):
+            raise ValueError(VOICE_TTS_UNAVAILABLE)
 
 
 class VoiceOutput(Protocol):
@@ -283,6 +310,8 @@ class FixedVoiceSynthesizer:
         self._audio_sink = audio_sink or MacAudioSink(runner=runner)
         self._sleep = sleep
         self._post_playback_guard_seconds = post_playback_guard_seconds
+        self._flight_lock = threading.Lock()
+        self._last_playback_status = PlaybackStatus.NOT_ATTEMPTED
         self._renderer = FixedReplyRenderer(
             runner=runner,
             temporary_root=temporary_directory,
@@ -290,18 +319,38 @@ class FixedVoiceSynthesizer:
         )
 
     def speak_code(self, code: str, cancelled: CancelEvent) -> bool:
+        return (
+            self.speak_code_result(code, cancelled).status
+            is PlaybackStatus.COMPLETE
+        )
+
+    @property
+    def last_playback_status(self) -> PlaybackStatus:
+        return self._last_playback_status
+
+    def speak_code_result(
+        self, code: str, cancelled: CancelEvent
+    ) -> PlaybackResult:
         phrase_for_semantic_code(code)
+        if not self._flight_lock.acquire(blocking=False):
+            self._last_playback_status = PlaybackStatus.BUSY
+            return PlaybackResult(PlaybackStatus.BUSY)
         rendered: RenderedReply | None = None
-        self._ducker.pause()
+        result = PlaybackResult(PlaybackStatus.FAILED)
         try:
+            self._ducker.pause()
             if cancelled.is_set():
-                return False
+                result = PlaybackResult(PlaybackStatus.CANCELLED)
+                return result
             rendered = self._renderer.render(code, cancelled)
             if rendered is None:
-                return False
-            return self._audio_sink.play(rendered, cancelled)
+                return result
+            result = _coerce_playback_result(
+                self._audio_sink.play(rendered, cancelled), cancelled
+            )
+            return result
         except Exception:
-            return False
+            return result
         finally:
             if rendered is not None:
                 _unlink(rendered.path)
@@ -310,6 +359,20 @@ class FixedVoiceSynthesizer:
             if self._post_playback_guard_seconds:
                 self._sleep(self._post_playback_guard_seconds)
             self._ducker.resume()
+            self._last_playback_status = result.status
+            self._flight_lock.release()
+
+
+def _coerce_playback_result(value: object, cancelled: CancelEvent) -> PlaybackResult:
+    if isinstance(value, PlaybackResult):
+        return value
+    if type(value) is bool:
+        if value:
+            return PlaybackResult(PlaybackStatus.COMPLETE)
+        if cancelled.is_set():
+            return PlaybackResult(PlaybackStatus.CANCELLED)
+        return PlaybackResult(PlaybackStatus.FAILED)
+    return PlaybackResult(PlaybackStatus.AMBIGUOUS)
 
 
 def phrase_for_semantic_code(code: str) -> str:
@@ -424,6 +487,8 @@ __all__ = [
     "FixedVoiceSynthesizer",
     "MacAudioSink",
     "NoopCaptureDucker",
+    "PlaybackResult",
+    "PlaybackStatus",
     "RenderedReply",
     "VoiceOutput",
     "phrase_for_semantic_code",

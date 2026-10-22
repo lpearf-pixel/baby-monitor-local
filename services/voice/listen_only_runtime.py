@@ -41,6 +41,7 @@ from services.voice.listen_only import ListenOnlyController, ListenOnlyOutcome
 from services.voice.paraformer import ParaformerProcess, RecoveringParaformerProcess
 from services.voice.silero_runtime import StreamingSileroVad
 from services.voice.tts import BoundedCommandRunner, FixedVoiceSynthesizer
+from services.voice.stability import VoiceStabilityController
 from services.voice.worker import VOICE_TRANSITION_KEYS, VoiceStatusWriter
 
 
@@ -393,7 +394,11 @@ class ListenOnlyVoiceWorker:
 
 
 def build_listen_only_worker(
-    settings: AppSettings, project_root: Path
+    settings: AppSettings,
+    project_root: Path,
+    *,
+    stability_mode: bool = False,
+    push_to_talk: bool = False,
 ) -> ListenOnlyVoiceWorker:
     """Build only the fixed decoder, VAD, ASR, wake controller, and local TTS."""
 
@@ -444,8 +449,14 @@ def build_listen_only_worker(
                 diagnostic_tap = None
                 diagnostic_writer = None
                 controller_asr = asr
-        controller = ListenOnlyController(
-            asr=controller_asr, synthesizer=synthesizer
+        controller = (
+            VoiceStabilityController(
+                asr=controller_asr,
+                output=synthesizer,
+                push_to_talk=push_to_talk,
+            )
+            if stability_mode
+            else ListenOnlyController(asr=controller_asr, synthesizer=synthesizer)
         )
         return ListenOnlyVoiceWorker(
             pump=pump,

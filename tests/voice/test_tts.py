@@ -3,11 +3,14 @@ from __future__ import annotations
 import threading
 import subprocess
 import struct
+import time
 from pathlib import Path
 
 import pytest
 
 from services.voice.tts import (
+    PlaybackResult,
+    PlaybackStatus,
     BoundedCommandRunner,
     RESPONSE_PHRASES,
     FixedVoiceSynthesizer,
@@ -28,6 +31,24 @@ class RecordingAudioSink:
 class RaisingAudioSink:
     def play(self, _rendered, _cancelled) -> bool:
         raise RuntimeError("synthetic sink failure")
+
+
+class BlockingAudioSink:
+    def __init__(self) -> None:
+        self.started = threading.Event()
+        self.release = threading.Event()
+        self.calls = 0
+
+    def play(self, _rendered, _cancelled) -> bool:
+        self.calls += 1
+        self.started.set()
+        self.release.wait(1.0)
+        return True
+
+
+class AmbiguousAudioSink:
+    def play(self, _rendered, _cancelled) -> PlaybackResult:
+        return PlaybackResult(PlaybackStatus.AMBIGUOUS)
 
 
 def _aiff(frames: int = 8_000) -> bytes:
@@ -86,6 +107,11 @@ def test_semantic_response_uses_only_fixed_phrases(code: str, phrase: str) -> No
         "rejected",
         "listen_only_ready",
         "listen_only_received",
+        "voice_test_ready",
+        "voice_test_heard",
+        "voice_test_ok",
+        "voice_test_stopped",
+        "voice_test_failed",
     }
 
 
@@ -160,6 +186,8 @@ def test_isolated_audio_sink_failure_does_not_poison_next_reply(tmp_path: Path) 
     )
 
     assert synth.speak_code("saved", threading.Event()) is False
+    assert ducker.events == ["pause", "resume"]
+    assert list(tmp_path.iterdir()) == []
     sink.result = True
     assert synth.speak_code("saved", threading.Event()) is True
     assert len(sink.calls) == 2
@@ -178,7 +206,51 @@ def test_audio_sink_exception_is_a_bounded_output_failure(tmp_path: Path) -> Non
     )
 
     assert synth.speak_code("saved", threading.Event()) is False
-    assert ducker.events == ["pause", "resume"]
+
+
+def test_synthesizer_allows_only_one_active_playback(tmp_path: Path) -> None:
+    runner = RecordingRunner()
+    ducker = RecordingDucker()
+    sink = BlockingAudioSink()
+    synth = FixedVoiceSynthesizer(
+        runner=runner,
+        ducker=ducker,
+        audio_sink=sink,
+        temporary_directory=tmp_path,
+        sleep=lambda _seconds: None,
+    )
+    first_result: list[bool] = []
+    first = threading.Thread(
+        target=lambda: first_result.append(synth.speak_code("saved", threading.Event()))
+    )
+    first.start()
+    assert sink.started.wait(1.0)
+
+    started = time.monotonic()
+    second_result = synth.speak_code("saved", threading.Event())
+    elapsed = time.monotonic() - started
+
+    sink.release.set()
+    first.join(1.0)
+    assert second_result is False
+    assert elapsed < 0.2
+    assert first_result == [True]
+    assert sink.calls == 1
+
+
+def test_unknown_playback_completion_is_ambiguous_and_not_replayed(
+    tmp_path: Path,
+) -> None:
+    synth = FixedVoiceSynthesizer(
+        runner=RecordingRunner(),
+        ducker=RecordingDucker(),
+        audio_sink=AmbiguousAudioSink(),
+        temporary_directory=tmp_path,
+        sleep=lambda _seconds: None,
+    )
+
+    assert synth.speak_code("saved", threading.Event()) is False
+    assert synth.last_playback_status is PlaybackStatus.AMBIGUOUS
     assert list(tmp_path.iterdir()) == []
 
 
